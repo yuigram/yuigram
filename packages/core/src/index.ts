@@ -9,6 +9,7 @@
  * The boundary is enforced by the layer-boundary invariant.
  */
 
+export * from './errors/index.js'
 export {
   type AnyFilter,
   type AsyncFilter,
@@ -29,3 +30,4 @@ export {
   or,
   some,
 } from './filter/index.js'
+export * from './log/index.js'
