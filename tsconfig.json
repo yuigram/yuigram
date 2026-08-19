@@ -6,6 +6,7 @@
     { "path": "packages/bot-api" },
     { "path": "packages/mtproto" },
     { "path": "packages/yuigram" },
-    { "path": "tools/invariants" }
+    { "path": "tools/invariants" },
+    { "path": "tools/schema" }
   ]
 }

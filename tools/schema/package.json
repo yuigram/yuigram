@@ -1,0 +1,20 @@
+{
+  "name": "@yuigram/schema",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Schema parsers and code generators for the Telegram Bot API and TL",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "fetch": "tsx src/cli.ts fetch",
+    "regenerate": "tsx src/cli.ts regenerate",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  },
+  "devDependencies": {
+    "node-html-parser": "^9.0.1"
+  }
+}
