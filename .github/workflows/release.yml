@@ -1,8 +1,12 @@
 name: Release
 
+# Manual-only until the first release (Phase 4). The packages are at 0.0.0 and
+# there is nothing to publish; a push trigger would fail on every commit and
+# train everyone to ignore a red workflow.
+#
+# Switch to `push: branches: [main]` when the Bot API subsystem is ready to
+# ship, so changesets can open release pull requests automatically.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

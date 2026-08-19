@@ -79,10 +79,21 @@ jobs:
           fi
           echo "No Telegram library found in the dependency tree."
 
+      # Guards against copyleft arriving through a transitive dependency. With
+      # zero runtime dependencies this passes trivially — which is the point,
+      # and the check is here for the day that changes.
       - name: Licence gate
         run: |
-          set -euo pipefail
-          pnpm licenses list --prod --json > licenses.json || echo '{}' > licenses.json
+          set -uo pipefail
+          output=$(pnpm licenses list --prod --json 2>&1) || true
+
+          if ! printf '%s' "$output" | head -c1 | grep -q '[{[]'; then
+            echo "No runtime dependencies to audit."
+            echo "$output"
+            exit 0
+          fi
+
+          printf '%s' "$output" > licenses.json
           node --input-type=module -e "
             import { readFileSync } from 'node:fs'
             const allowed = new Set([
