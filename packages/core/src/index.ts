@@ -33,3 +33,4 @@ export {
 } from './filter/index.js'
 export * from './log/index.js'
 export * from './middleware/index.js'
+export * from './storage/index.js'
