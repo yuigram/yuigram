@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format
+        run: pnpm lint
+
+      - name: Typecheck and build
+        run: pnpm build
+
+      # Runs after the build so the public-surface check has declaration files
+      # to inspect rather than skipping.
+      - name: Architecture invariants
+        run: pnpm invariants
+
+      - name: Test
+        run: pnpm test
+
+  provenance:
+    name: Independence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The dependency tree is the load-bearing claim: Yuigram implements both
+      # protocols itself. A Telegram library entering at any depth, even
+      # transitively, breaks that and must fail the build.
+      - name: No Telegram library in the dependency tree
+        run: |
+          set -euo pipefail
+          forbidden='puregram|mtcute|grammy|grammyjs|telegraf|teleproto|gramio|tgsnake|node-telegram-bot-api'
+          if pnpm ls --recursive --depth Infinity --parseable 2>/dev/null \
+             | grep -Ei "node_modules/(@)?($forbidden)"; then
+            echo "::error::A Telegram library is present in the dependency tree."
+            exit 1
+          fi
+          echo "No Telegram library found in the dependency tree."
+
+      - name: Licence gate
+        run: |
+          set -euo pipefail
+          pnpm licenses list --prod --json > licenses.json || echo '{}' > licenses.json
+          node --input-type=module -e "
+            import { readFileSync } from 'node:fs'
+            const allowed = new Set([
+              'MIT','ISC','BSD-2-Clause','BSD-3-Clause','Apache-2.0','0BSD','CC0-1.0','Unlicense',
+            ])
+            const raw = JSON.parse(readFileSync('licenses.json','utf8'))
+            const bad = Object.keys(raw).filter((l) => !allowed.has(l))
+            if (bad.length > 0) {
+              console.error('Disallowed runtime licence(s): ' + bad.join(', '))
+              process.exit(1)
+            }
+            console.log('All runtime licences are on the allowlist.')
+          "

@@ -1,0 +1,64 @@
+name: Schema drift
+
+# Watches Telegram for Bot API and TL schema changes and opens a pull request
+# when the surface moves. Automation does the mechanical work; a human decides
+# whether a change needs design.
+#
+# The generators land in Phase 3 (Bot API) and Phase 5 (TL). Until then this
+# workflow reports that it has nothing to do rather than failing, so the
+# schedule is live and proven before it is needed.
+
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Detect schema drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for a schema generator
+        id: generator
+        run: |
+          if [ -d tools/schema ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No schema generator yet — see docs/codegen.md. Nothing to check."
+          fi
+
+      - name: Regenerate and diff
+        if: steps.generator.outputs.present == 'true'
+        run: pnpm --filter @yuigram/schema regenerate
+
+      - name: Open pull request on change
+        if: steps.generator.outputs.present == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/schema-update
+          title: 'chore: update Telegram schema'
+          commit-message: 'chore: update Telegram schema'
+          body: |
+            Automated schema regeneration.
+
+            Review the diff before merging: a new capability may deserve a
+            first-class abstraction rather than only a generated type.
+          labels: schema

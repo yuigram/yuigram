@@ -1,0 +1,15 @@
+# Normalise line endings to LF in the repository and in every working copy.
+# Biome enforces LF; without this a Windows checkout fails the format check.
+* text=auto eol=lf
+
+# Binary files must never be converted.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated snapshots are reviewed as diffs but not worth conflict resolution.
+pnpm-lock.yaml linguist-generated=true
+schemas/**/*.json linguist-generated=true

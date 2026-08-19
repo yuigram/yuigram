@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# test and coverage
+coverage/
+.vitest/
+
+# editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+
+# Telegram credentials and sessions — never commit
+*.session
+*.session-journal
+sessions/

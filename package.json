@@ -1,0 +1,43 @@
+{
+  "name": "@yuigram/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Independent TypeScript framework for the Telegram Bot API and MTProto",
+  "license": "MIT",
+  "homepage": "https://github.com/yuigram/yuigram",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuigram/yuigram.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yuigram/yuigram/issues"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "build": "tsc --build",
+    "build:clean": "tsc --build --clean",
+    "typecheck": "tsc --build --force",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "invariants": "tsx tools/invariants/src/cli.ts",
+    "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.9",
+    "@changesets/cli": "^3.0.1",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

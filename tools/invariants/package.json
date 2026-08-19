@@ -1,0 +1,16 @@
+{
+  "name": "@yuigram/invariants",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Architecture invariant checks enforced in CI",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "check": "tsx src/cli.ts",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  }
+}

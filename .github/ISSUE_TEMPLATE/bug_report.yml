@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never include a session string, bot token or `api_hash`.**
+        If a reproduction seems to need one, describe the shape of the data instead.
+        Security vulnerabilities go through SECURITY.md, not this form.
+  - type: input
+    id: version
+    attributes:
+      label: Yuigram version
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
