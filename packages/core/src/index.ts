@@ -9,6 +9,7 @@
  * The boundary is enforced by the layer-boundary invariant.
  */
 
+export * from './dispatch/index.js'
 export * from './errors/index.js'
 export {
   type AnyFilter,
@@ -31,3 +32,4 @@ export {
   some,
 } from './filter/index.js'
 export * from './log/index.js'
+export * from './middleware/index.js'
