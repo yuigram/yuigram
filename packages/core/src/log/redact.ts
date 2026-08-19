@@ -89,47 +89,54 @@ const MAX_DEPTH = 8
  */
 export function redact(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (depth > MAX_DEPTH) return '[truncated]'
-
   if (typeof value === 'string') return redactString(value)
   if (value === null || typeof value !== 'object') return value
 
-  // Binary payloads are never useful in a log and are frequently key material.
-  if (ArrayBuffer.isView(value)) return `[binary ${value.byteLength} bytes]`
-  if (value instanceof ArrayBuffer) return `[binary ${value.byteLength} bytes]`
+  const binary = redactBinary(value)
+  if (binary !== undefined) return binary
 
   if (seen.has(value)) return '[circular]'
   seen.add(value)
+
+  return redactObject(value, depth, seen)
+}
+
+/**
+ * Summarise binary payloads by length.
+ *
+ * Auth keys and salts are byte arrays, and printing one would defeat the whole
+ * exercise. Returns `undefined` when the value is not binary.
+ */
+function redactBinary(value: object): string | undefined {
+  if (ArrayBuffer.isView(value)) return `[binary ${value.byteLength} bytes]`
+  if (value instanceof ArrayBuffer) return `[binary ${value.byteLength} bytes]`
+  return undefined
+}
+
+/** Walk a container, redacting by key name and by value shape. */
+function redactObject(value: object, depth: number, seen: WeakSet<object>): unknown {
+  const child = (item: unknown): unknown => redact(item, depth + 1, seen)
 
   if (value instanceof Error) {
     return {
       name: value.name,
       message: redactString(value.message),
-      ...(value.cause === undefined ? {} : { cause: redact(value.cause, depth + 1, seen) }),
+      ...(value.cause === undefined ? {} : { cause: child(value.cause) }),
     }
   }
 
-  if (Array.isArray(value)) {
-    return value.map((item) => redact(item, depth + 1, seen))
-  }
-
-  if (value instanceof Map) {
-    const out: Record<string, unknown> = {}
-    for (const [key, item] of value) {
-      const name = String(key)
-      out[name] = isSensitiveKey(name) ? REDACTED : redact(item, depth + 1, seen)
-    }
-    return out
-  }
-
-  if (value instanceof Set) {
-    return [...value].map((item) => redact(item, depth + 1, seen))
-  }
-
+  if (Array.isArray(value)) return value.map(child)
+  if (value instanceof Set) return [...value].map(child)
   if (value instanceof Date) return value.toISOString()
 
+  const entries =
+    value instanceof Map
+      ? [...value].map(([key, item]): [string, unknown] => [String(key), item])
+      : Object.entries(value as Record<string, unknown>)
+
   const out: Record<string, unknown> = {}
-  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    out[key] = isSensitiveKey(key) ? REDACTED : redact(item, depth + 1, seen)
+  for (const [key, item] of entries) {
+    out[key] = isSensitiveKey(key) ? REDACTED : child(item)
   }
   return out
 }

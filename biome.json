@@ -34,6 +34,7 @@
         "noConsole": { "level": "error", "options": { "allow": ["warn", "error"] } }
       },
       "complexity": {
+        "useLiteralKeys": "off",
         "noExcessiveCognitiveComplexity": {
           "level": "warn",
           "options": { "maxAllowedComplexity": 20 }

@@ -9,6 +9,7 @@
  * The boundary is enforced by the layer-boundary invariant.
  */
 
+export * from './context/index.js'
 export * from './dispatch/index.js'
 export * from './errors/index.js'
 export {
@@ -33,4 +34,5 @@ export {
 } from './filter/index.js'
 export * from './log/index.js'
 export * from './middleware/index.js'
+export * from './session/index.js'
 export * from './storage/index.js'
