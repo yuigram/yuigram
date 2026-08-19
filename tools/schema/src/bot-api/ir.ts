@@ -38,6 +38,8 @@ export interface Field {
 /** An object type. */
 export interface ObjectType {
   readonly name: string
+  /** Documentation section this belongs to, used to group generated output. */
+  readonly group: string
   readonly description: string
   readonly documentationLink: string
   readonly fields: readonly Field[]
@@ -51,6 +53,8 @@ export interface ObjectType {
 /** A callable method. */
 export interface Method {
   readonly name: string
+  /** Documentation section this belongs to, used to group generated output. */
+  readonly group: string
   readonly description: string
   readonly documentationLink: string
   readonly parameters: readonly Field[]

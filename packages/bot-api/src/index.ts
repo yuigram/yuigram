@@ -8,5 +8,8 @@
  * `@yuigram/mtproto` — the two transports are independent by design.
  */
 
-/** Package name, used by diagnostics and error messages. */
-export const PACKAGE_NAME = '@yuigram/bot-api'
+export type { ApiMethods } from './generated/api.js'
+export type * from './generated/methods/index.js'
+export type * from './generated/types/index.js'
+export type { BotApiTypeName } from './generated/types/names.js'
+export { type InputFile, isInputFile, type NamedFile } from './input-file.js'

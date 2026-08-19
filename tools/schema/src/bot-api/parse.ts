@@ -28,6 +28,8 @@ const METHOD_HEADERS = ['Parameter', 'Type', 'Required', 'Description']
 interface Section {
   readonly anchor: string
   readonly title: string
+  /** The `<h3>` heading this falls under, used to group generated output. */
+  readonly group: string
   readonly description: string
   readonly table: HTMLElement | undefined
   readonly subtypes: readonly string[]
@@ -41,9 +43,10 @@ function normalize(text: string): string {
 /** Split the document into `<h4>` sections. */
 function collectSections(root: HTMLElement): Section[] {
   const sections: Section[] = []
-  const children = root.querySelectorAll('h4, p, table, ul')
+  const children = root.querySelectorAll('h3, h4, p, table, ul')
 
-  let current: { anchor: string; title: string } | undefined
+  let current: { anchor: string; title: string; group: string } | undefined
+  let group = 'General'
   let paragraphs: string[] = []
   let table: HTMLElement | undefined
   let subtypes: string[] = []
@@ -53,6 +56,7 @@ function collectSections(root: HTMLElement): Section[] {
     sections.push({
       anchor: current.anchor,
       title: current.title,
+      group: current.group,
       description: normalize(paragraphs.join(' ')),
       table,
       subtypes,
@@ -60,10 +64,17 @@ function collectSections(root: HTMLElement): Section[] {
   }
 
   for (const node of children) {
+    if (node.tagName === 'H3') {
+      flush()
+      current = undefined
+      group = normalize(node.textContent)
+      continue
+    }
+
     if (node.tagName === 'H4') {
       flush()
       const anchor = node.querySelector('a.anchor')?.getAttribute('name') ?? ''
-      current = { anchor, title: normalize(node.textContent) }
+      current = { anchor, title: normalize(node.textContent), group }
       paragraphs = []
       table = undefined
       subtypes = []
@@ -75,23 +86,27 @@ function collectSections(root: HTMLElement): Section[] {
     if (node.tagName === 'P') {
       // Prose after the table belongs to the next topic, not this one.
       if (table === undefined) paragraphs.push(normalize(node.textContent))
-      continue
-    }
-
-    if (node.tagName === 'TABLE') {
+    } else if (node.tagName === 'TABLE') {
       table ??= node
-      continue
-    }
-
-    if (node.tagName === 'UL' && table === undefined) {
-      // Abstract types list their variants: "It should be one of ...".
-      const items = node.querySelectorAll('li').map((li) => normalize(li.textContent))
-      if (items.every((item) => /^[A-Z][A-Za-z0-9]*$/.test(item))) subtypes = items
+    } else if (node.tagName === 'UL' && table === undefined) {
+      subtypes = readSubtypes(node) ?? subtypes
     }
   }
 
   flush()
   return sections
+}
+
+/**
+ * Read the variant list of an abstract type.
+ *
+ * Abstract types are documented as "It should be one of" followed by a list of
+ * type names. Any other list is prose and is ignored.
+ */
+function readSubtypes(node: HTMLElement): string[] | undefined {
+  const items = node.querySelectorAll('li').map((li) => normalize(li.textContent))
+  if (items.length === 0) return undefined
+  return items.every((item) => /^[A-Z][A-Za-z0-9]*$/.test(item)) ? items : undefined
 }
 
 /** Whether a table's header row matches the expected columns. */
@@ -150,6 +165,46 @@ function parseMethodParameters(table: HTMLElement): Field[] {
   })
 }
 
+/** Callback used by the return-type collectors. */
+type AddReturn = (type: TypeRef, key: string) => void
+
+/** Collect `Array of X` returns. */
+function collectArrayReturns(sentence: string, add: AddReturn): void {
+  for (const match of sentence.matchAll(/\bArray of ([A-Z][A-Za-z0-9]*)\b/g)) {
+    const name = match[1]
+    if (name !== undefined) add({ kind: 'array', of: { kind: 'reference', name } }, `[]${name}`)
+  }
+}
+
+/**
+ * Collect scalar returns.
+ *
+ * Claimed before the reference scan, or `String` and `Integer` are emitted as
+ * references to objects that do not exist.
+ */
+function collectScalarReturns(sentence: string, add: AddReturn): void {
+  if (/\bTrue\b/.test(sentence)) add({ kind: 'true' }, 'True')
+  if (/\bString\b/.test(sentence)) add({ kind: 'string' }, 'String')
+  if (/\bInteger\b/.test(sentence)) add({ kind: 'integer' }, 'Integer')
+}
+
+/** Collect object returns, skipping prose nouns and sentence-initial words. */
+function collectReferenceReturns(
+  sentence: string,
+  seen: ReadonlySet<string>,
+  add: AddReturn,
+): void {
+  for (const match of sentence.matchAll(/\b([A-Z][A-Za-z0-9]*)\b/g)) {
+    const name = match[1]
+    if (name === undefined) continue
+    if (SCALAR_RETURN_NAMES.has(name)) continue
+    // An internal capital marks a type name; the known list covers the rest.
+    if (!/^[A-Z][a-z]*[A-Z]/.test(name) && !KNOWN_RETURN_NAMES.has(name)) continue
+    if (seen.has(`[]${name}`)) continue
+    add({ kind: 'reference', name }, name)
+  }
+}
+
 /**
  * Infer a method's return type from its description.
  *
@@ -181,26 +236,9 @@ export function inferReturnType(description: string): TypeRef {
   }
 
   for (const sentence of sentences) {
-    for (const match of sentence.matchAll(/\bArray of ([A-Z][A-Za-z0-9]*)\b/g)) {
-      const name = match[1]
-      if (name !== undefined) add({ kind: 'array', of: { kind: 'reference', name } }, `[]${name}`)
-    }
-
-    // Scalars are claimed before the reference scan, or `String` and `Integer`
-    // would be emitted as references to objects that do not exist.
-    if (/\bTrue\b/.test(sentence)) add({ kind: 'true' }, 'True')
-    if (/\bString\b/.test(sentence)) add({ kind: 'string' }, 'String')
-    if (/\bInteger\b/.test(sentence)) add({ kind: 'integer' }, 'Integer')
-
-    for (const match of sentence.matchAll(/\b([A-Z][A-Za-z0-9]*)\b/g)) {
-      const name = match[1]
-      if (name === undefined) continue
-      if (SCALAR_RETURN_NAMES.has(name)) continue
-      // Sentence-initial words and prose nouns are not types.
-      if (!/^[A-Z][a-z]*[A-Z]/.test(name) && !KNOWN_RETURN_NAMES.has(name)) continue
-      if (seen.has(`[]${name}`)) continue
-      add({ kind: 'reference', name }, name)
-    }
+    collectArrayReturns(sentence, add)
+    collectScalarReturns(sentence, add)
+    collectReferenceReturns(sentence, seen, add)
   }
 
   if (found.length === 0) return { kind: 'boolean' }
@@ -266,6 +304,7 @@ export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
 
       methods.push({
         name: title,
+        group: section.group,
         description: section.description,
         documentationLink,
         parameters,
@@ -282,6 +321,7 @@ export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
 
     objects.push({
       name: title,
+      group: section.group,
       description: section.description,
       documentationLink,
       fields: table === undefined ? [] : parseObjectFields(table),

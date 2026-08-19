@@ -48,6 +48,19 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Generated sources are committed, so a hand edit or a stale regeneration
+      # must fail here rather than reaching a release. Re-emitting from the
+      # committed schema needs no network.
+      - name: Generated code is in sync
+        run: |
+          pnpm --filter @yuigram/schema regenerate:offline
+          if ! git diff --quiet -- packages/*/src/generated; then
+            echo "::error::Generated code differs from the committed schema. Run the schema tool and commit the result."
+            git --no-pager diff --stat -- packages/*/src/generated
+            exit 1
+          fi
+          echo "Generated code matches the committed schema." 
+
   provenance:
     name: Independence
     runs-on: ubuntu-latest

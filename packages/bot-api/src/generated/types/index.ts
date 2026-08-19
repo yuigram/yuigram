@@ -1,0 +1,12 @@
+// GENERATED FILE — do not edit.
+// Bot API types
+// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+
+export type * from './available-types.js'
+export type * from './games.js'
+export type * from './getting-updates.js'
+export type * from './inline-mode.js'
+export type * from './payments.js'
+export type * from './rich-messages.js'
+export type * from './stickers.js'
+export type * from './telegram-passport.js'
