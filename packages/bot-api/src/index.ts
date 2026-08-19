@@ -12,4 +12,11 @@ export type { ApiMethods } from './generated/api.js'
 export type * from './generated/methods/index.js'
 export type * from './generated/types/index.js'
 export type { BotApiTypeName } from './generated/types/names.js'
+export type {
+  ApiRequest,
+  ApiResponse,
+  ApiResult,
+  HttpClient,
+  ResponseParameters,
+} from './http/index.js'
 export { type InputFile, isInputFile, type NamedFile } from './input-file.js'
