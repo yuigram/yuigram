@@ -118,7 +118,7 @@ class Session<V> implements SessionHandle<V> {
  * write and one increment is lost — the classic lost-update race, and one
  * users hit immediately by sending two messages quickly.
  */
-class KeyedQueue {
+export class KeyedQueue {
   readonly #tails = new Map<string, Promise<unknown>>()
 
   async run<T>(key: string, task: () => Promise<T>): Promise<T> {
@@ -127,21 +127,21 @@ class KeyedQueue {
     // cascade into the next update for the same key.
     const result = previous.then(task, task)
 
-    this.#tails.set(
-      key,
-      result.catch(() => undefined),
-    )
+    const tail = result.catch(() => undefined)
+    this.#tails.set(key, tail)
 
     try {
       return await result
     } finally {
-      // Drop the entry once this is the last task, so the map does not grow
-      // without bound across the lifetime of a busy process.
-      if (this.#tails.get(key) === undefined) this.#tails.delete(key)
+      // Drop the entry only when this task is still the tail, meaning nothing
+      // queued behind it. Comparing against the tail we installed is what makes
+      // that check correct: a later task replaces the entry, and deleting it
+      // then would let the next update for this key run unserialized.
+      if (this.#tails.get(key) === tail) this.#tails.delete(key)
     }
   }
 
-  /** Number of keys with work queued or recently completed. */
+  /** Number of keys with work in flight. */
   get size(): number {
     return this.#tails.size
   }
