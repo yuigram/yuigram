@@ -72,6 +72,23 @@ export interface UpdateEvent {
   readonly description: string
 }
 
+/**
+ * Update fields whose payload is a `Message`.
+ *
+ * Only these can carry a service marker, so only these are scanned for
+ * promotion. Derived from the schema rather than listed by hand: a hardcoded
+ * set was already missing `guest_message` on the day it was written.
+ */
+export function collectMessageFields(schema: BotApiSchema): string[] {
+  const update = schema.objects.find((object) => object.name === 'Update')
+  if (update === undefined) return []
+
+  return update.fields
+    .filter((field) => field.type.kind === 'reference' && field.type.name === 'Message')
+    .map((field) => field.name)
+    .sort()
+}
+
 /** Find every top-level update kind. */
 export function collectUpdateEvents(schema: BotApiSchema): UpdateEvent[] {
   const update = schema.objects.find((object) => object.name === 'Update')
@@ -138,6 +155,14 @@ ${serviceMap}
 ${renderDoc('The payload type carried by each top-level update kind.')}export interface UpdatePayloads {
 ${payloadEntries}
 }
+
+${renderDoc(
+  'Update fields whose payload is a `Message`, and so may carry a service marker. Only these are scanned for promotion.',
+)}export const MESSAGE_FIELDS: ReadonlySet<string> = new Set([
+${collectMessageFields(schema)
+  .map((field) => `  '${field}',`)
+  .join('\n')}
+])
 `
 
   return {

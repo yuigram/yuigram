@@ -43,7 +43,7 @@ describe('top-level kinds', () => {
     const normalized = normalizeUpdate(callbackQueryUpdate({ data: 'buy:1' }))
 
     expect(normalized.kind).toBe('callback_query')
-    expect(normalized.text).toBe('buy:1')
+    expect(normalized.data).toBe('buy:1')
   })
 
   it('carries the update id for deduplication', () => {
@@ -103,6 +103,21 @@ describe('service-message promotion', () => {
     expect(normalizeUpdate(update).kind).toBe('chat_title_changed')
   })
 
+  it('promotes on every message-bearing update field', () => {
+    // The set is generated from the schema. A hardcoded list was already
+    // missing `guest_message` on the day it was written.
+    for (const field of ['message', 'channel_post', 'business_message', 'guest_message']) {
+      const update = {
+        update_id: 1,
+        [field]: { message_id: 2, date: 1, chat: groupChat(), new_chat_title: 'Renamed' },
+      } as unknown as Update
+
+      expect(normalizeUpdate(update).kind, `promotion failed for ${field}`).toBe(
+        'chat_title_changed',
+      )
+    }
+  })
+
   it('does not promote from a non-message payload', () => {
     // A callback query has no service markers, and scanning it would be a
     // category error.
@@ -139,6 +154,39 @@ describe('common fields', () => {
   it('leaves text undefined when there is none', () => {
     expect(normalizeUpdate(memberJoinedUpdate()).text).toBeUndefined()
   })
+
+  it('does not treat callback data as text', () => {
+    // Callback data is a payload the bot wrote to its own button. Exposing it
+    // as `text` would make a text filter fire on button presses — puregram
+    // keeps them separate for the same reason.
+    const normalized = normalizeUpdate(callbackQueryUpdate({ data: 'buy:1' }))
+
+    expect(normalized.text).toBeUndefined()
+    expect(normalized.data).toBe('buy:1')
+  })
+
+  it('exposes an inline query separately from text', () => {
+    const update = {
+      update_id: 1,
+      inline_query: { id: '1', from: user(), query: 'cats', offset: '' },
+    } as unknown as Update
+
+    const normalized = normalizeUpdate(update)
+
+    expect(normalized.text).toBeUndefined()
+    expect(normalized.query).toBe('cats')
+  })
+
+  it('reads a caption as text', () => {
+    // A caption is authored by the same person in the same place, so it is
+    // text; callback data is not.
+    const update = {
+      update_id: 1,
+      message: { message_id: 1, date: 1, chat: groupChat(), caption: 'a photo' },
+    } as unknown as Update
+
+    expect(normalizeUpdate(update).text).toBe('a photo')
+  })
 })
 
 describe('unknown kinds', () => {
@@ -163,6 +211,14 @@ describe('unknown kinds', () => {
     } as never)
 
     expect(debug).toHaveBeenCalled()
+  })
+
+  it('ignores a field explicitly set to null', () => {
+    // A nulled field is absent; treating it as the payload would misidentify
+    // the update kind.
+    const update = { update_id: 1, message: null, callback_query: { id: '1', from: user() } }
+
+    expect(normalizeUpdate(update as unknown as Update).kind).toBe('callback_query')
   })
 
   it('handles an update with no payload at all', () => {

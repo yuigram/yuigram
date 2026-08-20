@@ -225,3 +225,17 @@ export interface UpdatePayloads {
   "shipping_query": ShippingQuery
   "subscription": BotSubscriptionUpdated
 }
+
+/**
+ * Update fields whose payload is a `Message`, and so may carry a service
+ * marker. Only these are scanned for promotion.
+ */
+export const MESSAGE_FIELDS: ReadonlySet<string> = new Set([
+  'business_message',
+  'channel_post',
+  'edited_business_message',
+  'edited_channel_post',
+  'edited_message',
+  'guest_message',
+  'message',
+])

@@ -17,7 +17,7 @@
  */
 
 import type { Logger } from '@yuigram/core'
-import { SERVICE_EVENTS, UPDATE_EVENTS } from './generated/events.js'
+import { MESSAGE_FIELDS, SERVICE_EVENTS, UPDATE_EVENTS } from './generated/events.js'
 import type { Chat, Message, Update, User } from './generated/types/index.js'
 
 /** The kind given to an update this build does not recognise. */
@@ -37,29 +37,31 @@ export interface NormalizedUpdate {
   readonly chat: Chat | undefined
   /** Who caused it, where that is known. */
   readonly sender: User | undefined
-  /** Text or caption, whichever is present. */
+  /**
+   * Message text or caption.
+   *
+   * Never callback data or an inline query. Those are separate fields below:
+   * callback data is an opaque payload the bot itself authored, and treating it
+   * as text would make a text filter match button presses.
+   */
   readonly text: string | undefined
+  /** Callback data, for a callback query. */
+  readonly data: string | undefined
+  /** The typed query, for an inline query. */
+  readonly query: string | undefined
   /** When it happened. */
   readonly date: Date
   /** The untouched update. */
   readonly raw: Update
 }
 
-/** Fields whose payload is a `Message`, and so may carry a service marker. */
-const MESSAGE_FIELDS = new Set([
-  'message',
-  'edited_message',
-  'channel_post',
-  'edited_channel_post',
-  'business_message',
-  'edited_business_message',
-])
-
 /** Find the single populated field of an update. */
 function payloadField(update: Update): { field: string; payload: unknown } | undefined {
   for (const [field, payload] of Object.entries(update)) {
     if (field === 'update_id') continue
-    if (payload === undefined) continue
+    // `null` is not a payload: a field explicitly nulled is absent, and
+    // treating it as present would misidentify the update kind.
+    if (payload === undefined || payload === null) continue
     return { field, payload }
   }
   return undefined
@@ -68,14 +70,20 @@ function payloadField(update: Update): { field: string; payload: unknown } | und
 /**
  * Find the service marker on a message, if any.
  *
- * The Bot API guarantees at most one, so the first match wins. A message
- * carrying none is an ordinary message.
+ * Scans the fields the message actually has rather than all 54 known markers:
+ * a typical message carries under a dozen keys, so this is the cheaper
+ * direction and it stays cheap as Telegram adds more markers.
+ *
+ * The Bot API guarantees at most one marker per message. A message carrying
+ * none is an ordinary message.
  */
 function serviceKind(message: Message): string | undefined {
-  const record = message as unknown as Record<string, unknown>
+  const markers = SERVICE_EVENTS as Record<string, string | undefined>
 
-  for (const [field, kind] of Object.entries(SERVICE_EVENTS)) {
-    if (record[field] !== undefined) return kind
+  for (const [field, value] of Object.entries(message)) {
+    if (value === undefined || value === null) continue
+    const kind = markers[field]
+    if (kind !== undefined) return kind
   }
 
   return undefined
@@ -102,13 +110,23 @@ function readChat(payload: unknown): Chat | undefined {
   return message?.['chat'] as Chat | undefined
 }
 
-/** Read text or caption, whichever the payload has. */
-function readText(payload: unknown): string | undefined {
+/** Read a string field from a payload, if present. */
+function readString(payload: unknown, key: string): string | undefined {
   if (typeof payload !== 'object' || payload === null) return undefined
-  const record = payload as Record<string, unknown>
-
-  const value = record['text'] ?? record['caption'] ?? record['data'] ?? record['query']
+  const value = (payload as Record<string, unknown>)[key]
   return typeof value === 'string' ? value : undefined
+}
+
+/**
+ * Read message text.
+ *
+ * Caption counts as text — it is authored by the same person in the same place
+ * — but callback data and inline queries deliberately do not. Callback data is
+ * a payload the bot wrote to its own button, and matching a text filter against
+ * it would fire handlers on button presses.
+ */
+function readText(payload: unknown): string | undefined {
+  return readString(payload, 'text') ?? readString(payload, 'caption')
 }
 
 /** Read the timestamp, falling back to now when the payload carries none. */
@@ -136,6 +154,8 @@ export function normalizeUpdate(update: Update, log?: Logger): NormalizedUpdate 
       chat: undefined,
       sender: undefined,
       text: undefined,
+      data: undefined,
+      query: undefined,
       date: new Date(),
       raw: update,
     }
@@ -161,6 +181,8 @@ export function normalizeUpdate(update: Update, log?: Logger): NormalizedUpdate 
     chat: readChat(payload),
     sender: readSender(payload),
     text: readText(payload),
+    data: readString(payload, 'data'),
+    query: readString(payload, 'query'),
     date: readDate(payload),
     raw: update,
   }
