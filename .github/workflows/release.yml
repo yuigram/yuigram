@@ -80,6 +80,14 @@ jobs:
       - name: Check what the packages contain
         run: node scripts/check-package-contents.mjs
 
+      # Version commits are authored by the maintainer, not by the runner.
+      # Left to itself the action commits as github-actions[bot], which then
+      # appears in the contributor list of a project written by a person.
+      - name: Author version commits as the maintainer
+        run: |
+          git config user.name 'coupdev'
+          git config user.email '193032786+coupdev@users.noreply.github.com'
+
       - name: Create release pull request or publish
         uses: changesets/action@v1
         with:
@@ -87,6 +95,8 @@ jobs:
           publish: pnpm release
           commit: 'chore: version packages'
           title: 'chore: version packages'
+          # Keeps the identity configured above instead of overwriting it.
+          setupGitUser: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
