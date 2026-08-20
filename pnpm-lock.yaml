@@ -29,6 +29,9 @@ importers:
 
   examples:
     dependencies:
+      '@yuigram/core':
+        specifier: workspace:*
+        version: link:../packages/core
       yuigram:
         specifier: workspace:*
         version: link:../packages/yuigram

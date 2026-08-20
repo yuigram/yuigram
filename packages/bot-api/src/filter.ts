@@ -4,11 +4,11 @@
  * `defineFilter` in core takes a predicate over `unknown`, because a filter's
  * job is to decide what an arbitrary value is — it cannot assume the shape of
  * something it has not yet checked. That is right for the primitive and wrong
- * for almost every call site, which ends up writing `(v) => (v as BotContext)…`
+ * for almost every call site, which ends up writing `(v) => (v as Context)…`
  * to say something the dispatcher already guarantees.
  *
  * These wrappers close that gap for the Bot API subsystem, where the guarantee
- * is real: `Bot` only ever dispatches a `BotContext`, so a predicate registered
+ * is real: `Bot` only ever dispatches a `Context`, so a predicate registered
  * on a bot genuinely receives one. The cast disappears without anything being
  * assumed that is not already true.
  *
@@ -23,7 +23,7 @@ import {
   defineFilter,
   type Filter,
 } from '@yuigram/core'
-import type { BotContext } from './context.js'
+import type { Context } from './context.js'
 
 /**
  * Define a filter over the bot context.
@@ -53,10 +53,10 @@ import type { BotContext } from './context.js'
  */
 export function filter<Mod = unknown>(
   name: string,
-  predicate: (context: BotContext) => boolean,
+  predicate: (context: Context) => boolean,
   options: DefineOptions = {},
-): Filter<BotContext, Mod> {
-  return defineFilter<BotContext, Mod>(name, (value) => predicate(value as BotContext), options)
+): Filter<Context, Mod> {
+  return defineFilter<Context, Mod>(name, (value) => predicate(value as Context), options)
 }
 
 /**
@@ -77,12 +77,8 @@ export function filter<Mod = unknown>(
  */
 export function asyncFilter<Mod = unknown>(
   name: string,
-  predicate: (context: BotContext) => Promise<boolean>,
+  predicate: (context: Context) => Promise<boolean>,
   options: DefineOptions = {},
-): AsyncFilter<BotContext, Mod> {
-  return defineAsyncFilter<BotContext, Mod>(
-    name,
-    (value) => predicate(value as BotContext),
-    options,
-  )
+): AsyncFilter<Context, Mod> {
+  return defineAsyncFilter<Context, Mod>(name, (value) => predicate(value as Context), options)
 }

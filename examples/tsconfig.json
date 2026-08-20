@@ -1,11 +1,20 @@
 {
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "dist",
-    "noEmit": false
-  },
-  "include": ["**/*.ts"],
-  "exclude": ["dist"],
-  "references": [{ "path": "../packages/yuigram" }]
+  "files": [],
+  "references": [
+    {
+      "path": "01-basic-bot"
+    },
+    {
+      "path": "05-middleware"
+    },
+    {
+      "path": "06-routing"
+    },
+    {
+      "path": "07-sessions"
+    },
+    {
+      "path": "08-storage"
+    }
+  ]
 }

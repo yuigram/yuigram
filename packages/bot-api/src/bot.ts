@@ -22,7 +22,7 @@ import {
 } from '@yuigram/core'
 import { createApi, type RawApi } from './api.js'
 import { addressedToUs, commandMatches, type ParsedCommand, parseCommand } from './command.js'
-import { type BotContext, createContext } from './context.js'
+import { type Context, createContext } from './context.js'
 import {
   type DownloadTarget,
   download,
@@ -76,7 +76,7 @@ export interface BotOptions {
  */
 
 /** A context whose update carried a command. */
-export interface CommandContext extends BotContext {
+export interface CommandContext extends Context {
   /** The parsed command: name, arguments and any `@bot` suffix. */
   readonly command: ParsedCommand
 }
@@ -96,7 +96,7 @@ export class Bot {
   readonly name: string
 
   readonly #log: Logger
-  readonly #dispatcher: Dispatcher<BotContext>
+  readonly #dispatcher: Dispatcher<Context>
   readonly #plugins = new PluginRegistry<Bot>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
@@ -111,7 +111,7 @@ export class Bot {
     this.name = options.name ?? 'bot'
     this.#log = (options.log ?? createLogger()).child(this.name)
 
-    this.#dispatcher = new Dispatcher<BotContext>({
+    this.#dispatcher = new Dispatcher<Context>({
       onUnhandled: (error, context) => {
         // Logged at error rather than swallowed: with no catch handler
         // registered this is the only trace an operator gets.
@@ -155,25 +155,25 @@ export class Bot {
   }
 
   /** Register dispatch middleware. */
-  use(middleware: Middleware<BotContext>, options?: UseOptions): this {
+  use(middleware: Middleware<Context>, options?: UseOptions): this {
     this.#dispatcher.use(middleware, options)
     return this
   }
 
   /** Register a handler for one or more update kinds, or a filter. */
-  on(match: string | readonly string[] | AnyFilter, handler: Handler<BotContext>): this {
+  on(match: string | readonly string[] | AnyFilter, handler: Handler<Context>): this {
     this.#dispatcher.on(match, handler)
     return this
   }
 
   /** Register a handler that runs once. */
-  once(match: string | readonly string[] | AnyFilter, handler: Handler<BotContext>): this {
+  once(match: string | readonly string[] | AnyFilter, handler: Handler<Context>): this {
     this.#dispatcher.once(match, handler)
     return this
   }
 
   /** Remove a handler. */
-  off(handler: Handler<BotContext>): boolean {
+  off(handler: Handler<Context>): boolean {
     return this.#dispatcher.off(handler)
   }
 
@@ -208,7 +208,7 @@ export class Bot {
   }
 
   /** Register a handler for an exact text match, or a pattern. */
-  text(match: string | RegExp, handler: Handler<BotContext>): this {
+  text(match: string | RegExp, handler: Handler<Context>): this {
     this.#dispatcher.on(MESSAGE_KINDS, (context) => {
       const value = context.text
       if (value === undefined) return
@@ -223,7 +223,7 @@ export class Bot {
   }
 
   /** Register a handler for callback data, exact or by pattern. */
-  callback(match: string | RegExp, handler: Handler<BotContext>): this {
+  callback(match: string | RegExp, handler: Handler<Context>): this {
     this.#dispatcher.on('callback_query', (context) => {
       const value = context.data
       if (value === undefined) return
@@ -245,7 +245,7 @@ export class Bot {
    * logged and dispatch continues — a single malformed update must not take
    * down every conversation a busy bot is handling.
    */
-  catch(handler: (error: unknown, context: BotContext) => unknown): this {
+  catch(handler: (error: unknown, context: Context) => unknown): this {
     this.#dispatcher.catch(handler)
     return this
   }
