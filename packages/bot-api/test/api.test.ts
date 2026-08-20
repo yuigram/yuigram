@@ -174,3 +174,60 @@ describe('observation', () => {
     expect(onCall).toHaveBeenCalledWith(expect.objectContaining({ method: 'futureMethod' }))
   })
 })
+
+describe('properties a runtime probes before using an object', () => {
+  it('does not turn JSON.stringify into an API call', async () => {
+    // `JSON.stringify` asks for `toJSON`. The proxy answered every string
+    // property with a callable, so serializing anything holding the api - a
+    // context, in an error tracker - sent a real request for a Telegram method
+    // named `toJSON`, and rejected unhandled.
+    const transport = mockTransport()
+    const api = createApi({ client: transport })
+
+    JSON.stringify({ api })
+
+    expect(transport.count('toJSON')).toBe(0)
+  })
+
+  it('does not turn string coercion into an API call', () => {
+    const transport = mockTransport()
+    const api = createApi({ client: transport })
+
+    // Coercion behaves like any ordinary object rather than throwing or
+    // reaching the network.
+    expect(String(api)).toBe('[object Object]')
+    expect(transport.count('toString')).toBe(0)
+    expect(transport.count('valueOf')).toBe(0)
+  })
+
+  it('is not awaitable', async () => {
+    // A callable `then` would make the whole surface look like a promise.
+    const api = createApi({ client: mockTransport() })
+
+    expect((api as unknown as { then?: unknown }).then).toBeUndefined()
+  })
+
+  it('reports the probes as absent rather than present', () => {
+    // `in` has to agree with `get`, or a library that checks first and calls
+    // second still reaches a callable.
+    const api = createApi({ client: mockTransport() })
+
+    // Absent on a plain object, so absent here.
+    for (const probe of ['then', 'toJSON', 'inspect']) {
+      expect(probe in (api as object), probe).toBe(false)
+    }
+
+    // Inherited by every object, so reported as present — the honest answer,
+    // and the one that keeps `in` agreeing with `get`.
+    for (const inherited of ['toString', 'valueOf', 'constructor']) {
+      expect(inherited in (api as object), inherited).toBe(true)
+    }
+  })
+
+  it('still exposes real Telegram methods', () => {
+    const api = createApi({ client: mockTransport() })
+
+    expect(typeof api.sendMessage).toBe('function')
+    expect('sendMessage' in (api as object)).toBe(true)
+  })
+})

@@ -88,6 +88,39 @@ export interface DownloadDeps {
 }
 
 /**
+ * Reject a `file_path` that would escape where it belongs.
+ *
+ * `file_path` comes from the API server, which is trusted only as far as the
+ * deployment makes it so. Pointed at a third-party proxy — or at a server that
+ * has been compromised — it is attacker-controlled, and it is used two ways:
+ * interpolated into the download URL, and, against a local Bot API server, as a
+ * path handed to `createReadStream`. A `..` segment therefore reads an
+ * arbitrary local file, and a scheme turns the download into a request
+ * somewhere else.
+ *
+ * Telegram's own paths look like `photos/file_1.jpg`; a local server returns an
+ * absolute path, which stays allowed because that is its documented behaviour.
+ */
+function assertSafeFilePath(filePath: string): void {
+  // Both separators: a local Bot API server on Windows reports backslashes.
+  const segments = filePath.split(/[\\/]+/)
+
+  if (segments.includes('..')) {
+    // The path is not quoted: on a local server it names a real file, and a
+    // rejected path is exactly the thing not to copy into a log.
+    throw new ValidationError('Telegram returned a file_path containing a parent-directory segment')
+  }
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(filePath)) {
+    throw new ValidationError('Telegram returned a file_path that looks like a URL')
+  }
+
+  if (filePath.includes('\0')) {
+    throw new ValidationError('Telegram returned a file_path containing a null byte')
+  }
+}
+
+/**
  * Resolve the download URL for a target.
  *
  * The result **contains the bot token**, because Telegram's file endpoint
@@ -105,6 +138,8 @@ export async function getFileUrl(deps: DownloadDeps, target: DownloadTarget): Pr
   if (filePath === undefined) {
     throw new ValidationError(`Telegram returned no file_path for this file`)
   }
+
+  assertSafeFilePath(filePath)
 
   if (deps.client.fileUrl === undefined) {
     throw new ConfigError('this transport cannot build file URLs')

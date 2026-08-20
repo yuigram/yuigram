@@ -29,6 +29,22 @@ export interface RawApiExtras {
   ): Promise<T>
 }
 
+/**
+ * Properties a runtime or library asks for before deciding what an object is.
+ *
+ * The proxy cannot distinguish these from a Telegram method name, and
+ * answering them with a callable turns a serialization, a coercion or an
+ * `await` into an API call. No Bot API method is named any of them.
+ */
+const PROBED_PROPERTIES: ReadonlySet<string | symbol> = new Set([
+  'then',
+  'toJSON',
+  'toString',
+  'valueOf',
+  'constructor',
+  'inspect',
+])
+
 /** The typed method surface plus the untyped escape hatch. */
 export type RawApi = ApiMethods & RawApiExtras
 
@@ -87,7 +103,7 @@ export function createApi(options: CreateApiOptions): RawApi {
   const target = {} as RawApi
 
   return new Proxy(target, {
-    get(_target, property): unknown {
+    get(target, property): unknown {
       if (typeof property !== 'string') return undefined
 
       if (property === 'call') {
@@ -95,16 +111,27 @@ export function createApi(options: CreateApiOptions): RawApi {
           invoke(client, method, { ...defaults, ...params }, onCall, options)
       }
 
-      // Guard against a runtime probing the proxy for a thenable, which would
-      // otherwise be answered with a function and make the object await-able.
-      if (property === 'then') return undefined
+      // Runtimes and libraries probe objects for these before deciding what
+      // they are. The proxy answers every string property with a function, so
+      // without this an innocent `JSON.stringify(ctx)` calls `toJSON`, which
+      // sends a real request to Telegram for a method named `toJSON` and
+      // rejects — from an error tracker serializing a context, which is the
+      // worst possible moment for it.
+      //
+      // Deferring to the plain object makes the surface behave like an
+      // ordinary one here: `toJSON` and `then` are absent, `toString` and
+      // `valueOf` work normally. None of the 185 Bot API methods is named any
+      // of them, so nothing real is shadowed.
+      if (PROBED_PROPERTIES.has(property)) return Reflect.get(target, property) as unknown
 
       return (params: Record<string, unknown> = {}, options?: CallOptions) =>
         invoke(client, property, { ...defaults, ...params }, onCall, options)
     },
 
-    has(_target, property) {
-      return typeof property === 'string' && property !== 'then'
+    has(target, property) {
+      if (typeof property !== 'string') return false
+      if (PROBED_PROPERTIES.has(property)) return Reflect.has(target, property)
+      return true
     },
   })
 }
