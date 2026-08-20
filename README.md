@@ -10,13 +10,35 @@ One package. Bots and user accounts. One programming model.
 
 ---
 
-> **Status: early development.** The architecture is settled and documented; the implementation
-> is being built bottom-up. There is no public API yet. See [the roadmap](docs/roadmap.md).
+> **Status: early development.** The Bot API subsystem is complete and usable. MTProto is
+> next, and is being built bottom-up. Nothing here is stubbed — see [the roadmap](docs/roadmap.md).
 
 ## What it is
 
 Yuigram is a framework for Telegram applications that need more than a bot — a bot and a user
 account in one process, sharing middleware, routing, sessions and error handling.
+
+### Working today
+
+```ts
+import { Bot } from 'yuigram'
+
+const bot = new Bot(process.env.BOT_TOKEN)
+
+bot.command('start', (ctx) => ctx.reply('Hello.'))
+bot.on('message', (ctx) => ctx.reply(ctx.text ?? 'Say something.'))
+
+bot.catch((error, ctx) => ctx.log.error('handler failed', { error }))
+
+await bot.start()
+```
+
+Commands and routing, filters, middleware, sessions, storage, file downloads, long polling,
+webhooks with framework adapters, a typed surface generated from Bot API 10.2, and a testing
+harness that drives the real pipeline with only the network replaced. See
+[examples](examples).
+
+### The design target
 
 ```ts
 import { App, Bot, User } from 'yuigram'
@@ -38,7 +60,7 @@ me.on('message', (ctx) => archive(ctx.text))
 await app.start()
 ```
 
-*The API above is the design target, not yet shipped. See [docs/api-design.md](docs/api-design.md).*
+*`User` and `App` arrive with the MTProto subsystem. See [docs/api-design.md](docs/api-design.md).*
 
 ## What makes it different
 
