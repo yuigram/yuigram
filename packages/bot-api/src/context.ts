@@ -7,7 +7,7 @@
  * is a compile-time fact rather than a runtime surprise.
  */
 
-import type { BaseContext, ContextExtensions, Logger } from '@yuigram/core'
+import type { BaseContext, Logger } from '@yuigram/core'
 import type { RawApi } from './api.js'
 import type { Chat, Message, Update, User } from './generated/types/index.js'
 import type { NormalizedUpdate } from './normalize.js'
@@ -64,8 +64,20 @@ export interface BotContext extends BaseContext {
   reply(text: string, params?: ReplyParams): Promise<Message>
 }
 
-/** A context with whatever plugins have contributed. */
-export type Context = BotContext & ContextExtensions
+/**
+ * The context a bot handler receives.
+ *
+ * An alias for {@link BotContext}, and the name to build on: an application
+ * intersects the flavours of whatever plugins it installs and hands the result
+ * to the client.
+ *
+ * ```ts
+ * type MyContext = Context & SessionFlavor<Cart>
+ *
+ * const bot = new Bot<MyContext>(token)
+ * ```
+ */
+export type Context = BotContext
 
 /** Options for {@link createContext}. */
 export interface CreateContextOptions {

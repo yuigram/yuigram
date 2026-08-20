@@ -302,16 +302,20 @@ bot.on('message', async (ctx) => {
 })
 ```
 
-Typed by declaration merging on Yuigram's own interface — the plugin's data lives in a
-namespace it owns, not merged into a foreign package's update types:
+Typed by a **flavour** carried on the client's type parameter, so the shape is per bot rather
+than per program:
 
 ```ts
-declare module 'yuigram' {
-  interface SessionData {
-    count: number
-  }
+interface Cart {
+  count: number
 }
+
+type MyContext = Context & SessionFlavor<Cart>
+
+const bot = new Bot<MyContext>(token)
 ```
+
+See [sessions.md](sessions.md) for why this replaced declaration merging.
 
 Framework sessions are distinct from MTProto authorization sessions; see
 [sessions.md](sessions.md).

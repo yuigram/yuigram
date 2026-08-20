@@ -21,20 +21,32 @@ import type { Middleware } from '../middleware/compose.js'
 import type { KV } from '../storage/types.js'
 
 /**
- * Application session data.
+ * What the session middleware adds to a context.
  *
- * Applications declare their shape through declaration merging:
+ * An application names its own state type and intersects the flavour into the
+ * context it hands the client:
  *
  * ```ts
- * declare module '@yuigram/core' {
- *   interface SessionData {
- *     count: number
- *   }
+ * interface Cart {
+ *   items: string[]
  * }
+ *
+ * type MyContext = Context & SessionFlavor<Cart>
+ *
+ * const bot = new Bot<MyContext>(token)
+ * bot.use(createSession<MyContext, Cart>({ storage: memory(), key, initial }))
  * ```
+ *
+ * `createSession` requires the context to carry this flavour, so installing the
+ * middleware on a client whose context does not declare it is a compile error
+ * rather than an `undefined` at runtime.
  */
-// biome-ignore lint/suspicious/noEmptyInterface: this is the declaration-merging surface
-export interface SessionData {}
+export interface SessionFlavor<V> {
+  /** The loaded session. Mutating it marks the session dirty. */
+  session: V
+  /** Lifecycle controls: dirty state, replacement, clearing. */
+  readonly sessionHandle: SessionHandle<V>
+}
 
 /** Derives the storage key for an update, or `undefined` to skip loading. */
 export type SessionKeyFn<C> = (context: C) => string | number | undefined
@@ -153,7 +165,7 @@ export class KeyedQueue {
  * Registers in the `high` band, so the session is available to application
  * middleware and handlers regardless of installation order.
  */
-export function createSession<C extends BaseContext, V = SessionData>(
+export function createSession<C extends BaseContext & SessionFlavor<V>, V>(
   options: SessionOptions<C, V>,
 ): Middleware<C> {
   const property = options.property ?? 'session'
@@ -206,7 +218,7 @@ export function createSession<C extends BaseContext, V = SessionData>(
 }
 
 /** Write a session back, if anything changed. */
-async function persist<C extends BaseContext, V>(
+async function persist<C extends BaseContext & SessionFlavor<V>, V>(
   session: Session<V>,
   key: string,
   options: SessionOptions<C, V>,

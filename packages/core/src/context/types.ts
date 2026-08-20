@@ -16,23 +16,34 @@ import type { Logger } from '../log/logger.js'
 /**
  * Extension point for plugins.
  *
- * Plugins add their members here through declaration merging on Yuigram's own
- * interface, rather than merging into a dependency's types:
+ * Extensions are carried by a type parameter rather than merged into a global
+ * interface. A plugin publishes a *flavour* — an interface describing what it
+ * adds — and an application intersects the flavours it uses into one context
+ * type, which it names once when constructing the client:
  *
  * ```ts
- * declare module '@yuigram/core' {
- *   interface ContextExtensions {
- *     session: SessionData
- *   }
- * }
+ * type MyContext = Context & SessionFlavor<{ count: number }>
+ *
+ * const bot = new Bot<MyContext>(token)
  * ```
  *
- * Each plugin owns one named key, so two plugins cannot silently claim the
- * same field — the failure mode of bolting cross-cutting properties directly
- * onto update types.
+ * The alternative, declaration merging on a shared interface, was tried first
+ * and rejected for two reasons that only appear in practice:
+ *
+ * - **It is process-global.** One `SessionData` per program means two bots in
+ *   one repository cannot hold different state, and neither can two tenants in
+ *   one process. Flavours are per client.
+ * - **It cannot cross a façade.** The interface would live in this package,
+ *   while applications install `yuigram`. `declare module 'yuigram'` silently
+ *   creates a *new* interface rather than merging, so the augmentation compiles
+ *   and does nothing — and the working form names an internal package the
+ *   framework promises users will never have to think about.
+ *
+ * A flavour also says something merging cannot: `ctx.session` exists exactly
+ * where the middleware providing it is installed, rather than on every context
+ * in the program because some file imported the plugin.
  */
-// biome-ignore lint/suspicious/noEmptyInterface: this is the declaration-merging surface
-export interface ContextExtensions {}
+export type Flavor<C, F> = C & F
 
 /** What every context carries, whatever produced it. */
 export interface BaseContext {
@@ -47,8 +58,9 @@ export interface BaseContext {
 }
 
 /**
- * A full context: the base contract plus whatever plugins have declared.
+ * The transport-agnostic context.
  *
- * Transport packages intersect their own members onto this.
+ * Transport packages intersect their own members onto this, and applications
+ * intersect the flavours of whatever plugins they install.
  */
-export type Context = BaseContext & ContextExtensions
+export type Context = BaseContext

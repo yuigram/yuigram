@@ -1,6 +1,6 @@
 export {
   createSession,
-  type SessionData,
+  type SessionFlavor,
   type SessionHandle,
   type SessionKeyFn,
   type SessionOptions,

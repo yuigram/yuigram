@@ -43,16 +43,46 @@ bot.on('message', async (ctx) => {
 
 ### Typing
 
-Declaration merging on Yuigram's own interface — never on a foreign package's types:
+An application names its own state type and intersects the plugin's **flavour** into the
+context it hands the client:
 
 ```ts
-declare module 'yuigram' {
-  interface SessionData {
-    count: number
-    cart?: CartItem[]
-  }
+import { Bot, type Context, type SessionFlavor } from 'yuigram'
+
+interface Cart {
+  count: number
+  items?: CartItem[]
 }
+
+type MyContext = Context & SessionFlavor<Cart>
+
+const bot = new Bot<MyContext>(token)
+
+bot.use(createSession<MyContext, Cart>({ storage: memory(), key: userChatKey, initial: () => ({ count: 0 }) }))
 ```
+
+`createSession` constrains the context to carry the flavour, so installing it on a client
+whose context does not declare one is a compile error rather than an `undefined` at runtime.
+
+#### Why not declaration merging
+
+Merging a shared `SessionData` interface is terser, and it was the first design here. It was
+replaced after two problems showed up in practice — neither visible until you have more than
+one bot or more than one package:
+
+| Problem | Consequence |
+|---|---|
+| Augmentation is process-global | One session shape per program. Two bots in one repository cannot remember different things, and neither can two tenants in one process. |
+| It cannot cross a façade | The interface would live in `@yuigram/core`, but applications install `yuigram`. `declare module 'yuigram'` creates a *new* interface rather than merging — it compiles and silently does nothing — and the form that works names an internal package users are promised they never need to know. |
+
+A flavour also states something merging cannot: `ctx.session` exists exactly where the
+middleware providing it is installed, rather than on every context in the program because some
+file imported the plugin.
+
+This is the one place Yuigram deliberately diverges from puregram, which merges `SessionData`
+from `@puregram/session` and generates an augmentation per update kind. That works there
+because the plugin is the package users install directly; Yuigram ships one façade, so the
+same approach would put an internal package name in every application's source.
 
 ### Keying
 

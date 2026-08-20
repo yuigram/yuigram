@@ -17,18 +17,22 @@
  * ```
  */
 
-import { Bot, type Context, createSession, memory, userChatKey } from 'yuigram'
+import { Bot, type Context, createSession, memory, type SessionFlavor, userChatKey } from 'yuigram'
 
-// Declaring the shape here types `ctx.session` everywhere.
-declare module '@yuigram/core' {
-  interface SessionData {
-    count: number
-    name?: string
-  }
-  interface ContextExtensions {
-    session: SessionData
-  }
+/** Whatever this bot needs to remember about someone. */
+interface Cart {
+  count: number
+  name?: string
 }
+
+/**
+ * The context this bot's handlers receive.
+ *
+ * Intersecting the flavour is what types `ctx.session`. It is per bot rather
+ * than per program, so a second bot in this repository can remember something
+ * else entirely.
+ */
+type MyContext = Context & SessionFlavor<Cart>
 
 const token = process.env['BOT_TOKEN']
 
@@ -36,10 +40,10 @@ if (token === undefined) {
   throw new Error('Set BOT_TOKEN to the token BotFather gave you.')
 }
 
-const bot = new Bot(token)
+const bot = new Bot<MyContext>(token)
 
 bot.use(
-  createSession<Context>({
+  createSession<MyContext, Cart>({
     storage: memory(),
     // Per user, per chat. The scope is passed explicitly rather than defaulted,
     // because getting it wrong is the most common session bug: a chat-wide key

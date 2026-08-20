@@ -51,12 +51,12 @@ import type { Context } from './context.js'
  * filter('isPhoto', (ctx) => ctx.message?.photo !== undefined, { kinds: ['photo'] })
  * ```
  */
-export function filter<Mod = unknown>(
+export function filter<C extends Context = Context, Mod = unknown>(
   name: string,
-  predicate: (context: Context) => boolean,
+  predicate: (context: C) => boolean,
   options: DefineOptions = {},
-): Filter<Context, Mod> {
-  return defineFilter<Context, Mod>(name, (value) => predicate(value as Context), options)
+): Filter<C, Mod> {
+  return defineFilter<C, Mod>(name, (value) => predicate(value as C), options)
 }
 
 /**
@@ -75,10 +75,10 @@ export function filter<Mod = unknown>(
  * An async filter cannot narrow at a raw call site, since TypeScript has no
  * async type predicate. Handler registration still applies `Mod`.
  */
-export function asyncFilter<Mod = unknown>(
+export function asyncFilter<C extends Context = Context, Mod = unknown>(
   name: string,
-  predicate: (context: Context) => Promise<boolean>,
+  predicate: (context: C) => Promise<boolean>,
   options: DefineOptions = {},
-): AsyncFilter<Context, Mod> {
-  return defineAsyncFilter<Context, Mod>(name, (value) => predicate(value as Context), options)
+): AsyncFilter<C, Mod> {
+  return defineAsyncFilter<C, Mod>(name, (value) => predicate(value as C), options)
 }

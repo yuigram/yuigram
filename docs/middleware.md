@@ -229,25 +229,47 @@ actually wanted.
 
 ## 6. Context extension
 
-Plugins add to the context through a declared extension point, rather than by merging into
-another package's types — the anti-pattern identified in [research.md](research.md) §1.8.
+Plugins add to the context through a **flavour** — an interface describing what the plugin
+contributes — rather than by merging into another package's types, which is the anti-pattern
+identified in [research.md](research.md) §1.8.
 
 ```ts
-// Plugin declares what it adds, under its own key.
-declare module 'yuigram' {
-  interface ContextExtensions {
-    session: SessionData
-    i18n: { t: (key: string) => string }
-  }
+// The plugin publishes what it adds.
+export interface SessionFlavor<V> {
+  session: V
+  readonly sessionHandle: SessionHandle<V>
+}
+
+export interface I18nFlavor {
+  readonly t: (key: string) => string
 }
 ```
 
-Two properties this buys:
+An application intersects the flavours it uses and names the result once:
+
+```ts
+type MyContext = Context & SessionFlavor<Cart> & I18nFlavor
+
+const bot = new Bot<MyContext>(token)
+```
+
+Four properties this buys, the last two of which declaration merging cannot provide at all:
 
 - **Collision-proof.** Two plugins cannot both claim `match` and silently conflict; each owns
   a named key.
-- **Local.** The declaration extends Yuigram's own interface, not a dependency's update
-  types, so it cannot affect an unrelated package.
+- **Local.** Nothing is declared globally, so a plugin cannot affect an unrelated package.
+- **Per client.** Two bots in one program hold different state. A merged interface is
+  process-wide, so every bot would carry every other bot's fields.
+- **Honest.** `ctx.session` exists exactly where the middleware providing it is installed,
+  not on every context in the program because some file imported the plugin.
+
+Middleware that provides a flavour constrains the context to carry it, so installing it on a
+client that never declared it is a compile error rather than an `undefined` at runtime.
+
+The client casts once, where it builds a context: the flavours are attached by the middleware
+that provides them, which runs before any handler, and TypeScript cannot see that ordering.
+That is the only such cast, and it is the reason the framework does not need to know about
+any particular plugin.
 
 Handler-local data that is not plugin-owned uses a typed bag:
 

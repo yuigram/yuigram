@@ -11,16 +11,22 @@
  */
 
 import type { KV } from '@yuigram/core'
-import { Bot, type Context, createSession, file, memory, userChatKey } from 'yuigram'
+import {
+  Bot,
+  type Context,
+  createSession,
+  file,
+  memory,
+  type SessionFlavor,
+  userChatKey,
+} from 'yuigram'
 
-declare module '@yuigram/core' {
-  interface SessionData {
-    seen: number
-  }
-  interface ContextExtensions {
-    session: SessionData
-  }
+/** This bot remembers one number per person. */
+interface Seen {
+  seen: number
 }
+
+type MyContext = Context & SessionFlavor<Seen>
 
 const token = process.env['BOT_TOKEN']
 
@@ -64,14 +70,14 @@ function counting<V>(inner: KV<V>): KV<V> & { reads: number } {
   return wrapper
 }
 
-const storage = counting(file<{ seen: number }>('./state'))
+const storage = counting(file<Seen>('./state'))
 
 // --- Using it ----------------------------------------------------------------
 
-const bot = new Bot(token)
+const bot = new Bot<MyContext>(token)
 
 bot.use(
-  createSession<Context>({
+  createSession<MyContext, Seen>({
     storage,
     key: userChatKey,
     initial: () => ({ seen: 0 }),

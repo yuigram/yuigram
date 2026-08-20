@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { BaseContext } from '../src/context/types.js'
 import { createLogger, silentSink } from '../src/log/logger.js'
 import { run } from '../src/middleware/compose.js'
+import type { SessionFlavor } from '../src/session/session.js'
 import { createSession, userChatKey } from '../src/session/session.js'
 import { memory } from '../src/storage/memory.js'
 import type { KV } from '../src/storage/types.js'
@@ -19,13 +20,16 @@ interface Data {
   count: number
 }
 
-interface Ctx extends BaseContext {
+interface Ctx extends BaseContext, SessionFlavor<Data> {
   userId: number | undefined
-  session: Data
 }
 
 // No default parameter: passing `undefined` explicitly must mean "no subject",
 // and a default would silently substitute a value instead.
+//
+// Cast for the same reason the client casts: the flavour's members are
+// installed by the middleware under test, so a context built before it runs
+// cannot carry them yet.
 function ctx(userId: number | undefined): Ctx {
   return {
     kind: 'message',
@@ -34,7 +38,7 @@ function ctx(userId: number | undefined): Ctx {
     raw: {},
     userId,
     session: { count: 0 },
-  }
+  } as Ctx
 }
 
 function sessionMiddleware(storage: KV<Data>, ttl?: number) {

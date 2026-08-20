@@ -75,11 +75,19 @@ export interface BotOptions {
  * thing users do, and ignoring it silently is surprising.
  */
 
-/** A context whose update carried a command. */
-export interface CommandContext extends Context {
+/** What a command handler receives on top of the context. */
+export interface CommandFlavor {
   /** The parsed command: name, arguments and any `@bot` suffix. */
   readonly command: ParsedCommand
 }
+
+/**
+ * A context whose update carried a command.
+ *
+ * Generic in the context so a command handler keeps whatever flavours the
+ * application declared — a `/buy` handler still reaches `ctx.session`.
+ */
+export type CommandContext<C extends Context = Context> = C & CommandFlavor
 
 /** Options accepted by {@link Bot.start}. */
 export interface StartOptions {
@@ -87,8 +95,25 @@ export interface StartOptions {
   readonly dropPending?: boolean
 }
 
-/** A Telegram bot, over the Bot API. */
-export class Bot {
+/**
+ * A Telegram bot, over the Bot API.
+ *
+ * `C` is the context handlers receive. It defaults to the plain
+ * {@link Context}; an application that installs plugins names the intersection
+ * of their flavours instead:
+ *
+ * ```ts
+ * type MyContext = Context & SessionFlavor<Cart>
+ *
+ * const bot = new Bot<MyContext>(token)
+ * ```
+ *
+ * Carrying extensions on a type parameter rather than merging them into a
+ * global interface is what lets two bots in one program hold different state,
+ * and what lets the type work through the `yuigram` package rather than only
+ * through the internal one that would have declared the interface.
+ */
+export class Bot<C extends Context = Context> {
   /** The raw API surface. */
   readonly api: RawApi
 
@@ -96,8 +121,8 @@ export class Bot {
   readonly name: string
 
   readonly #log: Logger
-  readonly #dispatcher: Dispatcher<Context>
-  readonly #plugins = new PluginRegistry<Bot>()
+  readonly #dispatcher: Dispatcher<C>
+  readonly #plugins = new PluginRegistry<Bot<C>>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
   readonly #options: BotOptions
@@ -111,7 +136,7 @@ export class Bot {
     this.name = options.name ?? 'bot'
     this.#log = (options.log ?? createLogger()).child(this.name)
 
-    this.#dispatcher = new Dispatcher<Context>({
+    this.#dispatcher = new Dispatcher<C>({
       onUnhandled: (error, context) => {
         // Logged at error rather than swallowed: with no catch handler
         // registered this is the only trace an operator gets.
@@ -155,25 +180,25 @@ export class Bot {
   }
 
   /** Register dispatch middleware. */
-  use(middleware: Middleware<Context>, options?: UseOptions): this {
+  use(middleware: Middleware<C>, options?: UseOptions): this {
     this.#dispatcher.use(middleware, options)
     return this
   }
 
   /** Register a handler for one or more update kinds, or a filter. */
-  on(match: string | readonly string[] | AnyFilter, handler: Handler<Context>): this {
+  on(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
     this.#dispatcher.on(match, handler)
     return this
   }
 
   /** Register a handler that runs once. */
-  once(match: string | readonly string[] | AnyFilter, handler: Handler<Context>): this {
+  once(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
     this.#dispatcher.once(match, handler)
     return this
   }
 
   /** Remove a handler. */
-  off(handler: Handler<Context>): boolean {
+  off(handler: Handler<C>): boolean {
     return this.#dispatcher.off(handler)
   }
 
@@ -187,7 +212,7 @@ export class Bot {
    *
    * A regex form matches against the command name.
    */
-  command(match: string | RegExp, handler: Handler<CommandContext>): this {
+  command(match: string | RegExp, handler: Handler<CommandContext<C>>): this {
     this.#dispatcher.on(MESSAGE_KINDS, (context) => {
       const parsed = parseCommand(context.text)
       if (parsed === undefined) return
@@ -197,9 +222,9 @@ export class Bot {
       // Derived, not mutated: assigning onto the shared context would leave a
       // `command` property visible to every later handler for this update,
       // including ones that have nothing to do with commands.
-      const withCommand: CommandContext = Object.create(context, {
+      const withCommand = Object.create(context, {
         command: { value: parsed, enumerable: true },
-      })
+      }) as CommandContext<C>
 
       return handler(withCommand)
     })
@@ -208,7 +233,7 @@ export class Bot {
   }
 
   /** Register a handler for an exact text match, or a pattern. */
-  text(match: string | RegExp, handler: Handler<Context>): this {
+  text(match: string | RegExp, handler: Handler<C>): this {
     this.#dispatcher.on(MESSAGE_KINDS, (context) => {
       const value = context.text
       if (value === undefined) return
@@ -223,7 +248,7 @@ export class Bot {
   }
 
   /** Register a handler for callback data, exact or by pattern. */
-  callback(match: string | RegExp, handler: Handler<Context>): this {
+  callback(match: string | RegExp, handler: Handler<C>): this {
     this.#dispatcher.on('callback_query', (context) => {
       const value = context.data
       if (value === undefined) return
@@ -245,13 +270,13 @@ export class Bot {
    * logged and dispatch continues — a single malformed update must not take
    * down every conversation a busy bot is handling.
    */
-  catch(handler: (error: unknown, context: Context) => unknown): this {
+  catch(handler: (error: unknown, context: C) => unknown): this {
     this.#dispatcher.catch(handler)
     return this
   }
 
   /** Install a plugin. Installation is deferred until `start()`. */
-  extend(plugin: Plugin<string, unknown, Bot>): this {
+  extend(plugin: Plugin<string, unknown, Bot<C>>): this {
     this.#plugins.add(plugin)
     return this
   }
@@ -271,13 +296,18 @@ export class Bot {
   async handleUpdate(update: Update): Promise<void> {
     const normalized = normalizeUpdate(update, this.#log)
 
+    // The one honest cast in the client. `createContext` builds the base
+    // context; the flavours `C` promises are attached by the middleware that
+    // provides them, which runs before any handler. TypeScript cannot see that
+    // ordering, and requiring the constructor to produce a fully-flavoured
+    // context would mean the framework knowing about every plugin.
     const context = this.#extender.apply(
       createContext({
         normalized,
         api: this.api,
         log: this.#log.child(normalized.kind, { updateId: normalized.updateId }),
       }),
-    )
+    ) as C
 
     await this.#dispatcher.dispatch(context)
   }
