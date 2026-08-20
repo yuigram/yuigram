@@ -29,9 +29,16 @@ const SENSITIVE_KEYS: readonly string[] = [
   'password',
   'passwordhash',
   'twofa',
-  'code',
+  // Specific names only. A bare `code` also matches an HTTP status, and
+  // redacting those makes every error record say that something failed
+  // without saying what - which is the pressure that gets redaction turned
+  // off. The same principle governs the value patterns below.
   'logincode',
   'phonecode',
+  'authcode',
+  'smscode',
+  'verificationcode',
+  'otp',
   'secret',
   'secrettoken',
   'salt',
@@ -41,6 +48,7 @@ const SENSITIVE_KEYS: readonly string[] = [
   'credentials',
   'authorization',
   'cookie',
+  'phonenumber',
 ]
 
 /** Normalise a key for comparison: lowercase, separators removed. */
@@ -118,9 +126,23 @@ function redactObject(value: object, depth: number, seen: WeakSet<object>): unkn
   const child = (item: unknown): unknown => redact(item, depth + 1, seen)
 
   if (value instanceof Error) {
+    // Own enumerable properties are kept, redacted by the same rules as any
+    // other field. The framework's errors carry the status code, the method
+    // and the retry delay on themselves, and an error record without those
+    // says only that something failed - which is the one thing the reader
+    // already knows.
+    const own: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(value)) {
+      own[key] = isSensitiveKey(key) ? REDACTED : child(item)
+    }
+
     return {
       name: value.name,
       message: redactString(value.message),
+      // A stack can quote a request URL, so it goes through the same string
+      // redaction as everything else rather than being trusted.
+      ...(value.stack === undefined ? {} : { stack: redactString(value.stack) }),
+      ...own,
       ...(value.cause === undefined ? {} : { cause: child(value.cause) }),
     }
   }

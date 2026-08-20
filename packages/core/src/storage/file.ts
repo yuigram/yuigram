@@ -35,6 +35,21 @@ function fileNameFor(key: string): string {
   return `${createHash('sha256').update(key).digest('hex')}.json`
 }
 
+/**
+ * Names this store could have produced.
+ *
+ * Used to decide what `clear` may delete. The store is pointed at a directory
+ * but does not own everything in it: a caller may reasonably keep a database
+ * or a config file alongside, and removing the directory wholesale would
+ * destroy data the store never wrote.
+ */
+const OWNED_FILE = /^[0-9a-f]{64}\.json$/
+
+/** True for a file this store wrote. */
+function isOwned(name: string): boolean {
+  return OWNED_FILE.test(name)
+}
+
 /** Create a filesystem-backed store rooted at `directory`. */
 export function file<V = unknown>(directory: string, options: FileOptions = {}): DescribedKV<V> {
   const now = options.now ?? Date.now
@@ -42,7 +57,10 @@ export function file<V = unknown>(directory: string, options: FileOptions = {}):
 
   let ready: Promise<void> | undefined
   const ensureDirectory = (): Promise<void> => {
-    ready ??= mkdir(directory, { recursive: true }).then(() => undefined)
+    // Owner-only: the directory holds session state, and the default mode
+    // leaves it listable by every account on the machine. The files inside are
+    // already 0600, so this is defence in depth rather than the only guard.
+    ready ??= mkdir(directory, { recursive: true, mode: 0o700 }).then(() => undefined)
     return ready
   }
 
@@ -113,14 +131,25 @@ export function file<V = unknown>(directory: string, options: FileOptions = {}):
     async clear(prefix) {
       await ensureDirectory()
 
-      if (prefix === undefined) {
-        await rm(directory, { recursive: true, force: true })
-        ready = undefined
+      if (prefix !== undefined) {
+        for await (const key of this.keys?.(prefix) ?? []) {
+          await this.delete(key)
+        }
         return
       }
 
-      for await (const key of this.keys?.(prefix) ?? []) {
-        await this.delete(key)
+      // Only the files this store wrote. Removing the directory would take
+      // anything a caller keeps alongside it with it.
+      let names: string[]
+      try {
+        names = await readdir(directory)
+      } catch {
+        return
+      }
+
+      for (const name of names) {
+        if (!isOwned(name)) continue
+        await rm(join(directory, name), { force: true })
       }
     },
 
@@ -135,7 +164,7 @@ export function file<V = unknown>(directory: string, options: FileOptions = {}):
       }
 
       for (const name of names) {
-        if (!name.endsWith('.json')) continue
+        if (!isOwned(name)) continue
 
         // The filename is a hash, so the original key comes from the envelope.
         let envelope: Envelope<V>

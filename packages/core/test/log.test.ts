@@ -217,3 +217,79 @@ describe('createLogger', () => {
     })
   })
 })
+
+describe('logging an error', () => {
+  class ApiFailure extends Error {
+    override readonly name = 'ApiFailure'
+    constructor(
+      message: string,
+      readonly code: number,
+      readonly method: string,
+      readonly retryAfter: number,
+    ) {
+      super(message)
+    }
+  }
+
+  it('keeps the fields that say what went wrong', () => {
+    // The error taxonomy exists to preserve the status, the method and the
+    // retry delay. Reducing an error to name and message at the log boundary
+    // discarded exactly that, leaving a record saying only that something
+    // failed - the one thing the reader already knows.
+    const out = redact(new ApiFailure('Too Many Requests', 429, 'sendMessage', 30)) as Record<
+      string,
+      unknown
+    >
+
+    expect(out['name']).toBe('ApiFailure')
+    expect(out['message']).toBe('Too Many Requests')
+    expect(out['code']).toBe(429)
+    expect(out['method']).toBe('sendMessage')
+    expect(out['retryAfter']).toBe(30)
+  })
+
+  it('keeps a stack to locate the failure', () => {
+    expect((redact(new Error('boom')) as Record<string, unknown>)['stack']).toBeDefined()
+  })
+
+  it('redacts a token quoted in a stack', () => {
+    // A stack can quote a request URL, so it is trusted no more than any other
+    // string.
+    const error = new Error('failed')
+    error.stack = `at fetch (https://api.telegram.org/bot${TOKEN}/sendMessage)`
+
+    expect(JSON.stringify(redact(error))).not.toContain('AAHdqTcv')
+  })
+
+  it('redacts a secret carried on an error field', () => {
+    const error = Object.assign(new Error('failed'), { token: 'abc-secret-value' })
+
+    expect((redact(error) as Record<string, unknown>)['token']).toBe(REDACTED)
+  })
+
+  it('keeps the cause chain', () => {
+    const out = redact(new Error('outer', { cause: new Error('inner') })) as Record<string, unknown>
+
+    expect((out['cause'] as Record<string, unknown>)['message']).toBe('inner')
+  })
+})
+
+describe('what counts as a sensitive key', () => {
+  it('does not redact an HTTP status under the name code', () => {
+    // A bare `code` matches both an authentication code and a status. The
+    // specific names are listed instead, because over-broad redaction is what
+    // gets redaction disabled.
+    expect(isSensitiveKey('code')).toBe(false)
+  })
+
+  it('still redacts the codes that are secret', () => {
+    for (const key of ['phone_code', 'loginCode', 'auth_code', 'smsCode', 'otp'] as const) {
+      expect(isSensitiveKey(key), key).toBe(true)
+    }
+  })
+
+  it('redacts a phone number', () => {
+    // The account identity for an MTProto sign-in.
+    expect(isSensitiveKey('phone_number')).toBe(true)
+  })
+})

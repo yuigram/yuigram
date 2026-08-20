@@ -6,7 +6,7 @@
  * wrong: LRU eviction for memory, path safety and atomicity for file.
  */
 
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -334,5 +334,57 @@ describe('tiered', () => {
     await store.set('b', 2)
 
     expect(await store.get('a')).toBe(1)
+  })
+})
+
+/** A fresh temporary directory, removed with the rest after the suite. */
+async function scratchDirectory(): Promise<string> {
+  return mkdtemp(join(tmpdir(), 'yuigram-owns-'))
+}
+
+describe('what the file store owns', () => {
+  it('leaves a neighbouring file alone when cleared', async () => {
+    // The store is pointed at a directory but does not own everything in it.
+    // Removing the directory wholesale destroyed data it never wrote.
+    const directory = await scratchDirectory()
+    const store = file(directory)
+
+    await store.set('a', 1)
+    await writeFile(join(directory, 'important.db'), 'someone else data')
+
+    await store.clear?.()
+
+    await expect(readFile(join(directory, 'important.db'), 'utf8')).resolves.toBe(
+      'someone else data',
+    )
+    expect(await store.get('a')).toBeUndefined()
+  })
+
+  it('ignores a foreign json file when listing keys', async () => {
+    const directory = await scratchDirectory()
+    const store = file(directory)
+
+    await store.set('a', 1)
+    await writeFile(join(directory, 'config.json'), '{"key":"injected","value":9}')
+
+    const keys: string[] = []
+    for await (const key of store.keys?.() ?? []) keys.push(key)
+
+    expect(keys).toEqual(['a'])
+  })
+
+  it('creates the directory owner-only', async () => {
+    // Session state. The default mode leaves it listable by every account on
+    // the machine; the files inside are already 0600, so this is defence in
+    // depth rather than the only guard.
+    if (process.platform === 'win32') {
+      expect(true).toBe(true)
+      return
+    }
+
+    const directory = join(await scratchDirectory(), 'nested')
+    await file(directory).set('a', 1)
+
+    expect((await stat(directory)).mode & 0o077).toBe(0)
   })
 })
