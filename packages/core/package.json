@@ -1,8 +1,16 @@
 {
   "name": "@yuigram/core",
   "version": "0.0.0",
-  "type": "module",
   "description": "Transport-agnostic framework core for Yuigram: dispatch, middleware, filters, context, sessions, storage",
+  "keywords": [
+    "telegram",
+    "telegram-bot",
+    "framework",
+    "middleware",
+    "dispatch",
+    "typescript",
+    "yuigram"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/yuigram/yuigram",
   "repository": {
@@ -10,10 +18,10 @@
     "url": "git+https://github.com/yuigram/yuigram.git",
     "directory": "packages/core"
   },
-  "engines": {
-    "node": ">=22.0.0"
+  "bugs": {
+    "url": "https://github.com/yuigram/yuigram/issues"
   },
-  "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,8 +32,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "sideEffects": false,
   "publishConfig": {
     "access": "public",
     "provenance": true

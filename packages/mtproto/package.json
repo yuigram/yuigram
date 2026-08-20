@@ -1,8 +1,15 @@
 {
   "name": "@yuigram/mtproto",
   "version": "0.0.0",
-  "type": "module",
   "description": "Telegram MTProto subsystem for Yuigram",
+  "keywords": [
+    "telegram",
+    "mtproto",
+    "userbot",
+    "tl-schema",
+    "typescript",
+    "yuigram"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/yuigram/yuigram",
   "repository": {
@@ -10,10 +17,10 @@
     "url": "git+https://github.com/yuigram/yuigram.git",
     "directory": "packages/mtproto"
   },
-  "engines": {
-    "node": ">=22.0.0"
+  "bugs": {
+    "url": "https://github.com/yuigram/yuigram/issues"
   },
-  "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,8 +31,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "sideEffects": false,
   "publishConfig": {
     "access": "public",
     "provenance": true

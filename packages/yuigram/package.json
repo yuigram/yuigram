@@ -1,18 +1,7 @@
 {
   "name": "yuigram",
   "version": "0.0.0",
-  "type": "module",
   "description": "Independent TypeScript framework for the Telegram Bot API and MTProto",
-  "license": "MIT",
-  "homepage": "https://github.com/yuigram/yuigram",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yuigram/yuigram.git",
-    "directory": "packages/yuigram"
-  },
-  "bugs": {
-    "url": "https://github.com/yuigram/yuigram/issues"
-  },
   "keywords": [
     "telegram",
     "telegram-bot",
@@ -23,10 +12,17 @@
     "typescript",
     "framework"
   ],
-  "engines": {
-    "node": ">=22.0.0"
+  "license": "MIT",
+  "homepage": "https://github.com/yuigram/yuigram",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuigram/yuigram.git",
+    "directory": "packages/yuigram"
   },
-  "sideEffects": false,
+  "bugs": {
+    "url": "https://github.com/yuigram/yuigram/issues"
+  },
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -47,8 +43,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "sideEffects": false,
   "publishConfig": {
     "access": "public",
     "provenance": true
