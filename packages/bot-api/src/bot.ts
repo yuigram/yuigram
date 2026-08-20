@@ -21,6 +21,7 @@ import {
   type UseOptions,
 } from '@yuigram/core'
 import { createApi, type RawApi } from './api.js'
+import { addressedToUs, commandMatches, type ParsedCommand, parseCommand } from './command.js'
 import { type BotContext, createContext } from './context.js'
 import {
   type DownloadTarget,
@@ -64,6 +65,20 @@ export interface BotOptions {
    * unless they are requested.
    */
   readonly allowedUpdates?: readonly string[] | 'auto'
+}
+
+/**
+ * Update kinds a command or text handler may fire on.
+ *
+ * Edited messages are included: editing a message into a command is a real
+ * thing users do, and ignoring it silently is surprising.
+ */
+const MESSAGE_KINDS = ['message', 'message_edited', 'channel_post', 'business_message'] as const
+
+/** A context whose update carried a command. */
+export interface CommandContext extends BotContext {
+  /** The parsed command: name, arguments and any `@bot` suffix. */
+  readonly command: ParsedCommand
 }
 
 /** Options accepted by {@link Bot.start}. */
@@ -150,6 +165,59 @@ export class Bot {
     return this.#dispatcher.off(handler)
   }
 
+  /**
+   * Register a command handler.
+   *
+   * `/start` matches whichever bot is running; `/start@thisbot` matches only
+   * when the suffix names us, and `/start@otherbot` never does. Getting that
+   * wrong means answering messages addressed to a different bot, which is the
+   * most common mistake in hand-rolled command handling.
+   *
+   * A regex form matches against the command name.
+   */
+  command(match: string | RegExp, handler: Handler<CommandContext>): this {
+    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
+      const parsed = parseCommand(context.text)
+      if (parsed === undefined) return
+      if (!commandMatches(parsed, match)) return
+      if (!addressedToUs(parsed, this.#me?.username)) return
+
+      return handler(Object.assign(context, { command: parsed }) as CommandContext)
+    })
+
+    return this
+  }
+
+  /** Register a handler for an exact text match, or a pattern. */
+  text(match: string | RegExp, handler: Handler<BotContext>): this {
+    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
+      const value = context.text
+      if (value === undefined) return
+
+      const matched = typeof match === 'string' ? value === match : match.test(value)
+      if (!matched) return
+
+      return handler(context)
+    })
+
+    return this
+  }
+
+  /** Register a handler for callback data, exact or by pattern. */
+  callback(match: string | RegExp, handler: Handler<BotContext>): this {
+    this.#dispatcher.on('callback_query', (context) => {
+      const value = context.data
+      if (value === undefined) return
+
+      const matched = typeof match === 'string' ? value === match : match.test(value)
+      if (!matched) return
+
+      return handler(context)
+    })
+
+    return this
+  }
+
   /** Install a plugin. Installation is deferred until `start()`. */
   extend(plugin: Plugin<string, unknown, Bot>): this {
     this.#plugins.add(plugin)
@@ -180,6 +248,18 @@ export class Bot {
     )
 
     await this.#dispatcher.dispatch(context)
+  }
+
+  /**
+   * Resolve who this bot is, without starting polling.
+   *
+   * `start()` does this already, but a webhook-only bot never calls it — and
+   * command matching needs the username to tell `/start@thisbot` from
+   * `/start@otherbot`. Idempotent.
+   */
+  async identify(): Promise<User> {
+    this.#me ??= await this.api.getMe()
+    return this.#me
   }
 
   /** What the download helpers need from this bot. */
@@ -265,8 +345,8 @@ export class Bot {
   async #onStart(): Promise<void> {
     await this.#plugins.install(this)
 
-    this.#me = await this.api.getMe()
-    this.#log.info('signed in', { username: this.#me?.username, id: this.#me?.id })
+    const me = await this.identify()
+    this.#log.info('signed in', { username: me.username, id: me.id })
 
     const allowedUpdates = this.#resolveAllowedUpdates()
 

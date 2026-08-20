@@ -23,6 +23,12 @@ export {
   user,
 } from './fixtures.js'
 export {
+  type MockBot,
+  type MockBotOptions,
+  mockBot,
+  type Sender,
+} from './mock-bot.js'
+export {
   apiError,
   floodWait,
   MockNetworkError,
