@@ -290,24 +290,32 @@ deployment and a wrong built-in default is worse than none.
 
 Everything needed to run a real bot in production, and nothing else:
 
-- Full generated types and method surface for Bot API 10.2 (all 185 methods)
-- HTTP client, multipart, streaming upload
-- Long polling with `allowed_updates: 'auto'`
-- Webhook handler + node/express/fastify adapters
-- Event normalization with service-message promotion
-- Keyboards (inline + reply), parse modes and entity formatting
-- File download/upload, `file_id` reuse
-- Error taxonomy with `FloodError`
-- Raw API, typed and untyped
+- Full generated types and method surface for Bot API 10.2 (all 185 methods) — **shipped**
+- HTTP client and multipart encoding — **shipped**
+- Long polling with `allowedUpdates: 'auto'` — **shipped**
+- Webhook handler + node/express/fastify adapters — **shipped**
+- Event normalization with service-message promotion — **shipped**
+- File download and upload, `file_id` reuse — **shipped**
+- Error taxonomy with `FloodError` — **shipped**
+- Raw API, typed and untyped — **shipped**
+- Local Bot API server support — **shipped**
 
-That is a complete Bot API client. There is no reason to ship a partial one — the surface is
-generated, so "all 185 methods" costs no more than twenty.
+Every Bot API *capability* is reachable, because the surface is generated: all 185 methods and
+388 objects are typed, so "all of it" costs no more than twenty of it.
+
+Two conveniences are not there yet, and neither blocks anything:
+
+| Not yet | What to do instead | Planned |
+|---|---|---|
+| Keyboard builders | Pass the markup object directly — it is fully typed: `ctx.reply('hi', { reply_markup: { inline_keyboard: [[{ text: 'A', callback_data: 'a' }]] } })` | v0.x |
+| Streaming upload | Buffer the file first. Bot uploads cap at 50 MB, so this is wasteful rather than limiting | v0.x |
 
 ### v0.x
 
+- Keyboard builders for inline and reply markup
+- Streaming upload, so a large file need not be buffered
 - Remaining webhook adapters
 - Throttling plugin
-- Local Bot API server support (`useLocal`)
 - Pagination helpers
 - Business-account scoped API proxy
 - Rich messages (Bot API 10.2) as a first-class builder

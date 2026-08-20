@@ -7,8 +7,9 @@
 
 First release: the Telegram Bot API subsystem.
 
-`npm install yuigram` gives a complete, independent Bot API framework. Nothing in it is a
-stub, and the published packages have zero runtime dependencies.
+`npm install yuigram` gives an independent Bot API framework. Every Bot API capability is
+reachable — all 185 methods and 388 objects are generated and typed — nothing in it is a stub,
+and the published packages have zero runtime dependencies.
 
 **Clients and transport.** A `Bot` client with an independent lifecycle. Long polling that
 backs off on transient failures, honours `retry_after`, stops on errors that retrying cannot
@@ -34,5 +35,8 @@ information, and structural log redaction that cannot be turned off.
 
 **Testing.** `yuigram/testing` drives the real pipeline with only the network replaced, so an
 application tests its bot the same way Yuigram tests itself.
+
+**Not yet, and planned for v0.x:** keyboard builders (pass the typed markup object meanwhile)
+and streaming upload (buffer the file meanwhile; bot uploads cap at 50 MB).
 
 MTProto is next and is being built bottom-up. See `docs/roadmap.md`.

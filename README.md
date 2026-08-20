@@ -38,6 +38,10 @@ webhooks with framework adapters, a typed surface generated from Bot API 10.2, a
 harness that drives the real pipeline with only the network replaced. See
 [examples](examples).
 
+Every Bot API capability is reachable — all 185 methods and 388 objects are generated and
+typed. Two conveniences are still to come in v0.x: keyboard builders (pass the typed markup
+object meanwhile) and streaming upload (buffer the file meanwhile).
+
 ### The design target
 
 ```ts
