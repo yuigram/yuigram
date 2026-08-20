@@ -46,8 +46,14 @@ export interface OnOptions {
   readonly once?: boolean
 }
 
-/** A registered handler. */
-export type Handler<C> = (context: C) => Promise<void> | void
+/**
+ * A registered handler.
+ *
+ * The return value is ignored, so `(ctx) => ctx.reply('hi')` typechecks. That
+ * is the most common handler body there is, and a `void` return type would
+ * reject it for returning the message it just sent.
+ */
+export type Handler<C> = (context: C) => unknown
 
 interface Registration<C> {
   readonly kinds: readonly string[] | undefined

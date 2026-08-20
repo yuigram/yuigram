@@ -1,0 +1,234 @@
+/**
+ * The Bot client.
+ *
+ * Ties the transport, dispatch, normalization and lifecycle together. Almost
+ * everything here is delegation — the substance lives in `@yuigram/core` and in
+ * the modules beside this one — which is what keeps the client small enough to
+ * read in one sitting.
+ */
+
+import {
+  type AnyFilter,
+  ContextExtender,
+  createLogger,
+  Dispatcher,
+  type Handler,
+  Lifecycle,
+  type Logger,
+  type Middleware,
+  type Plugin,
+  PluginRegistry,
+  type UseOptions,
+} from '@yuigram/core'
+import { createApi, type RawApi } from './api.js'
+import { type BotContext, createContext } from './context.js'
+import type { Update, User } from './generated/types/index.js'
+import type { HttpClient } from './http/client.js'
+import { fetchClient } from './http/fetch-client.js'
+import { normalizeUpdate } from './normalize.js'
+import { createPolling, type Polling } from './polling.js'
+import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook.js'
+
+/** Options for {@link Bot}. */
+export interface BotOptions {
+  /** Transport to use. Defaults to the fetch client built from the token. */
+  readonly client?: HttpClient
+  /** API root, for a local Bot API server. */
+  readonly baseUrl?: string
+  /** Name used in logs and by `App.client(name)`. */
+  readonly name?: string
+  /** Logger. Defaults to a console logger at `info`. */
+  readonly log?: Logger
+  /** Merged into every API call unless the call site supplies the parameter. */
+  readonly defaults?: Readonly<Record<string, unknown>>
+
+  /**
+   * Update kinds to subscribe to.
+   *
+   * `'auto'` derives the minimal set from registered handlers, which matters
+   * because Telegram does not deliver `message_reaction` or `chat_member`
+   * unless they are requested.
+   */
+  readonly allowedUpdates?: readonly string[] | 'auto'
+}
+
+/** Options accepted by {@link Bot.start}. */
+export interface StartOptions {
+  /** Discard updates queued before startup. */
+  readonly dropPending?: boolean
+}
+
+/** A Telegram bot, over the Bot API. */
+export class Bot {
+  /** The raw API surface. */
+  readonly api: RawApi
+
+  /** Name used in logs. */
+  readonly name: string
+
+  readonly #log: Logger
+  readonly #dispatcher = new Dispatcher<BotContext>()
+  readonly #plugins = new PluginRegistry<Bot>()
+  readonly #extender = new ContextExtender()
+  readonly #lifecycle: Lifecycle
+  readonly #options: BotOptions
+
+  #polling: Polling | undefined
+  #me: User | undefined
+
+  constructor(token: string, options: BotOptions = {}) {
+    this.#options = options
+    this.name = options.name ?? 'bot'
+    this.#log = (options.log ?? createLogger()).child(this.name)
+
+    const client =
+      options.client ??
+      fetchClient({
+        token,
+        ...(options.baseUrl === undefined ? {} : { baseUrl: options.baseUrl }),
+      })
+
+    this.api = createApi({
+      client,
+      ...(options.defaults === undefined ? {} : { defaults: options.defaults }),
+    })
+
+    this.#lifecycle = new Lifecycle({
+      onStart: () => this.#onStart(),
+      onStop: () => this.#onStop(),
+    })
+  }
+
+  /** Who this bot is, once started. */
+  get me(): User | undefined {
+    return this.#me
+  }
+
+  /** Current lifecycle state. */
+  get state(): string {
+    return this.#lifecycle.state
+  }
+
+  /** Register dispatch middleware. */
+  use(middleware: Middleware<BotContext>, options?: UseOptions): this {
+    this.#dispatcher.use(middleware, options)
+    return this
+  }
+
+  /** Register a handler for one or more update kinds, or a filter. */
+  on(match: string | readonly string[] | AnyFilter, handler: Handler<BotContext>): this {
+    this.#dispatcher.on(match, handler)
+    return this
+  }
+
+  /** Register a handler that runs once. */
+  once(match: string | readonly string[] | AnyFilter, handler: Handler<BotContext>): this {
+    this.#dispatcher.once(match, handler)
+    return this
+  }
+
+  /** Remove a handler. */
+  off(handler: Handler<BotContext>): boolean {
+    return this.#dispatcher.off(handler)
+  }
+
+  /** Install a plugin. Installation is deferred until `start()`. */
+  extend(plugin: Plugin<string, unknown, Bot>): this {
+    this.#plugins.add(plugin)
+    return this
+  }
+
+  /** Contribute a lazily-computed member to every context. */
+  extendContext(owner: string, key: string, value: (context: object) => unknown): this {
+    this.#extender.add({ owner, key, value })
+    return this
+  }
+
+  /**
+   * Feed one raw update through the pipeline.
+   *
+   * Public so a webhook adapter, a test, or a replay tool can drive the same
+   * path polling does — there is no second, simplified route.
+   */
+  async handleUpdate(update: Update): Promise<void> {
+    const normalized = normalizeUpdate(update, this.#log)
+
+    const context = this.#extender.apply(
+      createContext({
+        normalized,
+        api: this.api,
+        log: this.#log.child(normalized.kind, { updateId: normalized.updateId }),
+      }),
+    )
+
+    await this.#dispatcher.dispatch(context)
+  }
+
+  /** A webhook handler wired to this bot. */
+  webhookHandler(options: Omit<WebhookOptions, 'onUpdate'> = {}): WebhookHandler {
+    return createWebhookHandler({
+      ...options,
+      log: options.log ?? this.#log,
+      onUpdate: (update) => this.handleUpdate(update),
+      track: (work) => {
+        this.#lifecycle.track(work)
+      },
+    })
+  }
+
+  /** Start the bot and begin polling. */
+  async start(options: StartOptions = {}): Promise<void> {
+    this.#startOptions = options
+    await this.#lifecycle.start()
+  }
+
+  /** Stop polling, drain in-flight updates, and shut down. */
+  async stop(options: { timeout?: number } = {}): Promise<void> {
+    await this.#lifecycle.stop(options)
+  }
+
+  #startOptions: StartOptions = {}
+
+  /** Resolve the subscription set from configuration or registered handlers. */
+  #resolveAllowedUpdates(): readonly string[] | undefined {
+    const configured = this.#options.allowedUpdates
+
+    if (configured === undefined) return undefined
+    if (configured !== 'auto') return configured
+
+    const coverage = this.#dispatcher.collectKinds()
+
+    // An opaque registration could match anything, so narrowing the
+    // subscription would silently drop updates a handler wanted.
+    if (coverage.opaque || coverage.kinds.size === 0) return undefined
+
+    return [...coverage.kinds].sort()
+  }
+
+  async #onStart(): Promise<void> {
+    await this.#plugins.install(this)
+
+    this.#me = await this.api.getMe()
+    this.#log.info('signed in', { username: this.#me?.username, id: this.#me?.id })
+
+    const allowedUpdates = this.#resolveAllowedUpdates()
+
+    this.#polling = createPolling({
+      api: this.api,
+      log: this.#log,
+      ...(allowedUpdates === undefined ? {} : { allowedUpdates }),
+      ...(this.#startOptions.dropPending === true ? { dropPending: true } : {}),
+      onUpdate: (update) => this.#lifecycle.track(this.handleUpdate(update)),
+      onError: (error) => {
+        this.#log.error('polling error', { error })
+      },
+    })
+
+    await this.#polling.start()
+  }
+
+  async #onStop(): Promise<void> {
+    await this.#polling?.stop()
+    this.#polling = undefined
+  }
+}

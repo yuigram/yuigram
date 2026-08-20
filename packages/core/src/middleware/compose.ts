@@ -22,8 +22,14 @@ import { YuigramError } from '../errors/errors.js'
 /** The continuation passed to middleware. */
 export type Next = () => Promise<void>
 
-/** A middleware function. */
-export type Middleware<C> = (context: C, next: Next) => Promise<void> | void
+/**
+ * A middleware function.
+ *
+ * The return value is ignored, so an expression body works:
+ * `(ctx, next) => next()`. Requiring `void` would reject the most natural way
+ * to write the most common middleware.
+ */
+export type Middleware<C> = (context: C, next: Next) => unknown
 
 /** Raised when middleware calls `next()` more than once. */
 export class MiddlewareError extends YuigramError {
