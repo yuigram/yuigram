@@ -83,9 +83,13 @@ export class Lifecycle {
     const attempt = (async () => {
       try {
         await this.#hooks.onStart?.()
-        this.#state = 'running'
+        // Only claim the state if this attempt still owns it. `stop()` waits
+        // for a start in flight, so this should always hold; asserting it here
+        // means a future path that does not wait cannot silently mark a
+        // stopped client running.
+        if (this.#state === 'starting') this.#state = 'running'
       } catch (error) {
-        this.#state = 'failed'
+        if (this.#state === 'starting') this.#state = 'failed'
         throw error
       }
     })()
@@ -111,6 +115,21 @@ export class Lifecycle {
    */
   async stop(options: StopOptions = {}): Promise<void> {
     if (this.#state === 'idle' || this.#state === 'stopping') return
+
+    // A stop arriving mid-start waits for the start to settle first. Running
+    // `onStop` while `onStart` is still bringing transports up leaves whatever
+    // it creates unowned — for a bot, a polling loop nobody will ever stop,
+    // still running after `stop()` has returned — and the start would then
+    // mark the client running after the stop had finished.
+    if (this.#startPromise !== undefined) {
+      await this.#startPromise.catch(() => undefined)
+
+      // Another stop may have run to completion while this one waited. Read
+      // through the getter: control-flow analysis narrowed `#state` at the
+      // guard above and cannot see that awaiting lets it change.
+      const current: LifecycleState = this.state
+      if (current === 'idle' || current === 'stopping') return
+    }
 
     this.#state = 'stopping'
 

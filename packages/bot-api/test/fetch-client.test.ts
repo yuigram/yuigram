@@ -8,6 +8,7 @@
 
 import { ConfigError, FloodError, NetworkError, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
+import { createApi } from '../src/api.js'
 import { BotApiError, isRetryable, toError, toNetworkError } from '../src/errors.js'
 import { fetchClient } from '../src/http/fetch-client.js'
 
@@ -268,5 +269,40 @@ describe('isRetryable', () => {
 
   it('does not retry an unrelated error', () => {
     expect(isRetryable(new Error('boom'))).toBe(false)
+  })
+})
+
+describe('a gateway that does not speak JSON', () => {
+  /** A fetch answering with whatever the caller scripts. */
+  const scripted = (status: number, body: string, contentType = 'text/html') =>
+    (async () =>
+      new Response(body, { status, headers: { 'content-type': contentType } })) as unknown as never
+
+  it('reports a network failure rather than crashing in the parser', async () => {
+    // A proxy, CDN or load balancer in front of Telegram answers 502 with an
+    // HTML error page. Routine in production, and not JSON.
+    const client = fetchClient({ token: TOKEN, fetch: scripted(502, '<html>Bad Gateway</html>') })
+
+    await expect(createApi({ client }).call('getMe')).rejects.toBeInstanceOf(NetworkError)
+  })
+
+  it('does not leak the token when the gateway fails', async () => {
+    // The token is in the request path, so anything quoting the request is a
+    // credential.
+    const client = fetchClient({ token: TOKEN, fetch: scripted(502, '<html>Bad Gateway</html>') })
+
+    try {
+      await createApi({ client }).call('getMe')
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect((error as Error).message).not.toContain('AAHdqTcv')
+      expect(JSON.stringify(error)).not.toContain('AAHdqTcv')
+    }
+  })
+
+  it('reports an empty body as a failure', async () => {
+    const client = fetchClient({ token: TOKEN, fetch: scripted(200, '') })
+
+    await expect(createApi({ client }).call('getMe')).rejects.toBeInstanceOf(NetworkError)
   })
 })

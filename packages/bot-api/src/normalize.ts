@@ -81,20 +81,24 @@ function payloadField(update: Update): { field: string; payload: unknown } | und
 /**
  * Find the service marker on a message, if any.
  *
- * Scans the fields the message actually has rather than all 54 known markers:
- * a typical message carries under a dozen keys, so this is the cheaper
- * direction and it stays cheap as Telegram adds more markers.
+ * The marker table decides precedence, scanned in its declared order. Scanning
+ * the message's own keys instead was cheaper — a message carries a dozen
+ * fields against fifty-four known markers — but it made the answer depend on
+ * the order Telegram happened to serialize its JSON. Two identical messages
+ * could then promote to different kinds, and nothing in the Bot API promises
+ * that order.
  *
- * The Bot API guarantees at most one marker per message. A message carrying
- * none is an ordinary message.
+ * The Bot API sends at most one marker per message today, which is what made
+ * the cheaper scan look equivalent. Precedence that only holds while an
+ * unwritten guarantee does is not precedence.
  */
 function serviceKind(message: Message): string | undefined {
-  const markers = SERVICE_EVENTS as Record<string, string | undefined>
+  const payload = message as unknown as Record<string, unknown>
 
-  for (const [field, value] of Object.entries(message)) {
+  for (const [field, kind] of Object.entries(SERVICE_EVENTS)) {
+    const value = payload[field]
     if (value === undefined || value === null) continue
-    const kind = markers[field]
-    if (kind !== undefined) return kind
+    return kind
   }
 
   return undefined

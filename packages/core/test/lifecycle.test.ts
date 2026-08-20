@@ -309,3 +309,82 @@ describe('fail', () => {
     expect(lifecycle.isRunning).toBe(false)
   })
 })
+
+describe('a stop arriving during startup', () => {
+  const tick = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+  it('waits for the start hook before running the stop hook', async () => {
+    // Tearing down while `onStart` is still bringing transports up leaves
+    // whatever it creates unowned. For a bot that is a polling loop nobody
+    // will ever stop, still running after `stop()` has returned.
+    const order: string[] = []
+
+    const lifecycle = new Lifecycle({
+      onStart: async () => {
+        await tick(40)
+        order.push('start')
+      },
+      onStop: () => void order.push('stop'),
+    })
+
+    const starting = lifecycle.start()
+    await tick(5)
+    await lifecycle.stop({ timeout: 200 })
+    await starting
+
+    expect(order).toEqual(['start', 'stop'])
+  })
+
+  it('does not report running after the stop completed', async () => {
+    // The start attempt used to set `running` unconditionally, so a start
+    // finishing after a stop left the client claiming to run while its
+    // transports were closed.
+    const lifecycle = new Lifecycle({ onStart: () => tick(40) })
+
+    const starting = lifecycle.start()
+    await tick(5)
+    await lifecycle.stop({ timeout: 200 })
+    await starting
+    await tick(50)
+
+    expect(lifecycle.state).toBe('idle')
+  })
+
+  it('is safe when two stops arrive during one start', async () => {
+    const stops: number[] = []
+
+    const lifecycle = new Lifecycle({
+      onStart: () => tick(40),
+      onStop: () => void stops.push(1),
+    })
+
+    const starting = lifecycle.start()
+    await tick(5)
+    await Promise.all([lifecycle.stop({ timeout: 200 }), lifecycle.stop({ timeout: 200 })])
+    await starting
+
+    expect(stops).toHaveLength(1)
+    expect(lifecycle.state).toBe('idle')
+  })
+
+  it('still stops a client whose start failed', async () => {
+    const stops: number[] = []
+
+    const lifecycle = new Lifecycle({
+      onStart: async () => {
+        await tick(20)
+        throw new Error('could not connect')
+      },
+      onStop: () => void stops.push(1),
+    })
+
+    const starting = lifecycle.start().catch(() => undefined)
+    await tick(5)
+    await lifecycle.stop({ timeout: 200 })
+    await starting
+
+    // `onStop` still runs: a failed start may have created something.
+    expect(stops).toHaveLength(1)
+    expect(lifecycle.state).toBe('idle')
+  })
+})

@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
+import { SERVICE_EVENTS } from '../src/generated/events.js'
 import type { Update } from '../src/generated/types/index.js'
 import { normalizeUpdate, UNKNOWN_KIND } from '../src/normalize.js'
 import {
@@ -272,5 +273,40 @@ describe('the message accessor', () => {
 
   it('is undefined for an update with no payload', () => {
     expect(normalizeUpdate({ update_id: 1 } as never).message).toBeUndefined()
+  })
+})
+
+describe('promotion precedence', () => {
+  const base = { message_id: 1, date: 1, chat: { id: 1, type: 'supergroup' } }
+
+  const kindOf = (extra: Record<string, unknown>): string =>
+    normalizeUpdate({ update_id: 1, message: { ...base, ...extra } } as never).kind
+
+  it('does not depend on the order Telegram serialized the fields', () => {
+    // Scanning the message's own keys made the answer depend on the order
+    // Telegram happened to emit its JSON, which nothing in the Bot API
+    // promises. Two identical messages could promote to different kinds.
+    const a = kindOf({ pinned_message: { message_id: 2 }, new_chat_title: 'x' })
+    const b = kindOf({ new_chat_title: 'x', pinned_message: { message_id: 2 } })
+
+    expect(a).toBe(b)
+  })
+
+  it('follows the declared order of the marker table', () => {
+    const fields = Object.keys(SERVICE_EVENTS)
+    const first = fields[0] as string
+    const later = fields[10] as string
+
+    expect(kindOf({ [later]: 'x', [first]: 'x' })).toBe(
+      (SERVICE_EVENTS as Record<string, string>)[first],
+    )
+  })
+
+  it('ignores a marker field explicitly set to null', () => {
+    // Telegram does not send nulls, but a proxy or a re-serializer might, and
+    // a nulled field is absent rather than present.
+    expect(kindOf({ new_chat_title: null, pinned_message: { message_id: 2 } })).toBe(
+      'message_pinned',
+    )
   })
 })
