@@ -35,7 +35,7 @@ import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
 import { normalizeUpdate } from './normalize.js'
 import { createPolling, type Polling } from './polling.js'
-import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook.js'
+import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook/index.js'
 
 /** Options for {@link Bot}. */
 export interface BotOptions {

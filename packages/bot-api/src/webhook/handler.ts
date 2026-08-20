@@ -18,7 +18,7 @@
 
 import { timingSafeEqual } from 'node:crypto'
 import type { Logger } from '@yuigram/core'
-import type { Update } from './generated/types/index.js'
+import type { Update } from '../generated/types/index.js'
 
 /** The header Telegram sends the configured secret in. */
 export const SECRET_HEADER = 'x-telegram-bot-api-secret-token'

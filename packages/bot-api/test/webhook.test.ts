@@ -9,7 +9,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import type { Update } from '../src/generated/types/index.js'
-import { createWebhookHandler, SECRET_HEADER, type WebhookRequest } from '../src/webhook.js'
+import { createWebhookHandler, SECRET_HEADER, type WebhookRequest } from '../src/webhook/handler.js'
 
 const SECRET = 'a-shared-secret-value'
 

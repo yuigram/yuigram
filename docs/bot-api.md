@@ -172,20 +172,37 @@ between a graceful stop and a kill.
 
 ### Webhooks
 
-A framework-agnostic handler, with thin adapters:
+`bot.webhookHandler()` returns a pure function from a parsed request to a response. Every
+adapter is the few lines that translate one framework's objects into it:
 
 ```ts
-bot.webhookCallback()                    // node:http
-import { express } from 'yuigram/webhook/express'
+import { createServer } from 'node:http'
+import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
+
+const handler = bot.webhookHandler({ secretToken })
+
+createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
+app.use('/hook', expressWebhook(handler))        // express
+app.post('/hook', fastifyWebhook(handler))       // fastify
 ```
 
-Adapters for express, fastify, koa, hono, h3, elysia and the Web `Request`/`Response` pair.
-Each is a few dozen lines and lives behind a subpath export so it never enters the main
-bundle.
+**No adapter is a dependency.** Each describes the shape it needs structurally — a `headers`
+bag, a `body`, a way to send a status — so no framework has to be installed for the types to
+resolve, and no version is pinned. Koa, hono, h3, elysia and the Web `Request`/`Response` pair
+follow the same pattern; they are additions to one file, not new dependencies.
 
-Non-negotiable webhook behaviours: `secret_token` validation on every request, a 200 response
-before handler completion (Telegram retries otherwise), request-body size limits, and
-deduplication by `update_id`.
+Non-negotiable webhook behaviours, all pinned by tests:
+
+| Behaviour | Why |
+|---|---|
+| `secret_token` compared in constant time | The only thing separating a real update from anyone who guessed the URL |
+| 200 sent before the handler runs | Telegram retries anything it has not seen acknowledged, so waiting produces duplicates under exactly the load where duplicates hurt |
+| Body size limit, enforced while reading | A public endpoint with an unbounded read is a memory exhaustion primitive; the check runs per chunk, so an endless body is cut off rather than buffered |
+| Deduplication by `update_id` | Retries are normal, and a duplicated side effect — a second reply, a second charge — is visible to the user |
+
+An oversized body is refused with `413` rather than the `400` a malformed one gets, and the
+refusal does not report the size it received: that would tell whoever is probing exactly where
+the cap sits.
 
 ### Files
 

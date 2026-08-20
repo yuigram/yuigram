@@ -43,3 +43,11 @@ export type {
 export { type EncodedRequest, encodeRequest, hasUpload } from './http/multipart.js'
 export { type InputFile, isInputFile, type NamedFile } from './input-file.js'
 export { type NormalizedUpdate, normalizeUpdate, UNKNOWN_KIND } from './normalize.js'
+export {
+  createWebhookHandler,
+  SECRET_HEADER,
+  type WebhookHandler,
+  type WebhookOptions,
+  type WebhookRequest,
+  type WebhookResponse,
+} from './webhook/handler.js'
