@@ -9,7 +9,7 @@ effort.
 | **Bot API** | `core.telegram.org/bots/api` (HTML) | types, methods, events, filters | 185 methods, 388 objects |
 | **TL** | `core.telegram.org/schema` (TL) | types, reader, writer, errors | 2,315 constructors, 552 errors |
 
-This is the answer to the maintainability requirement (project brief §38). Telegram ships Bot
+This is the answer to the maintainability requirement. Telegram ships Bot
 API releases every few months and TL layers more often; a framework that hand-maintains either
 surface falls behind permanently. Generation converts that recurring engineering work into a
 review task.

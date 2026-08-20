@@ -28,7 +28,7 @@ npm's grammar requires a scoped package to be `@scope/name`. A bare `@yui` has n
 component; npm parses the string as a package with a tag and rejects it. It cannot be
 published, installed, or imported.
 
-**Option B from the brief — `import { Bot } from "@yui"` — is therefore not implementable.**
+**A bare `import { Bot } from "@yui"` is therefore not implementable.**
 It could only be simulated with a TypeScript path alias or a bundler alias, which would work
 in the author's own repository and break for every consumer.
 
@@ -87,8 +87,8 @@ Same public entry point, but the scope for internals and plugins is `@yui/*`.
 
 ### On the AI-ergonomics argument specifically
 
-The project brief (§1, §37) proposes `@yui` partly because short names are efficient with AI
-coding assistants. Examined directly, the argument does not hold:
+One argument for `@yui` is that short names are more efficient when code is written with an
+AI assistant. Examined directly, the argument does not hold:
 
 **Token cost is negligible.** `@yuigram/redis` versus `@yui/redis` is a difference of a few
 tokens, appearing once per file in an import statement. Against a file of hundreds or
@@ -175,7 +175,7 @@ Considered and rejected:
 | Structure | Why not |
 |---|---|
 | **Single package** | Bot-only users would still download the MTProto subsystem. Internal boundaries would be conventions rather than enforced. The CI invariants in [architecture.md](architecture.md) §10 depend on real package boundaries. |
-| **Many independently-installed packages** | Fragments onboarding — `npm install yuigram` stops being sufficient, which is the product's central promise (the project brief §50). |
+| **Many independently-installed packages** | Fragments onboarding — `npm install yuigram` stops being sufficient, which is the product's central promise. |
 
 The hybrid keeps both properties: one install for users, enforced modularity for maintenance.
 The internal packages are published so that advanced consumers *can* depend on `@yuigram/core`
@@ -232,5 +232,5 @@ so the short name is bound to something visible rather than being a global myste
 
 **No `Yui` prefix on exported types.** `YuiError`, `YuiContext`, `YuiBot` would add a
 redundant three characters to every identifier; the import statement already establishes
-provenance, and TypeScript handles collisions with aliasing. The brief's §25 proposes
-`YuiError` as a hierarchy root — the hierarchy is adopted, the prefix is not.
+provenance, and TypeScript handles collisions with aliasing. A prefixed `YuiError` was
+considered as the hierarchy root — the hierarchy is adopted, the prefix is not.

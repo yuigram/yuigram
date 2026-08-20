@@ -3,9 +3,8 @@
 The proposed system architecture, the dependency relationships between subsystems, and the
 reason each subsystem exists.
 
-The project brief offered a starting hypothesis (§12) in which a single "Yui Core" sits
-above both transports with Context beneath Events and Middleware. That layering is
-challenged and revised here: **Context is produced by the transport-specific normalizers,
+The obvious first shape puts a single shared core above both transports, with Context
+sitting beneath Events and Middleware. That layering is revised here: **Context is produced by the transport-specific normalizers,
 not by the core**, because a context is only meaningful once an update has been decoded, and
 decoding is exactly the part that cannot be shared.
 
@@ -329,7 +328,7 @@ everyone's build.
 
 The scheduled job fetches, regenerates, diffs, and opens a pull request when the surface
 changes. Telegram tracking becomes a review task rather than an engineering task. This is
-the mechanism that answers the project brief §38.
+the mechanism that keeps Telegram's release pace from becoming a maintenance burden.
 
 ---
 
@@ -368,8 +367,8 @@ Architecture decays unless something checks it. These are CI gates, not conventi
 2. **`bot-api` and `mtproto` never import each other.** Dependency-cruiser rule.
 3. **No mtcute or puregram type appears in any public `.d.ts`.** Enforced by scanning the
    built declaration files for forbidden identifiers. This is the mechanical guarantee
-   behind the project brief §39, and it holds regardless of what the implementation depends on
-   internally.
+   behind long-term independence, and it holds regardless of what the implementation depends
+   on internally.
 4. **No puregram-derived source.** Similarity tripwire; see [licensing.md](licensing.md) §9.
 5. **Public API surface is snapshotted.** An API-extractor report is committed; any change to
    the public surface shows up as a reviewable diff.

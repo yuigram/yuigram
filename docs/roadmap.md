@@ -2,8 +2,8 @@
 
 Phased delivery for an independent implementation of both protocols.
 
-The project brief's proposed sequence (§46) has been adjusted in three ways, each for a stated
-reason:
+The conventional sequence — research, architecture, core, then each subsystem in turn — has
+been adjusted in three ways, each for a stated reason:
 
 1. **Testing infrastructure precedes the code it tests.** The mock Bot API server precedes the
    Bot API runtime; the mock MTProto server precedes the session and updates layers. A test

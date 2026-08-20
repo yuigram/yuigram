@@ -19,7 +19,7 @@ pretending the two APIs are one API.
 
 ## 1. Three transports, not two
 
-The framing in the brief is "Bot API + MTProto". Source inspection of mtcute's
+The obvious framing is "Bot API + MTProto". Source inspection of mtcute's
 `highlevel/methods/auth/` shows the real matrix has three entries:
 
 | Mode | Transport | Credential | Update delivery | Raw surface |
@@ -210,7 +210,8 @@ compile-time fact rather than a runtime surprise.
 > transports. Anything else lives on the client, is transport-narrowed, or is exposed under
 > `raw`.
 
-This rule is what keeps Yuigram from becoming the thing the project brief's Rule 6 forbids.
+This rule is what keeps Yuigram from over-abstracting the two protocols into a single
+surface that misrepresents both.
 
 ---
 

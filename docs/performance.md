@@ -3,7 +3,7 @@
 Performance characteristics, budgets, and the architectural decisions that would be expensive
 to reverse later.
 
-The project brief's Rule 9 forbids premature optimization. This document does not propose optimizations;
+Premature optimization is explicitly not the aim. This document does not propose optimizations;
 it identifies the small number of decisions that are cheap now and very expensive after
 release, and sets budgets so that regressions are visible.
 

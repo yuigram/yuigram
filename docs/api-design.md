@@ -282,8 +282,8 @@ bot.mount(shop, { prefix: 'shop:' })   // scopes callback data
 ```
 
 A router carries its own middleware, which runs only for updates it handles. This is the
-composition unit the brief's §18 asks for, and it keeps `bot.command(...)` from being the
-only organizing tool available.
+composition unit that keeps `bot.command(...)` from being the only organizing tool
+available.
 
 ---
 
@@ -470,8 +470,9 @@ stand-in. See [architecture.md](architecture.md) §2.1 — this is possible prec
 
 ## 17. AI-assistant ergonomics
 
-The project brief §37 asks for an API that models can infer correctly. The properties that matter
-are structural rather than cosmetic:
+A great deal of Telegram code is now written with a model in the loop, and models read types
+rather than caveats. The properties that make an API inferable are structural rather than
+cosmetic:
 
 | Property | How the design delivers it |
 |---|---|

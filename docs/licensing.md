@@ -65,7 +65,7 @@ every downstream corporate legal review will stop on.
 | Depend on `puregram` as an npm package | **Yes** | No file contamination — it stays a separate MPL package. But see §3. |
 | Copy a function body into a Yuigram file | **Yes, but** | That file becomes MPL forever. |
 | Copy the `schema/10.2.json` IR | **Yes, but** | Contaminates whatever file it lands in; also avoidable — see §4. |
-| Fork puregram and rename it | **Yes, but** | The entire result stays MPL, and it is explicitly out of scope per the project brief's Rule 2. |
+| Fork puregram and rename it | **Yes, but** | The entire result stays MPL, and it is explicitly out of scope for this project. |
 | Relicense any puregram-derived file as MIT | **No** | Direct licence violation. |
 
 ### Decision
@@ -199,8 +199,8 @@ Two concrete mitigations for the verbatim-description flag:
 2. Emit a short link to the official documentation page in each generated JSDoc block
    alongside the description, exactly as Telegram's own `documentationLink` field supports.
 
-Neither is legally decisive, but both keep provenance visible, which is the standard Rule 5 of
-the project brief sets.
+Neither is legally decisive, but both keep provenance visible, which is the standard this
+project holds itself to: third-party provenance is disclosed, never hidden.
 
 ---
 
