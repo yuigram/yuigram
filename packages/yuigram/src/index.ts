@@ -3,16 +3,53 @@
  * and MTProto.
  *
  * This package is the façade users install. It re-exports the public surface
- * and owns the application container; it contains almost no logic of its own.
+ * and contains almost no logic of its own: one import path, one thing to learn,
+ * and no decision to make about which internal package a symbol lives in.
  *
- * The public API is not yet available. See `docs/roadmap.md` for the delivery
- * plan and `docs/api-design.md` for the intended surface.
+ * ```ts
+ * import { Bot } from 'yuigram'
+ *
+ * const bot = new Bot(process.env.BOT_TOKEN!)
+ *
+ * bot.command('start', (ctx) => ctx.reply('Hello.'))
+ *
+ * await bot.start()
+ * ```
+ *
+ * **What is here today:** the Bot API subsystem, complete — clients, polling,
+ * webhooks, routing, sessions, storage, files, errors and the testing harness.
+ *
+ * **What is not:** the MTProto subsystem, and the `App` container that will
+ * hold several clients at once. Both are planned rather than stubbed; see
+ * `docs/roadmap.md`. Nothing exported here is a placeholder.
  */
 
-/** Schema versions this build was generated against. */
+/**
+ * The context an application actually receives.
+ *
+ * Both layers define a `Context`: core's is transport-agnostic, and the Bot API
+ * subsystem's adds everything a bot handler reaches for. An application wants
+ * the specific one, so this explicit re-export settles the ambiguity rather
+ * than leaving it to which star export happens to win.
+ *
+ * The transport-agnostic one remains available as {@link AnyContext}, which is
+ * what middleware meant to run under any client should be written against.
+ */
+export type { Context } from '@yuigram/bot-api'
+export * from '@yuigram/bot-api'
+export type { Context as AnyContext } from '@yuigram/core'
+export * from '@yuigram/core'
+
+/**
+ * Schema versions this build was generated against.
+ *
+ * Exposed because a bot that hits a method Telegram added after this build was
+ * cut needs to know which version it is talking to, and `call()` is how it
+ * reaches the method meanwhile.
+ */
 export const schemaInfo = {
-  /** Telegram Bot API version. Populated once the Bot API subsystem lands. */
-  botApi: null,
+  /** Telegram Bot API version the generated surface was emitted from. */
+  botApi: '10.2',
   /** Telegram TL schema layer. Populated once the MTProto subsystem lands. */
   tlLayer: null,
 } as const

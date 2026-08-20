@@ -11,6 +11,19 @@
 export { type CreateApiOptions, createApi, type RawApi, type RawApiExtras } from './api.js'
 export type { CallOptions } from './api-options.js'
 export {
+  Bot,
+  type BotOptions,
+  type CommandContext,
+  type StartOptions,
+} from './bot.js'
+export {
+  type BotContext,
+  type Context,
+  type CreateContextOptions,
+  createContext,
+  type ReplyParams,
+} from './context.js'
+export {
   type DownloadDeps,
   type DownloadTarget,
   download,
