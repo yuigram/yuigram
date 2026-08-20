@@ -11,14 +11,17 @@ import type { Dirent } from 'node:fs'
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { BotApiSchema } from '../bot-api/ir.js'
+import { describeServiceDetection, emitEvents } from './events.js'
 import { emitMethods } from './methods.js'
 import type { EmittedFile } from './types.js'
 import { emitTypeNames, emitTypes } from './types.js'
 
 /** Produce every generated file for a schema. */
 export function emitAll(schema: BotApiSchema): EmittedFile[] {
-  return [...emitTypes(schema), emitTypeNames(schema), ...emitMethods(schema)]
+  return [...emitTypes(schema), emitTypeNames(schema), ...emitMethods(schema), emitEvents(schema)]
 }
+
+export { describeServiceDetection }
 
 /** A written file and its size. */
 export interface WrittenFile {

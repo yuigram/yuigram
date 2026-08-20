@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url'
 import { diffSchemas, formatDiff } from './bot-api/diff.js'
 import type { BotApiSchema } from './bot-api/ir.js'
 import { parseBotApi } from './bot-api/parse.js'
-import { emitAll, writeGenerated } from './emit/index.js'
+import { describeServiceDetection, emitAll, writeGenerated } from './emit/index.js'
 
 /** Documentation sources, most current first. */
 const SOURCES: readonly string[] = [
@@ -88,6 +88,10 @@ async function run(mode: 'fetch' | 'regenerate'): Promise<void> {
   const total = written.reduce((sum, file) => sum + file.bytes, 0)
 
   process.stdout.write(`\nGenerated ${written.length} files, ${(total / 1024).toFixed(0)} KB\n`)
+
+  // Surfaced on every run: if a Telegram release adds service messages the
+  // description rule does not catch, the counts move and a reviewer sees it.
+  process.stdout.write(`  ${describeServiceDetection(schema)}\n`)
 
   for (const file of [...written].sort((a, b) => b.bytes - a.bytes).slice(0, 8)) {
     process.stdout.write(`  ${(file.bytes / 1024).toFixed(0).padStart(5)} KB  ${file.path}\n`)
