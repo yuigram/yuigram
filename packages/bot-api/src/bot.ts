@@ -399,6 +399,18 @@ export class Bot {
       onError: (error) => {
         this.#log.error('polling error', { error })
       },
+      onFatal: (error) => {
+        // The bot is no longer receiving updates, so reporting while staying
+        // in the `running` state would leave `bot.state` claiming something
+        // untrue. Deferred off the polling loop's own stack: stopping from
+        // inside the loop that is being stopped is re-entrant.
+        this.#log.error('polling stopped and cannot recover', { error })
+        queueMicrotask(() => {
+          void this.stop().catch((stopError) => {
+            this.#log.error('failed to stop after a fatal polling error', { error: stopError })
+          })
+        })
+      },
     })
 
     await this.#polling.start()

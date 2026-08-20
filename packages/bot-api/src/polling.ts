@@ -15,7 +15,7 @@
 import type { Logger } from '@yuigram/core'
 import { FloodError } from '@yuigram/core'
 import type { RawApi } from './api.js'
-import { isRetryable } from './errors.js'
+import { BotApiError } from './errors.js'
 import type { Update } from './generated/types/index.js'
 
 /** Options for {@link createPolling}. */
@@ -26,6 +26,14 @@ export interface PollingOptions {
   readonly onUpdate: (update: Update) => Promise<void> | void
   /** Reports a failure the loop recovered from. */
   readonly onError?: (error: unknown) => void
+  /**
+   * Reports the error that stopped the loop.
+   *
+   * Distinct from {@link onError} because the two demand different responses:
+   * a recovered failure is worth logging, while a fatal one means the bot is
+   * no longer receiving updates and needs an operator.
+   */
+  readonly onFatal?: (error: unknown) => void
   readonly log?: Logger
 
   /**
@@ -63,6 +71,25 @@ export interface PollingOptions {
   readonly dropPending?: boolean
 }
 
+/**
+ * Whether an error makes further polling pointless.
+ *
+ * These are not transient, so retrying neither helps nor eventually succeeds:
+ *
+ * - `401` — the token is not valid, and will not become valid by waiting.
+ * - `404` — the bot no longer exists.
+ * - `409` — another consumer is calling `getUpdates` with the same token.
+ *   Retrying leaves two instances fighting over one queue, each stealing
+ *   updates from the other, which is worse than stopping.
+ *
+ * Everything else, including 5xx and network failures, is treated as transient
+ * and retried with backoff.
+ */
+export function isFatalPollingError(error: unknown): boolean {
+  if (!(error instanceof BotApiError)) return false
+  return error.code === 401 || error.code === 404 || error.code === 409
+}
+
 /** A running polling loop. */
 export interface Polling {
   /** Begin polling. Resolves once the loop is running. */
@@ -95,6 +122,7 @@ export function createPolling(options: PollingOptions): Polling {
     api,
     onUpdate,
     onError,
+    onFatal,
     log,
     allowedUpdates,
     timeout = 30,
@@ -115,7 +143,9 @@ export function createPolling(options: PollingOptions): Polling {
     const params: Record<string, unknown> = { offset, limit, timeout }
     if (allowedUpdates !== undefined) params['allowed_updates'] = allowedUpdates
 
-    return (await api.call<Update[]>('getUpdates', params)) ?? []
+    // The signal is what makes shutdown prompt: without it, `stop` waits out
+    // the long poll, which is up to a minute of a process manager's patience.
+    return (await api.call<Update[]>('getUpdates', params, { signal: controller.signal })) ?? []
   }
 
   /** Discard anything queued before startup. */
@@ -157,6 +187,13 @@ export function createPolling(options: PollingOptions): Polling {
       ? Math.max(error.retryAfter * 1000, backoffBase)
       : Math.min(backoffBase * 2 ** failures, backoffMax)
 
+  /** Record a fatal error and take the loop down. */
+  const fail = (error: unknown): void => {
+    running = false
+    log?.error('polling stopped: unrecoverable error', { error })
+    onFatal?.(error)
+  }
+
   const run = async (): Promise<void> => {
     let failures = 0
 
@@ -175,10 +212,20 @@ export function createPolling(options: PollingOptions): Polling {
       } catch (error) {
         if (!running) break
 
+        // An abort is the shutdown path, not a failure.
+        if (controller.signal.aborted) break
+
+        if (isFatalPollingError(error)) {
+          fail(error)
+          break
+        }
+
         onError?.(error)
 
         const wait = backoffFor(error, failures)
-        failures = isRetryable(error) ? failures + 1 : failures
+        // Every failure widens the delay. Counting only the retryable ones left
+        // a permanent failure retrying at the base delay forever.
+        failures += 1
 
         log?.warn('polling failed, retrying', { waitMs: wait, error })
         await delay(wait, controller.signal)

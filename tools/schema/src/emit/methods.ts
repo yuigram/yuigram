@@ -135,13 +135,14 @@ function emitApiSurface(schema: BotApiSchema): EmittedFile {
       const returns = renderType(method.returns)
       const optional = method.parameters.every((parameter) => !parameter.required) ? '?' : ''
 
-      return `${doc}  ${method.name}(params${optional}: ${params}): Promise<${returns}>\n`
+      return `${doc}  ${method.name}(params${optional}: ${params}, options?: CallOptions): Promise<${returns}>\n`
     })
     .join('\n')
 
   const paramNames = schema.methods.map((method) => parameterTypeName(method.name)).sort()
 
   const imports = [
+    `import type { CallOptions } from '../api-options.js'`,
     `import type { ${referenced.join(', ')} } from './types/index.js'`,
     `import type {\n${paramNames.map((name) => `  ${name},`).join('\n')}\n} from './methods/index.js'`,
   ].join('\n')

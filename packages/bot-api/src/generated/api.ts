@@ -2,6 +2,7 @@
 // Bot API callable surface
 // Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
 
+import type { CallOptions } from '../api-options.js'
 import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
 import type {
   AddStickerToSetParams,
@@ -203,7 +204,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getupdates
    */
-  getUpdates(params?: GetUpdatesParams): Promise<Update[]>
+  getUpdates(params?: GetUpdatesParams, options?: CallOptions): Promise<Update[]>
 
   /**
    * Use this method to specify a URL and receive incoming updates via an
@@ -218,7 +219,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setwebhook
    */
-  setWebhook(params: SetWebhookParams): Promise<true>
+  setWebhook(params: SetWebhookParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to remove webhook integration if you decide to switch back
@@ -226,7 +227,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletewebhook
    */
-  deleteWebhook(params?: DeleteWebhookParams): Promise<true>
+  deleteWebhook(params?: DeleteWebhookParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get current webhook status. Requires no parameters. On
@@ -235,7 +236,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getwebhookinfo
    */
-  getWebhookInfo(params?: GetWebhookInfoParams): Promise<WebhookInfo>
+  getWebhookInfo(params?: GetWebhookInfoParams, options?: CallOptions): Promise<WebhookInfo>
 
   /**
    * A simple method for testing your bot's authentication token. Requires no
@@ -244,7 +245,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getme
    */
-  getMe(params?: GetMeParams): Promise<User>
+  getMe(params?: GetMeParams, options?: CallOptions): Promise<User>
 
   /**
    * Use this method to log out from the cloud Bot API server before launching
@@ -256,7 +257,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#logout
    */
-  logOut(params?: LogOutParams): Promise<true>
+  logOut(params?: LogOutParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to close the bot instance before moving it from one local
@@ -267,7 +268,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#close
    */
-  close(params?: CloseParams): Promise<true>
+  close(params?: CloseParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send text messages. On success, the sent Message is
@@ -275,7 +276,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendmessage
    */
-  sendMessage(params: SendMessageParams): Promise<Message>
+  sendMessage(params: SendMessageParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to forward messages of any kind. Service messages and
@@ -284,7 +285,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#forwardmessage
    */
-  forwardMessage(params: ForwardMessageParams): Promise<Message>
+  forwardMessage(params: ForwardMessageParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to forward multiple messages of any kind. If some of the
@@ -295,7 +296,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#forwardmessages
    */
-  forwardMessages(params: ForwardMessagesParams): Promise<MessageId[]>
+  forwardMessages(params: ForwardMessagesParams, options?: CallOptions): Promise<MessageId[]>
 
   /**
    * Use this method to copy messages of any kind. Service messages, paid media
@@ -307,7 +308,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#copymessage
    */
-  copyMessage(params: CopyMessageParams): Promise<MessageId>
+  copyMessage(params: CopyMessageParams, options?: CallOptions): Promise<MessageId>
 
   /**
    * Use this method to copy messages of any kind. If some of the specified
@@ -321,14 +322,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#copymessages
    */
-  copyMessages(params: CopyMessagesParams): Promise<MessageId[]>
+  copyMessages(params: CopyMessagesParams, options?: CallOptions): Promise<MessageId[]>
 
   /**
    * Use this method to send photos. On success, the sent Message is returned.
    *
    * @see https://corefork.telegram.org/bots/api#sendphoto
    */
-  sendPhoto(params: SendPhotoParams): Promise<Message>
+  sendPhoto(params: SendPhotoParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send live photos. On success, the sent Message is
@@ -336,7 +337,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendlivephoto
    */
-  sendLivePhoto(params: SendLivePhotoParams): Promise<Message>
+  sendLivePhoto(params: SendLivePhotoParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send audio files, if you want Telegram clients to display
@@ -347,7 +348,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendaudio
    */
-  sendAudio(params: SendAudioParams): Promise<Message>
+  sendAudio(params: SendAudioParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send general files. On success, the sent Message is
@@ -356,7 +357,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#senddocument
    */
-  sendDocument(params: SendDocumentParams): Promise<Message>
+  sendDocument(params: SendDocumentParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send video files, Telegram clients support MPEG4 videos
@@ -366,7 +367,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendvideo
    */
-  sendVideo(params: SendVideoParams): Promise<Message>
+  sendVideo(params: SendVideoParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send animation files (GIF or H.264/MPEG-4 AVC video
@@ -376,7 +377,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendanimation
    */
-  sendAnimation(params: SendAnimationParams): Promise<Message>
+  sendAnimation(params: SendAnimationParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send audio files, if you want Telegram clients to display
@@ -388,7 +389,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendvoice
    */
-  sendVoice(params: SendVoiceParams): Promise<Message>
+  sendVoice(params: SendVoiceParams, options?: CallOptions): Promise<Message>
 
   /**
    * As of v.4.0, Telegram clients support rounded square MPEG4 videos of up to 1
@@ -397,7 +398,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendvideonote
    */
-  sendVideoNote(params: SendVideoNoteParams): Promise<Message>
+  sendVideoNote(params: SendVideoNoteParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send paid media. On success, the sent Message is
@@ -405,7 +406,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendpaidmedia
    */
-  sendPaidMedia(params: SendPaidMediaParams): Promise<Message>
+  sendPaidMedia(params: SendPaidMediaParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send a group of photos, live photos, videos, documents or
@@ -415,7 +416,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendmediagroup
    */
-  sendMediaGroup(params: SendMediaGroupParams): Promise<Message[]>
+  sendMediaGroup(params: SendMediaGroupParams, options?: CallOptions): Promise<Message[]>
 
   /**
    * Use this method to send point on the map. On success, the sent Message is
@@ -423,7 +424,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendlocation
    */
-  sendLocation(params: SendLocationParams): Promise<Message>
+  sendLocation(params: SendLocationParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send information about a venue. On success, the sent
@@ -431,7 +432,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendvenue
    */
-  sendVenue(params: SendVenueParams): Promise<Message>
+  sendVenue(params: SendVenueParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send phone contacts. On success, the sent Message is
@@ -439,7 +440,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendcontact
    */
-  sendContact(params: SendContactParams): Promise<Message>
+  sendContact(params: SendContactParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send a native poll. On success, the sent Message is
@@ -447,7 +448,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendpoll
    */
-  sendPoll(params: SendPollParams): Promise<Message>
+  sendPoll(params: SendPollParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send a checklist on behalf of a connected business
@@ -455,7 +456,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendchecklist
    */
-  sendChecklist(params: SendChecklistParams): Promise<Message>
+  sendChecklist(params: SendChecklistParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send an animated emoji that will display a random value.
@@ -463,7 +464,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#senddice
    */
-  sendDice(params: SendDiceParams): Promise<Message>
+  sendDice(params: SendDiceParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to stream a partial message to a user while the message is
@@ -474,7 +475,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendmessagedraft
    */
-  sendMessageDraft(params: SendMessageDraftParams): Promise<true>
+  sendMessageDraft(params: SendMessageDraftParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method when you need to tell the user that something is happening
@@ -489,7 +490,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendchataction
    */
-  sendChatAction(params: SendChatActionParams): Promise<true>
+  sendChatAction(params: SendChatActionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the chosen reactions on a message. Service
@@ -500,7 +501,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmessagereaction
    */
-  setMessageReaction(params: SetMessageReactionParams): Promise<true>
+  setMessageReaction(params: SetMessageReactionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get a list of profile pictures for a user. Returns a
@@ -508,7 +509,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getuserprofilephotos
    */
-  getUserProfilePhotos(params: GetUserProfilePhotosParams): Promise<UserProfilePhotos>
+  getUserProfilePhotos(params: GetUserProfilePhotosParams, options?: CallOptions): Promise<UserProfilePhotos>
 
   /**
    * Use this method to get a list of profile audios for a user. Returns a
@@ -516,7 +517,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getuserprofileaudios
    */
-  getUserProfileAudios(params: GetUserProfileAudiosParams): Promise<UserProfileAudios>
+  getUserProfileAudios(params: GetUserProfileAudiosParams, options?: CallOptions): Promise<UserProfileAudios>
 
   /**
    * Changes the emoji status for a given user that previously allowed the bot to
@@ -525,7 +526,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setuseremojistatus
    */
-  setUserEmojiStatus(params: SetUserEmojiStatusParams): Promise<true>
+  setUserEmojiStatus(params: SetUserEmojiStatusParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get basic information about a file and prepare it for
@@ -538,7 +539,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getfile
    */
-  getFile(params: GetFileParams): Promise<File>
+  getFile(params: GetFileParams, options?: CallOptions): Promise<File>
 
   /**
    * Use this method to ban a user in a group, a supergroup or a channel. In the
@@ -549,7 +550,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#banchatmember
    */
-  banChatMember(params: BanChatMemberParams): Promise<true>
+  banChatMember(params: BanChatMemberParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to unban a previously banned user in a supergroup or
@@ -562,7 +563,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unbanchatmember
    */
-  unbanChatMember(params: UnbanChatMemberParams): Promise<true>
+  unbanChatMember(params: UnbanChatMemberParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to restrict a user in a supergroup. The bot must be an
@@ -572,7 +573,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#restrictchatmember
    */
-  restrictChatMember(params: RestrictChatMemberParams): Promise<true>
+  restrictChatMember(params: RestrictChatMemberParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to promote or demote a user in a supergroup or a channel.
@@ -582,7 +583,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#promotechatmember
    */
-  promoteChatMember(params: PromoteChatMemberParams): Promise<true>
+  promoteChatMember(params: PromoteChatMemberParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set a custom title for an administrator in a supergroup
@@ -590,7 +591,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatadministratorcustomtitle
    */
-  setChatAdministratorCustomTitle(params: SetChatAdministratorCustomTitleParams): Promise<true>
+  setChatAdministratorCustomTitle(params: SetChatAdministratorCustomTitleParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set a tag for a regular member in a group or a
@@ -600,7 +601,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatmembertag
    */
-  setChatMemberTag(params: SetChatMemberTagParams): Promise<true>
+  setChatMemberTag(params: SetChatMemberTagParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to ban a channel chat in a supergroup or a channel. Until
@@ -611,7 +612,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#banchatsenderchat
    */
-  banChatSenderChat(params: BanChatSenderChatParams): Promise<true>
+  banChatSenderChat(params: BanChatSenderChatParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to unban a previously banned channel chat in a supergroup or
@@ -620,7 +621,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unbanchatsenderchat
    */
-  unbanChatSenderChat(params: UnbanChatSenderChatParams): Promise<true>
+  unbanChatSenderChat(params: UnbanChatSenderChatParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set default chat permissions for all members. The bot
@@ -630,7 +631,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatpermissions
    */
-  setChatPermissions(params: SetChatPermissionsParams): Promise<true>
+  setChatPermissions(params: SetChatPermissionsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to generate a new primary invite link for a chat; any
@@ -640,7 +641,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#exportchatinvitelink
    */
-  exportChatInviteLink(params: ExportChatInviteLinkParams): Promise<string>
+  exportChatInviteLink(params: ExportChatInviteLinkParams, options?: CallOptions): Promise<string>
 
   /**
    * Use this method to create an additional invite link for a chat. The bot must
@@ -650,7 +651,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#createchatinvitelink
    */
-  createChatInviteLink(params: CreateChatInviteLinkParams): Promise<ChatInviteLink>
+  createChatInviteLink(params: CreateChatInviteLinkParams, options?: CallOptions): Promise<ChatInviteLink>
 
   /**
    * Use this method to edit a non-primary invite link created by the bot. The
@@ -660,7 +661,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editchatinvitelink
    */
-  editChatInviteLink(params: EditChatInviteLinkParams): Promise<ChatInviteLink>
+  editChatInviteLink(params: EditChatInviteLinkParams, options?: CallOptions): Promise<ChatInviteLink>
 
   /**
    * Use this method to create a subscription invite link for a channel chat. The
@@ -671,7 +672,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#createchatsubscriptioninvitelink
    */
-  createChatSubscriptionInviteLink(params: CreateChatSubscriptionInviteLinkParams): Promise<ChatInviteLink>
+  createChatSubscriptionInviteLink(params: CreateChatSubscriptionInviteLinkParams, options?: CallOptions): Promise<ChatInviteLink>
 
   /**
    * Use this method to edit a subscription invite link created by the bot. The
@@ -680,7 +681,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editchatsubscriptioninvitelink
    */
-  editChatSubscriptionInviteLink(params: EditChatSubscriptionInviteLinkParams): Promise<ChatInviteLink>
+  editChatSubscriptionInviteLink(params: EditChatSubscriptionInviteLinkParams, options?: CallOptions): Promise<ChatInviteLink>
 
   /**
    * Use this method to revoke an invite link created by the bot. If the primary
@@ -691,7 +692,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#revokechatinvitelink
    */
-  revokeChatInviteLink(params: RevokeChatInviteLinkParams): Promise<ChatInviteLink>
+  revokeChatInviteLink(params: RevokeChatInviteLinkParams, options?: CallOptions): Promise<ChatInviteLink>
 
   /**
    * Use this method to approve a chat join request. The bot must be an
@@ -700,7 +701,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#approvechatjoinrequest
    */
-  approveChatJoinRequest(params: ApproveChatJoinRequestParams): Promise<true>
+  approveChatJoinRequest(params: ApproveChatJoinRequestParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to decline a chat join request. The bot must be an
@@ -709,7 +710,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#declinechatjoinrequest
    */
-  declineChatJoinRequest(params: DeclineChatJoinRequestParams): Promise<true>
+  declineChatJoinRequest(params: DeclineChatJoinRequestParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to process a received chat join request query. Returns True
@@ -717,7 +718,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answerchatjoinrequestquery
    */
-  answerChatJoinRequestQuery(params: AnswerChatJoinRequestQueryParams): Promise<true>
+  answerChatJoinRequestQuery(params: AnswerChatJoinRequestQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to process a received chat join request query by showing a
@@ -727,7 +728,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendchatjoinrequestwebapp
    */
-  sendChatJoinRequestWebApp(params: SendChatJoinRequestWebAppParams): Promise<true>
+  sendChatJoinRequestWebApp(params: SendChatJoinRequestWebAppParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set a new profile photo for the chat. Photos can't be
@@ -737,7 +738,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatphoto
    */
-  setChatPhoto(params: SetChatPhotoParams): Promise<true>
+  setChatPhoto(params: SetChatPhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a chat photo. Photos can't be changed for private
@@ -746,7 +747,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletechatphoto
    */
-  deleteChatPhoto(params: DeleteChatPhotoParams): Promise<true>
+  deleteChatPhoto(params: DeleteChatPhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the title of a chat. Titles can't be changed for
@@ -755,7 +756,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchattitle
    */
-  setChatTitle(params: SetChatTitleParams): Promise<true>
+  setChatTitle(params: SetChatTitleParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the description of a group, a supergroup or a
@@ -764,7 +765,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatdescription
    */
-  setChatDescription(params: SetChatDescriptionParams): Promise<true>
+  setChatDescription(params: SetChatDescriptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to add a message to the list of pinned messages in a chat.
@@ -775,7 +776,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#pinchatmessage
    */
-  pinChatMessage(params: PinChatMessageParams): Promise<true>
+  pinChatMessage(params: PinChatMessageParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to remove a message from the list of pinned messages in a
@@ -786,7 +787,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unpinchatmessage
    */
-  unpinChatMessage(params: UnpinChatMessageParams): Promise<true>
+  unpinChatMessage(params: UnpinChatMessageParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to clear the list of pinned messages in a chat. In private
@@ -798,7 +799,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unpinallchatmessages
    */
-  unpinAllChatMessages(params: UnpinAllChatMessagesParams): Promise<true>
+  unpinAllChatMessages(params: UnpinAllChatMessagesParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method for your bot to leave a group, supergroup or channel.
@@ -806,7 +807,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#leavechat
    */
-  leaveChat(params: LeaveChatParams): Promise<true>
+  leaveChat(params: LeaveChatParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get up-to-date information about the chat. Returns a
@@ -814,7 +815,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getchat
    */
-  getChat(params: GetChatParams): Promise<ChatFullInfo>
+  getChat(params: GetChatParams, options?: CallOptions): Promise<ChatFullInfo>
 
   /**
    * Use this method to get a list of administrators in a chat. Returns an Array
@@ -822,7 +823,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getchatadministrators
    */
-  getChatAdministrators(params: GetChatAdministratorsParams): Promise<ChatMember[]>
+  getChatAdministrators(params: GetChatAdministratorsParams, options?: CallOptions): Promise<ChatMember[]>
 
   /**
    * Use this method to get the number of members in a chat. Returns Integer on
@@ -830,7 +831,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getchatmembercount
    */
-  getChatMemberCount(params: GetChatMemberCountParams): Promise<number>
+  getChatMemberCount(params: GetChatMemberCountParams, options?: CallOptions): Promise<number>
 
   /**
    * Use this method to get information about a member of a chat. The method is
@@ -839,7 +840,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getchatmember
    */
-  getChatMember(params: GetChatMemberParams): Promise<ChatMember>
+  getChatMember(params: GetChatMemberParams, options?: CallOptions): Promise<ChatMember>
 
   /**
    * Use this method to get the last messages from the personal chat (i.e., the
@@ -848,7 +849,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getuserpersonalchatmessages
    */
-  getUserPersonalChatMessages(params: GetUserPersonalChatMessagesParams): Promise<Message[]>
+  getUserPersonalChatMessages(params: GetUserPersonalChatMessagesParams, options?: CallOptions): Promise<Message[]>
 
   /**
    * Use this method to set a new group sticker set for a supergroup. The bot
@@ -859,7 +860,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatstickerset
    */
-  setChatStickerSet(params: SetChatStickerSetParams): Promise<true>
+  setChatStickerSet(params: SetChatStickerSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a group sticker set from a supergroup. The bot
@@ -870,7 +871,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletechatstickerset
    */
-  deleteChatStickerSet(params: DeleteChatStickerSetParams): Promise<true>
+  deleteChatStickerSet(params: DeleteChatStickerSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get custom emoji stickers, which can be used as a forum
@@ -879,7 +880,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getforumtopiciconstickers
    */
-  getForumTopicIconStickers(params?: GetForumTopicIconStickersParams): Promise<Sticker[]>
+  getForumTopicIconStickers(params?: GetForumTopicIconStickersParams, options?: CallOptions): Promise<Sticker[]>
 
   /**
    * Use this method to create a topic in a forum supergroup chat or a private
@@ -890,7 +891,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#createforumtopic
    */
-  createForumTopic(params: CreateForumTopicParams): Promise<ForumTopic>
+  createForumTopic(params: CreateForumTopicParams, options?: CallOptions): Promise<ForumTopic>
 
   /**
    * Use this method to edit name and icon of a topic in a forum supergroup chat
@@ -901,7 +902,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editforumtopic
    */
-  editForumTopic(params: EditForumTopicParams): Promise<true>
+  editForumTopic(params: EditForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to close an open topic in a forum supergroup chat. The bot
@@ -911,7 +912,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#closeforumtopic
    */
-  closeForumTopic(params: CloseForumTopicParams): Promise<true>
+  closeForumTopic(params: CloseForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to reopen a closed topic in a forum supergroup chat. The bot
@@ -921,7 +922,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#reopenforumtopic
    */
-  reopenForumTopic(params: ReopenForumTopicParams): Promise<true>
+  reopenForumTopic(params: ReopenForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a forum topic along with all its messages in a
@@ -932,7 +933,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deleteforumtopic
    */
-  deleteForumTopic(params: DeleteForumTopicParams): Promise<true>
+  deleteForumTopic(params: DeleteForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to clear the list of pinned messages in a forum topic in a
@@ -943,7 +944,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unpinallforumtopicmessages
    */
-  unpinAllForumTopicMessages(params: UnpinAllForumTopicMessagesParams): Promise<true>
+  unpinAllForumTopicMessages(params: UnpinAllForumTopicMessagesParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to edit the name of the 'General' topic in a forum
@@ -953,7 +954,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editgeneralforumtopic
    */
-  editGeneralForumTopic(params: EditGeneralForumTopicParams): Promise<true>
+  editGeneralForumTopic(params: EditGeneralForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to close an open 'General' topic in a forum supergroup chat.
@@ -962,7 +963,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#closegeneralforumtopic
    */
-  closeGeneralForumTopic(params: CloseGeneralForumTopicParams): Promise<true>
+  closeGeneralForumTopic(params: CloseGeneralForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to reopen a closed 'General' topic in a forum supergroup
@@ -972,7 +973,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#reopengeneralforumtopic
    */
-  reopenGeneralForumTopic(params: ReopenGeneralForumTopicParams): Promise<true>
+  reopenGeneralForumTopic(params: ReopenGeneralForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to hide the 'General' topic in a forum supergroup chat. The
@@ -982,7 +983,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#hidegeneralforumtopic
    */
-  hideGeneralForumTopic(params: HideGeneralForumTopicParams): Promise<true>
+  hideGeneralForumTopic(params: HideGeneralForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to unhide the 'General' topic in a forum supergroup chat.
@@ -991,7 +992,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unhidegeneralforumtopic
    */
-  unhideGeneralForumTopic(params: UnhideGeneralForumTopicParams): Promise<true>
+  unhideGeneralForumTopic(params: UnhideGeneralForumTopicParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to clear the list of pinned messages in a General forum
@@ -1001,7 +1002,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#unpinallgeneralforumtopicmessages
    */
-  unpinAllGeneralForumTopicMessages(params: UnpinAllGeneralForumTopicMessagesParams): Promise<true>
+  unpinAllGeneralForumTopicMessages(params: UnpinAllGeneralForumTopicMessagesParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send answers to callback queries sent from inline
@@ -1014,7 +1015,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answercallbackquery
    */
-  answerCallbackQuery(params: AnswerCallbackQueryParams): Promise<true>
+  answerCallbackQuery(params: AnswerCallbackQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to reply to a received guest message. On success, a
@@ -1022,7 +1023,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answerguestquery
    */
-  answerGuestQuery(params: AnswerGuestQueryParams): Promise<SentGuestMessage>
+  answerGuestQuery(params: AnswerGuestQueryParams, options?: CallOptions): Promise<SentGuestMessage>
 
   /**
    * Use this method to get the list of boosts added to a chat by a user.
@@ -1030,7 +1031,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getuserchatboosts
    */
-  getUserChatBoosts(params: GetUserChatBoostsParams): Promise<UserChatBoosts>
+  getUserChatBoosts(params: GetUserChatBoostsParams, options?: CallOptions): Promise<UserChatBoosts>
 
   /**
    * Use this method to get information about the connection of the bot with a
@@ -1038,7 +1039,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getbusinessconnection
    */
-  getBusinessConnection(params: GetBusinessConnectionParams): Promise<BusinessConnection>
+  getBusinessConnection(params: GetBusinessConnectionParams, options?: CallOptions): Promise<BusinessConnection>
 
   /**
    * Use this method to get the token of a managed bot. Returns the token as
@@ -1046,7 +1047,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmanagedbottoken
    */
-  getManagedBotToken(params: GetManagedBotTokenParams): Promise<string>
+  getManagedBotToken(params: GetManagedBotTokenParams, options?: CallOptions): Promise<string>
 
   /**
    * Use this method to revoke the current token of a managed bot and generate a
@@ -1054,7 +1055,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#replacemanagedbottoken
    */
-  replaceManagedBotToken(params: ReplaceManagedBotTokenParams): Promise<string>
+  replaceManagedBotToken(params: ReplaceManagedBotTokenParams, options?: CallOptions): Promise<string>
 
   /**
    * Use this method to get the access settings of a managed bot. Returns a
@@ -1062,7 +1063,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmanagedbotaccesssettings
    */
-  getManagedBotAccessSettings(params: GetManagedBotAccessSettingsParams): Promise<BotAccessSettings>
+  getManagedBotAccessSettings(params: GetManagedBotAccessSettingsParams, options?: CallOptions): Promise<BotAccessSettings>
 
   /**
    * Use this method to change the access settings of a managed bot. Returns True
@@ -1070,7 +1071,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmanagedbotaccesssettings
    */
-  setManagedBotAccessSettings(params: SetManagedBotAccessSettingsParams): Promise<true>
+  setManagedBotAccessSettings(params: SetManagedBotAccessSettingsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the list of the bot's commands. See this manual
@@ -1078,7 +1079,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmycommands
    */
-  setMyCommands(params: SetMyCommandsParams): Promise<true>
+  setMyCommands(params: SetMyCommandsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete the list of the bot's commands for the given scope
@@ -1087,7 +1088,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletemycommands
    */
-  deleteMyCommands(params?: DeleteMyCommandsParams): Promise<true>
+  deleteMyCommands(params?: DeleteMyCommandsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current list of the bot's commands for the given
@@ -1096,14 +1097,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmycommands
    */
-  getMyCommands(params?: GetMyCommandsParams): Promise<BotCommand[]>
+  getMyCommands(params?: GetMyCommandsParams, options?: CallOptions): Promise<BotCommand[]>
 
   /**
    * Use this method to change the bot's name. Returns True on success.
    *
    * @see https://corefork.telegram.org/bots/api#setmyname
    */
-  setMyName(params?: SetMyNameParams): Promise<true>
+  setMyName(params?: SetMyNameParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current bot name for the given user language.
@@ -1111,7 +1112,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmyname
    */
-  getMyName(params?: GetMyNameParams): Promise<BotName>
+  getMyName(params?: GetMyNameParams, options?: CallOptions): Promise<BotName>
 
   /**
    * Use this method to change the bot's description, which is shown in the chat
@@ -1119,7 +1120,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmydescription
    */
-  setMyDescription(params?: SetMyDescriptionParams): Promise<true>
+  setMyDescription(params?: SetMyDescriptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current bot description for the given user
@@ -1127,7 +1128,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmydescription
    */
-  getMyDescription(params?: GetMyDescriptionParams): Promise<BotDescription>
+  getMyDescription(params?: GetMyDescriptionParams, options?: CallOptions): Promise<BotDescription>
 
   /**
    * Use this method to change the bot's short description, which is shown on the
@@ -1136,7 +1137,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmyshortdescription
    */
-  setMyShortDescription(params?: SetMyShortDescriptionParams): Promise<true>
+  setMyShortDescription(params?: SetMyShortDescriptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current bot short description for the given user
@@ -1144,14 +1145,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmyshortdescription
    */
-  getMyShortDescription(params?: GetMyShortDescriptionParams): Promise<BotShortDescription>
+  getMyShortDescription(params?: GetMyShortDescriptionParams, options?: CallOptions): Promise<BotShortDescription>
 
   /**
    * Changes the profile photo of the bot. Returns True on success.
    *
    * @see https://corefork.telegram.org/bots/api#setmyprofilephoto
    */
-  setMyProfilePhoto(params: SetMyProfilePhotoParams): Promise<true>
+  setMyProfilePhoto(params: SetMyProfilePhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Removes the profile photo of the bot. Requires no parameters. Returns True
@@ -1159,7 +1160,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#removemyprofilephoto
    */
-  removeMyProfilePhoto(params?: RemoveMyProfilePhotoParams): Promise<true>
+  removeMyProfilePhoto(params?: RemoveMyProfilePhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the bot's menu button in a private chat, or the
@@ -1167,7 +1168,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setchatmenubutton
    */
-  setChatMenuButton(params?: SetChatMenuButtonParams): Promise<true>
+  setChatMenuButton(params?: SetChatMenuButtonParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current value of the bot's menu button in a
@@ -1175,7 +1176,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getchatmenubutton
    */
-  getChatMenuButton(params?: GetChatMenuButtonParams): Promise<MenuButton>
+  getChatMenuButton(params?: GetChatMenuButtonParams, options?: CallOptions): Promise<MenuButton>
 
   /**
    * Use this method to change the default administrator rights requested by the
@@ -1185,7 +1186,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setmydefaultadministratorrights
    */
-  setMyDefaultAdministratorRights(params?: SetMyDefaultAdministratorRightsParams): Promise<true>
+  setMyDefaultAdministratorRights(params?: SetMyDefaultAdministratorRightsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to get the current default administrator rights of the bot.
@@ -1193,7 +1194,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmydefaultadministratorrights
    */
-  getMyDefaultAdministratorRights(params?: GetMyDefaultAdministratorRightsParams): Promise<ChatAdministratorRights>
+  getMyDefaultAdministratorRights(params?: GetMyDefaultAdministratorRightsParams, options?: CallOptions): Promise<ChatAdministratorRights>
 
   /**
    * Returns the list of gifts that can be sent by the bot to users and channel
@@ -1201,7 +1202,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getavailablegifts
    */
-  getAvailableGifts(params?: GetAvailableGiftsParams): Promise<boolean>
+  getAvailableGifts(params?: GetAvailableGiftsParams, options?: CallOptions): Promise<boolean>
 
   /**
    * Sends a gift to the given user or channel chat. The gift can't be converted
@@ -1209,7 +1210,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendgift
    */
-  sendGift(params: SendGiftParams): Promise<true>
+  sendGift(params: SendGiftParams, options?: CallOptions): Promise<true>
 
   /**
    * Gifts a Telegram Premium subscription to the given user. Returns True on
@@ -1217,7 +1218,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#giftpremiumsubscription
    */
-  giftPremiumSubscription(params: GiftPremiumSubscriptionParams): Promise<true>
+  giftPremiumSubscription(params: GiftPremiumSubscriptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Verifies a user on behalf of the organization which is represented by the
@@ -1225,7 +1226,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#verifyuser
    */
-  verifyUser(params: VerifyUserParams): Promise<true>
+  verifyUser(params: VerifyUserParams, options?: CallOptions): Promise<true>
 
   /**
    * Verifies a chat on behalf of the organization which is represented by the
@@ -1233,7 +1234,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#verifychat
    */
-  verifyChat(params: VerifyChatParams): Promise<true>
+  verifyChat(params: VerifyChatParams, options?: CallOptions): Promise<true>
 
   /**
    * Removes verification from a user who is currently verified on behalf of the
@@ -1241,7 +1242,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#removeuserverification
    */
-  removeUserVerification(params: RemoveUserVerificationParams): Promise<true>
+  removeUserVerification(params: RemoveUserVerificationParams, options?: CallOptions): Promise<true>
 
   /**
    * Removes verification from a chat that is currently verified on behalf of the
@@ -1249,7 +1250,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#removechatverification
    */
-  removeChatVerification(params: RemoveChatVerificationParams): Promise<true>
+  removeChatVerification(params: RemoveChatVerificationParams, options?: CallOptions): Promise<true>
 
   /**
    * Marks incoming message as read on behalf of a business account. Requires the
@@ -1257,7 +1258,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#readbusinessmessage
    */
-  readBusinessMessage(params: ReadBusinessMessageParams): Promise<true>
+  readBusinessMessage(params: ReadBusinessMessageParams, options?: CallOptions): Promise<true>
 
   /**
    * Delete messages on behalf of a business account. Requires the
@@ -1267,7 +1268,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletebusinessmessages
    */
-  deleteBusinessMessages(params: DeleteBusinessMessagesParams): Promise<true>
+  deleteBusinessMessages(params: DeleteBusinessMessagesParams, options?: CallOptions): Promise<true>
 
   /**
    * Changes the first and last name of a managed business account. Requires the
@@ -1275,7 +1276,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setbusinessaccountname
    */
-  setBusinessAccountName(params: SetBusinessAccountNameParams): Promise<true>
+  setBusinessAccountName(params: SetBusinessAccountNameParams, options?: CallOptions): Promise<true>
 
   /**
    * Changes the username of a managed business account. Requires the
@@ -1283,7 +1284,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setbusinessaccountusername
    */
-  setBusinessAccountUsername(params: SetBusinessAccountUsernameParams): Promise<true>
+  setBusinessAccountUsername(params: SetBusinessAccountUsernameParams, options?: CallOptions): Promise<true>
 
   /**
    * Changes the bio of a managed business account. Requires the can_change_bio
@@ -1291,7 +1292,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setbusinessaccountbio
    */
-  setBusinessAccountBio(params: SetBusinessAccountBioParams): Promise<true>
+  setBusinessAccountBio(params: SetBusinessAccountBioParams, options?: CallOptions): Promise<true>
 
   /**
    * Changes the profile photo of a managed business account. Requires the
@@ -1299,7 +1300,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setbusinessaccountprofilephoto
    */
-  setBusinessAccountProfilePhoto(params: SetBusinessAccountProfilePhotoParams): Promise<true>
+  setBusinessAccountProfilePhoto(params: SetBusinessAccountProfilePhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Removes the current profile photo of a managed business account. Requires
@@ -1307,7 +1308,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#removebusinessaccountprofilephoto
    */
-  removeBusinessAccountProfilePhoto(params: RemoveBusinessAccountProfilePhotoParams): Promise<true>
+  removeBusinessAccountProfilePhoto(params: RemoveBusinessAccountProfilePhotoParams, options?: CallOptions): Promise<true>
 
   /**
    * Changes the privacy settings pertaining to incoming gifts in a managed
@@ -1316,7 +1317,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setbusinessaccountgiftsettings
    */
-  setBusinessAccountGiftSettings(params: SetBusinessAccountGiftSettingsParams): Promise<true>
+  setBusinessAccountGiftSettings(params: SetBusinessAccountGiftSettingsParams, options?: CallOptions): Promise<true>
 
   /**
    * Returns the amount of Telegram Stars owned by a managed business account.
@@ -1325,7 +1326,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getbusinessaccountstarbalance
    */
-  getBusinessAccountStarBalance(params: GetBusinessAccountStarBalanceParams): Promise<StarAmount>
+  getBusinessAccountStarBalance(params: GetBusinessAccountStarBalanceParams, options?: CallOptions): Promise<StarAmount>
 
   /**
    * Transfers Telegram Stars from the business account balance to the bot's
@@ -1334,7 +1335,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#transferbusinessaccountstars
    */
-  transferBusinessAccountStars(params: TransferBusinessAccountStarsParams): Promise<true>
+  transferBusinessAccountStars(params: TransferBusinessAccountStarsParams, options?: CallOptions): Promise<true>
 
   /**
    * Returns the gifts received and owned by a managed business account. Requires
@@ -1343,21 +1344,21 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getbusinessaccountgifts
    */
-  getBusinessAccountGifts(params: GetBusinessAccountGiftsParams): Promise<OwnedGifts>
+  getBusinessAccountGifts(params: GetBusinessAccountGiftsParams, options?: CallOptions): Promise<OwnedGifts>
 
   /**
    * Returns the gifts owned and hosted by a user. Returns OwnedGifts on success.
    *
    * @see https://corefork.telegram.org/bots/api#getusergifts
    */
-  getUserGifts(params: GetUserGiftsParams): Promise<OwnedGifts>
+  getUserGifts(params: GetUserGiftsParams, options?: CallOptions): Promise<OwnedGifts>
 
   /**
    * Returns the gifts owned by a chat. Returns OwnedGifts on success.
    *
    * @see https://corefork.telegram.org/bots/api#getchatgifts
    */
-  getChatGifts(params: GetChatGiftsParams): Promise<OwnedGifts>
+  getChatGifts(params: GetChatGiftsParams, options?: CallOptions): Promise<OwnedGifts>
 
   /**
    * Converts a given regular gift to Telegram Stars. Requires the
@@ -1365,7 +1366,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#convertgifttostars
    */
-  convertGiftToStars(params: ConvertGiftToStarsParams): Promise<true>
+  convertGiftToStars(params: ConvertGiftToStarsParams, options?: CallOptions): Promise<true>
 
   /**
    * Upgrades a given regular gift to a unique gift. Requires the
@@ -1375,7 +1376,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#upgradegift
    */
-  upgradeGift(params: UpgradeGiftParams): Promise<true>
+  upgradeGift(params: UpgradeGiftParams, options?: CallOptions): Promise<true>
 
   /**
    * Transfers an owned unique gift to another user. Requires the
@@ -1385,7 +1386,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#transfergift
    */
-  transferGift(params: TransferGiftParams): Promise<true>
+  transferGift(params: TransferGiftParams, options?: CallOptions): Promise<true>
 
   /**
    * Posts a story on behalf of a managed business account. Requires the
@@ -1393,7 +1394,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#poststory
    */
-  postStory(params: PostStoryParams): Promise<Story>
+  postStory(params: PostStoryParams, options?: CallOptions): Promise<Story>
 
   /**
    * Reposts a story on behalf of a business account from another business
@@ -1404,7 +1405,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#repoststory
    */
-  repostStory(params: RepostStoryParams): Promise<Story>
+  repostStory(params: RepostStoryParams, options?: CallOptions): Promise<Story>
 
   /**
    * Edits a story previously posted by the bot on behalf of a managed business
@@ -1413,7 +1414,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editstory
    */
-  editStory(params: EditStoryParams): Promise<Story>
+  editStory(params: EditStoryParams, options?: CallOptions): Promise<Story>
 
   /**
    * Deletes a story previously posted by the bot on behalf of a managed business
@@ -1422,7 +1423,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletestory
    */
-  deleteStory(params: DeleteStoryParams): Promise<true>
+  deleteStory(params: DeleteStoryParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set the result of an interaction with a Web App and send
@@ -1431,7 +1432,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answerwebappquery
    */
-  answerWebAppQuery(params: AnswerWebAppQueryParams): Promise<SentWebAppMessage>
+  answerWebAppQuery(params: AnswerWebAppQueryParams, options?: CallOptions): Promise<SentWebAppMessage>
 
   /**
    * Stores a message that can be sent by a user of a Mini App. Returns a
@@ -1439,7 +1440,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#savepreparedinlinemessage
    */
-  savePreparedInlineMessage(params: SavePreparedInlineMessageParams): Promise<PreparedInlineMessage>
+  savePreparedInlineMessage(params: SavePreparedInlineMessageParams, options?: CallOptions): Promise<PreparedInlineMessage>
 
   /**
    * Stores a keyboard button that can be used by a user within a Mini App.
@@ -1447,7 +1448,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#savepreparedkeyboardbutton
    */
-  savePreparedKeyboardButton(params: SavePreparedKeyboardButtonParams): Promise<PreparedKeyboardButton>
+  savePreparedKeyboardButton(params: SavePreparedKeyboardButtonParams, options?: CallOptions): Promise<PreparedKeyboardButton>
 
   /**
    * Use this method to edit text, rich and game messages. On success, if the
@@ -1458,7 +1459,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagetext
    */
-  editMessageText(params?: EditMessageTextParams): Promise<Message | true>
+  editMessageText(params?: EditMessageTextParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to edit captions of messages. On success, if the edited
@@ -1469,7 +1470,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagecaption
    */
-  editMessageCaption(params?: EditMessageCaptionParams): Promise<Message | true>
+  editMessageCaption(params?: EditMessageCaptionParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to edit animation, audio, document, live photo, photo, or
@@ -1485,7 +1486,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagemedia
    */
-  editMessageMedia(params: EditMessageMediaParams): Promise<Message | true>
+  editMessageMedia(params: EditMessageMediaParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to edit live location messages. A location can be edited
@@ -1495,7 +1496,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagelivelocation
    */
-  editMessageLiveLocation(params: EditMessageLiveLocationParams): Promise<Message | true>
+  editMessageLiveLocation(params: EditMessageLiveLocationParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to stop updating a live location message before live_period
@@ -1504,7 +1505,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#stopmessagelivelocation
    */
-  stopMessageLiveLocation(params?: StopMessageLiveLocationParams): Promise<Message | true>
+  stopMessageLiveLocation(params?: StopMessageLiveLocationParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to edit a checklist on behalf of a connected business
@@ -1512,7 +1513,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagechecklist
    */
-  editMessageChecklist(params: EditMessageChecklistParams): Promise<Message>
+  editMessageChecklist(params: EditMessageChecklistParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to edit only the reply markup of messages. On success, if
@@ -1523,7 +1524,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editmessagereplymarkup
    */
-  editMessageReplyMarkup(params?: EditMessageReplyMarkupParams): Promise<Message | true>
+  editMessageReplyMarkup(params?: EditMessageReplyMarkupParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to stop a poll which was sent by the bot. On success, the
@@ -1531,7 +1532,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#stoppoll
    */
-  stopPoll(params: StopPollParams): Promise<Poll>
+  stopPoll(params: StopPollParams, options?: CallOptions): Promise<Poll>
 
   /**
    * Use this method to edit an ephemeral text message. Note that it is not
@@ -1540,7 +1541,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editephemeralmessagetext
    */
-  editEphemeralMessageText(params: EditEphemeralMessageTextParams): Promise<true>
+  editEphemeralMessageText(params: EditEphemeralMessageTextParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to edit the media of an ephemeral message. Note that it is
@@ -1549,7 +1550,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editephemeralmessagemedia
    */
-  editEphemeralMessageMedia(params: EditEphemeralMessageMediaParams): Promise<true>
+  editEphemeralMessageMedia(params: EditEphemeralMessageMediaParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to edit the caption of an ephemeral message. Note that it is
@@ -1558,7 +1559,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editephemeralmessagecaption
    */
-  editEphemeralMessageCaption(params: EditEphemeralMessageCaptionParams): Promise<true>
+  editEphemeralMessageCaption(params: EditEphemeralMessageCaptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to edit only the reply markup of an ephemeral message. Note
@@ -1567,7 +1568,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#editephemeralmessagereplymarkup
    */
-  editEphemeralMessageReplyMarkup(params: EditEphemeralMessageReplyMarkupParams): Promise<true>
+  editEphemeralMessageReplyMarkup(params: EditEphemeralMessageReplyMarkupParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to approve a suggested post in a direct messages chat. The
@@ -1576,7 +1577,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#approvesuggestedpost
    */
-  approveSuggestedPost(params: ApproveSuggestedPostParams): Promise<true>
+  approveSuggestedPost(params: ApproveSuggestedPostParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to decline a suggested post in a direct messages chat. The
@@ -1585,7 +1586,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#declinesuggestedpost
    */
-  declineSuggestedPost(params: DeclineSuggestedPostParams): Promise<true>
+  declineSuggestedPost(params: DeclineSuggestedPostParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a message, including service messages, with the
@@ -1604,7 +1605,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletemessage
    */
-  deleteMessage(params: DeleteMessageParams): Promise<true>
+  deleteMessage(params: DeleteMessageParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete multiple messages simultaneously. If some of the
@@ -1613,7 +1614,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletemessages
    */
-  deleteMessages(params: DeleteMessagesParams): Promise<true>
+  deleteMessages(params: DeleteMessagesParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete an ephemeral message. Note that it is not
@@ -1622,7 +1623,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deleteephemeralmessage
    */
-  deleteEphemeralMessage(params: DeleteEphemeralMessageParams): Promise<true>
+  deleteEphemeralMessage(params: DeleteEphemeralMessageParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to remove a reaction from a message in a group or a
@@ -1631,7 +1632,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletemessagereaction
    */
-  deleteMessageReaction(params: DeleteMessageReactionParams): Promise<true>
+  deleteMessageReaction(params: DeleteMessageReactionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to remove up to 10000 recent reactions in a group or a
@@ -1641,7 +1642,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deleteallmessagereactions
    */
-  deleteAllMessageReactions(params: DeleteAllMessageReactionsParams): Promise<true>
+  deleteAllMessageReactions(params: DeleteAllMessageReactionsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send static .WEBP, animated .TGS, or video .WEBM
@@ -1649,7 +1650,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendsticker
    */
-  sendSticker(params: SendStickerParams): Promise<Message>
+  sendSticker(params: SendStickerParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to get a sticker set. On success, a StickerSet object is
@@ -1657,7 +1658,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getstickerset
    */
-  getStickerSet(params: GetStickerSetParams): Promise<StickerSet>
+  getStickerSet(params: GetStickerSetParams, options?: CallOptions): Promise<StickerSet>
 
   /**
    * Use this method to get information about custom emoji stickers by their
@@ -1665,7 +1666,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getcustomemojistickers
    */
-  getCustomEmojiStickers(params: GetCustomEmojiStickersParams): Promise<Sticker[]>
+  getCustomEmojiStickers(params: GetCustomEmojiStickersParams, options?: CallOptions): Promise<Sticker[]>
 
   /**
    * Use this method to upload a file with a sticker for later use in the
@@ -1674,7 +1675,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#uploadstickerfile
    */
-  uploadStickerFile(params: UploadStickerFileParams): Promise<File>
+  uploadStickerFile(params: UploadStickerFileParams, options?: CallOptions): Promise<File>
 
   /**
    * Use this method to create a new sticker set owned by a user. The bot will be
@@ -1682,7 +1683,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#createnewstickerset
    */
-  createNewStickerSet(params: CreateNewStickerSetParams): Promise<true>
+  createNewStickerSet(params: CreateNewStickerSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to add a new sticker to a set created by the bot. Emoji
@@ -1691,7 +1692,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#addstickertoset
    */
-  addStickerToSet(params: AddStickerToSetParams): Promise<true>
+  addStickerToSet(params: AddStickerToSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to move a sticker in a set created by the bot to a specific
@@ -1699,7 +1700,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickerpositioninset
    */
-  setStickerPositionInSet(params: SetStickerPositionInSetParams): Promise<true>
+  setStickerPositionInSet(params: SetStickerPositionInSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a sticker from a set created by the bot. Returns
@@ -1707,7 +1708,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletestickerfromset
    */
-  deleteStickerFromSet(params: DeleteStickerFromSetParams): Promise<true>
+  deleteStickerFromSet(params: DeleteStickerFromSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to replace an existing sticker in a sticker set with a new
@@ -1716,7 +1717,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#replacestickerinset
    */
-  replaceStickerInSet(params: ReplaceStickerInSetParams): Promise<true>
+  replaceStickerInSet(params: ReplaceStickerInSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the list of emoji assigned to a regular or custom
@@ -1725,7 +1726,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickeremojilist
    */
-  setStickerEmojiList(params: SetStickerEmojiListParams): Promise<true>
+  setStickerEmojiList(params: SetStickerEmojiListParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change search keywords assigned to a regular or custom
@@ -1734,7 +1735,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickerkeywords
    */
-  setStickerKeywords(params: SetStickerKeywordsParams): Promise<true>
+  setStickerKeywords(params: SetStickerKeywordsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the mask position of a mask sticker. The sticker
@@ -1743,7 +1744,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickermaskposition
    */
-  setStickerMaskPosition(params: SetStickerMaskPositionParams): Promise<true>
+  setStickerMaskPosition(params: SetStickerMaskPositionParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set the title of a created sticker set. Returns True on
@@ -1751,7 +1752,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickersettitle
    */
-  setStickerSetTitle(params: SetStickerSetTitleParams): Promise<true>
+  setStickerSetTitle(params: SetStickerSetTitleParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set the thumbnail of a regular or mask sticker set. The
@@ -1760,7 +1761,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setstickersetthumbnail
    */
-  setStickerSetThumbnail(params: SetStickerSetThumbnailParams): Promise<true>
+  setStickerSetThumbnail(params: SetStickerSetThumbnailParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to set the thumbnail of a custom emoji sticker set. Returns
@@ -1768,7 +1769,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setcustomemojistickersetthumbnail
    */
-  setCustomEmojiStickerSetThumbnail(params: SetCustomEmojiStickerSetThumbnailParams): Promise<true>
+  setCustomEmojiStickerSetThumbnail(params: SetCustomEmojiStickerSetThumbnailParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to delete a sticker set that was created by the bot. Returns
@@ -1776,7 +1777,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#deletestickerset
    */
-  deleteStickerSet(params: DeleteStickerSetParams): Promise<true>
+  deleteStickerSet(params: DeleteStickerSetParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send rich messages. If the message contains a block with
@@ -1785,7 +1786,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendrichmessage
    */
-  sendRichMessage(params: SendRichMessageParams): Promise<Message>
+  sendRichMessage(params: SendRichMessageParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to stream a partial rich message to a user while the message
@@ -1796,7 +1797,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#sendrichmessagedraft
    */
-  sendRichMessageDraft(params: SendRichMessageDraftParams): Promise<true>
+  sendRichMessageDraft(params: SendRichMessageDraftParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send answers to an inline query. On success, True is
@@ -1804,14 +1805,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answerinlinequery
    */
-  answerInlineQuery(params: AnswerInlineQueryParams): Promise<true>
+  answerInlineQuery(params: AnswerInlineQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send invoices. On success, the sent Message is returned.
    *
    * @see https://corefork.telegram.org/bots/api#sendinvoice
    */
-  sendInvoice(params: SendInvoiceParams): Promise<Message>
+  sendInvoice(params: SendInvoiceParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to create a link for an invoice. Returns the created invoice
@@ -1819,7 +1820,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#createinvoicelink
    */
-  createInvoiceLink(params: CreateInvoiceLinkParams): Promise<string>
+  createInvoiceLink(params: CreateInvoiceLinkParams, options?: CallOptions): Promise<string>
 
   /**
    * If you sent an invoice requesting a shipping address and the parameter
@@ -1829,7 +1830,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answershippingquery
    */
-  answerShippingQuery(params: AnswerShippingQueryParams): Promise<true>
+  answerShippingQuery(params: AnswerShippingQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * Once the user has confirmed their payment and shipping details, the Bot API
@@ -1840,7 +1841,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#answerprecheckoutquery
    */
-  answerPreCheckoutQuery(params: AnswerPreCheckoutQueryParams): Promise<true>
+  answerPreCheckoutQuery(params: AnswerPreCheckoutQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * A method to get the current Telegram Stars balance of the bot. Requires no
@@ -1848,7 +1849,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getmystarbalance
    */
-  getMyStarBalance(params?: GetMyStarBalanceParams): Promise<StarAmount>
+  getMyStarBalance(params?: GetMyStarBalanceParams, options?: CallOptions): Promise<StarAmount>
 
   /**
    * Returns the bot's Telegram Star transactions in chronological order. On
@@ -1856,14 +1857,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getstartransactions
    */
-  getStarTransactions(params?: GetStarTransactionsParams): Promise<StarTransactions>
+  getStarTransactions(params?: GetStarTransactionsParams, options?: CallOptions): Promise<StarTransactions>
 
   /**
    * Refunds a successful payment in Telegram Stars. Returns True on success.
    *
    * @see https://corefork.telegram.org/bots/api#refundstarpayment
    */
-  refundStarPayment(params: RefundStarPaymentParams): Promise<true>
+  refundStarPayment(params: RefundStarPaymentParams, options?: CallOptions): Promise<true>
 
   /**
    * Allows the bot to cancel or re-enable extension of a subscription paid in
@@ -1871,7 +1872,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#edituserstarsubscription
    */
-  editUserStarSubscription(params: EditUserStarSubscriptionParams): Promise<true>
+  editUserStarSubscription(params: EditUserStarSubscriptionParams, options?: CallOptions): Promise<true>
 
   /**
    * Informs a user that some of the Telegram Passport elements they provided
@@ -1886,14 +1887,14 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setpassportdataerrors
    */
-  setPassportDataErrors(params: SetPassportDataErrorsParams): Promise<true>
+  setPassportDataErrors(params: SetPassportDataErrorsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send a game. On success, the sent Message is returned.
    *
    * @see https://corefork.telegram.org/bots/api#sendgame
    */
-  sendGame(params: SendGameParams): Promise<Message>
+  sendGame(params: SendGameParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to set the score of the specified user in a game message. On
@@ -1903,7 +1904,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#setgamescore
    */
-  setGameScore(params: SetGameScoreParams): Promise<Message | true>
+  setGameScore(params: SetGameScoreParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to get data for high score tables. Will return the score of
@@ -1915,5 +1916,5 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getgamehighscores
    */
-  getGameHighScores(params: GetGameHighScoresParams): Promise<GameHighScore[]>
+  getGameHighScores(params: GetGameHighScoresParams, options?: CallOptions): Promise<GameHighScore[]>
 }

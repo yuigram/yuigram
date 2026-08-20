@@ -125,8 +125,18 @@ describe('emitted output', () => {
 
   it('makes params optional only when every parameter is', () => {
     const api = files.find((file) => file.path === 'api.ts')?.contents ?? ''
-    expect(api).toMatch(/getMe\(params\?: GetMeParams\)/)
-    expect(api).toMatch(/sendMessage\(params: SendMessageParams\)/)
+    expect(api).toContain('getMe(params?: GetMeParams')
+    expect(api).toContain('sendMessage(params: SendMessageParams')
+  })
+
+  it('makes every method cancellable', () => {
+    // Cancellation cannot be bolted on at the call site: it has to reach the
+    // request. Emitting it keeps all 185 methods consistent without the
+    // generator knowing what the option means.
+    const api = files.find((file) => file.path === 'api.ts')?.contents ?? ''
+    expect(api).toContain('getUpdates(params?: GetUpdatesParams, options?: CallOptions)')
+    expect(api).toContain('sendMessage(params: SendMessageParams, options?: CallOptions)')
+    expect(api).toContain("import type { CallOptions } from '../api-options.js'")
   })
 })
 

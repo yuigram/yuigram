@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createApi } from '../src/api.js'
 import type { Update } from '../src/generated/types/index.js'
+import type { ApiRequest, ApiResult, HttpClient } from '../src/http/client.js'
 import { createPolling } from '../src/polling.js'
 import { floodWait, mockTransport, ok } from '../src/testing/mock-transport.js'
 
@@ -19,6 +20,9 @@ function batch(startId: number, count: number): Update[] {
     (_, index) => ({ update_id: startId + index, message: { message_id: index } }) as Update,
   )
 }
+
+/** Yield long enough for the loop to reach its first request. */
+const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 20))
 
 /** Run a polling loop until it has served every scripted batch, then stop. */
 async function pump(
@@ -297,5 +301,171 @@ describe('dropPending', () => {
     expect(received).toHaveLength(0)
     expect(transport.calls[0]?.params['offset']).toBe(-1)
     expect(transport.calls[1]?.params['offset']).toBe(101)
+  })
+})
+
+describe('shutdown latency', () => {
+  it('cancels the in-flight long poll instead of waiting it out', async () => {
+    // The default long poll holds a request open for 30 seconds. A stop that
+    // waits for it exceeds the grace period most process managers allow, and
+    // the container is killed rather than stopped.
+    let aborted = false
+
+    const client: HttpClient = {
+      async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 30_000)
+          request.signal?.addEventListener('abort', () => {
+            aborted = true
+            clearTimeout(timer)
+            resolve()
+          })
+        })
+        return { status: 200, body: { ok: true, result: [] as unknown as T } }
+      },
+    }
+
+    const polling = createPolling({ api: createApi({ client }), onUpdate: () => {} })
+    await polling.start()
+    await tick()
+
+    const began = Date.now()
+    await polling.stop()
+
+    expect(aborted).toBe(true)
+    expect(Date.now() - began).toBeLessThan(1000)
+  })
+
+  it('does not report the shutdown abort as a polling failure', async () => {
+    const errors: unknown[] = []
+
+    const client: HttpClient = {
+      async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 30_000)
+          request.signal?.addEventListener('abort', () => {
+            clearTimeout(timer)
+            resolve()
+          })
+        })
+        return { status: 200, body: { ok: true, result: [] as unknown as T } }
+      },
+    }
+
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      onError: (error) => errors.push(error),
+    })
+    await polling.start()
+    await tick()
+    await polling.stop()
+
+    expect(errors).toEqual([])
+  })
+})
+
+describe('unrecoverable errors', () => {
+  const failWith = (code: number, description: string): HttpClient => ({
+    async call<T>(): Promise<ApiResult<T>> {
+      return { status: code, body: { ok: false, error_code: code, description } }
+    },
+  })
+
+  it('stops on an invalid token rather than retrying forever', async () => {
+    // 401 will not become valid by waiting. Retrying is an infinite loop
+    // against an endpoint that has already given its final answer.
+    let attempts = 0
+    const inner = failWith(401, 'Unauthorized')
+    const client: HttpClient = {
+      call: async (request) => {
+        attempts += 1
+        return inner.call(request)
+      },
+    }
+
+    const fatal: unknown[] = []
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      onFatal: (error) => fatal.push(error),
+      backoffBase: 5,
+    })
+
+    await polling.start()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(attempts).toBe(1)
+    expect(polling.running).toBe(false)
+    expect(fatal).toHaveLength(1)
+  })
+
+  it('stops on a conflicting getUpdates consumer', async () => {
+    // Two instances polling one token steal updates from each other. Stopping
+    // leaves one working bot; retrying leaves two broken ones.
+    const fatal: unknown[] = []
+    const polling = createPolling({
+      api: createApi({ client: failWith(409, 'Conflict: terminated by other getUpdates request') }),
+      onUpdate: () => {},
+      onFatal: (error) => fatal.push(error),
+      backoffBase: 5,
+    })
+
+    await polling.start()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(polling.running).toBe(false)
+    expect(fatal).toHaveLength(1)
+  })
+
+  it('keeps retrying a server error', async () => {
+    // 5xx is Telegram's problem and usually transient.
+    let attempts = 0
+    const client: HttpClient = {
+      async call<T>(): Promise<ApiResult<T>> {
+        attempts += 1
+        return { status: 500, body: { ok: false, error_code: 500, description: 'Internal' } }
+      },
+    }
+
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      backoffBase: 5,
+    })
+
+    await polling.start()
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    const seen = attempts
+    await polling.stop()
+
+    expect(seen).toBeGreaterThan(1)
+  })
+
+  it('widens the delay on a repeated non-retryable failure', async () => {
+    // Counting only retryable failures left a permanent 4xx retrying at the
+    // base delay forever, which is the one behaviour backoff exists to avoid.
+    const at: number[] = []
+    const client: HttpClient = {
+      async call<T>(): Promise<ApiResult<T>> {
+        at.push(Date.now())
+        return { status: 400, body: { ok: false, error_code: 400, description: 'Bad Request' } }
+      },
+    }
+
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      backoffBase: 10,
+    })
+
+    await polling.start()
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    await polling.stop()
+
+    expect(at.length).toBeGreaterThanOrEqual(3)
+    const first = (at[1] ?? 0) - (at[0] ?? 0)
+    const later = (at[at.length - 1] ?? 0) - (at[at.length - 2] ?? 0)
+    expect(later).toBeGreaterThan(first)
   })
 })

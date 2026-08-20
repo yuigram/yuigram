@@ -9,6 +9,7 @@
  */
 
 export { type CreateApiOptions, createApi, type RawApi, type RawApiExtras } from './api.js'
+export type { CallOptions } from './api-options.js'
 export {
   type DownloadDeps,
   type DownloadTarget,

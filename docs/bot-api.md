@@ -145,6 +145,26 @@ getUpdates(offset, limit, timeout=30, allowed_updates)
 with exponential backoff on network failure, `retry_after` compliance on 429, and a bounded
 recently-seen `update_id` set to survive overlapping restarts.
 
+**Not every failure is worth retrying.** Three responses, chosen by what the error means:
+
+| Error | Response |
+|---|---|
+| Network failure, 5xx, 429 | Retry with backoff — transient, and it will clear |
+| Other 4xx | Retry with backoff — the delay widens on every repeat |
+| 401, 404, 409 | **Stop**, and report through `onFatal` |
+
+The last row is the one that has to be deliberate. A 401 token does not become valid by
+waiting, a 404 bot does not come back, and a 409 means a second process is calling
+`getUpdates` with the same token — where retrying leaves two instances stealing updates from
+each other and neither making progress. Stopping leaves one working bot; retrying leaves two
+broken ones. The client logs the cause and transitions out of `running`, so `bot.state` never
+claims to be receiving updates that stopped arriving.
+
+**Shutdown cancels the in-flight request.** Every generated method takes an optional
+`CallOptions` carrying an `AbortSignal`, and polling passes one. Without it, `stop()` waits out
+the open long poll — up to a minute — which under most process managers is the difference
+between a graceful stop and a kill.
+
 `allowed_updates: 'auto'` derives the minimal subscription from registered handlers
 ([research.md](research.md) §1.6). This matters more than it appears: `message_reaction` and
 `chat_member` are **not delivered at all** unless explicitly requested, so the common failure

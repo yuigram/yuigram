@@ -9,6 +9,7 @@
  * a Telegram release never leaves a user unable to reach a new method.
  */
 
+import type { CallOptions } from './api-options.js'
 import { toError, toNetworkError } from './errors.js'
 import type { ApiMethods } from './generated/api.js'
 import type { ApiRequest, HttpClient } from './http/client.js'
@@ -21,7 +22,11 @@ export interface RawApiExtras {
    * For methods newer than the installed schema. Without this, every Telegram
    * release would temporarily block someone.
    */
-  call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T>
+  call<T = unknown>(
+    method: string,
+    params?: Record<string, unknown>,
+    options?: CallOptions,
+  ): Promise<T>
 }
 
 /** The typed method surface plus the untyped escape hatch. */
@@ -48,8 +53,9 @@ async function invoke<T>(
   method: string,
   params: Record<string, unknown>,
   onCall?: (request: ApiRequest) => void,
+  options?: CallOptions,
 ): Promise<T> {
-  const request: ApiRequest = { method, params }
+  const request: ApiRequest = { method, params, signal: options?.signal, timeout: options?.timeout }
   onCall?.(request)
 
   let result: Awaited<ReturnType<HttpClient['call']>>
@@ -85,16 +91,16 @@ export function createApi(options: CreateApiOptions): RawApi {
       if (typeof property !== 'string') return undefined
 
       if (property === 'call') {
-        return (method: string, params: Record<string, unknown> = {}) =>
-          invoke(client, method, { ...defaults, ...params }, onCall)
+        return (method: string, params: Record<string, unknown> = {}, options?: CallOptions) =>
+          invoke(client, method, { ...defaults, ...params }, onCall, options)
       }
 
       // Guard against a runtime probing the proxy for a thenable, which would
       // otherwise be answered with a function and make the object await-able.
       if (property === 'then') return undefined
 
-      return (params: Record<string, unknown> = {}) =>
-        invoke(client, property, { ...defaults, ...params }, onCall)
+      return (params: Record<string, unknown> = {}, options?: CallOptions) =>
+        invoke(client, property, { ...defaults, ...params }, onCall, options)
     },
 
     has(_target, property) {
