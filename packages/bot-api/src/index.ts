@@ -8,10 +8,12 @@
  * `@yuigram/mtproto` — the two transports are independent by design.
  */
 
+export { BotApiError, isRetryable, toError, toNetworkError } from './errors.js'
 export type { ApiMethods } from './generated/api.js'
 export type * from './generated/methods/index.js'
 export type * from './generated/types/index.js'
 export type { BotApiTypeName } from './generated/types/names.js'
+export { type FetchClientOptions, fetchClient } from './http/fetch-client.js'
 export type {
   ApiRequest,
   ApiResponse,
@@ -19,4 +21,5 @@ export type {
   HttpClient,
   ResponseParameters,
 } from './http/index.js'
+export { type EncodedRequest, encodeRequest, hasUpload } from './http/multipart.js'
 export { type InputFile, isInputFile, type NamedFile } from './input-file.js'
