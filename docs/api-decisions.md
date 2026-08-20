@@ -335,41 +335,130 @@ uses what it was told.
 
 ---
 
-## Needs your approval
+## Decisions settled against a working reference
 
-Everything above follows from the review. These three are genuine judgement calls where I have
-a recommendation but the decision changes how the framework feels, so I would rather you choose.
+The three open questions were resolved by examining how a mature Bot API framework actually
+answers them in shipped code, rather than by argument. Findings and what each one changes.
 
-### A. Is this worth a breaking change now?
+### Evidence 1 — Construction: both a factory and a constructor
 
-`0.1.0` was published today. This redesign is `0.2.0` with no compatibility layer.
-
-**My recommendation: yes, and immediately.** The two critical defects are structural, the
-package is hours old, and the cost of a breaking change is at its historic minimum — it only
-ever rises. A compatibility shim for an API with no users is pure cost.
-
-The alternative is freezing the current surface and living with `ctx.text ?? ''` permanently.
-
-### B. `Bot.fromToken()` — static factories, or plain functions?
-
-```ts
-Bot.fromToken(token)     // recommended
-bot.fromToken(token)     // lowercase namespace
-createBot(token)         // free function
+```
+constructor(input: TelegramOptions)
+static fromToken(token: string, options?: Partial<TelegramOptions>)
 ```
 
-**My recommendation: static factories on a capitalised class.** It groups the constructors
-under the noun they build, reads as a sentence, and keeps `Bot` usable as a type.
+A named factory for the common case, a plain constructor for full configuration. Not one or the
+other.
 
-### C. How far do the domain methods go?
+**Applied to Yuigram:** `Bot.fromToken(token)` is the documented path; `new Bot({ … })` stays
+for the case where every option is being set. `Bot.fromMtproto` and `Account.fromSession` join
+the factory set, which is where Yuigram's three client kinds are expressed and where the
+reference has nothing to say — it implements one transport.
 
-`message.reply()` is clearly right. The open question is how much of the Bot API gets wrapped
-this way — `message.react()`, `message.pin()`, `message.forward()`, `chat.ban(user)` — versus
-left to `bot.api.*`.
+**Decision 2 closed:** static factories, plus a constructor.
 
-**My recommendation: wrap what is common and unambiguous** (reply, edit, delete, forward,
-react, pin), leave everything else to the raw API, and expand only on evidence of use. An
-over-wrapped API ages badly; an under-wrapped one is merely verbose in rare cases.
+### Evidence 2 — Event methods are generated, not hand-written
+
+`onMessage`, `onCallbackQuery` and the rest are declared in one generated interface and
+installed at runtime by iterating the update-kind list. `on(kind, handler)` remains for kinds
+outside the curated set.
+
+This is what §2 above proposed, and it removes the objection that carried the most weight
+against it: a class does not become unmaintainable through thirty event methods when none of
+them is written by hand. Yuigram already generates 185 methods and 388 types from a committed
+schema, so the machinery exists.
+
+**Decision 2 (§2) confirmed**, with the surface generated rather than typed out.
+
+### Evidence 3 — Domain wrapping goes much further than expected
+
+The shared message object exposes **435 members** — `reply`, `send`, `edit`, `delete`,
+`forward`, `pin`, `react`, roughly twenty-five `replyWith*` variants, chat administration
+(`banChatMember`, `setChatTitle`, `promoteChatMember`), around 120 `hasX` predicates and a set
+of `isPrivate` / `isGroup` / `isReply` shape tests. The file is generated: 9,302 lines.
+
+**This overturns my earlier recommendation.** §6 argued for wrapping a modest set on the grounds
+that every wrapper is a maintenance commitment for years. That argument assumed the wrappers
+were hand-written. Generated from the same schema that already produces the method surface, the
+marginal cost of the two-hundredth wrapper is zero, and the reasoning against breadth
+disappears with it.
+
+**Decision 3 closed: wrap broadly, by generation.** The hand-written core stays small —
+`reply`, `edit`, `delete`, `forward`, `react`, `pin`, `chat.send` — and everything beyond it is
+emitted from the schema alongside the method surface. Nothing is maintained by hand, so nothing
+rots by hand.
+
+The `hasX` predicates deserve separate thought. Yuigram's answer to "is there text here" is
+event-specific context types, where `text` is `string` and the question does not arise. Where
+predicates remain useful — narrowing within a message — they should be generated too, but they
+are a smaller set once the context types carry their weight.
+
+### Evidence 4 — Lifecycle keeps both the general and the specific verb
+
+```
+start()          shutdown()
+startPolling()   stopPolling()
+startWebhook()
+```
+
+A general verb *and* mechanism-specific ones.
+
+**Applied to Yuigram:** keep `poll()`, `webhook()` and `connect()` as the honest names, and do
+**not** add a general `start()`. The reference needs one because it has a single transport where
+"start" is unambiguous; Yuigram has three client kinds where it would mean three different
+things. §4 stands, and the `App` container covers starting a mixed set.
+
+### What the reference does not answer
+
+Its vocabulary is mixed in the same way Yuigram's is — `on`, `command`, `callbackQuery`,
+`catch`, `use` — so it offers no evidence for or against §7 and §8. Those stay decided on their
+own reasoning: one `on…` prefix for everything that subscribes, because predictability is worth
+more than the four characters, and it is what lets the surface be guessed rather than memorised.
+
+It also has nothing to say about the question that defines Yuigram — how Bot API and MTProto
+share one framework without pretending to be the same thing. That remains Yuigram's own
+problem, answered by the capability matrix in `unified-model.md` and by §10 above.
+
+---
+
+## Previously open, now closed
+
+All three questions are answered above:
+
+| Question | Answer | Basis |
+|---|---|---|
+| Break the API now? | **Yes** | Reasoning below; nothing in the reference argues otherwise |
+| Factories or functions? | **Static factories, plus a constructor** | Evidence 1 |
+| How far to wrap? | **Broadly, by generation** | Evidence 3 — reverses the earlier recommendation |
+
+### On breaking now
+
+`0.1.0` was published hours before this review. The two critical defects are structural, there
+are no dependents, and the cost of a breaking change is at its historic minimum — it only rises.
+A compatibility shim for an API with no users is pure cost. The alternative is freezing
+`ctx.text ?? ''` into every example on the front page, permanently.
+
+---
+
+## Superseded
+
+Three questions were left open in the first draft of this document, with recommendations
+attached. All three are now closed above, and one recommendation was reversed.
+
+| Question | First recommendation | Final decision | Why it changed |
+|---|---|---|---|
+| A. Break the API now? | Yes | **Yes** | Unchanged |
+| B. Factories or functions? | Static factories | **Static factories, plus a constructor** | A working reference keeps both: a factory for the common case, a constructor for full configuration |
+| C. How far to wrap the domain? | Narrowly — reply, edit, delete, forward, react, pin | **Broadly, by generation** | **Reversed.** The argument for restraint was that each wrapper is a hand-maintained commitment. Generated from the schema, that cost is zero, and the argument goes with it |
+
+Recording C explicitly because the reversal matters: the original reasoning was sound *given its
+premise*, and the premise was wrong. "Every wrapper is a liability" holds for wrappers someone
+has to write and keep writing. It does not hold for wrappers emitted from the same schema that
+already produces the method surface, and which regenerate the day Telegram changes something.
+
+The lesson generalises beyond this decision. Several of the constraints that felt binding during
+the first design pass were assumptions about what is expensive, not facts about what is
+possible.
 
 ---
 
