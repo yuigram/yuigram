@@ -34,6 +34,7 @@ export {
   resolveTarget,
 } from './download.js'
 export { BotApiError, isRetryable, toError, toNetworkError } from './errors.js'
+export { asyncFilter, filter } from './filter.js'
 export type { ApiMethods } from './generated/api.js'
 export type {
   BotEventKind,

@@ -171,6 +171,34 @@ describe('routing through the real pipeline', () => {
     expect(calls.count('sendMessage')).toBe(0)
   })
 
+  it('fires on every update kind that carries a message', async () => {
+    // The set was hand-maintained and had drifted: edited channel posts,
+    // edited business messages and guest messages all carry a Message and all
+    // silently failed to route. It is generated from the schema now, so a new
+    // message-bearing update type cannot reintroduce the gap.
+    const fields = [
+      'message',
+      'edited_message',
+      'channel_post',
+      'edited_channel_post',
+      'business_message',
+      'edited_business_message',
+      'guest_message',
+    ] as const
+
+    for (const field of fields) {
+      const { bot, send, calls } = mockBot()
+      bot.command('start', (ctx) => ctx.reply('hi'))
+
+      await send.update({
+        update_id: 500,
+        [field]: { message_id: 1, date: 1, chat: { id: 1, type: 'private' }, text: '/start' },
+      } as never)
+
+      expect(calls.count('sendMessage'), `did not route a command on ${field}`).toBe(1)
+    }
+  })
+
   it('fires on a message edited into a command', async () => {
     // Users do edit a typo into a working command, and silently ignoring that
     // is surprising.

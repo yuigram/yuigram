@@ -89,6 +89,20 @@ export function collectMessageFields(schema: BotApiSchema): string[] {
     .sort()
 }
 
+/**
+ * Every event kind whose payload is a `Message`.
+ *
+ * The kinds, not the raw field names: routing matches on kinds, and the two
+ * differ wherever a name override applies. A hand-maintained list of these
+ * drifts the moment Telegram adds a message-bearing update, and the failure is
+ * silent - commands simply stop firing for that kind.
+ */
+export function collectMessageKinds(schema: BotApiSchema): string[] {
+  return collectMessageFields(schema)
+    .map((field) => UPDATE_NAME_OVERRIDES.get(field) ?? field)
+    .sort()
+}
+
 /** Find every top-level update kind. */
 export function collectUpdateEvents(schema: BotApiSchema): UpdateEvent[] {
   const update = schema.objects.find((object) => object.name === 'Update')
@@ -163,6 +177,14 @@ ${collectMessageFields(schema)
   .map((field) => `  '${field}',`)
   .join('\n')}
 ])
+
+${renderDoc(
+  'Every event kind whose payload is a `Message`. Anything matching text - commands, text filters - must consider all of them, or it silently ignores the kinds it forgot.',
+)}export const MESSAGE_KINDS = [
+${collectMessageKinds(schema)
+  .map((kind) => `  '${kind}',`)
+  .join('\n')}
+] as const satisfies readonly UpdateEventKind[]
 `
 
   return {

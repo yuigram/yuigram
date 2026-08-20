@@ -228,3 +228,49 @@ describe('unknown kinds', () => {
     expect(normalized.updateId).toBe(7)
   })
 })
+
+describe('the message accessor', () => {
+  const body = { message_id: 1, date: 1, chat: { id: 1, type: 'private' }, text: 'hi' }
+
+  it('is set for every message-bearing kind', () => {
+    for (const field of [
+      'message',
+      'edited_message',
+      'channel_post',
+      'edited_channel_post',
+      'business_message',
+      'edited_business_message',
+      'guest_message',
+    ] as const) {
+      const normalized = normalizeUpdate({ update_id: 1, [field]: body } as never)
+      expect(normalized.message, `missing on ${field}`).toMatchObject({ message_id: 1 })
+    }
+  })
+
+  it('is set for a promoted service message', () => {
+    // A member join arrives as a message with a service field. Promoting it to
+    // its own kind must not hide the message it still is.
+    const normalized = normalizeUpdate({
+      update_id: 1,
+      message: { ...body, new_chat_members: [{ id: 2, is_bot: false, first_name: 'A' }] },
+    } as never)
+
+    expect(normalized.kind).not.toBe('message')
+    expect(normalized.message).toMatchObject({ message_id: 1 })
+  })
+
+  it('is undefined for a callback query', () => {
+    // The message a button sits on is not the message this update is. Blurring
+    // the two would make `message` mean approximately one thing.
+    const normalized = normalizeUpdate({
+      update_id: 1,
+      callback_query: { id: 'q', from: { id: 2, is_bot: false, first_name: 'A' }, data: 'x' },
+    } as never)
+
+    expect(normalized.message).toBeUndefined()
+  })
+
+  it('is undefined for an update with no payload', () => {
+    expect(normalizeUpdate({ update_id: 1 } as never).message).toBeUndefined()
+  })
+})

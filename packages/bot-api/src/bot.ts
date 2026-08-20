@@ -30,6 +30,7 @@ import {
   downloadToFile,
   getFileUrl,
 } from './download.js'
+import { MESSAGE_KINDS } from './generated/events.js'
 import type { Update, User } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
@@ -73,7 +74,6 @@ export interface BotOptions {
  * Edited messages are included: editing a message into a command is a real
  * thing users do, and ignoring it silently is surprising.
  */
-const MESSAGE_KINDS = ['message', 'message_edited', 'channel_post', 'business_message'] as const
 
 /** A context whose update carried a command. */
 export interface CommandContext extends BotContext {

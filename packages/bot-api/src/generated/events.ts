@@ -239,3 +239,18 @@ export const MESSAGE_FIELDS: ReadonlySet<string> = new Set([
   'guest_message',
   'message',
 ])
+
+/**
+ * Every event kind whose payload is a `Message`. Anything matching text -
+ * commands, text filters - must consider all of them, or it silently ignores
+ * the kinds it forgot.
+ */
+export const MESSAGE_KINDS = [
+  'business_message',
+  'business_message_edited',
+  'channel_post',
+  'channel_post_edited',
+  'guest_message',
+  'message',
+  'message_edited',
+] as const satisfies readonly UpdateEventKind[]

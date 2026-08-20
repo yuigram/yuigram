@@ -2,11 +2,26 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "files": [],
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/bot-api" },
-    { "path": "packages/mtproto" },
-    { "path": "packages/yuigram" },
-    { "path": "tools/invariants" },
-    { "path": "tools/schema" }
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/bot-api"
+    },
+    {
+      "path": "packages/mtproto"
+    },
+    {
+      "path": "packages/yuigram"
+    },
+    {
+      "path": "tools/invariants"
+    },
+    {
+      "path": "tools/schema"
+    },
+    {
+      "path": "examples"
+    }
   ]
 }

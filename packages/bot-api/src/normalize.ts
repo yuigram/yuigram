@@ -33,6 +33,17 @@ export interface NormalizedUpdate {
   readonly field: string
   /** The payload itself. */
   readonly payload: unknown
+  /**
+   * The message this update is, for the kinds that carry one.
+   *
+   * Set for every field the schema types as a `Message` - ordinary messages,
+   * edits, channel posts, business messages - including those promoted to a
+   * service kind, since a service message is still a message. Left undefined
+   * for everything else, so it means one thing rather than approximately one
+   * thing: a callback query's attached message is not this update's message,
+   * and is reached through `payload` instead.
+   */
+  readonly message: Message | undefined
   /** The chat this concerns, where there is one. */
   readonly chat: Chat | undefined
   /** Who caused it, where that is known. */
@@ -151,6 +162,7 @@ export function normalizeUpdate(update: Update, log?: Logger): NormalizedUpdate 
       updateId: update.update_id,
       field: '',
       payload: undefined,
+      message: undefined,
       chat: undefined,
       sender: undefined,
       text: undefined,
@@ -170,14 +182,17 @@ export function normalizeUpdate(update: Update, log?: Logger): NormalizedUpdate 
     log?.debug('unrecognised update kind', { field, updateId: update.update_id })
   }
 
+  const carriesMessage = MESSAGE_FIELDS.has(field)
+
   const promoted =
-    mapped !== undefined && MESSAGE_FIELDS.has(field) ? serviceKind(payload as Message) : undefined
+    mapped !== undefined && carriesMessage ? serviceKind(payload as Message) : undefined
 
   return {
     kind: promoted ?? mapped ?? UNKNOWN_KIND,
     updateId: update.update_id,
     field,
     payload,
+    message: carriesMessage ? (payload as Message) : undefined,
     chat: readChat(payload),
     sender: readSender(payload),
     text: readText(payload),

@@ -43,6 +43,15 @@ export interface BotContext extends BaseContext {
   readonly query: string | undefined
   /** The payload of whichever field carried this update. */
   readonly payload: unknown
+  /**
+   * The message this update is, where it is one.
+   *
+   * Covers every message-bearing update kind - a plain message, an edit, a
+   * channel post, a business message - so a handler reaching for `photo`,
+   * `entities` or `reply_to_message` does not have to know which field
+   * delivered it. Undefined for updates that are not messages.
+   */
+  readonly message: Message | undefined
   /** The untouched update. */
   readonly raw: Update
 
@@ -82,6 +91,7 @@ export function createContext(options: CreateContextOptions): BotContext {
     data: normalized.data,
     query: normalized.query,
     payload: normalized.payload,
+    message: normalized.message,
     raw: normalized.raw,
 
     async reply(text, params = {}) {
