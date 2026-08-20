@@ -63,10 +63,25 @@ function assertToken(token: string): void {
  * which is what decides between retrying, re-addressing a migrated chat, or
  * giving up.
  */
+/**
+ * Trim trailing slashes from a base URL.
+ *
+ * Written as a scan rather than `replace(/\/+$/, '')`: that pattern backtracks
+ * quadratically on a long run of slashes, which is the polynomial case static
+ * analysis flags. The input is configuration rather than anything an attacker
+ * reaches, so this is tidiness rather than a fix — but a linear scan is no
+ * harder to read and leaves nothing to argue about.
+ */
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length
+  while (end > 0 && url[end - 1] === '/') end -= 1
+  return url.slice(0, end)
+}
+
 export function fetchClient(options: FetchClientOptions): HttpClient {
   assertToken(options.token)
 
-  const baseUrl = (options.baseUrl ?? 'https://api.telegram.org').replace(/\/+$/, '')
+  const baseUrl = withoutTrailingSlashes(options.baseUrl ?? 'https://api.telegram.org')
   const timeout = options.timeout ?? 30_000
   const impl = options.fetch ?? globalThis.fetch
   const extraHeaders = options.headers ?? {}

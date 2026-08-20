@@ -14,8 +14,12 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch:
 
+# Opening a pull request needs more than read: the branch has to be written and
+# the pull request created. This also depends on the organisation allowing
+# Actions to create pull requests at all.
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   drift:

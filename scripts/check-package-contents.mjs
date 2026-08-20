@@ -16,7 +16,7 @@
  */
 
 import { execSync } from 'node:child_process'
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -147,7 +147,9 @@ try {
     if (typeof manifest.author !== 'string') fail('no author')
     if (!Array.isArray(manifest.files)) fail('no files allowlist')
 
-    execSync(`mv "${archive}" "_done-${archive}"`, { cwd: dir })
+    // Renamed rather than shelled out to: the name comes from a directory
+    // listing, and there is no reason to hand it to a shell at all.
+    renameSync(join(dir, archive), join(dir, `_done-${archive}`))
   }
 } finally {
   rmSync(dir, { recursive: true, force: true })
