@@ -214,6 +214,23 @@ An oversized body is refused with `413` rather than the `400` a malformed one ge
 refusal does not report the size it received: that would tell whoever is probing exactly where
 the cap sits.
 
+**A webhook deployment chooses its own subscription.** `allowedUpdates: 'auto'` governs the
+polling loop; a webhook bot never calls `getUpdates`, so the list goes to `setWebhook` instead:
+
+```ts
+await bot.api.setWebhook({
+  url: 'https://example.com/hook',
+  secret_token: secret,
+  // Telegram's update type names, not Yuigram kinds — and stating them
+  // explicitly, because the default excludes chat member and reaction updates.
+  allowed_updates: ['message', 'callback_query', 'message_reaction', 'chat_member'],
+})
+```
+
+The same three traps apply as for polling: Telegram takes its own update type names, a
+promoted service kind is not one of them, and omitting the list reuses whatever a previous run
+configured rather than meaning "everything".
+
 ### Files
 
 | Operation | Limit | Approach |

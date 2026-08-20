@@ -1,7 +1,24 @@
-# Yuigram — Research & Architecture Phase
+# Yuigram — Architecture & Design
 
-This directory contains the research and architecture output that precedes any framework
-implementation. Nothing here is code; everything here is a decision record.
+Decision records: why Yuigram is built the way it is, and what it is being built towards.
+
+## What is implemented
+
+The **Bot API subsystem is complete and shipped**. Where a document describes it — polling and
+webhooks in [bot-api.md](bot-api.md), dispatch and errors in [middleware.md](middleware.md),
+typing in [sessions.md](sessions.md) — it describes running code, and the behaviour is pinned
+by tests.
+
+**MTProto is not implemented.** Neither is the `App` container that holds several clients, nor
+anything that depends on it. [api-design.md](api-design.md) is labelled the *proposed* API and
+shows the whole target, including parts that do not exist yet — `Account`, `App`, `Router`, the
+`f` filter namespace and the `media` helpers among them. [naming.md](naming.md) records naming
+decisions for that target, not an inventory of what ships.
+
+The rule when reading: anything involving a bot and only a bot exists today; anything involving
+a user account, several clients, or the `f`/`media` namespaces is design. The
+[roadmap](roadmap.md) says when each part arrives, and nothing described anywhere here is a
+stub — unimplemented means absent, not hollow.
 
 ## The premise
 

@@ -278,12 +278,16 @@ app.on('payment_confirmed', (ctx) => ctx.reply('Thanks!'))
 app.emit('payment_confirmed', { chat, sender, orderId })
 ```
 
+The payload map is a type parameter, for the same reasons the context flavours are
+([sessions.md](sessions.md) §Typing): declaration merging is process-global and cannot cross
+the `yuigram` façade.
+
 ```ts
-declare module 'yuigram' {
-  interface CustomEvents {
-    payment_confirmed: { orderId: string }
-  }
+interface MyEvents {
+  payment_confirmed: { orderId: string }
 }
+
+const app = new App<MyEvents>()
 ```
 
 This exists so that a webhook from a payment provider, a cron tick or an internal signal can
