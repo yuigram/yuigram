@@ -27,6 +27,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "invariants": "tsx tools/invariants/src/cli.ts",
+    "smoke": "node scripts/smoke-package.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test",
     "changeset": "changeset",
     "version-packages": "changeset version",

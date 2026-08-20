@@ -48,6 +48,12 @@ jobs:
       - name: Verify
         run: pnpm verify
 
+      # The only check that sees what a user receives. Everything above imports
+      # through workspace paths, where a broken exports map or a file left out
+      # of `files` is invisible.
+      - name: Smoke test the packages
+        run: pnpm smoke
+
       - name: Create release pull request or publish
         uses: changesets/action@v1
         with:
