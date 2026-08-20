@@ -41,12 +41,12 @@ harness that drives the real pipeline with only the network replaced. See
 ### The design target
 
 ```ts
-import { App, Bot, User } from 'yuigram'
+import { Account, App, Bot } from 'yuigram'
 
 const app = new App()
 
 const bot = app.add(new Bot(process.env.BOT_TOKEN))
-const me = app.add(new User({ apiId, apiHash, session: './me.session' }))
+const me = app.add(new Account({ apiId, apiHash, session: './me.session' }))
 
 // Shared middleware across both clients.
 app.use(async (ctx, next) => {
@@ -60,7 +60,7 @@ me.on('message', (ctx) => archive(ctx.text))
 await app.start()
 ```
 
-*`User` and `App` arrive with the MTProto subsystem. See [docs/api-design.md](docs/api-design.md).*
+*`Account` and `App` arrive with the MTProto subsystem. See [docs/api-design.md](docs/api-design.md).*
 
 ## What makes it different
 

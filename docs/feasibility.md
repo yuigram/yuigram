@@ -331,11 +331,11 @@ updates manager fails silently when wrong. It is difficult, documented, and boun
 **9. How should Bot API and MTProto coexist?**
 Sharing everything above the update normalizer — dispatch, filters, middleware, context
 contract, sessions, storage, errors, logging — and nothing below it. Two client types (`Bot`,
-`User`), never one with a discriminant. Divergence is carried by the type system, never by
+`Account`), never one with a discriminant. Divergence is carried by the type system, never by
 documentation. See [unified-model.md](unified-model.md).
 
 **10. What should the public API look like?**
-`new Bot(token)`, `new User({ apiId, apiHash, session })`, both optionally held by an `App`
+`new Bot(token)`, `new Account({ apiId, apiHash, session })`, both optionally held by an `App`
 with shared middleware. Everything from `import … from 'yuigram'`. Honest types: a member
 exists only where it works. See [api-design.md](api-design.md).
 

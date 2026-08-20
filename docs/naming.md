@@ -51,7 +51,7 @@ same name. That is a discoverability and trust cost with no offsetting benefit.
 npm install yuigram
 ```
 ```ts
-import { Bot, User } from 'yuigram'
+import { Account, Bot } from 'yuigram'
 ```
 
 Internal packages: `@yuigram/core`, `@yuigram/bot-api`, `@yuigram/mtproto`.
@@ -114,7 +114,7 @@ So the AI argument, which was the strongest case for `@yui`, in fact points the 
 > **Option A.**
 >
 > - **npm package:** `yuigram`
-> - **Import:** `import { Bot, User } from 'yuigram'`
+> - **Import:** `import { Account, Bot } from 'yuigram'`
 > - **Internal / plugin scope:** `@yuigram/*`
 > - **Brand:** Yuigram
 > - **`@yui` is not used**, and the `@yui` scope is not claimed
@@ -141,7 +141,7 @@ Everything from one root, with narrow subpaths where an import would otherwise p
 does not need:
 
 ```ts
-import { App, Bot, User, Router, f, media, session, memory, file } from 'yuigram'
+import { Account, App, Bot, Router, f, media, session, memory, file } from 'yuigram'
 
 import { express } from 'yuigram/webhook/express'   // avoids bundling express glue
 import { mockBot } from 'yuigram/testing'           // test-only helpers
@@ -192,13 +192,39 @@ directly, but nothing in the documentation asks them to.
 | Scope | `@yuigram/*` |
 | GitHub org | `yuigram` |
 | Domain | `yuigram.dev` preferred; `.js.org` is a free fallback |
-| Primary classes | `App`, `Bot`, `User`, `Router` |
+| Primary classes | `App`, `Bot`, `Account`, `Router` |
 | Filter namespace | `f` — used constantly, and the brevity is earned |
 | Media namespace | `media` |
 | Error prefix | None — `FloodError`, `BotApiError`, not `YuiFloodError` |
 | Internal type prefix | None |
 
-Two notes.
+Three notes.
+
+**`Account`, not `User`, for the MTProto client.** The original proposal was `Bot` and `User`,
+on the principle that a client should be named for what it *is* on Telegram rather than which
+protocol it speaks. The principle stands; the name does not. `User` is already Telegram's own
+name for a person or bot in the API, and the Bot API subsystem exports it as a type:
+
+```ts
+import type { User } from 'yuigram'   // Telegram's User object, today
+```
+
+A client class of the same name would collide at the one import path the whole design is built
+around. The alternatives were weighed as:
+
+| Candidate | Verdict |
+|---|---|
+| `User` | Collides with the entity type. Renaming the entity is worse — matching Telegram's own vocabulary is a feature. |
+| `UserClient` | Unambiguous, but asymmetric against a `Bot` that is not `BotClient`. |
+| `Userbot` | Instantly recognisable to the Telegram community, but jargon, and it names a use rather than a thing. |
+| **`Account`** | **Chosen.** Says what the client is — a Telegram account you are signed into — keeps the original principle, and collides with nothing. |
+
+Every reference implementation avoids this trap by not naming the client after an entity:
+mtcute has `TelegramClient`, puregram has `Telegram`, Telethon has `TelegramClient`. Yuigram
+keeps the shorter, more descriptive pair, `Bot` and `Account`.
+
+This is revisitable when the MTProto client is actually built; it is settled now only so the
+documentation stops proposing a name that cannot compile.
 
 **`f` as the filter namespace** is the one place brevity wins, because filters appear several
 times per handler registration. `import { f } from 'yuigram'` is explicit at the import site,

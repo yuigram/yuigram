@@ -387,7 +387,7 @@ So the transport matrix is not two-by-two but three-way:
 |---|---|---|
 | Bot over HTTP | Bot API | bot token |
 | Bot over MTProto | MTProto | bot token |
-| User over MTProto | MTProto | phone / QR / session |
+| Account over MTProto | MTProto | phone / QR / session |
 
 Bot-over-MTProto is *not* equivalent to bot-over-HTTP. It bypasses Bot API file-size limits
 and gains raw TL access, but loses the Bot API's server-side conveniences and its curated

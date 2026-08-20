@@ -25,7 +25,7 @@ decoding is exactly the part that cannot be shared.
                         └────────────────────────────────────────┘
                               │                          │
               ┌───────────────┴──────┐        ┌──────────┴───────────────┐
-              │        Bot           │        │          User            │
+              │        Bot           │        │        Account           │
               │  (Bot API / HTTPS)   │        │   (MTProto)              │
               └──────────────────────┘        └──────────────────────────┘
                          │                                 │
@@ -250,7 +250,7 @@ Two abstractions, deliberately not one:
 
   KV<V> contract                     Driver/Repository/Service stack
   memory · file · redis · sql        memory · file · sqlite
-  applies to Bot and User alike      MTProto only
+  applies to Bot and Account alike      MTProto only
   loss = inconvenience               loss = re-authentication + degraded peers
 ```
 
@@ -354,7 +354,7 @@ Extension points, fixed and documented, so plugins never need to reach into inte
 | `defineEvent()` | custom event kinds |
 | `provideStorage()` | storage driver registration |
 
-A plugin installs onto an `App`, a `Bot` or a `User`; the target type determines which
+A plugin installs onto an `App`, a `Bot` or an `Account`; the target type determines which
 extension points are available, so an MTProto-only plugin cannot be installed on a `Bot` by
 mistake.
 

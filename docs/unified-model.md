@@ -26,7 +26,7 @@ The framing in the brief is "Bot API + MTProto". Source inspection of mtcute's
 |---|---|---|---|---|
 | **Bot / HTTP** | Bot API over HTTPS | bot token | server-ordered, `getUpdates` or webhook | Bot API methods |
 | **Bot / MTProto** | MTProto | bot token via `auth.importBotAuthorization` | `pts`-based, client-reconciled | full TL |
-| **User / MTProto** | MTProto | phone, QR, or stored session | `pts`/`qts`/`seq`, client-reconciled | full TL |
+| **Account / MTProto** | MTProto | phone, QR, or stored session | `pts`/`qts`/`seq`, client-reconciled | full TL |
 
 Bot-over-MTProto is not a variant of bot-over-HTTP. It gains 2 GB file transfer, raw TL and
 lower latency; it loses the Bot API's curated update stream, its server-side conveniences
@@ -109,7 +109,7 @@ A tempting API is:
 await client.send(123456789, "hello")
 ```
 
-On a `Bot` this always works. On a `User` it works only if that peer is already cached, and
+On a `Bot` this always works. On an `Account` it works only if that peer is already cached, and
 otherwise fails with an error the developer did not anticipate and cannot fix by retrying.
 A unified signature that succeeds on one client and fails unpredictably on the other is
 worse than two honest signatures.
@@ -122,7 +122,7 @@ Yuigram exposes peer resolution explicitly, and types the difference:
 // Bot: a chat reference is just an id or @username.
 type BotPeer = number | `@${string}`
 
-// User: a peer is a resolved handle, or something resolvable that may fail.
+// Account: a peer is a resolved handle, or something resolvable that may fail.
 type UserPeer = Peer | number | `@${string}`
 await user.resolve('@someone')   // may hit the network, may throw PeerNotFound
 ```
@@ -182,7 +182,7 @@ on both.
 ```ts
 interface Context {
   // Identity of the delivering client — always available, always honest.
-  readonly client: Bot | User
+  readonly client: Bot | Account
   readonly transport: 'bot-api' | 'mtproto'
 
   // Normalized, present on both.
@@ -223,7 +223,7 @@ app.on('message', async (ctx) => {
   await ctx.reply('works on both')       // unified surface
 
   if (ctx.transport === 'mtproto') {
-    await ctx.client.raw.messages.readHistory({ … })   // narrowed to User
+    await ctx.client.raw.messages.readHistory({ … })   // narrowed to Account
   }
 
   if (ctx.transport === 'bot-api') {
@@ -275,7 +275,7 @@ and accept a discriminant, or write against a client for full fidelity with no c
    ════════════════════════ TRANSPORT-SPECIFIC ═════════════════
                                       │
         ┌─────────────────┐                  ┌─────────────────┐
-        │  Bot subsystem  │                  │ User subsystem  │
+        │  Bot subsystem  │                  │Account subsystem│
         ├─────────────────┤                  ├─────────────────┤
         │ HTTPS client    │                  │ MTProto stack   │
         │ polling/webhook │                  │ auth + DH + SRP │

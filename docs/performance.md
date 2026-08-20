@@ -36,7 +36,7 @@ Effort belongs in these five places and nowhere else.
 | `import 'yuigram'` | < 100 ms | Dominated by module parse — keep the eager surface small |
 | `new Bot(token)` | < 1 ms | Nothing but validation |
 | `bot.start()` (polling) | < 500 ms | One `getMe`, one `setMyCommands` if configured |
-| `new User(...)` | < 1 ms | No I/O in the constructor |
+| `new Account(...)` | < 1 ms | No I/O in the constructor |
 | `user.start()` — resumed session | < 2 s | Load session, connect, handshake with existing key |
 | `user.start()` — fresh sign-in | network-bound | Full DH handshake plus interactive steps |
 
@@ -163,7 +163,7 @@ prerequisite for correct behaviour.
 
 The Bot-only figure requires that importing `yuigram` does not pull the MTProto subsystem
 into the graph. That is a packaging constraint — `sideEffects: false`, no top-level
-cross-imports between subsystems, `User` reachable only through its own module — and it is
+cross-imports between subsystems, `Account` reachable only through its own module — and it is
 far cheaper to establish at the start than to retrofit.
 
 ---

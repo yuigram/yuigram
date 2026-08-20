@@ -151,12 +151,12 @@ update state     pts, qts, seq, date, per-channel pts
 ### API
 
 ```ts
-const user = new User({
+const user = new Account({
   apiId, apiHash,
   session: './me.session'                 // path — file-backed
 })
 
-const user2 = new User({
+const user2 = new Account({
   apiId, apiHash,
   session: sqlite('./sessions.db', 'alice')  // driver instance
 })
@@ -166,7 +166,7 @@ Export and import for deployment, where writing a file is not an option:
 
 ```ts
 const serialized = await user.exportSession()   // opaque, secret-bearing string
-const user = new User({ apiId, apiHash, session: fromString(process.env.SESSION!) })
+const user = new Account({ apiId, apiHash, session: fromString(process.env.SESSION!) })
 ```
 
 `exportSession()` returns an opaque string carrying live credentials. The documentation must
@@ -190,11 +190,11 @@ it finds permissions wider than that.
 
 ### Multiple accounts
 
-Each `User` owns an independent session; nothing is shared:
+Each `Account` owns an independent session; nothing is shared:
 
 ```ts
-const alice = app.add(new User({ apiId, apiHash, session: './alice.session' }))
-const bob   = app.add(new User({ apiId, apiHash, session: './bob.session' }))
+const alice = app.add(new Account({ apiId, apiHash, session: './alice.session' }))
+const bob   = app.add(new Account({ apiId, apiHash, session: './bob.session' }))
 ```
 
 `apiId`/`apiHash` are per-*developer*, not per-account, so they are legitimately shared across
@@ -212,7 +212,7 @@ The tempting simplification:
 // Rejected.
 const storage = redis(…)
 new App({ storage })
-new User({ apiId, apiHash, storage })
+new Account({ apiId, apiHash, storage })
 ```
 
 It fails on four counts:

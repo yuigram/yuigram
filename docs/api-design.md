@@ -19,21 +19,21 @@ Three candidate models were considered.
 |---|---|
 | `new Client({ type: 'bot' })` | **Rejected.** Every member becomes conditionally typed on the discriminant. Autocomplete offers members that throw at runtime. AI assistants read types, not caveats, and would generate confidently broken code. |
 | `new Client(...)` for both, distinguished by options shape | **Rejected.** Same problem, worse — the divergence is not even visible in the type name. |
-| **`new Bot(...)` and `new User(...)`** | **Adopted.** Two names, two capability sets, no conditional typing anywhere. The names carry real information: a `Bot` cannot read another user's history, a `User` cannot answer inline queries, and both facts are compile-time truths. |
+| **`new Bot(...)` and `new Account(...)`** | **Adopted.** Two names, two capability sets, no conditional typing anywhere. The names carry real information: a `Bot` cannot read another user's history, an `Account` cannot answer inline queries, and both facts are compile-time truths. |
 
 ```ts
-import { Bot, User, App } from 'yuigram'
+import { Account, App, Bot } from 'yuigram'
 
 const bot  = new Bot('123456:ABC-DEF…')
-const user = new User({ apiId: 12345, apiHash: 'abc…', session: './me.session' })
+const user = new Account({ apiId: 12345, apiHash: 'abc…', session: './me.session' })
 ```
 
 `Bot` takes a token positionally because it is the only required argument in the common case.
-`User` takes an object because it never has fewer than three.
+`Account` takes an object because it never has fewer than three.
 
 ### Naming
 
-`Bot` and `User` describe *what the client is on Telegram*, not which protocol it speaks.
+`Bot` and `Account` describe *what the client is on Telegram*, not which protocol it speaks.
 That is the right axis: a developer thinks "I need my bot to do X" and "I need my account to
 do Y", and the protocol is an implementation consequence. Bot-over-MTProto is therefore
 `Bot.overMtproto({ … })` rather than a third class — same identity, different transport.
@@ -57,9 +57,9 @@ await bot.start()
 And a user client:
 
 ```ts
-import { User } from 'yuigram'
+import { Account } from 'yuigram'
 
-const user = new User({
+const user = new Account({
   apiId: Number(process.env.API_ID),
   apiHash: process.env.API_HASH!,
   session: './me.session'
@@ -74,7 +74,7 @@ await user.start({
 })
 ```
 
-`start()` on a `User` takes the interactive callbacks because sign-in genuinely requires
+`start()` on an `Account` takes the interactive callbacks because sign-in genuinely requires
 them; on a resumed session they are never called. Callbacks rather than values, so nothing
 prompts unless it is actually needed.
 
@@ -83,13 +83,13 @@ prompts unless it is actually needed.
 ## 3. Multiple clients: the `App`
 
 ```ts
-import { App, Bot, User } from 'yuigram'
+import { Account, App, Bot } from 'yuigram'
 
 const app = new App({ storage: file('./state') })
 
 const bot     = app.add(new Bot(process.env.BOT_TOKEN!))
-const alice   = app.add(new User({ apiId, apiHash, session: './alice.session' }))
-const bob     = app.add(new User({ apiId, apiHash, session: './bob.session' }))
+const alice   = app.add(new Account({ apiId, apiHash, session: './alice.session' }))
+const bob     = app.add(new Account({ apiId, apiHash, session: './bob.session' }))
 
 // Middleware shared by every client.
 app.use(async (ctx, next) => {
@@ -400,7 +400,7 @@ await bot.download(ctx.message.document, './out.pdf')
 ```
 
 One `media` namespace with a source per method. The `file_id` reuse path is Bot API only,
-and the type reflects that — `media.id()` is not accepted by a `User` client, because
+and the type reflects that — `media.id()` is not accepted by an `Account` client, because
 `file_id` is a Bot API construct that does not convert without a round trip.
 
 ---
@@ -491,7 +491,7 @@ turn out to be negligible, and consistency matters far more to inference than br
 ## 18. Complete example
 
 ```ts
-import { App, Bot, User, Router, f, session, file, FloodError } from 'yuigram'
+import { Account, App, Bot, Router, f, session, file, FloodError } from 'yuigram'
 
 const app = new App({ storage: file('./state'), log: { level: 'info' } })
 
@@ -500,7 +500,7 @@ const bot = app.add(
     .extend(session({ key: (ctx) => ctx.sender?.id }))
 )
 
-const me = app.add(new User({
+const me = app.add(new Account({
   apiId: Number(process.env.API_ID),
   apiHash: process.env.API_HASH!,
   session: './me.session',

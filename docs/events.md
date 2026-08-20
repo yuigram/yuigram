@@ -36,7 +36,7 @@ Fixed, so that names are guessable rather than memorized:
 3. **Subject first.** `chat_member_joined`, not `joined_chat_member` — so related events sort
    and autocomplete together.
 4. **No `on` prefix in the name.** `bot.on('message')`, never `bot.on('onMessage')`.
-5. **Transport-exclusive events are namespaced.** `mtproto:*` for events only a `User` client
+5. **Transport-exclusive events are namespaced.** `mtproto:*` for events only an `Account` client
    can produce, so their availability is visible at a glance.
 
 ### A deliberate departure from the Bot API
@@ -113,7 +113,7 @@ event kind without hand-editing.
 
 ### 3.4 MTProto-only events
 
-Namespaced, because they exist only on a `User`:
+Namespaced, because they exist only on an `Account`:
 
 | Event | Description |
 |---|---|
@@ -158,8 +158,8 @@ interface BotEvents {
 }
 
 interface UserEvents {
-  message:                MessageContext<User>
-  'mtproto:typing':       TypingContext<User>
+  message:                MessageContext<Account>
+  'mtproto:typing':       TypingContext<Account>
   // …
 }
 ```
@@ -297,7 +297,7 @@ own error handling.
 1. **`message_edited` vs `edited_message`.** §2 argues for the former; it diverges from Bot
    API vocabulary. Worth confirming before the name is public and expensive to change.
 2. **`mtproto:` prefix.** Explicit and honest, but slightly verbose. The alternative —
-   unprefixed names available only on `User` — is terser but makes availability invisible in
+   unprefixed names available only on `Account` — is terser but makes availability invisible in
    the name. Current recommendation is to keep the prefix.
 3. **Promotion depth.** ~40 promoted service events is a lot of surface. An alternative is to
    promote only the commonly-handled ones and leave the rest as `message` with a filter. The
