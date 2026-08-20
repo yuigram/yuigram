@@ -48,8 +48,8 @@ bot.on('callback_query', (ctx) => {
 })
 ```
 
-Both fail. Inside a handler registered for `callback_query`, `ctx.data` — the one field that
-update *always* carries — is still optional.
+Both fail. The second is the interesting one, and the correction below explains why it is not
+quite the defect it first appears to be.
 
 The cause is structural. There is exactly one context type:
 
@@ -66,6 +66,29 @@ export interface Context extends BaseContext {
 One type serves twenty-six update kinds, so every field that is not universal must be optional.
 The developer then re-establishes at runtime what they already stated at registration time.
 
+### Correction to this diagnosis
+
+Checking the schema sharpened the claim above, and it is worth recording rather than quietly
+editing.
+
+Telegram declares `Message.text` **optional** — a photo without a caption is a message with no
+text — and `CallbackQuery.data` optional too, since a game callback carries `game_short_name`
+instead. So `string | undefined` for those two is *honest*, not a defect, and the `??` in the
+README example is partly Telegram's shape showing through.
+
+The real defect is narrower and worse: the single context type also **loses the guarantees the
+schema does make**. `Message.chat` is required and `InlineQuery.query` is required, yet both
+arrive as `| undefined`, because one type has to serve twenty-six kinds and every field must
+degrade to the weakest case.
+
+So the fix is not "make these fields non-optional". It is: **carry the schema's own optionality
+through, per event** — what Telegram guarantees is guaranteed, what it does not is not — and let
+a narrower registration earn the stronger type. `onText` gives `text: string` because it only
+fires for messages that have text; `onMessage` keeps it optional because it cannot.
+
+This is proven, not asserted: `packages/bot-api/test/api-prototype.test-d.ts` compiles the
+proposed types and fails the build if any of it stops holding.
+
 **This is the single largest defect in the current API.** It is not cosmetic: it makes every
 handler noisier, it teaches developers that Yuigram's types cannot be trusted, and it wastes
 the one advantage a TypeScript-first framework is supposed to have.
@@ -80,7 +103,8 @@ bot.on('photo', (ctx) => {
 ```
 
 A framework that knows the update is a photo should hand back a context where the photo is
-`PhotoSize[]`, not `PhotoSize[] | undefined`.
+`PhotoSize[]`, not `PhotoSize[] | undefined` — and `message` should never have been optional in
+a message handler at all.
 
 ---
 
