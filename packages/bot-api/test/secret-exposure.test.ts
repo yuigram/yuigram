@@ -18,8 +18,8 @@ import { fetchClient } from '../src/http/fetch-client.js'
 import { mockBot } from '../src/testing/mock-bot.js'
 import { mockTransport, ok } from '../src/testing/mock-transport.js'
 
-const TOKEN = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
-const SECRET = 'AAHdqTcv'
+const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
+const SECRET = 'TEST_TOKEN'
 
 /** Every string reachable by walking an object, to a bounded depth. */
 function reachable(value: unknown, depth = 0, seen = new WeakSet<object>()): string[] {
@@ -64,7 +64,7 @@ describe('the bot token', () => {
     await send.message('hello')
 
     expect(serialized).not.toContain(SECRET)
-    expect(serialized).not.toContain('TESTTEST')
+    expect(serialized).not.toContain('TEST_TOKEN')
   })
 
   it('is not reachable by walking a context', async () => {
@@ -77,7 +77,7 @@ describe('the bot token', () => {
 
     await send.message('hello')
 
-    expect(found.join('\n')).not.toContain('TESTTEST')
+    expect(found.join('\n')).not.toContain('TEST_TOKEN')
   })
 })
 

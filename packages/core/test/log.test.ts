@@ -15,7 +15,10 @@ function recordingSink(): LogSink & { records: LogRecord[] } {
   return { records, write: (record) => void records.push(record) }
 }
 
-const TOKEN = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+// Deliberately shaped to match the redaction pattern - a fixture that does not
+// match would let these tests pass while redaction was broken. Seven digits
+// keeps it outside the range credential scanners treat as a real bot token.
+const TOKEN = '1234567:REDACTION_TEST_VALUE_NOT_A_CREDENTIAL_00'
 
 describe('redactString', () => {
   it('redacts a bare bot token', () => {
@@ -25,13 +28,13 @@ describe('redactString', () => {
   it('redacts a token inside an API URL', () => {
     const url = `https://api.telegram.org/bot${TOKEN}/sendMessage`
     const out = redactString(url)
-    expect(out).not.toContain('AAHdqTcv')
+    expect(out).not.toContain('TEST_TOKEN')
     expect(out).toContain('api.telegram.org')
   })
 
   it('redacts a token embedded in prose', () => {
     const out = redactString(`failed to call with token ${TOKEN} after 3 tries`)
-    expect(out).not.toContain('AAHdqTcv')
+    expect(out).not.toContain('TEST_TOKEN')
     expect(out).toContain('after 3 tries')
   })
 
@@ -83,7 +86,7 @@ describe('redact', () => {
       string,
       unknown
     >
-    expect(out['url']).not.toContain('AAHdqTcv')
+    expect(out['url']).not.toContain('TEST_TOKEN')
   })
 
   it('handles circular references', () => {
@@ -107,7 +110,7 @@ describe('redact', () => {
 
     expect(out['name']).toBe('Error')
     expect(out['message']).toBe('outer')
-    expect(JSON.stringify(out['cause'])).not.toContain('AAHdqTcv')
+    expect(JSON.stringify(out['cause'])).not.toContain('TEST_TOKEN')
   })
 
   it('walks maps and sets', () => {
@@ -147,7 +150,7 @@ describe('createLogger', () => {
     createLogger({ level: 'debug', sink }).info(`calling with ${TOKEN}`, { token: TOKEN, id: 7 })
 
     const record = sink.records[0]
-    expect(record?.message).not.toContain('AAHdqTcv')
+    expect(record?.message).not.toContain('TEST_TOKEN')
     expect(record?.fields).toEqual({ token: REDACTED, id: 7 })
   })
 
@@ -258,7 +261,7 @@ describe('logging an error', () => {
     const error = new Error('failed')
     error.stack = `at fetch (https://api.telegram.org/bot${TOKEN}/sendMessage)`
 
-    expect(JSON.stringify(redact(error))).not.toContain('AAHdqTcv')
+    expect(JSON.stringify(redact(error))).not.toContain('TEST_TOKEN')
   })
 
   it('redacts a secret carried on an error field', () => {

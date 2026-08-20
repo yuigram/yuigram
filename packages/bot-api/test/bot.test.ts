@@ -13,7 +13,7 @@ import type { BotContext } from '../src/context.js'
 import { callbackQueryUpdate, memberJoinedUpdate, messageUpdate } from '../src/testing/fixtures.js'
 import { apiError, mockTransport, ok } from '../src/testing/mock-transport.js'
 
-const TOKEN = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /** A bot wired to a mock transport, with polling never started. */
 function testBot(): { bot: Bot; transport: ReturnType<typeof mockTransport> } {

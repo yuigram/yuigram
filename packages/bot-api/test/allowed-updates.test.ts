@@ -20,7 +20,7 @@ import { Bot } from '../src/bot.js'
 import { UPDATE_EVENTS } from '../src/generated/events.js'
 import { mockTransport, ok } from '../src/testing/mock-transport.js'
 
-const TOKEN = '111111111:TESTTESTTESTTESTTESTTESTTESTTESTTES'
+const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /** Telegram's own update type names, which is what allowed_updates accepts. */
 const TELEGRAM_TYPES = new Set(Object.keys(UPDATE_EVENTS))

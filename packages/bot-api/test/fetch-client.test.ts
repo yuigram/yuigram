@@ -12,7 +12,7 @@ import { createApi } from '../src/api.js'
 import { BotApiError, isRetryable, toError, toNetworkError } from '../src/errors.js'
 import { fetchClient } from '../src/http/fetch-client.js'
 
-const TOKEN = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /**
  * A fetch stub returning a fixed envelope.
@@ -82,7 +82,7 @@ describe('token handling', () => {
   it('does not expose the token on the client object', () => {
     // Inspection or accidental serialization of the client must not leak it.
     const client = fetchClient({ token: TOKEN })
-    expect(JSON.stringify(client)).not.toContain('AAHdqTcv')
+    expect(JSON.stringify(client)).not.toContain('TEST_TOKEN')
     expect(Object.keys(client)).not.toContain('token')
   })
 })
@@ -246,7 +246,7 @@ describe('error mapping', () => {
     const error = toNetworkError('getMe', cause)
 
     expect(error).toBeInstanceOf(NetworkError)
-    expect(error.message).not.toContain('AAHdqTcv')
+    expect(error.message).not.toContain('TEST_TOKEN')
     expect(error.cause).toBe(cause)
   })
 })
@@ -295,8 +295,8 @@ describe('a gateway that does not speak JSON', () => {
       await createApi({ client }).call('getMe')
       expect.unreachable('should have thrown')
     } catch (error) {
-      expect((error as Error).message).not.toContain('AAHdqTcv')
-      expect(JSON.stringify(error)).not.toContain('AAHdqTcv')
+      expect((error as Error).message).not.toContain('TEST_TOKEN')
+      expect(JSON.stringify(error)).not.toContain('TEST_TOKEN')
     }
   })
 

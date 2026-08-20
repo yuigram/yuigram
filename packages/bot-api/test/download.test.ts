@@ -15,7 +15,7 @@ import type { PhotoSize } from '../src/generated/types/index.js'
 import type { HttpClient } from '../src/http/client.js'
 import { mockTransport, ok } from '../src/testing/mock-transport.js'
 
-const TOKEN = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /** A transport that serves files from an in-memory map. */
 function fileTransport(bytes = new Uint8Array([1, 2, 3]), status = 200) {
@@ -183,7 +183,7 @@ describe('token safety', () => {
       await download(deps, 'abc')
       expect.unreachable('should have thrown')
     } catch (error) {
-      expect((error as Error).message).not.toContain('AAHdqTcv')
+      expect((error as Error).message).not.toContain('TEST_TOKEN')
       expect((error as Error).message).toContain('404')
     }
   })
@@ -202,7 +202,7 @@ describe('token safety', () => {
       await download({ api: createApi({ client }), client }, 'a')
       expect.unreachable('should have thrown')
     } catch (error) {
-      expect((error as Error).message).not.toContain('AAHdqTcv')
+      expect((error as Error).message).not.toContain('TEST_TOKEN')
     }
   })
 
@@ -216,7 +216,7 @@ describe('token safety', () => {
       await getFileUrl({ api: createApi({ client }), client }, 'secret-looking-id')
       expect.unreachable('should have thrown')
     } catch (error) {
-      expect((error as Error).message).not.toContain('AAHdqTcv')
+      expect((error as Error).message).not.toContain('TEST_TOKEN')
     }
   })
 })

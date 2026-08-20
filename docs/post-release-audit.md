@@ -57,7 +57,7 @@ Locations:
   packages/bot-api/test/download.test.ts:18
   packages/bot-api/test/secret-exposure.test.ts:21
 
-Value: 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw
+Value: a fabricated token of the form <9 digits>:<34 characters>
 Present in 7 of 51 commits; first introduced by 79e5d8f
 ```
 
@@ -77,13 +77,18 @@ than the underlying issue deserves. It also trains the maintainer to ignore that
 **Contained blast radius, verified.** The token is **not** in the published npm packages — tests
 are excluded by `files`. Users installing `yuigram` never receive it.
 
-**Recommended action.**
-1. Replace with an unmistakable placeholder in all five files. `123456789:AAH…` looks real;
-   `TEST:not-a-real-token` does not, and no scanner will match it.
-2. Apply the same to `111111111:TESTTEST…` in `mock-bot.ts`, `allowed-updates.test.ts` and
-   `bench-dispatch.mjs` — less convincing, same class of mistake.
-3. Close the alert as *Used in tests* once the working tree is clean.
-4. Do **not** rewrite history for this. Reasoning in §6.
+**Action taken (Phase 1).**
+1. Every fixture now reads `0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000`. A single-digit id sits
+   far outside the range partner scanners treat as a bot token, and the secret half says in
+   words what it is.
+2. The same applied to the second, less convincing fixture in `mock-bot.ts`,
+   `allowed-updates.test.ts` and `bench-dispatch.mjs`.
+3. One exception, deliberately: the redaction tests in `log.test.ts` need a fixture that
+   *matches* the redaction pattern, or they would pass while redaction was broken. Theirs uses
+   a seven-digit id — inside Yuigram's own `\d{6,}` pattern, outside the 8-10 digit window
+   scanners match on — and is commented to say so.
+4. Remaining: close the alert as *Used in tests*, which only you can do.
+5. History is **not** rewritten. Reasoning in §6.
 
 **Breaking change:** no.
 
@@ -211,13 +216,13 @@ their place, and each is used by the layer above it.
 
 | # | Problem | Severity |
 |---|---|---|
-| S1 | Open secret scanning alert (= C1) | **CRITICAL** |
-| S2 | Realistic-looking tokens in three more files | HIGH |
+| S1 | Open secret scanning alert (= C1) | **CRITICAL** — fixtures replaced; alert awaits closing |
+| S2 | A second credential-shaped fixture in three more files | HIGH — **fixed** |
 | S3 | Copilot Autofix is enabled | LOW |
 
-**S2.** `111111111:TESTTESTTEST…` in `mock-bot.ts`, `allowed-updates.test.ts`,
-`bench-dispatch.mjs`. Not currently flagged, but the same mistake: a test fixture shaped like a
-credential. Placeholders should be impossible to mistake for real values.
+**S2.** A second fixture in `mock-bot.ts`, `allowed-updates.test.ts` and `bench-dispatch.mjs`
+was never flagged but repeated the same mistake: a test value shaped like a credential. Both
+are now replaced, and the working tree contains no string a scanner will match.
 
 **S3.** Copilot Autofix proposes AI-generated patches to code-scanning alerts. It is harmless
 technically — it only suggests — but it sits against the stated policy that the repository

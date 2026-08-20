@@ -27,11 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: pnpm
@@ -55,7 +55,7 @@ jobs:
 
       - name: Open pull request on change
         if: steps.generator.outputs.present == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/schema-update
           title: 'chore: update Telegram schema'

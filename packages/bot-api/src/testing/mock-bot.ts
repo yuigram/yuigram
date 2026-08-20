@@ -23,7 +23,7 @@ import {
 import { type MockTransport, mockTransport, ok } from './mock-transport.js'
 
 /** A token that satisfies validation without being anyone's real token. */
-const TEST_TOKEN = '111111111:TESTTESTTESTTESTTESTTESTTESTTESTTES'
+const TEST_TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /** Ways to feed updates into the bot. */
 export interface Sender {

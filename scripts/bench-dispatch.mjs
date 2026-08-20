@@ -28,7 +28,7 @@ const ITERATIONS = 20_000
 const transport = mockTransport()
 transport.on('getMe', ok({ id: 1, is_bot: true, first_name: 'B', username: 'b' }))
 
-const bot = new Bot('111111111:TESTTESTTESTTESTTESTTESTTESTTESTTES', {
+const bot = new Bot('0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000', {
   client: transport,
   log: createLogger({ sink: silentSink() }),
 })
