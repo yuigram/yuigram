@@ -469,3 +469,65 @@ describe('unrecoverable errors', () => {
     expect(later).toBeGreaterThan(first)
   })
 })
+
+describe('request budget', () => {
+  it('gives the request more time than the hold it asks for', async () => {
+    // The default hold is 30 seconds and the transport's default request
+    // timeout was also 30 seconds, so a healthy empty long poll aborted on its
+    // own timeout about as often as it returned - a working bot reporting
+    // constant failures.
+    let seen: ApiRequest | undefined
+
+    const client: HttpClient = {
+      async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
+        seen ??= request
+        // Stop after the first call so the loop cannot spin during the test.
+        return { status: 200, body: { ok: true, result: [] as unknown as T } }
+      },
+    }
+
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      timeout: 30,
+      idleDelay: 5,
+    })
+
+    await polling.start()
+    await tick()
+    await polling.stop()
+
+    const held = (seen?.params['timeout'] as number) * 1000
+    expect(seen?.timeout ?? 0).toBeGreaterThan(held)
+  })
+})
+
+describe('pacing an unco-operative server', () => {
+  it('does not spin when an empty batch returns immediately despite a long hold', async () => {
+    // A local Bot API server or a proxy may ignore `timeout` and answer at
+    // once. Pacing keyed on `timeout === 0` missed that case, and the loop
+    // spun a CPU core while looking like it was long polling.
+    let calls = 0
+
+    const client: HttpClient = {
+      async call<T>(): Promise<ApiResult<T>> {
+        calls += 1
+        return { status: 200, body: { ok: true, result: [] as unknown as T } }
+      },
+    }
+
+    const polling = createPolling({
+      api: createApi({ client }),
+      onUpdate: () => {},
+      timeout: 30,
+      idleDelay: 20,
+    })
+
+    await polling.start()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    await polling.stop()
+
+    // Unpaced this reaches thousands of iterations.
+    expect(calls).toBeLessThan(20)
+  })
+})

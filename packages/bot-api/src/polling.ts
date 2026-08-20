@@ -54,13 +54,24 @@ export interface PollingOptions {
    */
   readonly timeout?: number
   /**
-   * Milliseconds to wait after an empty batch when {@link timeout} is `0`.
+   * Milliseconds to wait after an empty batch that returned immediately.
    *
    * Without this a short-polling loop spins as fast as the network allows and
-   * pegs a CPU core. Ignored while long polling, where Telegram already
-   * provides the pacing.
+   * pegs a CPU core. It applies whenever a poll comes back empty far sooner
+   * than the hold it asked for, which covers short polling and also a local
+   * Bot API server or proxy that ignores `timeout` — where the loop would
+   * otherwise spin just as hard while looking like it was long polling.
    */
   readonly idleDelay?: number
+
+  /**
+   * Milliseconds allowed for the request beyond the hold it asks for.
+   *
+   * The request has to outlive the poll it carries. With equal budgets a
+   * healthy empty long poll races its own timeout and aborts as often as it
+   * returns, so a working bot reports constant failures.
+   */
+  readonly requestGrace?: number
   /** Maximum updates per batch, 1–100. */
   readonly limit?: number
   /** First backoff delay in milliseconds. */
@@ -128,6 +139,7 @@ export function createPolling(options: PollingOptions): Polling {
     timeout = 30,
     idleDelay = 300,
     limit = 100,
+    requestGrace = 15_000,
     backoffBase = 1000,
     backoffMax = 60_000,
     dropPending = false,
@@ -143,9 +155,16 @@ export function createPolling(options: PollingOptions): Polling {
     const params: Record<string, unknown> = { offset, limit, timeout }
     if (allowedUpdates !== undefined) params['allowed_updates'] = allowedUpdates
 
-    // The signal is what makes shutdown prompt: without it, `stop` waits out
-    // the long poll, which is up to a minute of a process manager's patience.
-    return (await api.call<Update[]>('getUpdates', params, { signal: controller.signal })) ?? []
+    // Two controls, for two different jobs. The signal makes shutdown prompt:
+    // without it, `stop` waits out the long poll. The timeout has to exceed
+    // the hold Telegram was asked for, or the request aborts at the moment a
+    // healthy empty poll would have returned.
+    return (
+      (await api.call<Update[]>('getUpdates', params, {
+        signal: controller.signal,
+        timeout: timeout * 1000 + requestGrace,
+      })) ?? []
+    )
   }
 
   /** Discard anything queued before startup. */
@@ -199,16 +218,23 @@ export function createPolling(options: PollingOptions): Polling {
 
     while (running) {
       try {
+        const began = Date.now()
         const updates = await fetchBatch()
         failures = 0
 
-        // Short polling returns immediately, so without a pause here the loop
-        // would spin as fast as the network allows.
-        if (updates.length === 0 && timeout === 0 && idleDelay > 0) {
+        await deliver(updates)
+
+        // Pace an empty batch that came back sooner than the hold it asked for.
+        // That is short polling by design, and a server ignoring `timeout` by
+        // accident; both spin a CPU core without this. A `timeout` of zero
+        // requests no hold at all, so every empty batch under it is early -
+        // comparing against half of zero would pace nothing.
+        const held = timeout * 1000
+        const returnedEarly = held === 0 || Date.now() - began < held / 2
+
+        if (updates.length === 0 && returnedEarly && idleDelay > 0) {
           await delay(idleDelay, controller.signal)
         }
-
-        await deliver(updates)
       } catch (error) {
         if (!running) break
 
