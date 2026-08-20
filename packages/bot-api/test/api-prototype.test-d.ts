@@ -5,39 +5,40 @@
  * any implementation begins: **do the event-specific context types come out
  * clean, or does the design only look good in prose?**
  *
- * Compiled by `pnpm verify`, so a design that stops type-checking fails the
- * build.
+ * The field shapes come from `generated/contexts.ts`, so this checks the real
+ * generator output rather than a hand-copied approximation of it. Compiled by
+ * `pnpm verify`, so a design that stops type-checking fails the build.
  *
  * ---
  *
- * The audit claimed `ctx.text` being `string | undefined` inside a message
- * handler was the defect. Checking the schema corrected that: Telegram itself
- * declares `Message.text` optional, because a photo without a caption is a
- * message with no text. Optional there is *honest*.
+ * The audit first blamed `ctx.text` being `string | undefined` inside a message
+ * handler. Checking the schema corrected that: Telegram itself declares
+ * `Message.text` optional, because a photo without a caption is a message with
+ * no text. Optional there is *honest*.
  *
- * The real defect is narrower and worse: the single context type also loses
- * the fields the schema does guarantee. `Message.chat` is required and
- * `InlineQuery.query` is required, yet both arrive as `| undefined` because one
- * type has to serve twenty-six update kinds.
+ * The real defect is narrower and worse: the single context type also loses the
+ * guarantees the schema does make. `Message.chat` is required and
+ * `InlineQuery.query` is required, yet both arrived as `| undefined` because one
+ * type had to serve twenty-six kinds and degrade every field to its weakest
+ * case.
  *
- * So the fix is not "make everything non-optional". It is: **carry the
- * schema's own optionality through, per event.** Fields Telegram guarantees are
- * guaranteed here; fields it does not are not, and a narrower registration —
- * `onText` rather than `onMessage` — is what earns the stronger type.
+ * So the fix is not "make everything non-optional". It is: **carry the schema's
+ * own optionality through, per event** — and let a narrower registration earn
+ * the stronger type. `onText` gives `text: string` because it only fires for
+ * messages that have text; `onMessage` cannot promise that.
  */
 
 import type { Logger } from '@yuigram/core'
 import { describe, expectTypeOf, it } from 'vitest'
 import type { RawApi } from '../src/api.js'
-import type { UpdateEventKind } from '../src/generated/events.js'
 import type {
-  CallbackQuery,
-  Chat,
-  InlineQuery,
-  Message,
-  Update,
-  User,
-} from '../src/generated/types/index.js'
+  CallbackQueryEventFields,
+  EventFieldsByKind,
+  InlineQueryEventFields,
+  MessageEventFields,
+} from '../src/generated/contexts.js'
+import type { UpdateEventKind } from '../src/generated/events.js'
+import type { Chat, Message, Update, User } from '../src/generated/types/index.js'
 
 // ---------------------------------------------------------------------------
 // The proposed shape
@@ -55,16 +56,12 @@ interface EventContext<K extends UpdateEventKind = UpdateEventKind> {
 /**
  * A context for any update whose payload is a `Message`.
  *
- * `message` and `chat` are required because the schema requires them. `sender`
- * and `text` stay optional because the schema leaves them optional, and saying
- * otherwise would be a lie the compiler enforces.
+ * The fields come from the generator; the actions are written by hand, because
+ * behaviour is not derivable from a schema.
  */
-interface MessageContext<K extends UpdateEventKind = UpdateEventKind> extends EventContext<K> {
-  readonly message: Message
-  readonly chat: Chat
-  readonly sender: User | undefined
-  readonly text: string | undefined
-
+interface MessageContext<K extends UpdateEventKind = UpdateEventKind>
+  extends EventContext<K>,
+    MessageEventFields {
   reply(text: string): Promise<Message>
   edit(text: string): Promise<Message>
   delete(): Promise<true>
@@ -95,20 +92,11 @@ interface CommandContext<K extends UpdateEventKind = UpdateEventKind>
   }
 }
 
-interface CallbackQueryContext extends EventContext<'callback_query'> {
-  readonly query: CallbackQuery
-  /** Optional in the schema: a game callback carries `game_short_name` instead. */
-  readonly data: string | undefined
-  readonly sender: User
+interface CallbackQueryContext extends EventContext<'callback_query'>, CallbackQueryEventFields {
   answer(text?: string): Promise<true>
 }
 
-interface InlineQueryContext extends EventContext<'inline_query'> {
-  readonly inlineQuery: InlineQuery
-  /** Required in the schema, so required here. */
-  readonly query: string
-  readonly sender: User
-}
+interface InlineQueryContext extends EventContext<'inline_query'>, InlineQueryEventFields {}
 
 /** Update kinds whose payload is a `Message`. Generated today as `MESSAGE_KINDS`. */
 type MessageKind =
@@ -155,7 +143,7 @@ describe('fields the schema guarantees arrive guaranteed', () => {
   })
 
   it('gives an inline query handler the query text as a string', () => {
-    // `InlineQuery.query` is required in the schema. Today it arrives optional.
+    // `InlineQuery.query` is required in the schema. It arrived optional before.
     bot.onInlineQuery((query) => {
       expectTypeOf(query.query).toEqualTypeOf<string>()
       expectTypeOf(query.sender).toEqualTypeOf<User>()
@@ -243,6 +231,21 @@ describe('actions belong to what the update already addressed', () => {
       expectTypeOf(query).not.toHaveProperty('reply')
       expectTypeOf(query).not.toHaveProperty('delete')
     })
+  })
+})
+
+describe('the generated mapping covers the whole event surface', () => {
+  it('has an entry for every update kind', () => {
+    // If a Telegram release adds a kind and the generator misses it, this stops
+    // compiling rather than leaving one event without a context.
+    expectTypeOf<keyof EventFieldsByKind>().toEqualTypeOf<UpdateEventKind>()
+  })
+
+  it('routes a kind to the fields its payload actually carries', () => {
+    expectTypeOf<EventFieldsByKind['message']>().toEqualTypeOf<MessageEventFields>()
+    expectTypeOf<EventFieldsByKind['callback_query']>().toEqualTypeOf<CallbackQueryEventFields>()
+    // Seven kinds share the message shape, so they resolve to the same type.
+    expectTypeOf<EventFieldsByKind['channel_post']>().toEqualTypeOf<MessageEventFields>()
   })
 })
 

@@ -36,6 +36,7 @@ export {
 export { BotApiError, isRetryable, toError, toNetworkError } from './errors.js'
 export { asyncFilter, filter } from './filter.js'
 export type { ApiMethods } from './generated/api.js'
+export type * from './generated/contexts.js'
 export type {
   BotEventKind,
   ServiceEventKind,

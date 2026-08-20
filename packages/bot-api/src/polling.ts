@@ -213,48 +213,66 @@ export function createPolling(options: PollingOptions): Polling {
     onFatal?.(error)
   }
 
+  /**
+   * Whether an empty batch came back sooner than the hold it asked for.
+   *
+   * That is short polling by design, and a server ignoring `timeout` by
+   * accident; both spin a CPU core without pacing. A `timeout` of zero requests
+   * no hold at all, so every empty batch under it is early - comparing against
+   * half of zero would pace nothing.
+   */
+  const returnedEarly = (began: number): boolean => {
+    const held = timeout * 1000
+    return held === 0 || Date.now() - began < held / 2
+  }
+
+  /** One successful pass: deliver, then pace if the batch came back empty and early. */
+  const servePass = async (): Promise<void> => {
+    const began = Date.now()
+    const updates = await fetchBatch()
+
+    await deliver(updates)
+
+    if (updates.length === 0 && returnedEarly(began) && idleDelay > 0) {
+      await delay(idleDelay, controller.signal)
+    }
+  }
+
+  /** Decide what a failed pass means. Returns false when the loop should end. */
+  const recover = async (error: unknown, failures: number): Promise<boolean> => {
+    if (!running) return false
+
+    // An abort is the shutdown path, not a failure.
+    if (controller.signal.aborted) return false
+
+    if (isFatalPollingError(error)) {
+      fail(error)
+      return false
+    }
+
+    onError?.(error)
+
+    const wait = backoffFor(error, failures)
+    log?.warn('polling failed, retrying', { waitMs: wait, error })
+    await delay(wait, controller.signal)
+
+    return true
+  }
+
   const run = async (): Promise<void> => {
     let failures = 0
 
     while (running) {
       try {
-        const began = Date.now()
-        const updates = await fetchBatch()
+        await servePass()
         failures = 0
-
-        await deliver(updates)
-
-        // Pace an empty batch that came back sooner than the hold it asked for.
-        // That is short polling by design, and a server ignoring `timeout` by
-        // accident; both spin a CPU core without this. A `timeout` of zero
-        // requests no hold at all, so every empty batch under it is early -
-        // comparing against half of zero would pace nothing.
-        const held = timeout * 1000
-        const returnedEarly = held === 0 || Date.now() - began < held / 2
-
-        if (updates.length === 0 && returnedEarly && idleDelay > 0) {
-          await delay(idleDelay, controller.signal)
-        }
       } catch (error) {
-        if (!running) break
-
-        // An abort is the shutdown path, not a failure.
-        if (controller.signal.aborted) break
-
-        if (isFatalPollingError(error)) {
-          fail(error)
-          break
-        }
-
-        onError?.(error)
-
-        const wait = backoffFor(error, failures)
         // Every failure widens the delay. Counting only the retryable ones left
         // a permanent failure retrying at the base delay forever.
+        const shouldContinue = await recover(error, failures)
         failures += 1
 
-        log?.warn('polling failed, retrying', { waitMs: wait, error })
-        await delay(wait, controller.signal)
+        if (!shouldContinue) break
       }
     }
   }

@@ -114,7 +114,7 @@ describe('a hostile file_path from the API server', () => {
   })
 
   it('refuses a path carrying a null byte', async () => {
-    const client = serving('photos/file_1.jpg' + String.fromCharCode(0) + '.png')
+    const client = serving(`photos/file_1.jpg${String.fromCharCode(0)}.png`)
 
     await expect(getFileUrl({ api: createApi({ client }), client }, 'a')).rejects.toBeInstanceOf(
       ValidationError,
