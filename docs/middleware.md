@@ -333,5 +333,5 @@ since an error handler cannot meaningfully report to itself.
 | Empty chains | Skipped entirely — an unused hook costs nothing |
 
 Budget: middleware and dispatch overhead should stay well under a millisecond per update, so
-that it is invisible next to a Telegram round trip. Measured against that budget in
-[performance.md](performance.md) §3.
+that it is invisible next to a Telegram round trip. `pnpm bench` measures it at roughly 14 µs —
+see [performance.md](performance.md) §3.

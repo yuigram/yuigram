@@ -142,8 +142,13 @@ getUpdates(offset, limit, timeout=30, allowed_updates)
   -> offset = last update_id + 1
 ```
 
-with exponential backoff on network failure, `retry_after` compliance on 429, and a bounded
-recently-seen `update_id` set to survive overlapping restarts.
+with exponential backoff on network failure and `retry_after` compliance on 429.
+
+Nothing deduplicates here, because nothing needs to: the offset is the mechanism, and Telegram
+will not resend an update once a later offset acknowledges it. Two consumers on one token do
+not race either — Telegram answers the second with `409`, which stops that loop rather than
+leaving both to interfere. Webhooks are the case that does need a recently-seen set, because
+there Telegram retries anything it has not seen acknowledged.
 
 **Not every failure is worth retrying.** Three responses, chosen by what the error means:
 

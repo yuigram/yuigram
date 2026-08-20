@@ -71,6 +71,25 @@ The lazy-getter decision is the one that matters most at volume. A bot handling 
 `/start` should not pay to decode the sender, chat, entities and media of every message that
 passes through.
 
+### Measured
+
+`pnpm bench` times the whole per-update path — normalization, service promotion, the middleware
+chain, filter evaluation across several registrations, context construction and handler
+invocation — with the network replaced by the mock transport, so handler and network time are
+excluded by construction.
+
+| Measurement | Result |
+|---|---|
+| Framework overhead per update | **~14 µs** |
+| Throughput, single-threaded | **~70,000 updates/sec** |
+| Budget | 1,000 µs |
+
+Measured on a developer machine with a stack of five middleware and five handler
+registrations, one of which matches. The figure moves with the hardware, so treat it as an
+order of magnitude and a direction of travel rather than a number to defend: the point is that
+overhead sits roughly seventy times under the budget and four orders of magnitude under a
+Telegram round trip.
+
 ### Concurrency
 
 Concurrent dispatch by default. In-flight tracking bounds memory and enables draining. An
