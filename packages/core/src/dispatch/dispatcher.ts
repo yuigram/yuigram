@@ -64,6 +64,20 @@ interface Registration<C> {
   removed: boolean
 }
 
+/** Receives an error a handler or middleware threw. */
+export type ErrorHandler<C> = (error: unknown, context: C) => unknown
+
+/** Options for {@link Dispatcher}. */
+export interface DispatcherOptions<C> {
+  /**
+   * Called when a handler throws and no `catch` handler is registered.
+   *
+   * The default is to swallow silently, which is why the owner is expected to
+   * supply something that logs. See {@link Dispatcher.catch}.
+   */
+  readonly onUnhandled?: (error: unknown, context: C) => void
+}
+
 /** What `collectKinds` reports about the registered handler set. */
 export interface KindCoverage {
   /** Kinds some handler is registered for. */
@@ -85,6 +99,42 @@ export class Dispatcher<C extends Dispatchable> {
     high: [],
     normal: [],
     low: [],
+  }
+
+  readonly #catchers: Array<ErrorHandler<C>> = []
+  readonly #options: DispatcherOptions<C>
+
+  constructor(options: DispatcherOptions<C> = {}) {
+    this.#options = options
+  }
+
+  /**
+   * Register an error handler.
+   *
+   * An error from a handler or from middleware reaches every registered
+   * catcher, and dispatch continues: the remaining handlers still run, so one
+   * malformed update cannot end every conversation in flight.
+   *
+   * The full rule is that an error is either handled or propagates, and is
+   * never silent:
+   *
+   * - a catcher is registered — the catchers see it, dispatch continues;
+   * - no catcher, but the owner supplied `onUnhandled` — reported, continues;
+   * - neither — it propagates to the caller of `dispatch`.
+   *
+   * Continuing is a deliberate choice and not the only defensible one. Other
+   * frameworks rethrow on a microtask so Node's `uncaughtException` fires,
+   * which makes failures impossible to ignore at the cost of taking the
+   * process down for one bad update. See docs/middleware.md §7.
+   */
+  catch(handler: ErrorHandler<C>): this {
+    this.#catchers.push(handler)
+    return this
+  }
+
+  /** Whether any error handler is registered. */
+  get hasCatcher(): boolean {
+    return this.#catchers.length > 0
   }
 
   readonly #registrations: Array<Registration<C>> = []
@@ -191,7 +241,13 @@ export class Dispatcher<C extends Dispatchable> {
       ...this.#middleware.low,
     ])
 
-    await this.#chain(context, async () => {})
+    try {
+      await this.#chain(context, async () => {})
+    } catch (error) {
+      // Reached only when middleware threw: handler errors are caught closer
+      // to the handler so the remaining handlers still run.
+      await this.#reportError(error, context)
+    }
   }
 
   /**
@@ -219,7 +275,35 @@ export class Dispatcher<C extends Dispatchable> {
         this.#remove(registration)
       }
 
-      await registration.handler(context)
+      try {
+        await registration.handler(context)
+      } catch (error) {
+        // One failing handler must not stop the others: they are independent
+        // concerns that happened to match the same update.
+        await this.#reportError(error, context)
+      }
+    }
+  }
+
+  /** Route an error to the registered catchers, or to the fallback. */
+  async #reportError(error: unknown, context: C): Promise<void> {
+    if (this.#catchers.length === 0) {
+      // Nothing has claimed responsibility for errors, so this one propagates
+      // to whoever called `dispatch`. Swallowing it would be the one outcome
+      // worse than either alternative: the failure would vanish entirely.
+      if (this.#options.onUnhandled === undefined) throw error
+
+      this.#options.onUnhandled(error, context)
+      return
+    }
+
+    for (const catcher of this.#catchers) {
+      try {
+        await catcher(error, context)
+      } catch (catcherError) {
+        // A failing error handler cannot be reported to itself.
+        this.#options.onUnhandled?.(catcherError, context)
+      }
     }
   }
 

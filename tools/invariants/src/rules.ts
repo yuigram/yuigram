@@ -10,6 +10,7 @@
  */
 
 import type { Invariant, InvariantResult, Violation, Workspace } from './types.js'
+import { stripComments } from './workspace.js'
 
 /**
  * Telegram libraries that must never appear in the dependency tree.
@@ -239,10 +240,13 @@ export function publicSurfaceIsClean(
   const violations: Violation[] = []
 
   for (const file of declarationFiles) {
-    const lines = file.text.split('\n')
-    lines.forEach((text, index) => {
-      // Ignore prose in comments; only executable declaration text matters.
-      const code = text.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '')
+    // Comments are stripped across the whole file before scanning. Doing it
+    // line by line missed the middle lines of a block comment, so a JSDoc that
+    // merely discussed another project was reported as a leak — which it is
+    // not. Only executable declaration text can leak a foreign concept.
+    const lines = stripComments(file.text).split('\n')
+
+    lines.forEach((code, index) => {
       for (const identifier of FORBIDDEN_PUBLIC_IDENTIFIERS) {
         if (!code.toLowerCase().includes(identifier)) continue
         violations.push({

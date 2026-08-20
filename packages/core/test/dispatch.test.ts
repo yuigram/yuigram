@@ -382,3 +382,43 @@ describe('reentrancy', () => {
     await expect(d.dispatch(ctx('message'))).rejects.toThrow('handler failed')
   })
 })
+
+describe('error responsibility', () => {
+  it('propagates when nothing has claimed responsibility', () => {
+    // A bare dispatcher with no catcher and no reporter must not swallow the
+    // failure. Silence is the one outcome worse than either alternative.
+    const d = new Dispatcher<Ctx>()
+    d.on('message', () => {
+      throw new Error('boom')
+    })
+
+    return expect(d.dispatch(ctx('message'))).rejects.toThrow('boom')
+  })
+
+  it('reports instead of propagating when a reporter is configured', async () => {
+    const seen: unknown[] = []
+    const d = new Dispatcher<Ctx>({ onUnhandled: (error) => seen.push(error) })
+    d.on('message', () => {
+      throw new Error('boom')
+    })
+
+    await d.dispatch(ctx('message'))
+
+    expect(seen).toHaveLength(1)
+  })
+
+  it('prefers a catcher over the reporter', async () => {
+    const reported: unknown[] = []
+    const caught: unknown[] = []
+    const d = new Dispatcher<Ctx>({ onUnhandled: (error) => reported.push(error) })
+    d.catch((error) => caught.push(error))
+    d.on('message', () => {
+      throw new Error('boom')
+    })
+
+    await d.dispatch(ctx('message'))
+
+    expect(caught).toHaveLength(1)
+    expect(reported).toEqual([])
+  })
+})

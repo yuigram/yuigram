@@ -1,6 +1,8 @@
 export {
   type Dispatchable,
   Dispatcher,
+  type DispatcherOptions,
+  type ErrorHandler,
   type Handler,
   type KindCoverage,
   type OnOptions,

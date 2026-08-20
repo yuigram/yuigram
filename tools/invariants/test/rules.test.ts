@@ -273,4 +273,40 @@ describe('public-surface-is-clean', () => {
     ])
     expect(result.violations).toEqual([])
   })
+  it('ignores mentions inside a block comment', () => {
+    // The shape TypeScript actually emits. Stripping comments line by line
+    // missed the interior lines, so a JSDoc explaining a design divergence was
+    // reported as a leak of a foreign concept.
+    const result = publicSurfaceIsClean([
+      {
+        path: 'packages/core/dist/index.d.ts',
+        text: `/**
+ * Errors are reported and dispatch continues.
+ *
+ * puregram rethrows on a microtask instead, which is louder but lets one
+ * malformed update end every conversation in flight.
+ */
+export declare const a: number
+`,
+      },
+    ])
+    expect(result.violations).toEqual([])
+  })
+
+  it('still catches a foreign type declared after a block comment', () => {
+    // Stripping must blank the comment without swallowing the code after it,
+    // and must keep the reported line accurate.
+    const result = publicSurfaceIsClean([
+      {
+        path: 'packages/mtproto/dist/index.d.ts',
+        text: `/**
+ * Docs.
+ */
+import type { X } from "@mtcute/core"
+`,
+      },
+    ])
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.line).toBe(4)
+  })
 })

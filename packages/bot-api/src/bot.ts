@@ -96,7 +96,7 @@ export class Bot {
   readonly name: string
 
   readonly #log: Logger
-  readonly #dispatcher = new Dispatcher<BotContext>()
+  readonly #dispatcher: Dispatcher<BotContext>
   readonly #plugins = new PluginRegistry<Bot>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
@@ -110,6 +110,18 @@ export class Bot {
     this.#options = options
     this.name = options.name ?? 'bot'
     this.#log = (options.log ?? createLogger()).child(this.name)
+
+    this.#dispatcher = new Dispatcher<BotContext>({
+      onUnhandled: (error, context) => {
+        // Logged at error rather than swallowed: with no catch handler
+        // registered this is the only trace an operator gets.
+        this.#log.error('unhandled error while dispatching an update', {
+          kind: context.kind,
+          updateId: context.updateId,
+          error,
+        })
+      },
+    })
 
     const client =
       options.client ??
@@ -182,7 +194,14 @@ export class Bot {
       if (!commandMatches(parsed, match)) return
       if (!addressedToUs(parsed, this.#me?.username)) return
 
-      return handler(Object.assign(context, { command: parsed }) as CommandContext)
+      // Derived, not mutated: assigning onto the shared context would leave a
+      // `command` property visible to every later handler for this update,
+      // including ones that have nothing to do with commands.
+      const withCommand: CommandContext = Object.create(context, {
+        command: { value: parsed, enumerable: true },
+      })
+
+      return handler(withCommand)
     })
 
     return this
@@ -215,6 +234,19 @@ export class Bot {
       return handler(context)
     })
 
+    return this
+  }
+
+  /**
+   * Register an error handler.
+   *
+   * An error from a handler or from middleware reaches every registered
+   * catcher, and the bot keeps serving. With none registered, errors are
+   * logged and dispatch continues — a single malformed update must not take
+   * down every conversation a busy bot is handling.
+   */
+  catch(handler: (error: unknown, context: BotContext) => unknown): this {
+    this.#dispatcher.catch(handler)
     return this
   }
 
@@ -347,6 +379,14 @@ export class Bot {
 
     const me = await this.identify()
     this.#log.info('signed in', { username: me.username, id: me.id })
+
+    if (!this.#dispatcher.hasCatcher) {
+      // Said once, at start: errors are logged and dispatch continues, which
+      // is safe but easy to miss if nobody is reading logs.
+      this.#log.warn(
+        'no error handler registered; handler errors will be logged and swallowed. Use bot.catch() to handle them',
+      )
+    }
 
     const allowedUpdates = this.#resolveAllowedUpdates()
 

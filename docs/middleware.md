@@ -277,11 +277,26 @@ app.catch((err, ctx) => {
 })
 ```
 
-**Default behaviour when nothing handles an error:** log it at `error` level and continue.
-The alternative — crashing the process — is defensible for a small bot and disastrous for one
-serving thousands of chats, where a single malformed update would take down every
-conversation. On start, if no `catch` handler is registered, the framework logs a one-time
-warning naming the risk, so the default is safe without being silent.
+**An error is either handled or propagates. It is never silent.** Three cases, in order:
+
+| Situation | Outcome |
+|---|---|
+| A `catch` handler is registered | Every catcher sees the error; dispatch continues |
+| No catcher, but the client owns a logger | Logged at `error` level; dispatch continues |
+| Neither — a bare dispatcher | Propagates to the caller of `dispatch` |
+
+Continuing is the right default for a client. The alternative — crashing the process — is
+defensible for a small bot and disastrous for one serving thousands of chats, where a single
+malformed update would take down every conversation in flight. Later handlers for the same
+update still run, so one broken concern cannot silently disable the others.
+
+That default is safe without being quiet: on start, if no `catch` handler is registered, the
+client logs a one-time warning naming the risk. And a `Dispatcher` used directly, with neither
+a catcher nor a logger, rethrows rather than swallowing — nothing has claimed responsibility
+for the error, so the caller inherits it.
+
+A catcher that throws is reported through the same channel but never re-enters the catchers,
+since an error handler cannot meaningfully report to itself.
 
 ---
 
