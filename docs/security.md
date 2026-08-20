@@ -214,16 +214,32 @@ Security defaults are the ones that actually take effect, so they are chosen con
 
 ## 10. Pre-release checklist
 
-- [ ] No secret reachable via `JSON.stringify` of any public object
-- [ ] Redaction verified against tokens, `api_hash`, session strings, auth keys
-- [ ] Errors scrubbed of URLs containing tokens
+Checked before each release. An item is ticked only when a test holds it, not when it was
+looked at once.
+
+### Bot API — closed for 0.1.0
+
+- [x] No secret reachable via `JSON.stringify` of any public object — `secret-exposure.test.ts`
+      walks the client, the transport and a context, and serializes each
+- [x] Redaction verified against tokens, `api_hash`, session strings, auth keys — `log.test.ts`
+- [x] Errors scrubbed of URLs containing tokens — `download.test.ts`, `fetch-client.test.ts`
+- [x] Constant-time comparison everywhere a secret is compared — the webhook secret is the only
+      one the Bot API has, and uses `timingSafeEqual`
+- [x] Session files `0600`, and the store directory `0700` — `storage.test.ts`
+- [x] Webhook secret comparison is constant-time — `webhook.test.ts`
+- [x] Path-traversal test over download helpers — `secret-exposure.test.ts` covers `..` on both
+      separators, URL schemes and null bytes
+- [x] Hostile input cannot pollute prototypes, crash the pipeline, or reach a handler as though
+      Telegram sent it — `hostile-input.test.ts`
+- [x] Request bodies are bounded while being read — `webhook-adapters.test.ts`
+- [x] `npm audit` clean; provenance enabled — zero runtime dependencies, and a CI licence gate
+      for the day that changes
+- [x] `SECURITY.md` with a disclosure address and response commitment
+
+### MTProto — open until the subsystem exists
+
 - [ ] Crypto primitives validated against known-answer vectors
-- [ ] Constant-time comparison everywhere a secret is compared
 - [ ] DH validation cannot be bypassed by configuration
-- [ ] Session files `0600`; permission warning verified
-- [ ] Webhook secret comparison is constant-time
 - [ ] TL decoder fuzzed for bounds and allocation limits
-- [ ] Path-traversal test over download helpers
-- [ ] `npm audit` clean; provenance enabled
 - [ ] Ban-risk warning present in MTProto documentation
-- [ ] `SECURITY.md` with a disclosure address and response commitment
+- [ ] Session encryption at rest, and a permission warning when a session file is too open
