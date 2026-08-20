@@ -21,7 +21,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -56,23 +56,34 @@ try {
   run('pnpm', ['build'], root)
 
   process.stdout.write('packing\n')
+  // The archive is named for the version, so its name cannot be assumed: it
+  // changes the moment a release bumps the version, which is exactly when this
+  // check matters most. Each package reports the file it produced.
+  const archives = new Map()
+
   for (const name of PACKAGES) {
+    const manifest = JSON.parse(readFileSync(join(root, 'packages', name, 'package.json'), 'utf8'))
+    if (manifest.private === true) continue
+
     run('pnpm', ['pack', '--pack-destination', JSON.stringify(workspace)], join(root, 'packages', name))
+
+    const archive = readdirSync(workspace).find(
+      (file) => file.endsWith('.tgz') && !archives.has(file),
+    )
+    if (archive === undefined) throw new Error(`no archive was produced for ${manifest.name}`)
+
+    archives.set(archive, manifest.name)
+  }
+
+  const dependencies = {}
+  for (const [archive, packageName] of archives) {
+    dependencies[packageName] = `./${archive}`
   }
 
   writeFileSync(
     join(workspace, 'package.json'),
     `${JSON.stringify(
-      {
-        name: 'yuigram-smoke',
-        private: true,
-        type: 'module',
-        dependencies: {
-          '@yuigram/core': './yuigram-core-0.0.0.tgz',
-          '@yuigram/bot-api': './yuigram-bot-api-0.0.0.tgz',
-          yuigram: './yuigram-0.0.0.tgz',
-        },
-      },
+      { name: 'yuigram-smoke', private: true, type: 'module', dependencies },
       null,
       2,
     )}\n`,
