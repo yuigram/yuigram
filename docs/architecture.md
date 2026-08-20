@@ -3,10 +3,10 @@
 The proposed system architecture, the dependency relationships between subsystems, and the
 reason each subsystem exists.
 
-The obvious first shape puts a single shared core above both transports, with Context
-sitting beneath Events and Middleware. That layering is revised here: **Context is produced by the transport-specific normalizers,
-not by the core**, because a context is only meaningful once an update has been decoded, and
-decoding is exactly the part that cannot be shared.
+The obvious first shape puts a single shared core above both transports, with Context sitting
+beneath Events and Middleware. That layering is revised here: **Context is produced by the
+transport-specific normalizers, not by the core**, because a context is only meaningful once an
+update has been decoded, and decoding is exactly the part that cannot be shared.
 
 ---
 
