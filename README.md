@@ -6,12 +6,18 @@
 
 One package. Bots and user accounts. One programming model.
 
+[![npm](https://img.shields.io/npm/v/yuigram.svg)](https://www.npmjs.com/package/yuigram)
+[![node](https://img.shields.io/node/v/yuigram.svg)](https://nodejs.org)
+[![licence](https://img.shields.io/npm/l/yuigram.svg)](LICENSE)
+[![CI](https://github.com/yuigram/yuigram/actions/workflows/ci.yml/badge.svg)](https://github.com/yuigram/yuigram/actions/workflows/ci.yml)
+
 </div>
 
 ---
 
-> **Status: early development.** The Bot API subsystem is complete and usable. MTProto is
-> next, and is being built bottom-up. Nothing here is stubbed — see [the roadmap](docs/roadmap.md).
+> **Status: 0.1.0 ships the Bot API subsystem.** Every Bot API capability is reachable, and
+> nothing released is a stub — unimplemented means absent, not hollow. MTProto is next and is
+> being built bottom-up. See [the roadmap](docs/roadmap.md).
 
 ## What it is
 

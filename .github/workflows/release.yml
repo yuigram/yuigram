@@ -1,11 +1,12 @@
 name: Release
 
-# Manual-only until the first release (Phase 4). The packages are at 0.0.0 and
-# there is nothing to publish; a push trigger would fail on every commit and
-# train everyone to ignore a red workflow.
+# Manual-only for the first release. Running it twice is the whole flow: the
+# first run opens a "chore: version packages" pull request, and the run after
+# that pull request is merged publishes what it contains. Reviewing that pull
+# request is the last point at which a version number can still be changed.
 #
-# Switch to `push: branches: [main]` when the Bot API subsystem is ready to
-# ship, so changesets can open release pull requests automatically.
+# Switch to `push: branches: [main]` once 0.1.0 is out, so the version pull
+# request opens by itself whenever a changeset lands on main.
 on:
   workflow_dispatch:
 
@@ -40,6 +41,24 @@ jobs:
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
+      # Fails in seconds rather than after the build, and catches an expired or
+      # revoked token before anything has been built. Granular npm tokens
+      # expire, so this will eventually be the step that tells you why.
+      - name: Check the npm token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if ! npm whoami >/dev/null 2>&1; then
+            echo "::error::NPM_TOKEN is set but not accepted by the registry. It may be expired, revoked, or scoped too narrowly."
+            exit 1
+          fi
+          echo "Authenticated to npm as $(npm whoami)."
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -53,6 +72,13 @@ jobs:
       # of `files` is invisible.
       - name: Smoke test the packages
         run: pnpm smoke
+
+      # Looks inside the tarballs. `files` is an allowlist, which is the safe
+      # direction, but nothing else checks what ends up in the archive - and
+      # the moment after a credential reaches a registry is the wrong moment to
+      # find out.
+      - name: Check what the packages contain
+        run: node scripts/check-package-contents.mjs
 
       - name: Create release pull request or publish
         uses: changesets/action@v1

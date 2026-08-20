@@ -1,6 +1,5 @@
 ---
 '@yuigram/bot-api': minor
-'@yuigram/mtproto': minor
 '@yuigram/core': minor
 'yuigram': minor
 ---
@@ -26,8 +25,8 @@ compose without knowing about each other.
 three-method storage contract with in-memory and filesystem adapters. Context extensions are
 carried on a type parameter, so two bots in one program can hold different state.
 
-**Types.** The full Bot API 10.2 surface — 185 methods and 388 objects — generated from a
-committed schema snapshot, with every method cancellable. `call()` reaches anything newer than
+**Types.** The full Bot API 10.2 surface, generated from a committed schema snapshot, with
+every method cancellable. `call()` reaches anything newer than
 the installed schema, so a Telegram release never blocks anyone.
 
 **Diagnostics.** An error taxonomy that preserves Telegram's own code, description and retry
