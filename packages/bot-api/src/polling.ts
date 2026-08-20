@@ -126,6 +126,37 @@ export function createPolling(options: PollingOptions): Polling {
     log?.debug('dropped pending updates', { offset })
   }
 
+  /**
+   * Deliver one batch.
+   *
+   * The offset advances before each handler runs. A handler that throws must
+   * not cause Telegram to resend the update forever; delivery is at-most-once
+   * by design, and durability is the application's job.
+   */
+  const deliver = async (updates: readonly Update[]): Promise<void> => {
+    for (const update of updates) {
+      offset = Math.max(offset, update.update_id + 1)
+
+      try {
+        await onUpdate(update)
+      } catch (error) {
+        log?.error('update handler failed', { updateId: update.update_id, error })
+        onError?.(error)
+      }
+    }
+  }
+
+  /**
+   * How long to wait after a failed poll.
+   *
+   * A flood wait states its own delay; anything else backs off exponentially so
+   * a struggling API is not hammered.
+   */
+  const backoffFor = (error: unknown, failures: number): number =>
+    error instanceof FloodError
+      ? Math.max(error.retryAfter * 1000, backoffBase)
+      : Math.min(backoffBase * 2 ** failures, backoffMax)
+
   const run = async (): Promise<void> => {
     let failures = 0
 
@@ -140,31 +171,13 @@ export function createPolling(options: PollingOptions): Polling {
           await delay(idleDelay, controller.signal)
         }
 
-        for (const update of updates) {
-          // The offset advances before the handler runs. A handler that throws
-          // must not cause Telegram to resend the update forever; delivery is
-          // at-most-once by design, and durability is the application's job.
-          offset = Math.max(offset, update.update_id + 1)
-
-          try {
-            await onUpdate(update)
-          } catch (error) {
-            log?.error('update handler failed', { updateId: update.update_id, error })
-            onError?.(error)
-          }
-        }
+        await deliver(updates)
       } catch (error) {
         if (!running) break
 
         onError?.(error)
 
-        // A flood wait states its own delay; anything else backs off
-        // exponentially so a struggling API is not hammered.
-        const wait =
-          error instanceof FloodError
-            ? Math.max(error.retryAfter * 1000, backoffBase)
-            : Math.min(backoffBase * 2 ** failures, backoffMax)
-
+        const wait = backoffFor(error, failures)
         failures = isRetryable(error) ? failures + 1 : failures
 
         log?.warn('polling failed, retrying', { waitMs: wait, error })

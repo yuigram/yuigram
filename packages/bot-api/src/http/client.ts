@@ -59,6 +59,22 @@ export interface ApiResult<T = unknown> {
 export interface HttpClient {
   /** Perform one call. */
   call<T = unknown>(request: ApiRequest): Promise<ApiResult<T>>
+
+  /**
+   * Build the download URL for a `file_path`.
+   *
+   * The transport owns the token, so it builds the URL rather than handing the
+   * token out. The result **contains the token** — Telegram's file endpoint
+   * requires it — so it must be treated as a credential and never logged.
+   *
+   * Returns an on-disk path when pointed at a local Bot API server, which
+   * reports absolute paths in `file_path` rather than serving over HTTP.
+   */
+  fileUrl?(filePath: string): string
+
+  /** Fetch bytes from a URL produced by {@link fileUrl}. */
+  fetchFile?(url: string): Promise<{ status: number; body: ReadableStream<Uint8Array> | null }>
+
   /** Release any held resources. */
   close?(): Promise<void>
 }

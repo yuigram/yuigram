@@ -22,6 +22,13 @@ import {
 } from '@yuigram/core'
 import { createApi, type RawApi } from './api.js'
 import { type BotContext, createContext } from './context.js'
+import {
+  type DownloadTarget,
+  download,
+  downloadStream,
+  downloadToFile,
+  getFileUrl,
+} from './download.js'
 import type { Update, User } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
@@ -35,6 +42,13 @@ export interface BotOptions {
   readonly client?: HttpClient
   /** API root, for a local Bot API server. */
   readonly baseUrl?: string
+  /**
+   * Whether `baseUrl` points at a local Bot API server.
+   *
+   * Such a server reports absolute on-disk paths in `file_path`, so downloads
+   * read from the filesystem instead of over HTTP.
+   */
+  readonly local?: boolean
   /** Name used in logs and by `App.client(name)`. */
   readonly name?: string
   /** Logger. Defaults to a console logger at `info`. */
@@ -72,6 +86,7 @@ export class Bot {
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
   readonly #options: BotOptions
+  readonly #client: HttpClient
 
   #polling: Polling | undefined
   #me: User | undefined
@@ -86,7 +101,10 @@ export class Bot {
       fetchClient({
         token,
         ...(options.baseUrl === undefined ? {} : { baseUrl: options.baseUrl }),
+        ...(options.local === undefined ? {} : { local: options.local }),
       })
+
+    this.#client = client
 
     this.api = createApi({
       client,
@@ -162,6 +180,45 @@ export class Bot {
     )
 
     await this.#dispatcher.dispatch(context)
+  }
+
+  /** What the download helpers need from this bot. */
+  get #downloadDeps() {
+    return {
+      api: this.api,
+      client: this.#client,
+      ...(this.#options.local === undefined ? {} : { local: this.#options.local }),
+    }
+  }
+
+  /**
+   * Download a file into memory.
+   *
+   * Accepts a `file_id`, a photo size array, or any object carrying a
+   * `file_id` — the shapes a handler already has.
+   */
+  async download(target: DownloadTarget): Promise<Uint8Array> {
+    return download(this.#downloadDeps, target)
+  }
+
+  /** Open a byte stream, for files too large to hold in memory. */
+  async downloadStream(target: DownloadTarget): Promise<ReadableStream<Uint8Array>> {
+    return downloadStream(this.#downloadDeps, target)
+  }
+
+  /** Download straight to disk, without buffering. */
+  async downloadToFile(path: string, target: DownloadTarget): Promise<void> {
+    return downloadToFile(this.#downloadDeps, path, target)
+  }
+
+  /**
+   * Resolve a file's download URL.
+   *
+   * The result contains the bot token, because Telegram's file endpoint
+   * requires it. Treat it as a credential.
+   */
+  async fileUrl(target: DownloadTarget): Promise<string> {
+    return getFileUrl(this.#downloadDeps, target)
   }
 
   /** A webhook handler wired to this bot. */

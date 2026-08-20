@@ -26,6 +26,15 @@ export interface FetchClientOptions {
   readonly headers?: Readonly<Record<string, string>>
   /** Injectable for tests; defaults to the global `fetch`. */
   readonly fetch?: typeof globalThis.fetch
+
+  /**
+   * Whether the API root is a local Bot API server.
+   *
+   * A local server reports absolute on-disk paths in `file_path` and lifts the
+   * 20 MB download and 50 MB upload limits, so downloads read from the
+   * filesystem rather than over HTTP.
+   */
+  readonly local?: boolean
 }
 
 /** Shape of a bot token: numeric id, colon, secret. */
@@ -67,6 +76,17 @@ export function fetchClient(options: FetchClientOptions): HttpClient {
   const token = options.token
 
   return {
+    fileUrl(filePath: string): string {
+      // A local server hands back a path on disk, not something to fetch.
+      if (options.local === true) return filePath
+      return `${baseUrl}/file/bot${token}/${filePath}`
+    },
+
+    async fetchFile(url: string) {
+      const response = await impl(url)
+      return { status: response.status, body: response.body }
+    },
+
     async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
       const url = `${baseUrl}/bot${token}/${request.method}`
       const encoded = encodeRequest(request.params)

@@ -9,6 +9,16 @@
  */
 
 export { type CreateApiOptions, createApi, type RawApi, type RawApiExtras } from './api.js'
+export {
+  type DownloadDeps,
+  type DownloadTarget,
+  download,
+  downloadStream,
+  downloadToFile,
+  getFile,
+  getFileUrl,
+  resolveTarget,
+} from './download.js'
 export { BotApiError, isRetryable, toError, toNetworkError } from './errors.js'
 export type { ApiMethods } from './generated/api.js'
 export type {
