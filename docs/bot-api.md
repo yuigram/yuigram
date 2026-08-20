@@ -165,10 +165,20 @@ claims to be receiving updates that stopped arriving.
 the open long poll — up to a minute — which under most process managers is the difference
 between a graceful stop and a kill.
 
-`allowed_updates: 'auto'` derives the minimal subscription from registered handlers
-([research.md](research.md) §1.6). This matters more than it appears: `message_reaction` and
-`chat_member` are **not delivered at all** unless explicitly requested, so the common failure
-"my handler never fires" is prevented by construction.
+`allowedUpdates: 'auto'` derives the minimal subscription from the registered handlers
+([research.md](research.md) §1.6). This matters more than it appears, and every part of it is a
+way to make a handler silently never fire:
+
+| Detail | Why it bites |
+|---|---|
+| Telegram takes **its own update type names** | They are the `Update` field names, not Yuigram kinds. The two differ wherever a name reads better renamed — `message_edited` is Telegram's `edited_message`. A name Telegram does not recognise is ignored, so the update never arrives. |
+| A promoted service kind is **not an update type** | `chat_member_joined` is a message carrying a marker, so it subscribes to every field that can deliver a message. |
+| Omitting the parameter is **not "everything"** | Telegram reuses *the previous setting* — whatever a past run configured, persisted server-side — and its own default excludes `chat_member`, `message_reaction` and `message_reaction_count`. |
+
+So when the registered set cannot be narrowed — an unconstrained filter could match anything —
+every type is named explicitly rather than the parameter being dropped. The mapping from kind
+to update type is generated from the schema, because a hand-written one drifts the moment
+Telegram adds an update type, and the drift is invisible.
 
 ### Webhooks
 

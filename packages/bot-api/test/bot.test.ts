@@ -282,8 +282,10 @@ describe('allowed updates', () => {
   })
 
   it('subscribes to everything when a handler could match anything', async () => {
-    // An unconstrained filter makes the registered set unknowable, and a
-    // narrower subscription would silently drop updates it wanted.
+    // An unconstrained filter makes the registered set unknowable, so every
+    // type is named explicitly. Omitting the parameter is not equivalent:
+    // Telegram reuses whatever a previous run configured, and its own default
+    // excludes chat member and reaction updates.
     const transport = mockTransport()
     transport.on('getMe', ok({ id: 1, is_bot: true, first_name: 'B' }))
     transport.on('getUpdates', ok([]))
@@ -303,7 +305,12 @@ describe('allowed updates', () => {
     await bot.start()
     await bot.stop()
 
-    expect(transport.last('getUpdates')?.params['allowed_updates']).toBeUndefined()
+    const asked = transport.last('getUpdates')?.params['allowed_updates'] as readonly string[]
+
+    expect(asked).toBeDefined()
+    expect(asked).toContain('message')
+    expect(asked).toContain('message_reaction')
+    expect(asked).toContain('chat_member')
   })
 
   it('passes an explicit list through unchanged', async () => {
@@ -358,5 +365,53 @@ describe('webhook integration', () => {
 
     expect(response.status).toBe(401)
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('identifying the bot', () => {
+  const who = { id: 1, is_bot: true, first_name: 'T', username: 't' }
+
+  it('shares one request between concurrent callers', async () => {
+    // A webhook bot handling a burst at cold start calls this from every
+    // request at once. Caching only the result sent a getMe for each - a
+    // self-inflicted herd against a rate-limited endpoint.
+    const transport = mockTransport()
+    transport.on('getMe', ok(who))
+
+    const bot = new Bot(TOKEN, { client: transport, log: createLogger({ sink: silentSink() }) })
+
+    await Promise.all(Array.from({ length: 8 }, () => bot.identify()))
+
+    expect(transport.count('getMe')).toBe(1)
+  })
+
+  it('caches the answer across later calls', async () => {
+    const transport = mockTransport()
+    transport.on('getMe', ok(who))
+
+    const bot = new Bot(TOKEN, { client: transport, log: createLogger({ sink: silentSink() }) })
+
+    await bot.identify()
+    await bot.identify()
+
+    expect(transport.count('getMe')).toBe(1)
+    expect(bot.me?.username).toBe('t')
+  })
+
+  it('retries after a failure rather than replaying it', async () => {
+    // Caching the promise must not cache a rejection: a bot that failed to
+    // identify once would never succeed.
+    const transport = mockTransport()
+    let attempt = 0
+    transport.on('getMe', () => {
+      attempt += 1
+      if (attempt === 1) throw new Error('network down')
+      return ok(who)
+    })
+
+    const bot = new Bot(TOKEN, { client: transport, log: createLogger({ sink: silentSink() }) })
+
+    await expect(bot.identify()).rejects.toThrow()
+    await expect(bot.identify()).resolves.toMatchObject({ username: 't' })
   })
 })

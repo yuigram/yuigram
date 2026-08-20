@@ -103,6 +103,32 @@ export function collectMessageKinds(schema: BotApiSchema): string[] {
     .sort()
 }
 
+/**
+ * For every event kind, the `Update` fields a subscription must name.
+ *
+ * `allowed_updates` takes Telegram's own update type names, which are the
+ * `Update` field names — not Yuigram's kinds, and not the service kinds at
+ * all. A service kind is a message carrying a marker, so subscribing to one
+ * means subscribing to every field that can deliver a message.
+ *
+ * Generated because getting it wrong is silent: Telegram simply never sends
+ * the update, and the handler never runs.
+ */
+export function collectSubscriptions(schema: BotApiSchema): Array<[string, string[]]> {
+  const messageFields = collectMessageFields(schema)
+
+  const entries: Array<[string, string[]]> = collectUpdateEvents(schema).map((event) => [
+    event.kind,
+    [event.field],
+  ])
+
+  for (const service of collectServiceEvents(schema)) {
+    entries.push([service.kind, [...messageFields]])
+  }
+
+  return entries.sort((a, b) => a[0].localeCompare(b[0]))
+}
+
 /** Find every top-level update kind. */
 export function collectUpdateEvents(schema: BotApiSchema): UpdateEvent[] {
   const update = schema.objects.find((object) => object.name === 'Update')
@@ -185,6 +211,22 @@ ${collectMessageKinds(schema)
   .map((kind) => `  '${kind}',`)
   .join('\n')}
 ] as const satisfies readonly UpdateEventKind[]
+
+${renderDoc(
+  'For every event kind, the `Update` fields a subscription must name. `allowed_updates` takes Telegram’s update type names, which are the `Update` field names rather than Yuigram kinds; a service kind is a message carrying a marker, so it maps to every field that can deliver one.',
+)}export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
+${collectSubscriptions(schema)
+  .map(([kind, fields]) => `  '${kind}': [${fields.map((f) => `'${f}'`).join(', ')}],`)
+  .join('\n')}
+}
+
+${renderDoc(
+  'Every Telegram update type, for a subscription that must not narrow. Omitting `allowed_updates` is not equivalent: Telegram reuses whatever a previous run configured, and its default excludes chat member and reaction updates entirely.',
+)}export const ALL_UPDATE_TYPES: readonly string[] = [
+${collectUpdateEvents(schema)
+  .map((event) => `  '${event.field}',`)
+  .join('\n')}
+]
 `
 
   return {

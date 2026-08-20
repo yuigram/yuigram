@@ -30,7 +30,7 @@ import {
   downloadToFile,
   getFileUrl,
 } from './download.js'
-import { MESSAGE_KINDS } from './generated/events.js'
+import { ALL_UPDATE_TYPES, KIND_SUBSCRIPTIONS, MESSAGE_KINDS } from './generated/events.js'
 import type { Update, User } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
@@ -130,6 +130,7 @@ export class Bot<C extends Context = Context> {
 
   #polling: Polling | undefined
   #me: User | undefined
+  #identifying: Promise<User> | undefined
 
   constructor(token: string, options: BotOptions = {}) {
     this.#options = options
@@ -317,11 +318,31 @@ export class Bot<C extends Context = Context> {
    *
    * `start()` does this already, but a webhook-only bot never calls it — and
    * command matching needs the username to tell `/start@thisbot` from
-   * `/start@otherbot`. Idempotent.
+   * `/start@otherbot`.
+   *
+   * Concurrent calls share one request. A webhook bot handling a burst at cold
+   * start calls this from every request at once, and caching only the result
+   * would send a `getMe` for each — a self-inflicted thundering herd against a
+   * rate-limited endpoint, at the least convenient moment.
    */
   async identify(): Promise<User> {
-    this.#me ??= await this.api.getMe()
-    return this.#me
+    if (this.#me !== undefined) return this.#me
+
+    this.#identifying ??= this.api.getMe().then(
+      (me) => {
+        this.#me = me
+        this.#identifying = undefined
+        return me
+      },
+      (error: unknown) => {
+        // Cleared on failure so a later call can retry rather than replaying
+        // a rejection forever.
+        this.#identifying = undefined
+        throw error
+      },
+    )
+
+    return this.#identifying
   }
 
   /** What the download helpers need from this bot. */
@@ -389,6 +410,20 @@ export class Bot<C extends Context = Context> {
   #startOptions: StartOptions = {}
 
   /** Resolve the subscription set from configuration or registered handlers. */
+  /**
+   * Work out what to put in `allowed_updates`.
+   *
+   * Telegram takes its own update type names here — the `Update` field names —
+   * not Yuigram kinds. The two differ wherever a name reads better renamed
+   * (`message_edited` for `edited_message`), and a promoted service kind is not
+   * an update type at all. Sending a kind Telegram does not recognise means it
+   * never sends that update, and the handler never runs.
+   *
+   * When the registered set cannot be narrowed, every type is named explicitly
+   * rather than the parameter being omitted. Omitting is not "everything":
+   * Telegram reuses whatever a previous run configured, and its own default
+   * excludes chat member and reaction updates.
+   */
   #resolveAllowedUpdates(): readonly string[] | undefined {
     const configured = this.#options.allowedUpdates
 
@@ -397,11 +432,26 @@ export class Bot<C extends Context = Context> {
 
     const coverage = this.#dispatcher.collectKinds()
 
-    // An opaque registration could match anything, so narrowing the
-    // subscription would silently drop updates a handler wanted.
-    if (coverage.opaque || coverage.kinds.size === 0) return undefined
+    if (coverage.opaque || coverage.kinds.size === 0) return ALL_UPDATE_TYPES
 
-    return [...coverage.kinds].sort()
+    const fields = new Set<string>()
+
+    for (const kind of coverage.kinds) {
+      const subscription = KIND_SUBSCRIPTIONS[kind]
+
+      if (subscription === undefined) {
+        // A kind the installed schema does not know: it may be newer than this
+        // build, and narrowing it away would drop it silently.
+        this.#log.warn('unrecognised update kind in subscription; subscribing to everything', {
+          kind,
+        })
+        return ALL_UPDATE_TYPES
+      }
+
+      for (const field of subscription) fields.add(field)
+    }
+
+    return [...fields].sort()
   }
 
   async #onStart(): Promise<void> {
