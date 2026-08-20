@@ -210,3 +210,62 @@ describe('when', () => {
     expect(predicate).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('concurrency', () => {
+  const tick = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+  it('keeps two passes through one chain independent', async () => {
+    // Webhook mode dispatches updates concurrently through the same composed
+    // chain. State shared across passes - the double-next guard in particular -
+    // would make one update's progress abort another's.
+    const order: string[] = []
+
+    const chain = compose<{ id: string }>([
+      async (ctx, next) => {
+        order.push(`${ctx.id}:in`)
+        await tick(10)
+        await next()
+        order.push(`${ctx.id}:out`)
+      },
+      async (ctx, next) => {
+        await tick(5)
+        order.push(`${ctx.id}:handler`)
+        await next()
+      },
+    ])
+
+    await Promise.all([chain({ id: 'a' }, async () => {}), chain({ id: 'b' }, async () => {})])
+
+    // Both completed fully; neither tripped the other's guard.
+    for (const id of ['a', 'b']) {
+      expect(order.filter((entry) => entry.startsWith(id))).toEqual([
+        `${id}:in`,
+        `${id}:handler`,
+        `${id}:out`,
+      ])
+    }
+  })
+
+  it('still rejects a second next() when passes overlap', async () => {
+    // The guard has to remain per pass rather than per chain, in both
+    // directions: independent passes must not trip it, and a genuine double
+    // call must still be caught while another pass is in flight.
+    const faulty = compose<{ id: string }>([
+      async (_ctx, next) => {
+        await next()
+        await next()
+      },
+    ])
+
+    const results = await Promise.allSettled([
+      faulty({ id: 'a' }, async () => {
+        await tick(10)
+      }),
+      faulty({ id: 'b' }, async () => {
+        await tick(10)
+      }),
+    ])
+
+    expect(results.every((result) => result.status === 'rejected')).toBe(true)
+  })
+})

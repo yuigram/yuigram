@@ -61,6 +61,31 @@ jobs:
           fi
           echo "Generated code matches the committed schema." 
 
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Everything in the Verify job imports through workspace paths, where a
+      # broken exports map, a file left out of `files`, or a subpath that
+      # resolves at compile time but not at run time are all invisible. This
+      # installs the tarballs and uses them as an application would, so a
+      # packaging break is caught here rather than on release day.
+      - name: Smoke test the published packages
+        run: pnpm smoke
+
   provenance:
     name: Independence
     runs-on: ubuntu-latest
