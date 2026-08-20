@@ -166,12 +166,25 @@ describe('emitted output', () => {
     expect(mapping).toContain("'inline_query': InlineQueryEventFields")
   })
 
-  it('imports only types it uses', () => {
-    const importLine = emitted.split('\n').find((l) => l.startsWith('import type')) ?? ''
+  it('imports the types it uses', () => {
+    const imports = emitted
+      .split('\n')
+      .filter((line) => line.startsWith('import type'))
+      .join('\n')
 
-    expect(importLine).toContain('Message')
-    expect(importLine).toContain('User')
-    expect(importLine).toContain('Chat')
+    expect(imports).toContain('Message')
+    expect(imports).toContain('User')
+    expect(imports).toContain('Chat')
+    // The alias table is typed against the kind union, so that comes too.
+    expect(imports).toContain('UpdateEventKind')
+  })
+
+  it('emits the alias table the runtime reads', () => {
+    // Both sides come from one table, so the types cannot say `boostUpdate`
+    // while the runtime writes `boost`.
+    expect(emitted).toContain('export const PAYLOAD_ALIASES')
+    expect(emitted).toContain("'message': 'message'")
+    expect(emitted).toContain("'chat_boost': 'boostUpdate'")
   })
 
   it('is deterministic', () => {

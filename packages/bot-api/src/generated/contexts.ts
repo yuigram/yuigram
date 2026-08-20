@@ -2,6 +2,7 @@
 // Per-event context field shapes
 // Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
 
+import type { UpdateEventKind } from './events.js'
 import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
 
 /**
@@ -1221,3 +1222,36 @@ export interface EventFieldsByKind {
   'shipping_query': ShippingQueryEventFields
   'subscription': BotSubscriptionUpdatedEventFields
 }
+
+/**
+ * The domain name each event kind stores its payload under. Generated so the
+ * runtime and the types cannot disagree.
+ */
+export const PAYLOAD_ALIASES = {
+  'business_connection': 'connection',
+  'business_message': 'message',
+  'business_message_edited': 'message',
+  'business_messages_deleted': 'deletion',
+  'callback_query': 'query',
+  'channel_post': 'message',
+  'channel_post_edited': 'message',
+  'chat_boost': 'boostUpdate',
+  'chat_boost_removed': 'removal',
+  'chat_join_request': 'request',
+  'chat_member': 'update',
+  'guest_message': 'message',
+  'inline_query': 'inlineQuery',
+  'inline_result_chosen': 'chosenResult',
+  'managed_bot': 'update',
+  'message': 'message',
+  'message_edited': 'message',
+  'message_reaction': 'reaction',
+  'message_reaction_count': 'reactionCount',
+  'my_chat_member': 'update',
+  'poll': 'poll',
+  'poll_answer': 'answer',
+  'pre_checkout_query': 'preCheckoutQuery',
+  'purchased_paid_media': 'purchase',
+  'shipping_query': 'shippingQuery',
+  'subscription': 'subscription',
+} as const satisfies Readonly<Record<UpdateEventKind, string>>

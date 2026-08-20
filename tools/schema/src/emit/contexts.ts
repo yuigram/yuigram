@@ -191,7 +191,10 @@ export function emitContexts(schema: BotApiSchema): EmittedFile {
     }
   }
 
-  const imports = `import type { ${[...referenced].sort().join(', ')} } from './types/index.js'`
+  const imports = [
+    `import type { UpdateEventKind } from './events.js'`,
+    `import type { ${[...referenced].sort().join(', ')} } from './types/index.js'`,
+  ].join('\n')
 
   const bodies = shapes
     .map((shape) => renderShape(shape, objects.get(shape.payload) as ObjectType))
@@ -201,6 +204,18 @@ export function emitContexts(schema: BotApiSchema): EmittedFile {
     .flatMap((shape) => shape.kinds.map((kind) => `  '${kind}': ${shape.name}`))
     .sort()
     .join('\n')
+
+  // The runtime needs the same aliases the types declare. Emitting them removes
+  // the hand-kept copy that would otherwise drift: the type would say
+  // `boostUpdate` while the runtime wrote `boost`, and nothing would catch it.
+  const aliasEntries = shapes
+    .flatMap((shape) => shape.kinds.map((kind) => `  '${kind}': '${shape.alias}',`))
+    .sort()
+    .join('\n')
+
+  const aliasDoc = renderDoc(
+    'The domain name each event kind stores its payload under. Generated so the runtime and the types cannot disagree.',
+  )
 
   const mappingDoc = renderDoc(
     'Maps an event kind to the fields its context carries. Registration selects the shape, so a handler for one kind never sees another kind’s optionality.',
@@ -213,6 +228,10 @@ ${bodies}
 ${mappingDoc}export interface EventFieldsByKind {
 ${mapping}
 }
+
+${aliasDoc}export const PAYLOAD_ALIASES = {
+${aliasEntries}
+} as const satisfies Readonly<Record<UpdateEventKind, string>>
 `
 
   return {
