@@ -14,16 +14,16 @@ describe('a realistic bot', () => {
     const { bot, send, calls } = mockBot({ me: { username: 'shop_bot' } })
     const carts = memory<number>()
 
-    bot.command('start', (ctx) => ctx.reply('Welcome! Send /add to fill your cart.'))
+    bot.onCommand('start', (ctx) => ctx.reply('Welcome! Send /add to fill your cart.'))
 
-    bot.command('add', async (ctx) => {
+    bot.onCommand('add', async (ctx) => {
       const key = String(ctx.sender?.id)
       const count = ((await carts.get(key)) ?? 0) + 1
       await carts.set(key, count)
       await ctx.reply(`Cart: ${count}`)
     })
 
-    bot.callback(/^buy:/, async (ctx) => {
+    bot.onCallbackQuery(/^buy:/, async (ctx) => {
       await ctx.api.answerCallbackQuery({ callback_query_id: '1', text: 'Ordered' })
       await ctx.reply(`Ordered ${ctx.data?.slice(4)}`)
     })
@@ -63,7 +63,7 @@ describe('a realistic bot', () => {
 
     on('sendMessage', { status: 403, body: { ok: false, error_code: 403, description: 'blocked' } })
 
-    bot.command('start', async (ctx) => {
+    bot.onCommand('start', async (ctx) => {
       try {
         await ctx.reply('hi')
       } catch (error) {

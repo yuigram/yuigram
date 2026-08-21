@@ -15,8 +15,8 @@ describe('context hygiene', () => {
     const { bot, send } = mockBot()
     let leaked: unknown = 'not-run'
 
-    bot.command('start', () => {})
-    bot.text('/start', (ctx) => {
+    bot.onCommand('start', () => {})
+    bot.onText('/start', (ctx) => {
       leaked = (ctx as unknown as Record<string, unknown>)['command']
     })
 
@@ -27,7 +27,7 @@ describe('context hygiene', () => {
 
   it('still gives the command handler its parsed command', async () => {
     const { bot, send, calls } = mockBot()
-    bot.command('give', (ctx) => ctx.reply(ctx.command.args.join(',')))
+    bot.onCommand('give', (ctx) => ctx.reply(ctx.command.args.join(',')))
 
     await send.command('/give a b')
 
@@ -38,7 +38,7 @@ describe('context hygiene', () => {
     const { bot, send } = mockBot()
     const seen: unknown[] = []
 
-    bot.command('start', (ctx) => {
+    bot.onCommand('start', (ctx) => {
       seen.push(ctx.command.rest)
     })
 
@@ -54,7 +54,7 @@ describe('error handling', () => {
     // A throwing handler must not take down the polling loop or the webhook
     // response that dispatched it.
     const { bot, send } = mockBot()
-    bot.command('boom', () => {
+    bot.onCommand('boom', () => {
       throw new Error('handler exploded')
     })
 
@@ -65,10 +65,10 @@ describe('error handling', () => {
     const { bot, send } = mockBot()
     const caught: unknown[] = []
 
-    bot.catch((error) => {
+    bot.onError((error) => {
       caught.push((error as Error).message)
     })
-    bot.command('boom', () => {
+    bot.onCommand('boom', () => {
       throw new Error('handler exploded')
     })
 
@@ -81,10 +81,10 @@ describe('error handling', () => {
     const { bot, send } = mockBot()
     let kind: string | undefined
 
-    bot.catch((_error, ctx) => {
+    bot.onError((_error, ctx) => {
       kind = ctx.kind
     })
-    bot.command('boom', () => {
+    bot.onCommand('boom', () => {
       throw new Error('x')
     })
 
@@ -99,7 +99,7 @@ describe('error handling', () => {
     const { bot, send } = mockBot()
     const ran: string[] = []
 
-    bot.catch(() => {})
+    bot.onError(() => {})
     bot.on('message', () => {
       ran.push('first')
       throw new Error('boom')
@@ -117,7 +117,7 @@ describe('error handling', () => {
     const { bot, send } = mockBot()
     const caught: unknown[] = []
 
-    bot.catch((error) => {
+    bot.onError((error) => {
       caught.push((error as Error).message)
     })
     bot.use(() => {
@@ -133,7 +133,7 @@ describe('error handling', () => {
     // A failing error handler cannot be reported to itself.
     const { bot, send } = mockBot()
 
-    bot.catch(() => {
+    bot.onError(() => {
       throw new Error('catcher exploded')
     })
     bot.on('message', () => {
@@ -148,8 +148,8 @@ describe('error handling', () => {
     const first = vi.fn()
     const second = vi.fn()
 
-    bot.catch(first)
-    bot.catch(second)
+    bot.onError(first)
+    bot.onError(second)
     bot.on('message', () => {
       throw new Error('boom')
     })

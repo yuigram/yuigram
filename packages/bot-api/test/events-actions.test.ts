@@ -265,6 +265,13 @@ describe('callback query', () => {
       from: { id: 7, is_bot: false, first_name: 'A' },
       chat_instance: 'ci',
       data: 'buy:1',
+      // The message the button sits on. Telegram sends this for a button in a
+      // chat, and `inline_message_id` instead for one on an inline result.
+      message: {
+        message_id: 55,
+        date: 1,
+        chat: { id: -100, type: 'supergroup' },
+      },
     },
   }
 
@@ -289,11 +296,58 @@ describe('callback query', () => {
     expect(params).not.toHaveProperty('text')
   })
 
-  it('has no message actions, because there is no message to act on', async () => {
-    const { context } = contextFor(callbackUpdate)
+  it('reaches the chat the button lives in', async () => {
+    // A button was pressed somewhere, so the kind can send — which is why the
+    // actions are on the context rather than behind a check the caller writes.
+    const { context, transport } = contextFor(callbackUpdate)
 
-    expect(context).not.toHaveProperty('reply')
-    expect(context).not.toHaveProperty('delete')
+    await (context as unknown as { reply(text: string): Promise<unknown> }).reply('Ordered')
+
+    expect(transport.last('sendMessage')?.params).toMatchObject({
+      chat_id: -100,
+      text: 'Ordered',
+    })
+  })
+
+  it('names the reason when the query came from an inline message', async () => {
+    // An inline-mode button has an `inline_message_id` and no chat at all, so
+    // there is nothing to send to. The error says so; a missing method would
+    // only produce a TypeError about `reply`.
+    const { context } = contextFor({
+      update_id: 1,
+      callback_query: {
+        id: 'cbq-2',
+        from: { id: 7, is_bot: false, first_name: 'A' },
+        chat_instance: 'ci',
+        inline_message_id: 'inline-1',
+        data: 'buy:1',
+      },
+    } as never)
+
+    await expect(
+      (context as unknown as { reply(text: string): Promise<unknown> }).reply('nope'),
+    ).rejects.toThrow(/inline message, which has no chat/)
+  })
+
+  it('edits an inline message through its own identifier', async () => {
+    // The one action that works for both forms, which is what the error above
+    // points the caller at.
+    const { context, transport } = contextFor({
+      update_id: 1,
+      callback_query: {
+        id: 'cbq-3',
+        from: { id: 7, is_bot: false, first_name: 'A' },
+        chat_instance: 'ci',
+        inline_message_id: 'inline-1',
+      },
+    } as never)
+
+    await (context as unknown as { edit(text: string): Promise<unknown> }).edit('done')
+
+    expect(transport.last('editMessageText')?.params).toMatchObject({
+      inline_message_id: 'inline-1',
+      text: 'done',
+    })
   })
 })
 

@@ -92,7 +92,7 @@ describe('a bot built through the façade', () => {
     // to names that merely resolve.
     const { bot, send, calls } = testing.mockBot()
 
-    bot.command('start', (ctx) => ctx.reply('hello'))
+    bot.onCommand('start', (ctx) => ctx.reply('hello'))
     await send.command('/start')
 
     expect(calls.last('sendMessage')?.params['text']).toBe('hello')

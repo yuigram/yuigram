@@ -4,11 +4,11 @@
  * `defineFilter` in core takes a predicate over `unknown`, because a filter's
  * job is to decide what an arbitrary value is — it cannot assume the shape of
  * something it has not yet checked. That is right for the primitive and wrong
- * for almost every call site, which ends up writing `(v) => (v as Context)…`
+ * for almost every call site, which ends up writing `(v) => (v as AnyEventContext)…`
  * to say something the dispatcher already guarantees.
  *
  * These wrappers close that gap for the Bot API subsystem, where the guarantee
- * is real: `Bot` only ever dispatches a `Context`, so a predicate registered
+ * is real: `Bot` only ever dispatches an event context, so a predicate registered
  * on a bot genuinely receives one. The cast disappears without anything being
  * assumed that is not already true.
  *
@@ -23,10 +23,16 @@ import {
   defineFilter,
   type Filter,
 } from '@yuigram/core'
-import type { Context } from './context.js'
+import type { AnyEventContext, EventContext } from './events/index.js'
 
 /**
  * Define a filter over the bot context.
+ *
+ * `C` is what the predicate expects. It defaults to any event context, which is
+ * the honest default — a filter is asked to decide what it was handed — so a
+ * predicate reading a field only some kinds carry names the context it wants:
+ * `filter<MessageContext>(…)`. Pair that with `kinds` so the dispatcher never
+ * runs the predicate on a kind it was not written for.
  *
  * ```ts
  * const isPrivate = filter('isPrivate', (ctx) => ctx.chat?.type === 'private')
@@ -51,7 +57,7 @@ import type { Context } from './context.js'
  * filter('isPhoto', (ctx) => ctx.message?.photo !== undefined, { kinds: ['photo'] })
  * ```
  */
-export function filter<C extends Context = Context, Mod = unknown>(
+export function filter<C extends EventContext = AnyEventContext, Mod = unknown>(
   name: string,
   predicate: (context: C) => boolean,
   options: DefineOptions = {},
@@ -75,7 +81,7 @@ export function filter<C extends Context = Context, Mod = unknown>(
  * An async filter cannot narrow at a raw call site, since TypeScript has no
  * async type predicate. Handler registration still applies `Mod`.
  */
-export function asyncFilter<C extends Context = Context, Mod = unknown>(
+export function asyncFilter<C extends EventContext = AnyEventContext, Mod = unknown>(
   name: string,
   predicate: (context: C) => Promise<boolean>,
   options: DefineOptions = {},

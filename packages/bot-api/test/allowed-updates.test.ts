@@ -34,7 +34,7 @@ async function subscription(register: (bot: Bot) => void): Promise<readonly stri
   const bot = new Bot(TOKEN, { client: transport, allowedUpdates: 'auto' })
   register(bot)
 
-  await bot.start()
+  await bot.poll()
   await new Promise((resolve) => setTimeout(resolve, 20))
   await bot.stop({ timeout: 100 })
 

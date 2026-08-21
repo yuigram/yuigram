@@ -22,9 +22,7 @@ import type { Logger } from '../log/logger.js'
  * type, which it names once when constructing the client:
  *
  * ```ts
- * type MyContext = Context & SessionFlavor<{ count: number }>
- *
- * const bot = new Bot<MyContext>(token)
+ * const bot = Bot.fromToken<SessionFlavor<{ count: number }>>(token)
  * ```
  *
  * The alternative, declaration merging on a shared interface, was tried first
@@ -49,8 +47,15 @@ export type Flavor<C, F> = C & F
 export interface BaseContext {
   /** Discriminator used by dispatch and by the filter fast path. */
   readonly kind: string
-  /** When the originating event happened. */
-  readonly date: Date
+  /**
+   * Which subsystem produced this event.
+   *
+   * The discriminant a handler installed on more than one client branches on.
+   * Bot API and MTProto model the same conversation differently, and code that
+   * sees both needs to know which one it is holding before it reads anything
+   * else.
+   */
+  readonly transport: string
   /** Logger scoped to this update. */
   readonly log: Logger
   /** The untouched payload, for anything the framework has not modelled. */

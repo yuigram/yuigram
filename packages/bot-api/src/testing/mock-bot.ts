@@ -64,7 +64,7 @@ export interface MockBotOptions extends Omit<BotOptions, 'client'> {
  *
  * ```ts
  * const { bot, send, calls } = mockBot()
- * bot.command('start', (ctx) => ctx.reply('hi'))
+ * bot.onCommand('start', (ctx) => ctx.reply('hi'))
  *
  * await send.command('/start')
  * expect(calls.last('sendMessage')?.params).toMatchObject({ text: 'hi' })

@@ -118,7 +118,7 @@ describe('commandMatches', () => {
 describe('routing through the real pipeline', () => {
   it('runs a command handler', async () => {
     const { bot, send, calls } = mockBot()
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.command('/start')
 
@@ -127,7 +127,7 @@ describe('routing through the real pipeline', () => {
 
   it('exposes parsed arguments', async () => {
     const { bot, send, calls } = mockBot()
-    bot.command('give', (ctx) => ctx.reply(ctx.command.args.join('+')))
+    bot.onCommand('give', (ctx) => ctx.reply(ctx.command.args.join('+')))
 
     await send.command('/give 10 gold')
 
@@ -136,7 +136,7 @@ describe('routing through the real pipeline', () => {
 
   it('runs on a command suffixed with our username', async () => {
     const { bot, send, calls } = mockBot({ me: { username: 'my_bot' } })
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.command('/start@my_bot')
 
@@ -146,7 +146,7 @@ describe('routing through the real pipeline', () => {
   it('ignores a command addressed to another bot', async () => {
     // Two bots in one group: only the named one should answer.
     const { bot, send, calls } = mockBot({ me: { username: 'my_bot' } })
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.command('/start@other_bot')
 
@@ -155,7 +155,7 @@ describe('routing through the real pipeline', () => {
 
   it('ignores a different command', async () => {
     const { bot, send, calls } = mockBot()
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.command('/stop')
 
@@ -164,7 +164,7 @@ describe('routing through the real pipeline', () => {
 
   it('ignores ordinary text', async () => {
     const { bot, send, calls } = mockBot()
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.message('start')
 
@@ -188,7 +188,7 @@ describe('routing through the real pipeline', () => {
 
     for (const field of fields) {
       const { bot, send, calls } = mockBot()
-      bot.command('start', (ctx) => ctx.reply('hi'))
+      bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
       await send.update({
         update_id: 500,
@@ -203,7 +203,7 @@ describe('routing through the real pipeline', () => {
     // Users do edit a typo into a working command, and silently ignoring that
     // is surprising.
     const { bot, send, calls } = mockBot()
-    bot.command('start', (ctx) => ctx.reply('hi'))
+    bot.onCommand('start', (ctx) => ctx.reply('hi'))
 
     await send.update({
       update_id: 500,
@@ -217,7 +217,7 @@ describe('routing through the real pipeline', () => {
 describe('text and callback shorthands', () => {
   it('matches exact text', async () => {
     const { bot, send, calls } = mockBot()
-    bot.text('ping', (ctx) => ctx.reply('pong'))
+    bot.onText('ping', (ctx) => ctx.reply('pong'))
 
     await send.message('ping')
     await send.message('pinged')
@@ -227,7 +227,7 @@ describe('text and callback shorthands', () => {
 
   it('matches a text pattern', async () => {
     const { bot, send, calls } = mockBot()
-    bot.text(/^\d+$/, (ctx) => ctx.reply('a number'))
+    bot.onText(/^\d+$/, (ctx) => ctx.reply('a number'))
 
     await send.message('42')
 
@@ -236,7 +236,7 @@ describe('text and callback shorthands', () => {
 
   it('matches callback data', async () => {
     const { bot, send, calls } = mockBot()
-    bot.callback(/^buy:/, (ctx) => ctx.reply(`bought ${ctx.data}`))
+    bot.onCallbackQuery(/^buy:/, (ctx) => ctx.reply(`bought ${ctx.data}`))
 
     await send.callback('buy:sku-1')
 
@@ -247,7 +247,7 @@ describe('text and callback shorthands', () => {
     // The two are separate fields precisely so a text filter cannot fire on a
     // button press.
     const { bot, send, calls } = mockBot()
-    bot.text('buy:sku-1', (ctx) => ctx.reply('should not happen'))
+    bot.onText('buy:sku-1', (ctx) => ctx.reply('should not happen'))
 
     await send.callback('buy:sku-1')
 

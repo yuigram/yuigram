@@ -13,16 +13,9 @@ export type { CallOptions } from './api-options.js'
 export {
   Bot,
   type BotOptions,
-  type CommandContext,
-  type StartOptions,
+  type EventHandler,
+  type PollOptions,
 } from './bot.js'
-export {
-  type BotContext,
-  type Context,
-  type CreateContextOptions,
-  createContext,
-  type ReplyParams,
-} from './context.js'
 export {
   type DownloadDeps,
   type DownloadTarget,
@@ -34,6 +27,22 @@ export {
   resolveTarget,
 } from './download.js'
 export { BotApiError, isRetryable, toError, toNetworkError } from './errors.js'
+export {
+  type AnyEventContext,
+  type CallbackQueryActions,
+  type CallbackQueryContext,
+  type CommandContext,
+  type ContextFor,
+  type CreateEventContextOptions,
+  createEventContext,
+  type EventContext,
+  type MessageActions,
+  type MessageContext,
+  type MessageEventKind,
+  type ParsedCommand,
+  type SendOptions,
+  type TextMessageContext,
+} from './events/index.js'
 export { asyncFilter, filter } from './filter.js'
 export type { ApiMethods } from './generated/api.js'
 export type * from './generated/contexts.js'

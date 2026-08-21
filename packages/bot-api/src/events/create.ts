@@ -29,7 +29,7 @@ import { callbackQueryActions, messageActions } from './actions.js'
 import type { AnyEventContext, MessageEventKind } from './types.js'
 
 /** What building a context needs. */
-export interface CreateContextOptions {
+export interface CreateEventContextOptions {
   readonly normalized: NormalizedUpdate
   readonly api: RawApi
   readonly log: Logger
@@ -47,9 +47,6 @@ function senderOf(payload: Record<string, unknown>): unknown {
   return undefined
 }
 
-/** Kinds whose payload is a `Message`, as a set for lookup. */
-const MESSAGE_BEARING: ReadonlySet<string> = new Set(MESSAGE_KINDS)
-
 /** The domain name a kind stores its payload under. Generated, so it cannot drift. */
 const aliases = PAYLOAD_ALIASES as Readonly<Record<string, string | undefined>>
 
@@ -61,13 +58,14 @@ const aliases = PAYLOAD_ALIASES as Readonly<Record<string, string | undefined>>
  * matters, because a context is the thing most likely to be dumped into an
  * error report.
  */
-export function createEventContext(options: CreateContextOptions): AnyEventContext {
+export function createEventContext(options: CreateEventContextOptions): AnyEventContext {
   const { normalized, api, log } = options
   const kind = normalized.kind
   const payload = (normalized.payload ?? {}) as Record<string, unknown>
 
   const base: Record<string, unknown> = {
     kind,
+    transport: 'bot-api',
     updateId: normalized.updateId,
     raw: normalized.raw,
     api,
@@ -78,19 +76,24 @@ export function createEventContext(options: CreateContextOptions): AnyEventConte
   // means a payload field named `kind` cannot shadow the discriminant.
   const context: Record<string, unknown> = { ...payload, ...base }
 
-  const alias = aliases[kind]
+  // Whether this update carried a message is decided by the payload, not by
+  // the kind. A service message is promoted to its own kind — `chat_member_joined`
+  // rather than `message` — while still being a `Message`, so a table keyed by
+  // kind would leave exactly those updates without `reply`.
+  const carriesMessage = normalized.message !== undefined
+
+  const alias = aliases[kind] ?? (carriesMessage ? 'message' : undefined)
   if (alias !== undefined) context[alias] = payload
 
   const sender = senderOf(payload)
   if (sender !== undefined) context['sender'] = sender
 
-  if (MESSAGE_BEARING.has(kind)) {
+  if (carriesMessage) {
     Object.assign(context, messageActions({ api, message: payload as unknown as Message }))
   }
 
   if (kind === 'callback_query') {
-    const query = payload as unknown as CallbackQuery
-    Object.assign(context, callbackQueryActions(api, query.id))
+    Object.assign(context, callbackQueryActions(api, payload as unknown as CallbackQuery))
   }
 
   return context as unknown as AnyEventContext

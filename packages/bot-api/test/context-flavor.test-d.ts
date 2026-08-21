@@ -10,12 +10,16 @@
  * - two bots in one program holding different state;
  * - a plugin's members appearing only where the plugin is installed;
  * - the client refusing middleware whose context it does not declare.
+ *
+ * The type parameter is what plugins add, not the whole context: the base
+ * context now varies by event, so there is no single type for an application to
+ * name and extend.
  */
 
-import type { SessionFlavor } from '@yuigram/core'
+import type { Context, SessionFlavor } from '@yuigram/core'
 import { assertType, describe, expectTypeOf, it } from 'vitest'
 import { Bot } from '../src/bot.js'
-import type { Context } from '../src/context.js'
+import type { MessageContext } from '../src/events/index.js'
 import { filter } from '../src/filter.js'
 
 interface Cart {
@@ -26,73 +30,76 @@ interface Prefs {
   locale: string
 }
 
-type CartContext = Context & SessionFlavor<Cart>
-type PrefsContext = Context & SessionFlavor<Prefs>
+type WithCart = SessionFlavor<Cart>
+type WithPrefs = SessionFlavor<Prefs>
 
 describe('a plain bot', () => {
-  it('gives handlers the base context', () => {
-    const bot = new Bot('1:x')
+  it('gives handlers the context for the kind they registered for', () => {
+    const bot = Bot.fromToken('1:x')
 
-    bot.on('message', (ctx) => {
-      expectTypeOf(ctx).toExtend<Context>()
-      expectTypeOf(ctx.text).toEqualTypeOf<string | undefined>()
+    bot.on('message', (message) => {
+      expectTypeOf(message).toExtend<Context>()
+      expectTypeOf(message.text).toEqualTypeOf<string | undefined>()
+      // Telegram guarantees a chat on a message, so the context does too.
+      expectTypeOf(message.chat.id).toEqualTypeOf<number>()
     })
   })
 
   it('has no session, because none was installed', () => {
-    const bot = new Bot('1:x')
+    const bot = Bot.fromToken('1:x')
 
-    bot.on('message', (ctx) => {
+    bot.on('message', (message) => {
       // @ts-expect-error - nothing contributed `session` to this context
-      void ctx.session
+      void message.session
     })
   })
 })
 
 describe('a flavoured bot', () => {
   it('carries the flavour into every handler form', () => {
-    const bot = new Bot<CartContext>('1:x')
+    const bot = Bot.fromToken<WithCart>('1:x')
 
-    bot.on('message', (ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    bot.on('message', (message) => {
+      expectTypeOf(message.session).toEqualTypeOf<Cart>()
     })
 
-    bot.text('x', (ctx) => {
-      expectTypeOf(ctx.session.items).toEqualTypeOf<string[]>()
+    bot.onText('x', (message) => {
+      expectTypeOf(message.session.items).toEqualTypeOf<string[]>()
     })
 
-    bot.callback(/x/, (ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    bot.onCallbackQuery(/x/, (query) => {
+      expectTypeOf(query.session).toEqualTypeOf<Cart>()
     })
 
-    bot.use(async (ctx, next) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    bot.use(async (event, next) => {
+      expectTypeOf(event.session).toEqualTypeOf<Cart>()
       await next()
     })
 
-    bot.catch((_error, ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    bot.onError((_error, event) => {
+      expectTypeOf(event.session).toEqualTypeOf<Cart>()
     })
   })
 
   it('keeps the flavour on a command context', () => {
     // A command handler receives the parsed command *and* everything the
     // application declared. Narrowing to the command must not drop the rest.
-    const bot = new Bot<CartContext>('1:x')
+    const bot = Bot.fromToken<WithCart>('1:x')
 
-    bot.command('buy', (ctx) => {
-      expectTypeOf(ctx.command.name).toEqualTypeOf<string>()
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
-      expectTypeOf(ctx.text).toEqualTypeOf<string | undefined>()
+    bot.onCommand('buy', (message) => {
+      expectTypeOf(message.command.name).toEqualTypeOf<string>()
+      expectTypeOf(message.session).toEqualTypeOf<Cart>()
+      // Earned by the narrower registration: a command is text.
+      expectTypeOf(message.text).toEqualTypeOf<string>()
     })
   })
 
   it('exposes the session handle', () => {
-    const bot = new Bot<CartContext>('1:x')
+    const bot = Bot.fromToken<WithCart>('1:x')
 
-    bot.on('message', (ctx) => {
-      expectTypeOf(ctx.sessionHandle.dirty).toEqualTypeOf<boolean>()
-      assertType<(next: Cart) => void>(ctx.sessionHandle.set)
+    bot.on('message', (message) => {
+      expectTypeOf(message.sessionHandle.dirty).toEqualTypeOf<boolean>()
+      assertType<(next: Cart) => void>(message.sessionHandle.set)
     })
   })
 })
@@ -102,37 +109,84 @@ describe('two bots in one program', () => {
     // The whole point. Under a globally merged interface these two would share
     // one shape, and declaring both would require every bot to carry every
     // other bot's fields.
-    const shop = new Bot<CartContext>('1:x')
-    const settings = new Bot<PrefsContext>('2:y')
+    const shop = Bot.fromToken<WithCart>('1:x')
+    const settings = Bot.fromToken<WithPrefs>('2:y')
 
-    shop.on('message', (ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    shop.on('message', (message) => {
+      expectTypeOf(message.session).toEqualTypeOf<Cart>()
       // @ts-expect-error - the other bot's state is not on this one
-      void ctx.session.locale
+      void message.session.locale
     })
 
-    settings.on('message', (ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Prefs>()
+    settings.on('message', (message) => {
+      expectTypeOf(message.session).toEqualTypeOf<Prefs>()
       // @ts-expect-error - and vice versa
-      void ctx.session.items
+      void message.session.items
+    })
+  })
+})
+
+describe('registration selects the context', () => {
+  it('gives a message handler the message fields', () => {
+    const bot = Bot.fromToken('1:x')
+
+    bot.on('message', (message) => {
+      expectTypeOf(message.kind).toEqualTypeOf<'message'>()
+      expectTypeOf(message.message.message_id).toEqualTypeOf<number>()
+    })
+  })
+
+  it('gives a poll answer handler something with no chat at all', () => {
+    const bot = Bot.fromToken('1:x')
+
+    bot.on('poll_answer', (answer) => {
+      // Telegram declares PollAnswer.user required, so the sender is not optional.
+      expectTypeOf(answer.option_ids).toExtend<readonly number[]>()
+      // @ts-expect-error - a poll answer carries no message to reply to
+      void answer.reply
+    })
+  })
+
+  it('gives a service message the message actions, because it is a message', () => {
+    const bot = Bot.fromToken('1:x')
+
+    bot.on('chat_member_joined', (event) => {
+      expectTypeOf(event.kind).toEqualTypeOf<'chat_member_joined'>()
+      assertType<(text: string) => Promise<unknown>>(event.reply)
     })
   })
 })
 
 describe('filters', () => {
-  it('see the base context by default', () => {
-    filter('isPrivate', (ctx) => {
-      expectTypeOf(ctx).toExtend<Context>()
-      return ctx.chat?.type === 'private'
+  it('see any event context by default', () => {
+    // The default is the union, because a filter is asked to decide what it
+    // was handed. Reading a field only some kinds have means naming the kinds.
+    filter('isRecent', (event) => {
+      expectTypeOf(event).toExtend<Context>()
+      return event.kind !== 'poll'
+    })
+  })
+
+  it('see the context they name', () => {
+    const isPrivate = filter<MessageContext>('isPrivate', (message) => {
+      return message.chat.type === 'private'
+    })
+
+    const bot = Bot.fromToken('1:x')
+    bot.on(isPrivate, (message) => {
+      expectTypeOf(message.kind).toExtend<string>()
     })
   })
 
   it('see the flavoured context when told which one', () => {
-    const hasItems = filter<CartContext>('hasItems', (ctx) => ctx.session.items.length > 0)
+    const hasItems = filter<MessageContext & WithCart>(
+      'hasItems',
+      (message) => message.session.items.length > 0,
+    )
 
-    const bot = new Bot<CartContext>('1:x')
-    bot.on(hasItems, (ctx) => {
-      expectTypeOf(ctx.session).toEqualTypeOf<Cart>()
+    const bot = Bot.fromToken<WithCart>('1:x')
+    bot.on(hasItems, (event) => {
+      expectTypeOf(event.session).toEqualTypeOf<Cart>()
     })
   })
 })

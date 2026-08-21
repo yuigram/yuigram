@@ -33,7 +33,7 @@ interface Ctx extends BaseContext, SessionFlavor<Data> {
 function ctx(userId: number | undefined): Ctx {
   return {
     kind: 'message',
-    date: new Date(0),
+    transport: 'test',
     log: createLogger({ sink: silentSink() }),
     raw: {},
     userId,

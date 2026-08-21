@@ -25,16 +25,39 @@
 import type { Logger } from '@yuigram/core'
 import type { RawApi } from '../api.js'
 import type { EventFieldsByKind, MessageEventFields } from '../generated/contexts.js'
-import type { MESSAGE_KINDS, UpdateEventKind } from '../generated/events.js'
+import type {
+  BotEventKind,
+  MESSAGE_KINDS,
+  ServiceEventKind,
+  UpdateEventKind,
+} from '../generated/events.js'
 import type { Message, ReactionType, Update } from '../generated/types/index.js'
 
 /** Update kinds whose payload is a `Message`. Generated, so it cannot drift. */
 export type MessageEventKind = (typeof MESSAGE_KINDS)[number]
 
+/**
+ * Every kind that arrives carrying a `Message`.
+ *
+ * A service message — someone joined, the title changed, a topic was created —
+ * is promoted to its own kind so a handler can select it directly, but it is
+ * still a message in an ordinary chat. It therefore gets the message context,
+ * with `reply` and the rest, exactly like the kind it was promoted from.
+ */
+export type AnyMessageEventKind = MessageEventKind | ServiceEventKind
+
 /** What every context carries, whatever the event. */
-export interface EventContext<K extends UpdateEventKind = UpdateEventKind> {
+export interface EventContext<K extends BotEventKind = BotEventKind> {
   /** Which event this is. A literal type, so it discriminates. */
   readonly kind: K
+  /**
+   * Always `'bot-api'` here.
+   *
+   * The discriminant for code that sees events from more than one subsystem.
+   * Telegram's own timestamp is not normalized onto the context: it belongs to
+   * the payload, in the units Telegram sends, and is reachable there.
+   */
+  readonly transport: 'bot-api'
   /** Telegram's update identifier. */
   readonly updateId: number
   /** The untouched update, for anything the context does not model. */
@@ -105,7 +128,7 @@ export interface MessageActions {
 }
 
 /** A context for any update whose payload is a `Message`. */
-export interface MessageContext<K extends MessageEventKind = MessageEventKind>
+export interface MessageContext<K extends AnyMessageEventKind = AnyMessageEventKind>
   extends EventContext<K>,
     MessageEventFields,
     MessageActions {}
@@ -117,7 +140,7 @@ export interface MessageContext<K extends MessageEventKind = MessageEventKind>
  * than asserted for every message — a photo without a caption is a message with
  * no text, and `onMessage` cannot promise otherwise.
  */
-export interface TextMessageContext<K extends MessageEventKind = MessageEventKind>
+export interface TextMessageContext<K extends AnyMessageEventKind = AnyMessageEventKind>
   extends MessageContext<K> {
   readonly text: string
 }
@@ -135,12 +158,19 @@ export interface ParsedCommand {
 }
 
 /** A text message that parsed as a command. */
-export interface CommandContext<K extends MessageEventKind = MessageEventKind>
+export interface CommandContext<K extends AnyMessageEventKind = AnyMessageEventKind>
   extends TextMessageContext<K> {
   readonly command: ParsedCommand
 }
 
-/** Actions available on a callback query. */
+/**
+ * Actions available on a callback query.
+ *
+ * `answer` always works. The rest go through the message the button sits on,
+ * which Telegram supplies as either `message` or `inline_message_id`; an action
+ * that needs the one it did not get throws a `ValidationError` naming the
+ * reason. `edit` is the exception — it works for both.
+ */
 export interface CallbackQueryActions {
   /**
    * Answer the query.
@@ -149,6 +179,18 @@ export interface CallbackQueryActions {
    * should be called even with no text.
    */
   answer(text?: string, options?: SendOptions): Promise<true>
+
+  /** Send into the chat the button lives in, quoting the message it sits on. */
+  reply(text: string, options?: SendOptions): Promise<Message>
+
+  /** Send into the chat the button lives in, without quoting. */
+  send(text: string, options?: SendOptions): Promise<Message>
+
+  /** Edit the message the button sits on. Works for inline messages too. */
+  edit(text: string, options?: SendOptions): Promise<Message | true>
+
+  /** Delete the message the button sits on. */
+  delete(): Promise<true>
 }
 
 /** A context for a callback query. */
@@ -162,16 +204,18 @@ export interface CallbackQueryContext extends EventContext<'callback_query'>, Ca
 /**
  * The context a given event kind produces.
  *
- * Message kinds get the message actions; a callback query gets `answer`;
- * everything else gets its generated fields on the base context. Registration
- * selects the shape, so a handler for one kind never sees another kind's
- * optionality.
+ * Message kinds — including the service messages promoted out of them — get the
+ * message actions; a callback query gets `answer`; everything else gets its
+ * generated fields on the base context. Registration selects the shape, so a
+ * handler for one kind never sees another kind's optionality.
  */
-export type ContextFor<K extends UpdateEventKind> = K extends MessageEventKind
+export type ContextFor<K extends BotEventKind> = K extends AnyMessageEventKind
   ? MessageContext<K>
   : K extends 'callback_query'
     ? CallbackQueryContext
-    : EventContext<K> & EventFieldsByKind[K]
+    : K extends UpdateEventKind
+      ? EventContext<K> & EventFieldsByKind[K]
+      : never
 
 /** Anything a handler can receive. */
-export type AnyEventContext = ContextFor<UpdateEventKind>
+export type AnyEventContext = ContextFor<BotEventKind>

@@ -9,7 +9,8 @@
 import { createLogger, defineFilter, definePlugin, silentSink } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { Bot } from '../src/bot.js'
-import type { BotContext } from '../src/context.js'
+import type { MessageContext } from '../src/events/index.js'
+import { filter } from '../src/filter.js'
 import { callbackQueryUpdate, memberJoinedUpdate, messageUpdate } from '../src/testing/fixtures.js'
 import { apiError, mockTransport, ok } from '../src/testing/mock-transport.js'
 
@@ -77,10 +78,16 @@ describe('dispatch', () => {
 
   it('supports filters', async () => {
     const { bot } = testBot()
-    const hasText = defineFilter<BotContext>('hasText', (c) => (c as BotContext).text !== undefined)
+    // Named through the subsystem's own `filter`, so the predicate receives a
+    // context rather than `unknown` and the cast `defineFilter` would need
+    // disappears.
+    const hasText = filter<MessageContext, { text: string }>(
+      'hasText',
+      (message) => message.text !== undefined,
+    )
     const seen: string[] = []
 
-    bot.on(hasText, (ctx) => seen.push(ctx.text ?? ''))
+    bot.on(hasText, (message) => seen.push(message.text))
 
     await bot.handleUpdate(messageUpdate({ text: 'yes' }))
     await bot.handleUpdate(memberJoinedUpdate())
@@ -104,7 +111,7 @@ describe('dispatch', () => {
 describe('context', () => {
   it('exposes the normalized fields', async () => {
     const { bot } = testBot()
-    let captured: BotContext | undefined
+    let captured: MessageContext<'message'> | undefined
 
     bot.on('message', (ctx) => {
       captured = ctx
@@ -140,23 +147,23 @@ describe('context', () => {
     expect(transport.last('sendMessage')?.params['parse_mode']).toBe('HTML')
   })
 
-  it('explains why a reply is impossible rather than failing obscurely', async () => {
-    // Some update kinds carry no chat at all; sending `chat_id: undefined`
-    // would surface as an unrelated Bad Request from Telegram.
+  it('offers no message actions on a kind that can never reach a chat', async () => {
+    // A poll update carries no chat, so replying is not a runtime failure to
+    // explain — it is a call the type refuses. The check here is the runtime
+    // half: nothing is attached that the type says is absent.
     const { bot } = testBot()
-    let error: unknown
+    let context: object | undefined
 
-    bot.on('poll', async (ctx) => {
-      try {
-        await ctx.reply('nope')
-      } catch (caught) {
-        error = caught
-      }
+    bot.on('poll', (event) => {
+      context = event
     })
 
     await bot.handleUpdate({ update_id: 1, poll: { id: '1', question: 'q' } } as never)
 
-    expect((error as Error).message).toMatch(/carries no chat/)
+    expect(context).toBeDefined()
+    expect(context).not.toHaveProperty('reply')
+    expect(context).not.toHaveProperty('send')
+    expect(context).not.toHaveProperty('delete')
   })
 
   it('exposes the raw api for anything unwrapped', async () => {
@@ -182,7 +189,7 @@ describe('plugins', () => {
     bot.extend(definePlugin<'metrics', undefined, Bot>({ name: 'metrics', install }))
     expect(install).not.toHaveBeenCalled()
 
-    await bot.start()
+    await bot.poll()
     await bot.stop()
 
     expect(install).toHaveBeenCalledOnce()
@@ -211,7 +218,7 @@ describe('lifecycle', () => {
     const { bot, transport } = testBot()
     transport.on('getUpdates', ok([]))
 
-    await bot.start()
+    await bot.poll()
 
     expect(bot.me?.username).toBe('test_bot')
     expect(bot.state).toBe('running')
@@ -226,7 +233,7 @@ describe('lifecycle', () => {
 
     const bot = new Bot(TOKEN, { client: transport, log: createLogger({ sink: silentSink() }) })
 
-    await expect(bot.start()).rejects.toThrow()
+    await expect(bot.poll()).rejects.toThrow()
     expect(bot.state).toBe('failed')
   })
 
@@ -245,7 +252,7 @@ describe('lifecycle', () => {
       finished = true
     })
 
-    await bot.start()
+    await bot.poll()
     void bot.handleUpdate(messageUpdate({ text: 'x' }))
 
     const stopping = bot.stop({ timeout: 1000 })
@@ -272,7 +279,7 @@ describe('allowed updates', () => {
     bot.on('message', () => {})
     bot.on('callback_query', () => {})
 
-    await bot.start()
+    await bot.poll()
     await bot.stop()
 
     expect(transport.last('getUpdates')?.params['allowed_updates']).toEqual([
@@ -302,7 +309,7 @@ describe('allowed updates', () => {
       () => {},
     )
 
-    await bot.start()
+    await bot.poll()
     await bot.stop()
 
     const asked = transport.last('getUpdates')?.params['allowed_updates'] as readonly string[]
@@ -324,7 +331,7 @@ describe('allowed updates', () => {
       log: createLogger({ sink: silentSink() }),
     })
 
-    await bot.start()
+    await bot.poll()
     await bot.stop()
 
     expect(transport.last('getUpdates')?.params['allowed_updates']).toEqual(['message_reaction'])
@@ -340,7 +347,7 @@ describe('webhook integration', () => {
       seen.push(ctx.text ?? '')
     })
 
-    const handler = bot.webhookHandler({ secretToken: 'secret' })
+    const handler = bot.webhook({ secretToken: 'secret' })
     const response = await handler({
       method: 'POST',
       headers: { 'x-telegram-bot-api-secret-token': 'secret' },
@@ -357,7 +364,7 @@ describe('webhook integration', () => {
 
     bot.on('message', handler)
 
-    const response = await bot.webhookHandler({ secretToken: 'secret' })({
+    const response = await bot.webhook({ secretToken: 'secret' })({
       method: 'POST',
       headers: {},
       body: messageUpdate({ text: 'forged' }),

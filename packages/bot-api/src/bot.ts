@@ -1,36 +1,60 @@
 /**
- * The Bot client.
+ * The Bot API client.
  *
- * Ties the transport, dispatch, normalization and lifecycle together. Almost
- * everything here is delegation — the substance lives in `@yuigram/core` and in
- * the modules beside this one — which is what keeps the client small enough to
- * read in one sitting.
+ * Four things changed from the 0.1.0 surface, each for a reason recorded in
+ * `docs/api-decisions.md`:
+ *
+ * - **`Bot.fromToken(...)` rather than `new Bot(token)`.** The name carries the
+ *   credential, so the API grows by adding names instead of widening an options
+ *   bag — which is what the MTProto client and account will need.
+ * - **`onMessage` / `on(kind)` both narrow.** Registration selects the context
+ *   type, so a message handler receives a `chat` that is a `Chat` rather than a
+ *   `Chat | undefined`.
+ * - **`poll()` rather than `start()`.** Polling and webhooks are different
+ *   deployments with different failure modes, and the ten lines a reader sees
+ *   should say which one is running.
+ * - **`onError` rather than `catch`.** Everything that subscribes begins with
+ *   `on`, so the surface can be guessed rather than memorised.
+ *
+ * Extensions ride on the `Ext` type parameter rather than a globally merged
+ * interface, so two bots in one program can hold different state and the type
+ * works through the `yuigram` façade rather than only the internal package.
  */
 
 import {
   type AnyFilter,
+  type AsyncFilter,
   ContextExtender,
   createLogger,
   Dispatcher,
-  type Handler,
+  type ErrorHandler,
+  type Filter,
   Lifecycle,
   type Logger,
   type Middleware,
+  type Modify,
   type Plugin,
   PluginRegistry,
   type UseOptions,
 } from '@yuigram/core'
 import { createApi, type RawApi } from './api.js'
 import { addressedToUs, commandMatches, type ParsedCommand, parseCommand } from './command.js'
-import { type Context, createContext } from './context.js'
 import {
-  type DownloadTarget,
-  download,
-  downloadStream,
-  downloadToFile,
-  getFileUrl,
-} from './download.js'
-import { ALL_UPDATE_TYPES, KIND_SUBSCRIPTIONS, MESSAGE_KINDS } from './generated/events.js'
+  type AnyEventContext,
+  type CallbackQueryContext,
+  type CommandContext,
+  type ContextFor,
+  createEventContext,
+  type EventContext,
+  type MessageContext,
+  type TextMessageContext,
+} from './events/index.js'
+import {
+  ALL_UPDATE_TYPES,
+  type BotEventKind,
+  KIND_SUBSCRIPTIONS,
+  MESSAGE_KINDS,
+} from './generated/events.js'
 import type { Update, User } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
@@ -38,109 +62,103 @@ import { normalizeUpdate } from './normalize.js'
 import { createPolling, type Polling } from './polling.js'
 import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook/index.js'
 
-/** Options for {@link Bot}. */
+/** Options accepted when building a client. */
 export interface BotOptions {
   /** Transport to use. Defaults to the fetch client built from the token. */
   readonly client?: HttpClient
   /** API root, for a local Bot API server. */
   readonly baseUrl?: string
-  /**
-   * Whether `baseUrl` points at a local Bot API server.
-   *
-   * Such a server reports absolute on-disk paths in `file_path`, so downloads
-   * read from the filesystem instead of over HTTP.
-   */
+  /** Whether `baseUrl` points at a local Bot API server. */
   readonly local?: boolean
-  /** Name used in logs and by `App.client(name)`. */
+  /** Name used in logs. */
   readonly name?: string
   /** Logger. Defaults to a console logger at `info`. */
   readonly log?: Logger
-  /** Merged into every API call unless the call site supplies the parameter. */
+  /** Merged into every API call. */
   readonly defaults?: Readonly<Record<string, unknown>>
-
   /**
-   * Update kinds to subscribe to.
-   *
-   * `'auto'` derives the minimal set from registered handlers, which matters
-   * because Telegram does not deliver `message_reaction` or `chat_member`
-   * unless they are requested.
+   * Update kinds to subscribe to, or `'auto'` to derive them from the
+   * registered handlers.
    */
   readonly allowedUpdates?: readonly string[] | 'auto'
 }
 
-/**
- * Update kinds a command or text handler may fire on.
- *
- * Edited messages are included: editing a message into a command is a real
- * thing users do, and ignoring it silently is surprising.
- */
-
-/** What a command handler receives on top of the context. */
-export interface CommandFlavor {
-  /** The parsed command: name, arguments and any `@bot` suffix. */
-  readonly command: ParsedCommand
-}
-
-/**
- * A context whose update carried a command.
- *
- * Generic in the context so a command handler keeps whatever flavours the
- * application declared — a `/buy` handler still reaches `ctx.session`.
- */
-export type CommandContext<C extends Context = Context> = C & CommandFlavor
-
-/** Options accepted by {@link Bot.start}. */
-export interface StartOptions {
+/** Options accepted by {@link Bot.poll}. */
+export interface PollOptions {
   /** Discard updates queued before startup. */
   readonly dropPending?: boolean
+  /** Seconds Telegram holds a request open with no updates. */
+  readonly timeout?: number
 }
+
+/** A handler for one event. */
+export type EventHandler<C> = (context: C) => unknown
 
 /**
  * A Telegram bot, over the Bot API.
  *
- * `C` is the context handlers receive. It defaults to the plain
- * {@link Context}; an application that installs plugins names the intersection
- * of their flavours instead:
+ * `Ext` is what plugins add to every context. It defaults to nothing:
  *
  * ```ts
- * type MyContext = Context & SessionFlavor<Cart>
+ * const bot = Bot.fromToken(process.env.BOT_TOKEN!)
  *
- * const bot = new Bot<MyContext>(token)
+ * bot.onCommand('start', (message) => message.reply('Hello.'))
+ * bot.onText((message) => message.reply(`You said: ${message.text}`))
+ *
+ * await bot.poll()
  * ```
  *
- * Carrying extensions on a type parameter rather than merging them into a
- * global interface is what lets two bots in one program hold different state,
- * and what lets the type work through the `yuigram` package rather than only
- * through the internal one that would have declared the interface.
+ * An application using sessions names the flavour once:
+ *
+ * ```ts
+ * const bot = Bot.fromToken<SessionFlavor<Cart>>(token)
+ * ```
  */
-export class Bot<C extends Context = Context> {
-  /** The raw API surface. */
+export class Bot<Ext = unknown> {
+  /** The raw API surface, for anything the context actions do not cover. */
   readonly api: RawApi
 
   /** Name used in logs. */
   readonly name: string
 
   readonly #log: Logger
-  readonly #dispatcher: Dispatcher<C>
-  readonly #plugins = new PluginRegistry<Bot<C>>()
+  readonly #dispatcher: Dispatcher<AnyEventContext & Ext>
+  readonly #plugins = new PluginRegistry<Bot<Ext>>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
   readonly #options: BotOptions
-  readonly #client: HttpClient
 
   #polling: Polling | undefined
+  #pollOptions: PollOptions = {}
   #me: User | undefined
   #identifying: Promise<User> | undefined
 
+  /**
+   * Build a client from a bot token.
+   *
+   * The usual way in. The name says which credential is being used, which is
+   * what lets `Bot.fromMtproto` and `Account.fromSession` join it later without
+   * any of them growing a mode flag.
+   */
+  static fromToken<Ext = unknown>(token: string, options: BotOptions = {}): Bot<Ext> {
+    return new Bot<Ext>(token, options)
+  }
+
+  /**
+   * Build a client directly.
+   *
+   * Kept for the case where every option is being set. `fromToken` is the
+   * documented path.
+   */
   constructor(token: string, options: BotOptions = {}) {
     this.#options = options
     this.name = options.name ?? 'bot'
     this.#log = (options.log ?? createLogger()).child(this.name)
 
-    this.#dispatcher = new Dispatcher<C>({
+    this.#dispatcher = new Dispatcher<AnyEventContext & Ext>({
       onUnhandled: (error, context) => {
-        // Logged at error rather than swallowed: with no catch handler
-        // registered this is the only trace an operator gets.
+        // Logged rather than swallowed: with no error handler registered this
+        // is the only trace an operator gets.
         this.#log.error('unhandled error while dispatching an update', {
           kind: context.kind,
           updateId: context.updateId,
@@ -157,20 +175,18 @@ export class Bot<C extends Context = Context> {
         ...(options.local === undefined ? {} : { local: options.local }),
       })
 
-    this.#client = client
-
     this.api = createApi({
       client,
       ...(options.defaults === undefined ? {} : { defaults: options.defaults }),
     })
 
     this.#lifecycle = new Lifecycle({
-      onStart: () => this.#onStart(),
-      onStop: () => this.#onStop(),
+      onStart: () => this.#startPolling(),
+      onStop: () => this.#stopPolling(),
     })
   }
 
-  /** Who this bot is, once started. */
+  /** Who this bot is, once identified. */
   get me(): User | undefined {
     return this.#me
   }
@@ -180,52 +196,127 @@ export class Bot<C extends Context = Context> {
     return this.#lifecycle.state
   }
 
+  // -------------------------------------------------------------------------
+  // Registration
+  // -------------------------------------------------------------------------
+
   /** Register dispatch middleware. */
-  use(middleware: Middleware<C>, options?: UseOptions): this {
+  use(middleware: Middleware<AnyEventContext & Ext>, options?: UseOptions): this {
     this.#dispatcher.use(middleware, options)
     return this
   }
 
-  /** Register a handler for one or more update kinds, or a filter. */
-  on(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
-    this.#dispatcher.on(match, handler)
+  /**
+   * Register a handler for one event kind.
+   *
+   * The kind is a type-level input, so the handler receives the context that
+   * kind produces — the same type the named methods give.
+   */
+  on<K extends BotEventKind>(kind: K, handler: EventHandler<ContextFor<K> & Ext>): this
+
+  /**
+   * Register a handler behind a filter.
+   *
+   * What the filter proves is applied here rather than at the call site: a
+   * filter declaring `{ text: string }` hands the handler a context whose
+   * `text` is a `string`, without the handler re-checking what matching
+   * already established.
+   */
+  on<C extends EventContext, Mod>(
+    match: Filter<C, Mod> | AsyncFilter<C, Mod>,
+    handler: EventHandler<Modify<C, Mod> & Ext>,
+  ): this
+
+  /** Register a handler for several kinds at once. */
+  on(match: readonly string[] | AnyFilter, handler: EventHandler<AnyEventContext & Ext>): this
+
+  on(match: string | readonly string[] | AnyFilter, handler: EventHandler<never>): this {
+    this.#dispatcher.on(match, handler as never)
     return this
   }
 
-  /** Register a handler that runs once. */
-  once(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
-    this.#dispatcher.once(match, handler)
+  /** Register a handler that runs once, then removes itself. */
+  once<K extends BotEventKind>(kind: K, handler: EventHandler<ContextFor<K> & Ext>): this {
+    this.#dispatcher.once(kind, handler as never)
     return this
   }
 
   /** Remove a handler. */
-  off(handler: Handler<C>): boolean {
-    return this.#dispatcher.off(handler)
+  off(handler: EventHandler<never>): boolean {
+    return this.#dispatcher.off(handler as never)
+  }
+
+  /** Any incoming message, whether or not it has text. */
+  onMessage(handler: EventHandler<MessageContext<'message'> & Ext>): this {
+    return this.on('message', handler as never)
+  }
+
+  /** An edited message. */
+  onEditedMessage(handler: EventHandler<MessageContext<'message_edited'> & Ext>): this {
+    return this.on('message_edited', handler as never)
+  }
+
+  /** A channel post. */
+  onChannelPost(handler: EventHandler<MessageContext<'channel_post'> & Ext>): this {
+    return this.on('channel_post', handler as never)
   }
 
   /**
-   * Register a command handler.
+   * A message carrying text.
+   *
+   * `text` is a plain `string` here, which `onMessage` cannot promise: a photo
+   * without a caption is a message with no text.
+   */
+  onText(handler: EventHandler<TextMessageContext & Ext>): this
+  onText(match: string | RegExp, handler: EventHandler<TextMessageContext & Ext>): this
+  onText(
+    first: string | RegExp | EventHandler<TextMessageContext & Ext>,
+    second?: EventHandler<TextMessageContext & Ext>,
+  ): this {
+    const match = typeof first === 'function' ? undefined : first
+    const handler = (typeof first === 'function' ? first : second) as EventHandler<
+      TextMessageContext & Ext
+    >
+
+    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
+      const text = (context as { text?: unknown }).text
+      if (typeof text !== 'string') return
+
+      if (match !== undefined) {
+        const matched = typeof match === 'string' ? text === match : match.test(text)
+        if (!matched) return
+      }
+
+      return handler(context as unknown as TextMessageContext & Ext)
+    })
+
+    return this
+  }
+
+  /**
+   * A command.
    *
    * `/start` matches whichever bot is running; `/start@thisbot` matches only
-   * when the suffix names us, and `/start@otherbot` never does. Getting that
-   * wrong means answering messages addressed to a different bot, which is the
-   * most common mistake in hand-rolled command handling.
-   *
-   * A regex form matches against the command name.
+   * when the suffix names us, and `/start@otherbot` never does. Answering a
+   * command addressed to another bot is the most common mistake in hand-rolled
+   * command handling.
    */
-  command(match: string | RegExp, handler: Handler<CommandContext<C>>): this {
+  onCommand(match: string | RegExp, handler: EventHandler<CommandContext & Ext>): this {
     this.#dispatcher.on(MESSAGE_KINDS, (context) => {
-      const parsed = parseCommand(context.text)
+      const text = (context as { text?: unknown }).text
+      if (typeof text !== 'string') return
+
+      const parsed = parseCommand(text)
       if (parsed === undefined) return
       if (!commandMatches(parsed, match)) return
       if (!addressedToUs(parsed, this.#me?.username)) return
 
-      // Derived, not mutated: assigning onto the shared context would leave a
-      // `command` property visible to every later handler for this update,
+      // Derived rather than assigned: writing onto the shared context would
+      // leave `command` visible to every later handler for this update,
       // including ones that have nothing to do with commands.
-      const withCommand = Object.create(context, {
+      const withCommand = Object.create(context as object, {
         command: { value: parsed, enumerable: true },
-      }) as CommandContext<C>
+      }) as CommandContext & Ext
 
       return handler(withCommand)
     })
@@ -233,97 +324,82 @@ export class Bot<C extends Context = Context> {
     return this
   }
 
-  /** Register a handler for an exact text match, or a pattern. */
-  text(match: string | RegExp, handler: Handler<C>): this {
-    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
-      const value = context.text
-      if (value === undefined) return
+  /** A callback query, from an inline keyboard button. */
+  onCallbackQuery(handler: EventHandler<CallbackQueryContext & Ext>): this
+  onCallbackQuery(match: string | RegExp, handler: EventHandler<CallbackQueryContext & Ext>): this
+  onCallbackQuery(
+    first: string | RegExp | EventHandler<CallbackQueryContext & Ext>,
+    second?: EventHandler<CallbackQueryContext & Ext>,
+  ): this {
+    const match = typeof first === 'function' ? undefined : first
+    const handler = (typeof first === 'function' ? first : second) as EventHandler<
+      CallbackQueryContext & Ext
+    >
 
-      const matched = typeof match === 'string' ? value === match : match.test(value)
+    return this.on('callback_query', ((context: CallbackQueryContext) => {
+      const data = context.data
+      if (match === undefined) return handler(context as CallbackQueryContext & Ext)
+
+      if (typeof data !== 'string') return
+      const matched = typeof match === 'string' ? data === match : match.test(data)
       if (!matched) return
 
-      return handler(context)
-    })
-
-    return this
-  }
-
-  /** Register a handler for callback data, exact or by pattern. */
-  callback(match: string | RegExp, handler: Handler<C>): this {
-    this.#dispatcher.on('callback_query', (context) => {
-      const value = context.data
-      if (value === undefined) return
-
-      const matched = typeof match === 'string' ? value === match : match.test(value)
-      if (!matched) return
-
-      return handler(context)
-    })
-
-    return this
+      return handler(context as CallbackQueryContext & Ext)
+    }) as never)
   }
 
   /**
-   * Register an error handler.
+   * Report an error from a handler or middleware.
    *
-   * An error from a handler or from middleware reaches every registered
-   * catcher, and the bot keeps serving. With none registered, errors are
-   * logged and dispatch continues — a single malformed update must not take
-   * down every conversation a busy bot is handling.
+   * An error is either handled or propagates, and is never silent: with a
+   * handler registered the handlers see it and dispatch continues; without one
+   * it is logged; with neither a handler nor a logger it propagates to whoever
+   * called `handleUpdate`.
    */
-  catch(handler: (error: unknown, context: C) => unknown): this {
-    this.#dispatcher.catch(handler)
+  onError(handler: ErrorHandler<AnyEventContext & Ext>): this {
+    this.#dispatcher.catch(handler as never)
     return this
   }
 
-  /** Install a plugin. Installation is deferred until `start()`. */
-  extend(plugin: Plugin<string, unknown, Bot<C>>): this {
+  /** Install a plugin. */
+  extend(plugin: Plugin<string, unknown, Bot<Ext>>): this {
     this.#plugins.add(plugin)
     return this
   }
 
-  /** Contribute a lazily-computed member to every context. */
+  /** Contribute a member to every context, under a plugin's name. */
   extendContext(owner: string, key: string, value: (context: object) => unknown): this {
     this.#extender.add({ owner, key, value })
     return this
   }
 
-  /**
-   * Feed one raw update through the pipeline.
-   *
-   * Public so a webhook adapter, a test, or a replay tool can drive the same
-   * path polling does — there is no second, simplified route.
-   */
-  async handleUpdate(update: Update): Promise<void> {
-    const normalized = normalizeUpdate(update, this.#log)
+  // -------------------------------------------------------------------------
+  // Dispatch
+  // -------------------------------------------------------------------------
 
-    // The one honest cast in the client. `createContext` builds the base
-    // context; the flavours `C` promises are attached by the middleware that
-    // provides them, which runs before any handler. TypeScript cannot see that
-    // ordering, and requiring the constructor to produce a fully-flavoured
-    // context would mean the framework knowing about every plugin.
+  /** Handle one update. The entry point for both polling and webhooks. */
+  async handleUpdate(update: Update): Promise<void> {
+    const normalized = normalizeUpdate(update)
+
     const context = this.#extender.apply(
-      createContext({
+      createEventContext({
         normalized,
         api: this.api,
-        log: this.#log.child(normalized.kind, { updateId: normalized.updateId }),
-      }),
-    ) as C
+        log: this.#log,
+      }) as object,
+    ) as AnyEventContext & Ext
 
     await this.#dispatcher.dispatch(context)
   }
 
   /**
-   * Resolve who this bot is, without starting polling.
+   * Resolve who this bot is, without starting anything.
    *
-   * `start()` does this already, but a webhook-only bot never calls it — and
-   * command matching needs the username to tell `/start@thisbot` from
-   * `/start@otherbot`.
+   * `poll()` does this already, but a webhook bot never calls it — and command
+   * matching needs the username to tell `/start@thisbot` from `/start@otherbot`.
    *
-   * Concurrent calls share one request. A webhook bot handling a burst at cold
-   * start calls this from every request at once, and caching only the result
-   * would send a `getMe` for each — a self-inflicted thundering herd against a
-   * rate-limited endpoint, at the least convenient moment.
+   * Concurrent calls share one request: a webhook bot handling a burst at cold
+   * start would otherwise send a `getMe` for each.
    */
   async identify(): Promise<User> {
     if (this.#me !== undefined) return this.#me
@@ -335,8 +411,8 @@ export class Bot<C extends Context = Context> {
         return me
       },
       (error: unknown) => {
-        // Cleared on failure so a later call can retry rather than replaying
-        // a rejection forever.
+        // Cleared on failure so a later call retries rather than replaying a
+        // rejection forever.
         this.#identifying = undefined
         throw error
       },
@@ -345,47 +421,30 @@ export class Bot<C extends Context = Context> {
     return this.#identifying
   }
 
-  /** What the download helpers need from this bot. */
-  get #downloadDeps() {
-    return {
-      api: this.api,
-      client: this.#client,
-      ...(this.#options.local === undefined ? {} : { local: this.#options.local }),
-    }
+  // -------------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------------
+
+  /**
+   * Receive updates by long polling.
+   *
+   * Named for the mechanism, because polling and webhooks are different
+   * deployments: one holds a connection open and scales by process, the other
+   * is pushed to and scales by request.
+   */
+  async poll(options: PollOptions = {}): Promise<void> {
+    this.#pollOptions = options
+    await this.#lifecycle.start()
   }
 
   /**
-   * Download a file into memory.
+   * Build a webhook handler.
    *
-   * Accepts a `file_id`, a photo size array, or any object carrying a
-   * `file_id` — the shapes a handler already has.
+   * Returns a handler rather than starting a server: Yuigram does not own your
+   * HTTP server, and the adapters in `yuigram/webhook` turn this into whatever
+   * your framework expects.
    */
-  async download(target: DownloadTarget): Promise<Uint8Array> {
-    return download(this.#downloadDeps, target)
-  }
-
-  /** Open a byte stream, for files too large to hold in memory. */
-  async downloadStream(target: DownloadTarget): Promise<ReadableStream<Uint8Array>> {
-    return downloadStream(this.#downloadDeps, target)
-  }
-
-  /** Download straight to disk, without buffering. */
-  async downloadToFile(path: string, target: DownloadTarget): Promise<void> {
-    return downloadToFile(this.#downloadDeps, path, target)
-  }
-
-  /**
-   * Resolve a file's download URL.
-   *
-   * The result contains the bot token, because Telegram's file endpoint
-   * requires it. Treat it as a credential.
-   */
-  async fileUrl(target: DownloadTarget): Promise<string> {
-    return getFileUrl(this.#downloadDeps, target)
-  }
-
-  /** A webhook handler wired to this bot. */
-  webhookHandler(options: Omit<WebhookOptions, 'onUpdate'> = {}): WebhookHandler {
+  webhook(options: Omit<WebhookOptions, 'onUpdate'> = {}): WebhookHandler {
     return createWebhookHandler({
       ...options,
       log: options.log ?? this.#log,
@@ -396,33 +455,69 @@ export class Bot<C extends Context = Context> {
     })
   }
 
-  /** Start the bot and begin polling. */
-  async start(options: StartOptions = {}): Promise<void> {
-    this.#startOptions = options
-    await this.#lifecycle.start()
-  }
-
-  /** Stop polling, drain in-flight updates, and shut down. */
+  /** Stop, draining in-flight handlers first. */
   async stop(options: { timeout?: number } = {}): Promise<void> {
     await this.#lifecycle.stop(options)
   }
 
-  #startOptions: StartOptions = {}
+  // -------------------------------------------------------------------------
+  // Internals
+  // -------------------------------------------------------------------------
 
-  /** Resolve the subscription set from configuration or registered handlers. */
+  async #startPolling(): Promise<void> {
+    await this.#plugins.install(this)
+
+    const me = await this.identify()
+    this.#log.info('signed in', { username: me.username, id: me.id })
+
+    if (!this.#dispatcher.hasCatcher) {
+      // Said once, at start: errors are logged and dispatch continues, which is
+      // safe but easy to miss if nobody is reading logs.
+      this.#log.warn(
+        'no error handler registered; handler errors will be logged and swallowed. Use bot.onError() to handle them',
+      )
+    }
+
+    const allowedUpdates = this.#resolveAllowedUpdates()
+
+    this.#polling = createPolling({
+      api: this.api,
+      log: this.#log,
+      ...(allowedUpdates === undefined ? {} : { allowedUpdates }),
+      ...(this.#pollOptions.dropPending === true ? { dropPending: true } : {}),
+      ...(this.#pollOptions.timeout === undefined ? {} : { timeout: this.#pollOptions.timeout }),
+      onUpdate: (update) => this.#lifecycle.track(this.handleUpdate(update)),
+      onError: (error) => {
+        this.#log.error('polling error', { error })
+      },
+      onFatal: (error) => {
+        // The bot is no longer receiving updates, so staying in the running
+        // state would leave `bot.state` claiming something untrue. Deferred off
+        // the polling loop's own stack: stopping from inside the loop being
+        // stopped is re-entrant.
+        this.#log.error('polling stopped and cannot recover', { error })
+        queueMicrotask(() => {
+          void this.stop().catch((stopError) => {
+            this.#log.error('failed to stop after a fatal polling error', { error: stopError })
+          })
+        })
+      },
+    })
+
+    await this.#polling.start()
+  }
+
+  async #stopPolling(): Promise<void> {
+    await this.#polling?.stop()
+    this.#polling = undefined
+  }
+
   /**
    * Work out what to put in `allowed_updates`.
    *
    * Telegram takes its own update type names here — the `Update` field names —
-   * not Yuigram kinds. The two differ wherever a name reads better renamed
-   * (`message_edited` for `edited_message`), and a promoted service kind is not
-   * an update type at all. Sending a kind Telegram does not recognise means it
-   * never sends that update, and the handler never runs.
-   *
-   * When the registered set cannot be narrowed, every type is named explicitly
-   * rather than the parameter being omitted. Omitting is not "everything":
-   * Telegram reuses whatever a previous run configured, and its own default
-   * excludes chat member and reaction updates.
+   * not Yuigram kinds. Sending a kind it does not recognise means it never
+   * sends that update, and the handler never runs.
    */
   #resolveAllowedUpdates(): readonly string[] | undefined {
     const configured = this.#options.allowedUpdates
@@ -453,51 +548,6 @@ export class Bot<C extends Context = Context> {
 
     return [...fields].sort()
   }
-
-  async #onStart(): Promise<void> {
-    await this.#plugins.install(this)
-
-    const me = await this.identify()
-    this.#log.info('signed in', { username: me.username, id: me.id })
-
-    if (!this.#dispatcher.hasCatcher) {
-      // Said once, at start: errors are logged and dispatch continues, which
-      // is safe but easy to miss if nobody is reading logs.
-      this.#log.warn(
-        'no error handler registered; handler errors will be logged and swallowed. Use bot.catch() to handle them',
-      )
-    }
-
-    const allowedUpdates = this.#resolveAllowedUpdates()
-
-    this.#polling = createPolling({
-      api: this.api,
-      log: this.#log,
-      ...(allowedUpdates === undefined ? {} : { allowedUpdates }),
-      ...(this.#startOptions.dropPending === true ? { dropPending: true } : {}),
-      onUpdate: (update) => this.#lifecycle.track(this.handleUpdate(update)),
-      onError: (error) => {
-        this.#log.error('polling error', { error })
-      },
-      onFatal: (error) => {
-        // The bot is no longer receiving updates, so reporting while staying
-        // in the `running` state would leave `bot.state` claiming something
-        // untrue. Deferred off the polling loop's own stack: stopping from
-        // inside the loop that is being stopped is re-entrant.
-        this.#log.error('polling stopped and cannot recover', { error })
-        queueMicrotask(() => {
-          void this.stop().catch((stopError) => {
-            this.#log.error('failed to stop after a fatal polling error', { error: stopError })
-          })
-        })
-      },
-    })
-
-    await this.#polling.start()
-  }
-
-  async #onStop(): Promise<void> {
-    await this.#polling?.stop()
-    this.#polling = undefined
-  }
 }
+
+export type { ParsedCommand }
