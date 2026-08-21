@@ -106,3 +106,19 @@ export function when<C>(
     await next()
   }
 }
+
+/**
+ * The minimum a plugin needs of whatever it is installed on.
+ *
+ * A plugin that only registers middleware should not have to name the client
+ * class it will be installed on — that would tie it to one transport, and stop
+ * it working on a router. Declaring this instead makes it installable on
+ * anything that accepts middleware.
+ *
+ * One member, and no second parameter: a host whose `use` also takes options is
+ * still assignable, while declaring `options?: unknown` here would not be
+ * assignable to a host that types its options.
+ */
+export interface MiddlewareHost {
+  use(middleware: Middleware<never>): unknown
+}

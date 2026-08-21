@@ -7,7 +7,7 @@
  * draining is the default rather than an option.
  */
 
-import { YuigramError } from '../errors/errors.js'
+import { CancelledError, YuigramError } from '../errors/errors.js'
 
 /** Lifecycle states, in the order they occur. */
 export type LifecycleState = 'idle' | 'starting' | 'running' | 'stopping' | 'failed'
@@ -26,12 +26,30 @@ export interface StopOptions {
   readonly timeout?: number
 }
 
+/** What a stop hook is told about the deadline it runs under. */
+export interface StopContext {
+  /**
+   * Fires when the shutdown deadline passes.
+   *
+   * A hook that waits for anything must honour it. The deadline covers the
+   * whole of `stop()`, not just the drain before the hook, so a hook with a
+   * wait of its own would otherwise defeat the timeout the caller set.
+   */
+  readonly signal: AbortSignal
+}
+
 /** Hooks a lifecycle runs on transition. */
 export interface LifecycleHooks {
   /** Bring the client up. Failure moves the state to `failed`. */
   onStart?: () => Promise<void> | void
-  /** Take the client down. Runs after in-flight work has drained. */
-  onStop?: () => Promise<void> | void
+  /**
+   * Take the client down. Runs after in-flight work has drained.
+   *
+   * Receives the shutdown deadline, and must return once it fires. Anything
+   * still running is abandoned — nothing can cancel a promise — so a hook that
+   * gives up says so by returning rather than by waiting longer.
+   */
+  onStop?: (context: StopContext) => Promise<void> | void
 }
 
 /**
@@ -44,6 +62,8 @@ export class Lifecycle {
   #state: LifecycleState = 'idle'
   #startPromise: Promise<void> | undefined
   #inFlight = new Set<Promise<unknown>>()
+  /** Whether the last stop finished everything. See {@link Lifecycle.stopped}. */
+  #drained = true
   readonly #hooks: LifecycleHooks
 
   constructor(hooks: LifecycleHooks = {}) {
@@ -110,11 +130,24 @@ export class Lifecycle {
   /**
    * Stop the client, draining in-flight work first.
    *
-   * Work that has not settled within the timeout is abandoned rather than
-   * waited on indefinitely: a stuck handler must not prevent shutdown.
+   * The timeout is a deadline over the **whole** call, not over the drain
+   * alone. A stop hook that waits for work of its own — a polling loop waiting
+   * for its handlers — is given the same deadline and must return when it
+   * fires, so there is exactly one clock and no wait behind it.
+   *
+   * Work still running when the deadline passes is abandoned rather than
+   * waited on: a stuck handler must not prevent shutdown, and nothing can
+   * cancel a promise. `stopped` reports whether everything actually finished.
    */
   async stop(options: StopOptions = {}): Promise<void> {
-    if (this.#state === 'idle' || this.#state === 'stopping') return
+    if (this.#state === 'stopping') return
+
+    // An idle client can still have work in flight. A webhook deployment never
+    // calls `start()` — it hands a request handler to someone else's server —
+    // yet every update it dispatches is tracked here. Returning early on
+    // `idle` meant `stop()` drained nothing in exactly the deployment where a
+    // clean shutdown matters most, while reporting success.
+    if (this.#state === 'idle' && this.#inFlight.size === 0) return
 
     // A stop arriving mid-start waits for the start to settle first. Running
     // `onStop` while `onStart` is still bringing transports up leaves whatever
@@ -133,13 +166,62 @@ export class Lifecycle {
 
     this.#state = 'stopping'
 
+    const timeout = options.timeout ?? 10_000
+    const deadline = new AbortController()
+
+    // One clock for the whole shutdown. The drain gets whatever is left of it,
+    // and the stop hook gets the same signal, so a wait inside the hook cannot
+    // outlive the deadline the caller asked for.
+    const timer =
+      timeout > 0
+        ? setTimeout(() => deadline.abort(new CancelledError('shutdown deadline passed')), timeout)
+        : undefined
+
+    timer?.unref?.()
+    if (timeout <= 0) deadline.abort(new CancelledError('shutdown deadline passed'))
+
     try {
-      await this.drain(options.timeout ?? 10_000)
-      await this.#hooks.onStop?.()
+      this.#drained = await this.drain(timeout, deadline.signal)
+
+      // Raced rather than merely awaited. The signal asks a cooperative hook
+      // to return; racing the deadline holds one that does not to the same
+      // promise anyway. A foundation other transports implement cannot rely on
+      // every one of them honouring a signal, and the caller was given a
+      // deadline, not a suggestion.
+      const hook = this.#hooks.onStop?.({ signal: deadline.signal })
+
+      if (hook !== undefined) {
+        const settled = Promise.resolve(hook).then(() => true)
+        const expired = new Promise<boolean>((resolve) => {
+          if (deadline.signal.aborted) resolve(false)
+          else deadline.signal.addEventListener('abort', () => resolve(false), { once: true })
+        })
+
+        // A hook that loses the race keeps running; its failure would
+        // otherwise surface as an unhandled rejection long after the stop.
+        settled.catch(() => undefined)
+
+        if (!(await Promise.race([settled, expired]))) this.#drained = false
+      }
     } finally {
+      if (timer !== undefined) clearTimeout(timer)
       this.#state = 'idle'
+
+      // Cleared because this lifecycle is done with them, not because they
+      // finished: `stopped` is what says whether they did.
       this.#inFlight.clear()
     }
+  }
+
+  /**
+   * Whether the last `stop()` drained everything before its deadline.
+   *
+   * `false` means work was abandoned and is possibly still running. A caller
+   * that reports a clean shutdown regardless is reporting something it does
+   * not know.
+   */
+  get stopped(): boolean {
+    return this.#drained
   }
 
   /**
@@ -166,14 +248,21 @@ export class Lifecycle {
    *
    * Resolves early once everything settles, and gives up after `timeout`.
    */
-  async drain(timeout = 10_000): Promise<boolean> {
+  async drain(timeout = 10_000, signal?: AbortSignal): Promise<boolean> {
     if (this.#inFlight.size === 0) return true
-    if (timeout <= 0) return this.#inFlight.size === 0
+    if (timeout <= 0 || signal?.aborted === true) return this.#inFlight.size === 0
 
     const settled = Promise.all([...this.#inFlight]).then(() => true)
 
     let timer: ReturnType<typeof setTimeout> | undefined
     const expired = new Promise<boolean>((resolve) => {
+      // A shared deadline takes precedence: `stop` passes one so the drain and
+      // the stop hook cannot each spend the full timeout in turn.
+      if (signal !== undefined) {
+        signal.addEventListener('abort', () => resolve(false), { once: true })
+        return
+      }
+
       timer = setTimeout(() => resolve(false), timeout)
       // Do not hold the event loop open purely to time out a drain.
       timer.unref?.()

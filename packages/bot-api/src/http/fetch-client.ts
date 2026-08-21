@@ -104,7 +104,7 @@ export function fetchClient(options: FetchClientOptions): HttpClient {
 
     async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
       const url = `${baseUrl}/bot${token}/${request.method}`
-      const encoded = encodeRequest(request.params)
+      const encoded = await encodeRequest(request.params)
 
       const headers: Record<string, string> = { ...extraHeaders }
       if (encoded.contentType !== undefined) headers['content-type'] = encoded.contentType
@@ -125,7 +125,11 @@ export function fetchClient(options: FetchClientOptions): HttpClient {
           headers,
           body: encoded.body,
           signal: controller.signal,
-        })
+          // Required by fetch to accept a stream body, and ignored for the
+          // other two. Without it a streaming upload fails before it starts,
+          // with a message about the body rather than about the file.
+          ...(encoded.body instanceof ReadableStream ? { duplex: 'half' } : {}),
+        } as RequestInit)
 
         const body = (await response.json()) as ApiResponse<T>
         return { status: response.status, body }

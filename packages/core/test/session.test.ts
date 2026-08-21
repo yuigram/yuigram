@@ -53,7 +53,30 @@ function sessionMiddleware(storage: KV<Data>, ttl?: number) {
 describe('loading', () => {
   it('provides the initial value when nothing is stored', async () => {
     const storage = memory<Data>()
-    const c = ctx(1)
+    let seen: number | undefined
+
+    await run(
+      [
+        sessionMiddleware(storage),
+        (inner) => {
+          seen = inner.session.count
+        },
+      ],
+      ctx(1),
+    )
+
+    expect(seen).toBe(0)
+    // Read-only traffic writes nothing, so a store is not hammered by users
+    // whose session never changes.
+    expect(await storage.get('1')).toBeUndefined()
+  })
+
+  it('persists a change made in place', async () => {
+    // `session.count++` reads the object and mutates it. Without tracking, the
+    // change is silently lost at the end of the update — the most surprising
+    // thing a session can do, because the code looks exactly like code that
+    // works.
+    const storage = memory<Data>()
 
     await run(
       [
@@ -62,10 +85,70 @@ describe('loading', () => {
           inner.session.count++
         },
       ],
-      c,
+      ctx(1),
     )
 
-    expect(await storage.get('1')).toBeUndefined()
+    expect(await storage.get('1')).toEqual({ count: 1 })
+  })
+
+  it('persists a change made deep inside the value', async () => {
+    // An array pushed into is the common shape, and it never trips a plain
+    // setter: `push` writes an index and a length on an object the handler
+    // reached through the session rather than on the session itself.
+    interface Cart {
+      items: string[]
+    }
+
+    interface CartCtx extends BaseContext, SessionFlavor<Cart> {
+      userId: number | undefined
+    }
+
+    const storage = memory<Cart>()
+
+    const middleware = createSession<CartCtx, Cart>({
+      storage,
+      key: (c) => c.userId,
+      initial: () => ({ items: [] }),
+    })
+
+    await run(
+      [
+        middleware,
+        (inner) => {
+          inner.session.items.push('apple')
+        },
+      ],
+      {
+        kind: 'message',
+        transport: 'test',
+        log: createLogger({ sink: silentSink() }),
+        raw: {},
+        userId: 1,
+      } as CartCtx,
+    )
+
+    expect(await storage.get('1')).toEqual({ items: ['apple'] })
+  })
+
+  it('hands back the same object each time, so identity holds', async () => {
+    // A handler that captures the session and compares it later must see the
+    // same object: building a fresh wrapper per access would break every
+    // identity check and every `Map` keyed on it.
+    const storage = memory<Data>()
+    let same = false
+
+    await run(
+      [
+        sessionMiddleware(storage),
+        (inner) => {
+          const first = inner.session
+          same = first === inner.session
+        },
+      ],
+      ctx(1),
+    )
+
+    expect(same).toBe(true)
   })
 
   it('loads a stored value', async () => {

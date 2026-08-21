@@ -31,7 +31,30 @@ import type {
   ServiceEventKind,
   UpdateEventKind,
 } from '../generated/events.js'
+import type {
+  AnswerCallbackQueryParams,
+  EditMessageTextParams,
+  ForwardMessageParams,
+  PinChatMessageParams,
+  SendAnimationParams,
+  SendAudioParams,
+  SendDocumentParams,
+  SendMessageParams,
+  SendPhotoParams,
+  SendStickerParams,
+  SendVideoNoteParams,
+  SendVideoParams,
+  SendVoiceParams,
+  SetMessageReactionParams,
+} from '../generated/methods/index.js'
 import type { Message, ReactionType, Update } from '../generated/types/index.js'
+import type {
+  CallbackQueryBoundApi,
+  InlineQueryBoundApi,
+  MessageBoundApi,
+  PreCheckoutQueryBoundApi,
+  ShippingQueryBoundApi,
+} from './bound.js'
 
 /** Update kinds whose payload is a `Message`. Generated, so it cannot drift. */
 export type MessageEventKind = (typeof MESSAGE_KINDS)[number]
@@ -68,15 +91,72 @@ export interface EventContext<K extends BotEventKind = BotEventKind> {
   readonly log: Logger
 }
 
-/** Options accepted when replying or sending. */
-export interface SendOptions {
-  readonly parse_mode?: string | undefined
-  readonly reply_markup?: unknown
-  readonly disable_notification?: boolean | undefined
-  readonly protect_content?: boolean | undefined
-  readonly message_effect_id?: string | undefined
-  readonly [key: string]: unknown
-}
+/**
+ * Options for an action, as the method's own parameters minus what the context
+ * supplies.
+ *
+ * Derived from the generated parameter types rather than listed by hand, so
+ * every option Telegram accepts is offered with its own documentation and its
+ * own type — and a parameter added in a future Bot API appears without anyone
+ * editing this file. The earlier hand-written shape had five fields and an
+ * index signature, which accepted `parse_moed` as readily as `parse_mode`.
+ */
+export type OptionsFor<Params, Supplied extends keyof Params> = Omit<Params, Supplied>
+
+/** Options accepted when replying. `reply_parameters` is merged, not replaced. */
+export type ReplyOptions = OptionsFor<SendMessageParams, 'chat_id' | 'text'>
+
+/** Options accepted when sending into the same chat. */
+export type SendOptions = OptionsFor<SendMessageParams, 'chat_id' | 'text'>
+
+/**
+ * One media send, as its own parameters with the file required.
+ *
+ * The union of these is what lets `reply({ photo })` and `reply({ video })` be
+ * one method with the right options for each, instead of eight `replyWith…`
+ * variants that differ only in a word.
+ */
+type MediaSend<K extends keyof P & string, P> = {
+  readonly [Key in K]-?: NonNullable<P[Key]>
+} & Omit<P, 'chat_id' | K>
+
+/**
+ * What a reply or a send can carry besides text.
+ *
+ * Only the methods that take exactly one file are here: `sendMediaGroup` and
+ * `sendPaidMedia` take a list, so there is no single key to dispatch on and
+ * they stay explicit calls.
+ */
+export type SendContent =
+  | MediaSend<'photo', SendPhotoParams>
+  | MediaSend<'video', SendVideoParams>
+  | MediaSend<'animation', SendAnimationParams>
+  | MediaSend<'audio', SendAudioParams>
+  | MediaSend<'document', SendDocumentParams>
+  | MediaSend<'voice', SendVoiceParams>
+  | MediaSend<'video_note', SendVideoNoteParams>
+  | MediaSend<'sticker', SendStickerParams>
+
+/** Options accepted when editing this message's text. */
+export type EditOptions = OptionsFor<EditMessageTextParams, 'chat_id' | 'message_id' | 'text'>
+
+/** Options accepted when forwarding this message. */
+export type ForwardOptions = OptionsFor<
+  ForwardMessageParams,
+  'chat_id' | 'from_chat_id' | 'message_id'
+>
+
+/** Options accepted when reacting to this message. */
+export type ReactOptions = OptionsFor<
+  SetMessageReactionParams,
+  'chat_id' | 'message_id' | 'reaction'
+>
+
+/** Options accepted when pinning this message. */
+export type PinOptions = OptionsFor<PinChatMessageParams, 'chat_id' | 'message_id'>
+
+/** Options accepted when answering a callback query. */
+export type AnswerOptions = OptionsFor<AnswerCallbackQueryParams, 'callback_query_id' | 'text'>
 
 /**
  * Actions available on any update that carried a message.
@@ -93,7 +173,18 @@ export interface MessageActions {
    * that, a reply inside a forum topic lands in the general chat and a reply on
    * a business account is sent as the bot instead.
    */
-  reply(text: string, options?: SendOptions): Promise<Message>
+  reply(text: string, options?: ReplyOptions): Promise<Message>
+
+  /**
+   * Reply with media rather than text.
+   *
+   * The key decides the method — `{ photo }` sends a photo, `{ video }` a video
+   * — and the rest of the object is that method's own options, typed for it.
+   * One entry point instead of eight `replyWith…` names that differ by a word,
+   * which is fewer names to choose wrongly between for a person and for an
+   * assistant reading the types.
+   */
+  reply(content: SendContent): Promise<Message>
 
   /**
    * Send to the same chat without quoting.
@@ -103,14 +194,17 @@ export interface MessageActions {
    */
   send(text: string, options?: SendOptions): Promise<Message>
 
+  /** Send media to the same chat without quoting. */
+  send(content: SendContent): Promise<Message>
+
   /** Edit this message's text. */
-  edit(text: string, options?: SendOptions): Promise<Message | true>
+  edit(text: string, options?: EditOptions): Promise<Message | true>
 
   /** Delete this message. */
   delete(): Promise<true>
 
   /** Forward this message to another chat. */
-  forward(to: number | string, options?: SendOptions): Promise<Message>
+  forward(to: number | string, options?: ForwardOptions): Promise<Message>
 
   /**
    * React to this message.
@@ -118,20 +212,28 @@ export interface MessageActions {
    * Takes an emoji for the common case; pass reaction objects for custom emoji.
    * An empty array clears the bot's reaction.
    */
-  react(reaction: string | readonly ReactionType[], options?: SendOptions): Promise<true>
+  react(reaction: string | readonly ReactionType[], options?: ReactOptions): Promise<true>
 
   /** Pin this message in its chat. */
-  pin(options?: SendOptions): Promise<true>
+  pin(options?: PinOptions): Promise<true>
 
   /** Unpin this message. */
   unpin(): Promise<true>
 }
 
-/** A context for any update whose payload is a `Message`. */
+/**
+ * A context for any update whose payload is a `Message`.
+ *
+ * Three layers, in the order a reader meets them: the payload's own fields, the
+ * curated actions, and every API method that this message or its chat can
+ * address, pre-filled. The third layer is generated from the schema — see
+ * {@link MessageBoundApi} — so it stays complete without being maintained.
+ */
 export interface MessageContext<K extends AnyMessageEventKind = AnyMessageEventKind>
   extends EventContext<K>,
     MessageEventFields,
-    MessageActions {}
+    MessageActions,
+    MessageBoundApi {}
 
 /**
  * A message already known to carry text.
@@ -178,23 +280,40 @@ export interface CallbackQueryActions {
    * Telegram shows a loading state on the button until this is called, so it
    * should be called even with no text.
    */
-  answer(text?: string, options?: SendOptions): Promise<true>
+  answer(text?: string, options?: AnswerOptions): Promise<true>
 
   /** Send into the chat the button lives in, quoting the message it sits on. */
-  reply(text: string, options?: SendOptions): Promise<Message>
+  reply(text: string, options?: ReplyOptions): Promise<Message>
+
+  /**
+   * Reply with media rather than text.
+   *
+   * The key decides the method — `{ photo }` sends a photo, `{ video }` a video
+   * — and the rest of the object is that method's own options, typed for it.
+   * One entry point instead of eight `replyWith…` names that differ by a word,
+   * which is fewer names to choose wrongly between for a person and for an
+   * assistant reading the types.
+   */
+  reply(content: SendContent): Promise<Message>
 
   /** Send into the chat the button lives in, without quoting. */
   send(text: string, options?: SendOptions): Promise<Message>
 
+  /** Send media to the same chat without quoting. */
+  send(content: SendContent): Promise<Message>
+
   /** Edit the message the button sits on. Works for inline messages too. */
-  edit(text: string, options?: SendOptions): Promise<Message | true>
+  edit(text: string, options?: EditOptions): Promise<Message | true>
 
   /** Delete the message the button sits on. */
   delete(): Promise<true>
 }
 
 /** A context for a callback query. */
-export interface CallbackQueryContext extends EventContext<'callback_query'>, CallbackQueryActions {
+export interface CallbackQueryContext
+  extends EventContext<'callback_query'>,
+    CallbackQueryActions,
+    CallbackQueryBoundApi {
   readonly query: EventFieldsByKind['callback_query']['query']
   readonly sender: EventFieldsByKind['callback_query']['sender']
   readonly data: EventFieldsByKind['callback_query']['data']
@@ -202,20 +321,48 @@ export interface CallbackQueryContext extends EventContext<'callback_query'>, Ca
 }
 
 /**
+ * A context for an inline query.
+ *
+ * Carries `answerInlineQuery` with the query id supplied. The message families
+ * are absent: an inline query has no chat, and offering methods that would
+ * always reject is the dishonesty the per-event contexts exist to remove.
+ */
+export type InlineQueryContext = EventContext<'inline_query'> &
+  EventFieldsByKind['inline_query'] &
+  InlineQueryBoundApi
+
+/** A context for a shipping query. */
+export type ShippingQueryContext = EventContext<'shipping_query'> &
+  EventFieldsByKind['shipping_query'] &
+  ShippingQueryBoundApi
+
+/** A context for a pre-checkout query. */
+export type PreCheckoutQueryContext = EventContext<'pre_checkout_query'> &
+  EventFieldsByKind['pre_checkout_query'] &
+  PreCheckoutQueryBoundApi
+
+/**
  * The context a given event kind produces.
  *
  * Message kinds — including the service messages promoted out of them — get the
- * message actions; a callback query gets `answer`; everything else gets its
- * generated fields on the base context. Registration selects the shape, so a
- * handler for one kind never sees another kind's optionality.
+ * message actions and the bound method families; a query kind gets its answer
+ * method; everything else gets its generated fields on the base context.
+ * Registration selects the shape, so a handler for one kind never sees another
+ * kind's optionality.
  */
 export type ContextFor<K extends BotEventKind> = K extends AnyMessageEventKind
   ? MessageContext<K>
   : K extends 'callback_query'
     ? CallbackQueryContext
-    : K extends UpdateEventKind
-      ? EventContext<K> & EventFieldsByKind[K]
-      : never
+    : K extends 'inline_query'
+      ? InlineQueryContext
+      : K extends 'shipping_query'
+        ? ShippingQueryContext
+        : K extends 'pre_checkout_query'
+          ? PreCheckoutQueryContext
+          : K extends UpdateEventKind
+            ? EventContext<K> & EventFieldsByKind[K]
+            : never
 
 /** Anything a handler can receive. */
 export type AnyEventContext = ContextFor<BotEventKind>

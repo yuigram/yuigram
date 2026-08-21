@@ -17,7 +17,8 @@
  */
 
 import type { BaseContext } from '../context/types.js'
-import type { Middleware } from '../middleware/compose.js'
+import type { Middleware, MiddlewareHost } from '../middleware/compose.js'
+import type { Plugin } from '../plugin/plugin.js'
 import type { KV } from '../storage/types.js'
 
 /**
@@ -90,12 +91,36 @@ class Session<V> implements SessionHandle<V> {
   #value: V
   #dirty = false
   #cleared = false
+  #tracked: V | undefined
 
   constructor(initial: V) {
     this.#value = initial
   }
 
+  /**
+   * The value, wrapped so that changing it marks the session dirty.
+   *
+   * Without the wrapper `session.count += 1` reads the object, mutates it and
+   * never says so, and the change is lost at the end of the update — which is
+   * the single most surprising thing a session can do, because the code looks
+   * exactly like code that works.
+   *
+   * The wrapper is built on first access and reused, so a handler that only
+   * reads pays for one proxy and a handler that never touches the session pays
+   * for nothing.
+   */
   get value(): V {
+    if (typeof this.#value !== 'object' || this.#value === null) return this.#value
+
+    this.#tracked ??= track(this.#value, () => {
+      this.#dirty = true
+    })
+
+    return this.#tracked
+  }
+
+  /** The value as stored, without the tracking wrapper. */
+  get raw(): V {
     return this.#value
   }
 
@@ -109,6 +134,7 @@ class Session<V> implements SessionHandle<V> {
 
   set(next: V): void {
     this.#value = next
+    this.#tracked = undefined
     this.#dirty = true
     this.#cleared = false
   }
@@ -121,6 +147,53 @@ class Session<V> implements SessionHandle<V> {
     this.#cleared = true
     this.#dirty = true
   }
+}
+
+/**
+ * Proxies already built, so repeated access returns the same object.
+ *
+ * Identity matters: `session.items === session.items` should hold, and a
+ * handler that captures a nested object should keep watching the same one.
+ */
+const proxies = new WeakMap<object, WeakMap<object, unknown>>()
+
+/**
+ * Wrap a value so that any change to it, however deep, reports back.
+ *
+ * Arrays work by the same mechanism: `push` writes an index and a length, and
+ * both go through the set trap.
+ */
+function track<T>(value: T, onChange: () => void): T {
+  if (typeof value !== 'object' || value === null) return value
+
+  const marker = onChange as unknown as object
+  let byValue = proxies.get(marker)
+
+  if (byValue === undefined) {
+    byValue = new WeakMap()
+    proxies.set(marker, byValue)
+  }
+
+  const existing = byValue.get(value as object)
+  if (existing !== undefined) return existing as T
+
+  const proxy = new Proxy(value as object, {
+    get(target, property, receiver) {
+      const inner = Reflect.get(target, property, receiver) as unknown
+      return typeof inner === 'object' && inner !== null ? track(inner, onChange) : inner
+    },
+    set(target, property, next, receiver) {
+      onChange()
+      return Reflect.set(target, property, next, receiver)
+    },
+    deleteProperty(target, property) {
+      onChange()
+      return Reflect.deleteProperty(target, property)
+    },
+  }) as T
+
+  byValue.set(value as object, proxy)
+  return proxy
 }
 
 /**
@@ -234,7 +307,10 @@ async function persist<C extends BaseContext & SessionFlavor<V>, V>(
 
     await options.storage.set(
       key,
-      session.value,
+      // The stored value is the raw one: a store that keeps references — the
+      // in-memory one — would otherwise hold a proxy alive for the lifetime of
+      // the process.
+      session.raw,
       options.ttl === undefined ? undefined : { ttl: options.ttl },
     )
   } catch (error) {
@@ -266,4 +342,47 @@ export function userChatKey(
 
   if (chat === undefined && sender === undefined) return undefined
   return `${chat ?? 'nochat'}:${sender ?? 'nosender'}`
+}
+
+/**
+ * What installing the session plugin needs of its host.
+ *
+ * The general contract lives in core as {@link MiddlewareHost}: a plugin that
+ * only registers middleware should be installable on anything that accepts
+ * middleware, which includes both a client and a router.
+ */
+export type SessionHost = MiddlewareHost
+
+/**
+ * The session middleware, as a plugin.
+ *
+ * The same thing `createSession` builds, installed through `extend` and typed
+ * with one parameter instead of two:
+ *
+ * ```ts
+ * const bot = Bot.fromToken<SessionFlavor<Cart>>(token).extend(
+ *   session<Cart>({ storage: file('./sessions'), key: userChatKey, initial: () => ({ items: [] }) }),
+ * )
+ * ```
+ *
+ * `createSession` still exists and is what this calls. Use it directly when the
+ * context type needs stating — writing middleware generic over the client, or
+ * installing two sessions under different properties. For the ordinary case,
+ * naming `Cart` once is the whole difference, and repeating the flavour in a
+ * second type argument only ever produced a mismatch to debug.
+ */
+export function session<V>(
+  options: SessionOptions<BaseContext & SessionFlavor<V>, V>,
+): Plugin<string, undefined, SessionHost> {
+  const middleware = createSession(options) as Middleware<never>
+
+  return {
+    // Two sessions under different properties are two plugins, so the name
+    // carries the property: installing both must not read as a conflict.
+    name: options.property === undefined ? 'session' : `session:${options.property}`,
+    install(host: SessionHost) {
+      host.use(middleware)
+      return undefined
+    },
+  }
 }

@@ -22,25 +22,25 @@ async function readForm(form: FormData): Promise<Record<string, string>> {
 }
 
 describe('hasUpload', () => {
-  it('detects a direct upload', () => {
+  it('detects a direct upload', async () => {
     expect(hasUpload({ photo: bytes })).toBe(true)
   })
 
-  it('detects an upload nested in an object', () => {
+  it('detects an upload nested in an object', async () => {
     expect(hasUpload({ media: { type: 'photo', media: bytes } })).toBe(true)
   })
 
-  it('detects an upload nested in an array', () => {
+  it('detects an upload nested in an array', async () => {
     // `sendMediaGroup`: no InputFile is declared anywhere in the schema, yet
     // the call genuinely uploads.
     expect(hasUpload({ media: [{ type: 'photo', media: bytes }] })).toBe(true)
   })
 
-  it('reports false for ordinary parameters', () => {
+  it('reports false for ordinary parameters', async () => {
     expect(hasUpload({ chat_id: 1, text: 'hi', entities: [{ type: 'bold' }] })).toBe(false)
   })
 
-  it('does not recurse without bound', () => {
+  it('does not recurse without bound', async () => {
     const deep: Record<string, unknown> = {}
     let cursor = deep
     for (let i = 0; i < 50; i++) {
@@ -53,23 +53,23 @@ describe('hasUpload', () => {
 })
 
 describe('JSON encoding', () => {
-  it('encodes a plain call as JSON', () => {
-    const encoded = encodeRequest({ chat_id: 1, text: 'hi' })
+  it('encodes a plain call as JSON', async () => {
+    const encoded = await encodeRequest({ chat_id: 1, text: 'hi' })
 
     expect(encoded.contentType).toBe('application/json')
     expect(JSON.parse(encoded.body as string)).toEqual({ chat_id: 1, text: 'hi' })
   })
 
-  it('omits undefined parameters', () => {
+  it('omits undefined parameters', async () => {
     // Sending `"parse_mode": null` is not the same as omitting it, and
     // Telegram rejects some nulls it accepts as absent.
-    const encoded = encodeRequest({ chat_id: 1, text: 'hi', parse_mode: undefined })
+    const encoded = await encodeRequest({ chat_id: 1, text: 'hi', parse_mode: undefined })
 
     expect(JSON.parse(encoded.body as string)).toEqual({ chat_id: 1, text: 'hi' })
   })
 
-  it('keeps nested structures as JSON', () => {
-    const encoded = encodeRequest({
+  it('keeps nested structures as JSON', async () => {
+    const encoded = await encodeRequest({
       chat_id: 1,
       reply_markup: { inline_keyboard: [[{ text: 'a', callback_data: 'b' }]] },
     })
@@ -79,8 +79,8 @@ describe('JSON encoding', () => {
 })
 
 describe('multipart encoding', () => {
-  it('switches to multipart when a value is an upload', () => {
-    const encoded = encodeRequest({ chat_id: 1, photo: bytes })
+  it('switches to multipart when a value is an upload', async () => {
+    const encoded = await encodeRequest({ chat_id: 1, photo: bytes })
 
     expect(encoded.body).toBeInstanceOf(FormData)
     // Left unset so the runtime generates the boundary.
@@ -88,7 +88,7 @@ describe('multipart encoding', () => {
   })
 
   it('sends scalars alongside the file', async () => {
-    const encoded = encodeRequest({ chat_id: 1, caption: 'hi', photo: bytes })
+    const encoded = await encodeRequest({ chat_id: 1, caption: 'hi', photo: bytes })
     const form = await readForm(encoded.body as FormData)
 
     expect(form['chat_id']).toBe('1')
@@ -97,7 +97,7 @@ describe('multipart encoding', () => {
   })
 
   it('serializes nested structures as JSON strings', async () => {
-    const encoded = encodeRequest({
+    const encoded = await encodeRequest({
       photo: bytes,
       reply_markup: { force_reply: true },
     })
@@ -107,7 +107,7 @@ describe('multipart encoding', () => {
   })
 
   it('honours an explicit filename', async () => {
-    const encoded = encodeRequest({
+    const encoded = await encodeRequest({
       document: { data: bytes, filename: 'report.pdf', contentType: 'application/pdf' },
     })
 
@@ -119,24 +119,51 @@ describe('multipart encoding', () => {
     expect((value as Blob).type).toBe('application/pdf')
   })
 
-  it('accepts an ArrayBuffer and a Blob', () => {
-    expect(encodeRequest({ photo: new ArrayBuffer(4) }).body).toBeInstanceOf(FormData)
-    expect(encodeRequest({ photo: new Blob(['x']) }).body).toBeInstanceOf(FormData)
+  it('accepts an ArrayBuffer and a Blob', async () => {
+    expect((await encodeRequest({ photo: new ArrayBuffer(4) })).body).toBeInstanceOf(FormData)
+    expect((await encodeRequest({ photo: new Blob(['x']) })).body).toBeInstanceOf(FormData)
   })
 
-  it('rejects a stream with an actionable message', () => {
-    // Sending "[object Object]" would fail at Telegram with an opaque error.
+  it('sends a stream as a stream rather than reading it first', async () => {
+    // Sending "[object Object]" would fail at Telegram with an opaque error,
+    // and reading it into a Blob would hold the whole file in memory.
     const stream = (async function* () {
-      yield new Uint8Array([1])
+      yield new Uint8Array([104, 105])
     })()
 
-    expect(() => encodeRequest({ document: stream })).toThrow(/buffer the stream/)
+    const encoded = await encodeRequest({ document: stream })
+
+    expect(encoded.body).toBeInstanceOf(ReadableStream)
+    expect(encoded.contentType).toContain('multipart/form-data; boundary=')
+
+    const written = await new Response(encoded.body as ReadableStream<Uint8Array>).text()
+    expect(written).toContain('hi')
+  })
+
+  it('sends a ReadableStream the same way', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([104, 105]))
+        controller.close()
+      },
+    })
+
+    const encoded = await encodeRequest({ document: stream })
+    const written = await new Response(encoded.body as ReadableStream<Uint8Array>).text()
+
+    expect(written).toContain('hi')
+  })
+
+  it('refuses a named file whose data is not bytes', async () => {
+    await expect(
+      encodeRequest({ document: { data: 'not bytes', filename: 'a.bin' } }),
+    ).rejects.toThrow(TypeError)
   })
 })
 
 describe('attach:// rewriting', () => {
   it('replaces a nested upload with a reference and adds a part', async () => {
-    const encoded = encodeRequest({
+    const encoded = await encodeRequest({
       chat_id: 1,
       media: [{ type: 'photo', media: bytes }],
     })
@@ -149,7 +176,7 @@ describe('attach:// rewriting', () => {
   })
 
   it('numbers several attachments distinctly', async () => {
-    const encoded = encodeRequest({
+    const encoded = await encodeRequest({
       media: [
         { type: 'photo', media: bytes },
         { type: 'photo', media: new Uint8Array([9, 9]) },
@@ -167,7 +194,7 @@ describe('attach:// rewriting', () => {
 
   it('leaves a file_id string untouched', async () => {
     // Reuse by file_id must not be rewritten into an upload.
-    const encoded = encodeRequest({
+    const encoded = await encodeRequest({
       media: [{ type: 'photo', media: 'AgACAgIAAx' }],
       thumbnail: bytes,
     })
@@ -177,7 +204,7 @@ describe('attach:// rewriting', () => {
   })
 
   it('keeps a top-level upload as its own field rather than an attachment', async () => {
-    const encoded = encodeRequest({ photo: bytes })
+    const encoded = await encodeRequest({ photo: bytes })
     const form = await readForm(encoded.body as FormData)
 
     expect(form['photo']).toBe('<blob 3>')

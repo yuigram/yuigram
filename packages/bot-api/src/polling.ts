@@ -17,6 +17,7 @@ import { FloodError } from '@yuigram/core'
 import type { RawApi } from './api.js'
 import { BotApiError } from './errors.js'
 import type { Update } from './generated/types/index.js'
+import { createScheduler } from './scheduler.js'
 
 /** Options for {@link createPolling}. */
 export interface PollingOptions {
@@ -74,6 +75,31 @@ export interface PollingOptions {
   readonly requestGrace?: number
   /** Maximum updates per batch, 1–100. */
   readonly limit?: number
+  /**
+   * Most handlers running at once.
+   *
+   * Updates for one chat always run in order; unrelated chats run in parallel
+   * up to this bound. `1` restores strictly sequential delivery, which is
+   * simplest to reason about and slowest under load.
+   *
+   * A bound rather than "as many as arrive", because a batch of a hundred slow
+   * handlers would otherwise open a hundred connections to whatever they
+   * depend on.
+   */
+  readonly concurrency?: number
+  /**
+   * Most updates accepted before the loop stops fetching.
+   *
+   * Defaults to four times `concurrency`, and is never below it.
+   *
+   * The check happens before a fetch, and a fetch returns a whole batch, so
+   * the outstanding work peaks at roughly **half the capacity plus one batch**
+   * rather than at the capacity exactly. That is deliberate: trimming the
+   * batch to fit would trade a bounded, predictable peak for more round trips
+   * and a slower bot. What matters is that the peak is a constant, not a
+   * function of how long the bot has been running.
+   */
+  readonly capacity?: number
   /** First backoff delay in milliseconds. */
   readonly backoffBase?: number
   /** Longest backoff delay in milliseconds. */
@@ -102,13 +128,31 @@ export function isFatalPollingError(error: unknown): boolean {
 }
 
 /** A running polling loop. */
+/** Options for {@link Polling.stop}. */
+export interface PollingStopOptions {
+  /**
+   * Gives up waiting for handlers when aborted.
+   *
+   * The caller owns the deadline. Without one here, a handler that never
+   * settles keeps `stop` from returning, whatever timeout the caller set.
+   */
+  readonly signal?: AbortSignal
+}
+
 export interface Polling {
   /** Begin polling. Resolves once the loop is running. */
   start(): Promise<void>
-  /** Stop polling and wait for the in-flight request to settle. */
-  stop(): Promise<void>
+  /**
+   * Stop polling, then wait for handlers already running.
+   *
+   * Returns whether they finished: `false` means the deadline passed and work
+   * was abandoned, which the caller must not report as a clean stop.
+   */
+  stop(options?: PollingStopOptions): Promise<boolean>
   /** Whether the loop is running. */
   readonly running: boolean
+  /** Updates scheduled but not yet finished. */
+  readonly pending: number
 }
 
 /** Sleep, resolving early if the signal aborts. */
@@ -143,7 +187,14 @@ export function createPolling(options: PollingOptions): Polling {
     backoffBase = 1000,
     backoffMax = 60_000,
     dropPending = false,
+    concurrency = 16,
+    capacity,
   } = options
+
+  const scheduler = createScheduler({
+    limit: Math.max(1, concurrency),
+    ...(capacity === undefined ? {} : { capacity }),
+  })
 
   let offset = 0
   let running = false
@@ -181,17 +232,24 @@ export function createPolling(options: PollingOptions): Polling {
    * The offset advances before each handler runs. A handler that throws must
    * not cause Telegram to resend the update forever; delivery is at-most-once
    * by design, and durability is the application's job.
+   *
+   * Handlers run through the scheduler rather than one after another: a
+   * conversation stays in order, unrelated ones do not wait for each other, and
+   * the loop gets back to `getUpdates` instead of holding the batch open behind
+   * its slowest handler.
    */
-  const deliver = async (updates: readonly Update[]): Promise<void> => {
+  const deliver = (updates: readonly Update[]): void => {
     for (const update of updates) {
       offset = Math.max(offset, update.update_id + 1)
 
-      try {
-        await onUpdate(update)
-      } catch (error) {
-        log?.error('update handler failed', { updateId: update.update_id, error })
-        onError?.(error)
-      }
+      scheduler.run(update, async () => {
+        try {
+          await onUpdate(update)
+        } catch (error) {
+          log?.error('update handler failed', { updateId: update.update_id, error })
+          onError?.(error)
+        }
+      })
     }
   }
 
@@ -228,10 +286,17 @@ export function createPolling(options: PollingOptions): Polling {
 
   /** One successful pass: deliver, then pace if the batch came back empty and early. */
   const servePass = async (): Promise<void> => {
+    // Asking before fetching is what bounds the whole pipeline. The offset
+    // advances when an update is scheduled, so Telegram hands over the next
+    // batch as soon as this one is taken — and a producer that never pauses
+    // turns a backlog into the process's memory. The wait is on a promise the
+    // scheduler resolves, not a poll of its depth.
+    await scheduler.whenReady(controller.signal)
+
     const began = Date.now()
     const updates = await fetchBatch()
 
-    await deliver(updates)
+    deliver(updates)
 
     if (updates.length === 0 && returnedEarly(began) && idleDelay > 0) {
       await delay(idleDelay, controller.signal)
@@ -282,6 +347,10 @@ export function createPolling(options: PollingOptions): Polling {
       return running
     },
 
+    get pending() {
+      return scheduler.pending
+    },
+
     async start() {
       if (running) return
 
@@ -294,8 +363,8 @@ export function createPolling(options: PollingOptions): Polling {
       loop = run()
     },
 
-    async stop() {
-      if (!running) return
+    async stop(stopOptions = {}) {
+      if (!running) return true
 
       running = false
       controller.abort()
@@ -305,7 +374,24 @@ export function createPolling(options: PollingOptions): Polling {
       await loop
       loop = undefined
 
-      log?.info('polling stopped', { offset })
+      // Handlers scheduled by the last batch are still running: cutting them
+      // off mid-reply is what draining exists to prevent. Bounded by the
+      // caller's deadline, because an unbounded wait here would defeat it —
+      // and the caller is a lifecycle that promised one.
+      const drained = await scheduler.drain(
+        stopOptions.signal === undefined ? {} : { signal: stopOptions.signal },
+      )
+
+      if (!drained) {
+        log?.warn('polling stopped with handlers still running', {
+          offset,
+          abandoned: scheduler.pending,
+        })
+      } else {
+        log?.info('polling stopped', { offset })
+      }
+
+      return drained
     },
   }
 }

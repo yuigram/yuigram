@@ -5,7 +5,18 @@
  * plain node, so it must not import anything from this repository.
  */
 
-import { Bot, createSession, filter, FloodError, memory, schemaInfo } from 'yuigram'
+import {
+  Bot,
+  createSession,
+  filter,
+  FloodError,
+  inline,
+  media,
+  memory,
+  Router,
+  schemaInfo,
+  throttle,
+} from 'yuigram'
 import { mockBot } from 'yuigram/testing'
 import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
 
@@ -31,12 +42,51 @@ const entry = await import('yuigram')
 check('the adapters stay out of the entry point', () => !('nodeWebhook' in entry))
 
 const { bot, send, calls } = mockBot()
-bot.command('start', (ctx) => ctx.reply('hello'))
+bot.onCommand('start', (message) => message.reply('hello'))
 await send.command('/start')
 
 check('an update is handled end to end', () => calls.last('sendMessage')?.params.text === 'hello')
 
-const response = await bot.webhookHandler()({
+// The generated halves of the surface: a named registration per event kind, and
+// every method a context can address with its identifiers filled in. Both are
+// installed on the prototype, so this also checks the published build kept them.
+check('named registrations are installed', () => typeof bot.onChatMemberJoined === 'function')
+
+const { bot: bound, send: sendTo, calls: boundCalls } = mockBot()
+bound.onMessage((message) => message.sendChatAction({ action: 'typing' }))
+await sendTo.message('anything')
+
+check(
+  'a bound method supplies the chat it arrived from',
+  () => typeof boundCalls.last('sendChatAction')?.params.chat_id === 'number',
+)
+
+const { bot: hosted, send: sendHosted, calls: hostedCalls } = mockBot()
+const feature = new Router({ name: 'smoke' })
+feature.onCommand('ping', (message) => message.reply('pong'))
+hosted.extend(feature)
+await sendHosted.command('/ping')
+
+check(
+  'a router installed on a client handles updates',
+  () => hostedCalls.last('sendMessage')?.params.text === 'pong',
+)
+
+const paced = throttle({ globalPerSecond: 1000 })
+check('a throttle installs as a hook', () => typeof paced.hook === 'function')
+check('the throttle reports its queue depth', () => paced.handle.pending === 0)
+
+check(
+  'an inline result gets its type and a unique id',
+  () => inline.article('t', 'm').type === 'article' && inline.photo('u').id !== inline.photo('u').id,
+)
+
+check('a file source streams rather than buffering', () => {
+  const source = media.path('./nothing.txt')
+  return typeof source.filename === 'string'
+})
+
+const response = await bot.webhook()({
   method: 'POST',
   headers: {},
   body: {

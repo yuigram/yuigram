@@ -41,6 +41,95 @@ describe('the entry point', () => {
   it('exports the logger', () => {
     expect(typeof yuigram.createLogger).toBe('function')
   })
+
+  it('exports the convenience layer a bot is written against', () => {
+    // Each of these is documented on the front page, and each is the kind of
+    // thing that gets built, tested through a deep path, and never wired into
+    // the package a user installs.
+    expect(typeof yuigram.f).toBe('object')
+    expect(typeof yuigram.has).toBe('object')
+    expect(typeof yuigram.media).toBe('object')
+    expect(typeof yuigram.format).toBe('object')
+    expect(typeof yuigram.InlineKeyboard).toBe('function')
+    expect(typeof yuigram.Keyboard).toBe('function')
+    expect(typeof yuigram.Router).toBe('function')
+    expect(typeof yuigram.session).toBe('function')
+    expect(typeof yuigram.retryOnFloodWait).toBe('function')
+    expect(typeof yuigram.withChatAction).toBe('function')
+    expect(typeof yuigram.html).toBe('function')
+    expect(typeof yuigram.md).toBe('function')
+  })
+
+  it('offers every filter family the documentation names', () => {
+    for (const family of [
+      'has',
+      'hasQuery',
+      'text',
+      'caption',
+      'anyText',
+      'command',
+      'chat',
+      'sender',
+      'media',
+      'callback',
+      'reply',
+      'forward',
+      'entity',
+      'topic',
+    ] as const) {
+      expect(yuigram.f[family]).toBeDefined()
+    }
+  })
+
+  it('exports the production layer', () => {
+    // Each of these is the answer to a question a bot asks in its first week
+    // of real traffic, and each is documented on the front page.
+    expect(typeof yuigram.throttle).toBe('function')
+    expect(typeof yuigram.retryOnFloodWait).toBe('function')
+    expect(typeof yuigram.rateLimit).toBe('function')
+    expect(typeof yuigram.createScheduler).toBe('function')
+    expect(typeof yuigram.inline).toBe('object')
+    expect(typeof yuigram.session).toBe('function')
+  })
+
+  it('paces with the published Telegram limits by default', () => {
+    expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
+    expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)
+    expect(yuigram.DEFAULT_GROUP_PER_MINUTE).toBe(20)
+  })
+
+  it('offers every inline result builder the documentation names', () => {
+    for (const builder of [
+      'article',
+      'photo',
+      'gif',
+      'video',
+      'audio',
+      'voice',
+      'document',
+      'location',
+      'venue',
+      'contact',
+      'sticker',
+    ] as const) {
+      expect(typeof yuigram.inline[builder]).toBe('function')
+    }
+  })
+
+  it('offers every media source the documentation names', () => {
+    for (const source of [
+      'path',
+      'url',
+      'id',
+      'buffer',
+      'stream',
+      'text',
+      'json',
+      'blob',
+    ] as const) {
+      expect(typeof yuigram.media[source]).toBe('function')
+    }
+  })
 })
 
 describe('the schema version', () => {
@@ -63,6 +152,10 @@ describe('the subpaths', () => {
   it('exposes the webhook adapters', () => {
     expect(typeof webhook.nodeWebhook).toBe('function')
     expect(typeof webhook.expressWebhook).toBe('function')
+    expect(typeof webhook.fastifyWebhook).toBe('function')
+    // The Fetch adapter is the one that covers Hono, Elysia, h3, Bun, Deno,
+    // Workers and Next route handlers at once.
+    expect(typeof webhook.webWebhook).toBe('function')
     expect(typeof webhook.fastifyWebhook).toBe('function')
   })
 

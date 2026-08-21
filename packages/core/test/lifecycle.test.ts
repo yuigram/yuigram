@@ -268,6 +268,41 @@ describe('drain', () => {
     stuck.resolve()
   })
 
+  it('drains work tracked without a start', async () => {
+    // A webhook deployment never calls `start()`: it hands a request handler to
+    // someone else's server. Every update it dispatches is still tracked, so a
+    // `stop()` that returned early on `idle` drained nothing in exactly the
+    // deployment where a clean shutdown matters most.
+    const work = deferred()
+    let settled = false
+    const lifecycle = new Lifecycle()
+
+    lifecycle.track(
+      work.promise.then(() => {
+        settled = true
+      }),
+    )
+
+    const stopping = lifecycle.stop()
+    expect(settled).toBe(false)
+
+    work.resolve()
+    await stopping
+
+    expect(settled).toBe(true)
+    expect(lifecycle.state).toBe('idle')
+  })
+
+  it('returns immediately when idle with nothing in flight', async () => {
+    const onStop = vi.fn()
+    const lifecycle = new Lifecycle({ onStop })
+
+    await lifecycle.stop()
+
+    expect(onStop).not.toHaveBeenCalled()
+    expect(lifecycle.state).toBe('idle')
+  })
+
   it('stops even when work never settles', async () => {
     const stuck = deferred()
     const lifecycle = new Lifecycle()

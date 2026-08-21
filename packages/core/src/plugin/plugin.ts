@@ -130,6 +130,17 @@ export class PluginRegistry<Target> {
   }
 
   /**
+   * How many plugins are queued but not yet installed.
+   *
+   * Lets a caller skip the install path entirely on the common case — an
+   * update arriving at a client whose plugins are already in place — without
+   * paying for a promise per update to discover there was nothing to do.
+   */
+  get pending(): number {
+    return this.#pending.length
+  }
+
+  /**
    * Install every queued plugin in dependency order.
    *
    * Already-installed plugins count towards dependency satisfaction, so

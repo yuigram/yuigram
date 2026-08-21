@@ -31,13 +31,14 @@ import {
   Lifecycle,
   type Logger,
   type Middleware,
+  type MiddlewareHost,
   type Modify,
   type Plugin,
   PluginRegistry,
   type UseOptions,
 } from '@yuigram/core'
-import { createApi, type RawApi } from './api.js'
-import { addressedToUs, commandMatches, type ParsedCommand, parseCommand } from './command.js'
+import { type ApiHook, createApi, type RawApi } from './api.js'
+import type { ParsedCommand } from './command.js'
 import {
   type AnyEventContext,
   type CallbackQueryContext,
@@ -45,20 +46,22 @@ import {
   type ContextFor,
   createEventContext,
   type EventContext,
-  type MessageContext,
   type TextMessageContext,
 } from './events/index.js'
-import {
-  ALL_UPDATE_TYPES,
-  type BotEventKind,
-  KIND_SUBSCRIPTIONS,
-  MESSAGE_KINDS,
-} from './generated/events.js'
+import { ALL_UPDATE_TYPES, type BotEventKind, KIND_SUBSCRIPTIONS } from './generated/events.js'
+import { type GeneratedRegistrations, REGISTRATIONS } from './generated/registrations.js'
 import type { Update, User } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
 import { normalizeUpdate } from './normalize.js'
 import { createPolling, type Polling } from './polling.js'
+import {
+  type RegistrationTarget,
+  registerCallbackQuery,
+  registerCommand,
+  registerText,
+} from './registration.js'
+import { anyUpdate, isRouter, type Router, type RouterThisClientCanHost } from './router.js'
 import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook/index.js'
 
 /** Options accepted when building a client. */
@@ -88,6 +91,30 @@ export interface PollOptions {
   readonly dropPending?: boolean
   /** Seconds Telegram holds a request open with no updates. */
   readonly timeout?: number
+  /**
+   * Most handlers running at once.
+   *
+   * One chat's updates always run in order; unrelated chats run in parallel up
+   * to this bound. `1` restores strictly sequential delivery.
+   */
+  readonly concurrency?: number
+  /**
+   * Most updates accepted before the loop stops fetching.
+   *
+   * Defaults to four times `concurrency`, and is never below it. The peak
+   * outstanding work is roughly half of this plus one batch, because the check
+   * happens before a fetch and a fetch returns a whole batch.
+   */
+  readonly capacity?: number
+  /**
+   * Which update kinds to subscribe to, overriding the client's setting.
+   *
+   * Accepted here as well as on the client because it is a `getUpdates`
+   * parameter, and a reader looking for what the bot subscribes to looks at
+   * the call that starts it. `'auto'` derives the set from the registrations,
+   * including a router's.
+   */
+  readonly allowedUpdates?: readonly string[] | 'auto'
 }
 
 /** A handler for one event. */
@@ -129,7 +156,15 @@ export type FilterContext<F> =
  * ```ts
  * const bot = Bot.fromToken<SessionFlavor<Cart>>(token)
  * ```
+ *
+ * Beyond the methods declared here, every event kind has a named registration —
+ * `onMessage`, `onChannelPost`, `onChatMemberJoined`, seventy-nine in all.
+ * They are generated from the same kind list the dispatcher uses and installed
+ * on the prototype below, so autocomplete offers the whole taxonomy and none of
+ * it is maintained by hand. `onText`, `onCommand` and `onCallbackQuery` stay
+ * hand-written, because each matches as well as selects.
  */
+// biome-ignore lint/suspicious/noUnsafeDeclarationMerging: the merged interface declares the named registrations, which are installed on this prototype below from the same generated list
 export class Bot<Ext = unknown> {
   /** The raw API surface, for anything the context actions do not cover. */
   readonly api: RawApi
@@ -148,6 +183,22 @@ export class Bot<Ext = unknown> {
   #pollOptions: PollOptions = {}
   #me: User | undefined
   #identifying: Promise<User> | undefined
+  #pluginWork: Promise<unknown> = Promise.resolve()
+  readonly #hooks: ApiHook[] = []
+
+  /**
+   * How the shared registrations write onto this client.
+   *
+   * The username is read through a function because it arrives from `getMe`
+   * after registration: a command registered at import time still has to get
+   * the `@bot` check right once the client knows who it is.
+   */
+  readonly #target: RegistrationTarget = {
+    register: (match, handler) => {
+      this.#dispatcher.on(match, handler as never)
+    },
+    username: () => this.#me?.username,
+  }
 
   /**
    * Build a client from a bot token.
@@ -194,12 +245,27 @@ export class Bot<Ext = unknown> {
     this.api = createApi({
       client,
       ...(options.defaults === undefined ? {} : { defaults: options.defaults }),
+      // Passed by reference so a hook registered later still applies. Building
+      // the surface once and letting plugins extend it is the whole reason
+      // `hook` can be called after construction.
+      hooks: this.#hooks,
     })
 
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#startPolling(),
-      onStop: () => this.#stopPolling(),
+      onStop: (context) => this.#stopPolling(context.signal),
     })
+  }
+
+  /**
+   * Updates scheduled but not yet finished.
+   *
+   * Zero when idle. Rising and staying high means handlers are slower than the
+   * updates arriving, which is what the poll loop's own backpressure responds
+   * to — visible here so an application can see it too.
+   */
+  get pending(): number {
+    return this.#polling?.pending ?? 0
   }
 
   /** Who this bot is, once identified. */
@@ -271,21 +337,6 @@ export class Bot<Ext = unknown> {
     return this.#dispatcher.off(handler as never)
   }
 
-  /** Any incoming message, whether or not it has text. */
-  onMessage(handler: EventHandler<MessageContext<'message'> & Ext>): this {
-    return this.on('message', handler as never)
-  }
-
-  /** An edited message. */
-  onEditedMessage(handler: EventHandler<MessageContext<'message_edited'> & Ext>): this {
-    return this.on('message_edited', handler as never)
-  }
-
-  /** A channel post. */
-  onChannelPost(handler: EventHandler<MessageContext<'channel_post'> & Ext>): this {
-    return this.on('channel_post', handler as never)
-  }
-
   /**
    * A message carrying text.
    *
@@ -303,18 +354,7 @@ export class Bot<Ext = unknown> {
       TextMessageContext & Ext
     >
 
-    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
-      const text = (context as { text?: unknown }).text
-      if (typeof text !== 'string') return
-
-      if (match !== undefined) {
-        const matched = typeof match === 'string' ? text === match : match.test(text)
-        if (!matched) return
-      }
-
-      return handler(context as unknown as TextMessageContext & Ext)
-    })
-
+    registerText(this.#target, match, handler as never)
     return this
   }
 
@@ -327,25 +367,7 @@ export class Bot<Ext = unknown> {
    * command handling.
    */
   onCommand(match: string | RegExp, handler: EventHandler<CommandContext & Ext>): this {
-    this.#dispatcher.on(MESSAGE_KINDS, (context) => {
-      const text = (context as { text?: unknown }).text
-      if (typeof text !== 'string') return
-
-      const parsed = parseCommand(text)
-      if (parsed === undefined) return
-      if (!commandMatches(parsed, match)) return
-      if (!addressedToUs(parsed, this.#me?.username)) return
-
-      // Derived rather than assigned: writing onto the shared context would
-      // leave `command` visible to every later handler for this update,
-      // including ones that have nothing to do with commands.
-      const withCommand = Object.create(context as object, {
-        command: { value: parsed, enumerable: true },
-      }) as CommandContext & Ext
-
-      return handler(withCommand)
-    })
-
+    registerCommand(this.#target, match, handler as never)
     return this
   }
 
@@ -361,16 +383,8 @@ export class Bot<Ext = unknown> {
       CallbackQueryContext & Ext
     >
 
-    return this.on('callback_query', ((context: CallbackQueryContext) => {
-      const data = context.data
-      if (match === undefined) return handler(context as CallbackQueryContext & Ext)
-
-      if (typeof data !== 'string') return
-      const matched = typeof match === 'string' ? data === match : match.test(data)
-      if (!matched) return
-
-      return handler(context as CallbackQueryContext & Ext)
-    }) as never)
+    registerCallbackQuery(this.#target, match, handler as never)
+    return this
   }
 
   /**
@@ -387,9 +401,79 @@ export class Bot<Ext = unknown> {
   }
 
   /** Install a plugin. */
-  extend(plugin: Plugin<string, unknown, Bot<Ext>>): this {
-    this.#plugins.add(plugin)
+  /**
+   * Wrap every outgoing API call.
+   *
+   * Composed outermost-first, like handler middleware, with `next()` sending
+   * the request — so retry, throttling, caching and instrumentation are
+   * ordinary code rather than framework features:
+   *
+   * ```ts
+   * bot.hook(retryOnFloodWait({ maxWait: 30 }))
+   * ```
+   *
+   * Hooks may be added at any time, including from a plugin, because the chain
+   * is read at call time rather than captured when the client is built.
+   */
+  hook(hook: ApiHook): this {
+    this.#hooks.push(hook)
     return this
+  }
+
+  extend<RouterExt>(router: RouterThisClientCanHost<Ext, RouterExt>): this
+  extend(plugin: Plugin<string, unknown, Bot<Ext>>): this
+  /**
+   * Install a plugin that only needs somewhere to put middleware.
+   *
+   * A plugin should not have to name the client class it will be installed on:
+   * that ties it to one transport and stops it working on a `Router`. Declaring
+   * {@link MiddlewareHost} instead is what makes `session()` installable on
+   * both.
+   */
+  extend(plugin: Plugin<string, unknown, MiddlewareHost>): this
+  extend(extension: Router<unknown> | Plugin<string, unknown, never>): this {
+    if (isRouter(extension)) {
+      this.#mount(extension as unknown as Router<Ext>)
+      return this
+    }
+
+    // Narrowed by the guard above: `isRouter` reports on a symbol a plugin
+    // does not carry, which TypeScript cannot see through a union of two
+    // structural types.
+    this.#plugins.add(extension as unknown as Plugin<string, unknown, Bot<Ext>>)
+    return this
+  }
+
+  /**
+   * Install a router as a single handler that dispatches into it.
+   *
+   * Registering the router's own handlers onto this client would run its
+   * middleware once per matching handler rather than once per update, which is
+   * wrong for anything that counts — a rate limiter would charge a photo three
+   * times because three handlers wanted it.
+   *
+   * The kinds are read now, which is why a router refuses registrations after
+   * installation: this is what the client subscribes to.
+   */
+  #mount(router: Router<Ext>): void {
+    router.install({
+      username: () => this.#me?.username,
+      report: (error, context) => this.#dispatcher.report(error, context as never),
+    })
+
+    const dispatch = (context: AnyEventContext & Ext): Promise<void> => router.dispatch(context)
+    const coverage = router.collectKinds()
+
+    // An opaque router — one carrying a filter that could match anything — is
+    // registered the same way any opaque filter is, and widens the subscription
+    // for the same reason: skipping a kind a handler might want is a silently
+    // dropped update.
+    if (coverage.opaque) {
+      this.#dispatcher.on(anyUpdate, dispatch as never)
+      return
+    }
+
+    this.#dispatcher.on([...coverage.kinds], dispatch as never)
   }
 
   /** Contribute a member to every context, under a plugin's name. */
@@ -404,6 +488,12 @@ export class Bot<Ext = unknown> {
 
   /** Handle one update. The entry point for both polling and webhooks. */
   async handleUpdate(update: Update): Promise<void> {
+    // Plugins are installed by dispatch rather than by a transport, because a
+    // webhook deployment never calls `poll()` — and a session plugin that
+    // silently does nothing behind a webhook is the worst kind of defect: the
+    // code is right, the deployment is ordinary, and nothing reports a problem.
+    if (this.#plugins.pending > 0) await this.#installPlugins()
+
     const normalized = normalizeUpdate(update)
 
     const context = this.#extender.apply(
@@ -480,9 +570,18 @@ export class Bot<Ext = unknown> {
     })
   }
 
-  /** Stop, draining in-flight handlers first. */
-  async stop(options: { timeout?: number } = {}): Promise<void> {
+  /**
+   * Stop, draining in-flight handlers first.
+   *
+   * The timeout is a deadline over the whole shutdown — the drain and the
+   * polling loop's own wait for its handlers — rather than over one stage with
+   * another behind it. Returns whether everything finished: `false` means the
+   * deadline passed and handlers were abandoned, which is worth logging rather
+   * than reporting as a clean stop.
+   */
+  async stop(options: { timeout?: number } = {}): Promise<boolean> {
     await this.#lifecycle.stop(options)
+    return this.#lifecycle.stopped
   }
 
   // -------------------------------------------------------------------------
@@ -490,7 +589,9 @@ export class Bot<Ext = unknown> {
   // -------------------------------------------------------------------------
 
   async #startPolling(): Promise<void> {
-    await this.#plugins.install(this)
+    // Eagerly here, so a plugin that throws takes the process down at startup
+    // rather than on whichever update happens to arrive first.
+    await this.#installPlugins()
 
     const me = await this.identify()
     this.#log.info('signed in', { username: me.username, id: me.id })
@@ -510,6 +611,10 @@ export class Bot<Ext = unknown> {
       log: this.#log,
       ...(allowedUpdates === undefined ? {} : { allowedUpdates }),
       ...(this.#pollOptions.dropPending === true ? { dropPending: true } : {}),
+      ...(this.#pollOptions.concurrency === undefined
+        ? {}
+        : { concurrency: this.#pollOptions.concurrency }),
+      ...(this.#pollOptions.capacity === undefined ? {} : { capacity: this.#pollOptions.capacity }),
       ...(this.#pollOptions.timeout === undefined ? {} : { timeout: this.#pollOptions.timeout }),
       onUpdate: (update) => this.#lifecycle.track(this.handleUpdate(update)),
       onError: (error) => {
@@ -532,8 +637,10 @@ export class Bot<Ext = unknown> {
     await this.#polling.start()
   }
 
-  async #stopPolling(): Promise<void> {
-    await this.#polling?.stop()
+  async #stopPolling(signal: AbortSignal): Promise<void> {
+    // The deadline comes from the lifecycle, so the wait for handlers here is
+    // part of the timeout the caller set rather than a second one behind it.
+    await this.#polling?.stop({ signal })
     this.#polling = undefined
   }
 
@@ -544,8 +651,23 @@ export class Bot<Ext = unknown> {
    * not Yuigram kinds. Sending a kind it does not recognise means it never
    * sends that update, and the handler never runs.
    */
+  /**
+   * Install whatever is queued, at most once and never twice at a time.
+   *
+   * Serialized on a single chain rather than a memoized promise: `extend` may
+   * be called after the first update, and the registry installs in rounds, so
+   * the guarantee needed is one-at-a-time rather than once-ever. Concurrent
+   * updates would otherwise both see the same queue and install it twice.
+   */
+  #installPlugins(): Promise<unknown> {
+    this.#pluginWork = this.#pluginWork.then(() => this.#plugins.install(this))
+    return this.#pluginWork
+  }
+
   #resolveAllowedUpdates(): readonly string[] | undefined {
-    const configured = this.#options.allowedUpdates
+    // The call that starts polling wins over the client's setting: it is the
+    // more specific statement, and it is the one in front of the reader.
+    const configured = this.#pollOptions.allowedUpdates ?? this.#options.allowedUpdates
 
     if (configured === undefined) return undefined
     if (configured !== 'auto') return configured
@@ -573,6 +695,36 @@ export class Bot<Ext = unknown> {
 
     return [...fields].sort()
   }
+}
+
+/**
+ * The named registrations, merged onto the class.
+ *
+ * Declaration merging rather than `implements`: the methods are installed on
+ * the prototype below, so declaring them in the class body would mean writing
+ * seventy-nine bodies that all say the same thing.
+ */
+export interface Bot<Ext = unknown> extends GeneratedRegistrations<Ext> {}
+
+/**
+ * Install the named registrations, once, on the prototype.
+ *
+ * Every one is `on(kind, handler)` with the kind fixed, so they cost nothing
+ * per instance and nothing per update. The list is generated from the same
+ * taxonomy the dispatcher indexes, which is what keeps the two from drifting:
+ * a kind Telegram adds appears here the moment the schema is regenerated.
+ */
+for (const [method, kind] of REGISTRATIONS) {
+  Object.defineProperty(Bot.prototype, method, {
+    // Not enumerable, so a `Bot` still inspects as its own fields rather than
+    // as eighty functions.
+    enumerable: false,
+    writable: true,
+    configurable: true,
+    value: function registerByKind(this: Bot, handler: EventHandler<never>): Bot {
+      return this.on(kind as BotEventKind, handler as never)
+    },
+  })
 }
 
 export type { ParsedCommand }

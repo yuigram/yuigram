@@ -6,6 +6,7 @@
  * down for a transient network blip.
  */
 
+import { createLogger } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { createApi } from '../src/api.js'
 import type { Update } from '../src/generated/types/index.js'
@@ -122,7 +123,8 @@ describe('the loop', () => {
       onUpdate: () => {},
     })
 
-    await expect(polling.stop()).resolves.toBeUndefined()
+    // Nothing was started, so nothing was abandoned: a clean stop.
+    await expect(polling.stop()).resolves.toBe(true)
   })
 })
 
@@ -445,10 +447,14 @@ describe('unrecoverable errors', () => {
   it('widens the delay on a repeated non-retryable failure', async () => {
     // Counting only retryable failures left a permanent 4xx retrying at the
     // base delay forever, which is the one behaviour backoff exists to avoid.
-    const at: number[] = []
+    //
+    // The delay the loop *schedules* is what is asserted, read from the retry
+    // log. Timing the arrivals instead measures the scheduler as much as the
+    // backoff, and fails whenever the machine is busy enough to reorder two
+    // waits a few milliseconds apart.
+    const waits: number[] = []
     const client: HttpClient = {
       async call<T>(): Promise<ApiResult<T>> {
-        at.push(Date.now())
         return { status: 400, body: { ok: false, error_code: 400, description: 'Bad Request' } }
       },
     }
@@ -457,16 +463,25 @@ describe('unrecoverable errors', () => {
       api: createApi({ client }),
       onUpdate: () => {},
       backoffBase: 10,
+      log: createLogger({
+        level: 'warn',
+        sink: {
+          write(record) {
+            if (record.message === 'polling failed, retrying') {
+              waits.push(record.fields['waitMs'] as number)
+            }
+          },
+        },
+      }),
     })
 
     await polling.start()
     await new Promise((resolve) => setTimeout(resolve, 150))
     await polling.stop()
 
-    expect(at.length).toBeGreaterThanOrEqual(3)
-    const first = (at[1] ?? 0) - (at[0] ?? 0)
-    const later = (at[at.length - 1] ?? 0) - (at[at.length - 2] ?? 0)
-    expect(later).toBeGreaterThan(first)
+    expect(waits.length).toBeGreaterThanOrEqual(3)
+    expect(waits[1]).toBeGreaterThan(waits[0] as number)
+    expect(waits[waits.length - 1]).toBeGreaterThan(waits[0] as number)
   })
 })
 

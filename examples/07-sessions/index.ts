@@ -18,14 +18,7 @@
  * ```
  */
 
-import {
-  type AnyEventContext,
-  Bot,
-  createSession,
-  memory,
-  type SessionFlavor,
-  userChatKey,
-} from 'yuigram'
+import { Bot, memory, type SessionFlavor, session, userChatKey } from 'yuigram'
 
 /** Whatever this bot needs to remember about someone. */
 interface Cart {
@@ -48,10 +41,11 @@ if (token === undefined) {
   throw new Error('Set BOT_TOKEN to the token BotFather gave you.')
 }
 
-const bot = Bot.fromToken<WithCart>(token)
-
-bot.use(
-  createSession<AnyEventContext & WithCart, Cart>({
+// The flavour is named once, on the client. The plugin then needs only the
+// value type: repeating the flavour in a second type argument never caught a
+// mistake, it only produced one to debug.
+const bot = Bot.fromToken<WithCart>(token).extend(
+  session<Cart>({
     storage: memory(),
     // Per user, per chat. The scope is passed explicitly rather than defaulted,
     // because getting it wrong is the most common session bug: a chat-wide key
@@ -69,8 +63,9 @@ bot.onCommand('start', async (ctx) => {
 bot.on('message', async (ctx) => {
   if (ctx.text === undefined || ctx.text.startsWith('/')) return
 
-  // Mutating the session marks it dirty; it is written back once the handler
-  // finishes. An untouched session is never written.
+  // Changing the session marks it dirty, wherever the change happens — a nested
+  // array pushed into counts too — and it is written back once the handler
+  // finishes. A session that was only read is never written.
   ctx.session.count += 1
 })
 

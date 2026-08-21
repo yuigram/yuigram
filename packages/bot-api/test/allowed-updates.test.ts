@@ -14,7 +14,7 @@
  *   excludes chat member and reaction updates.
  */
 
-import { defineFilter } from '@yuigram/core'
+import { createLogger, defineFilter, silentSink } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { Bot } from '../src/bot.js'
 import { UPDATE_EVENTS } from '../src/generated/events.js'
@@ -93,5 +93,29 @@ describe('what auto subscription asks Telegram for', () => {
     expect(asked).toBeDefined()
     expect(asked).toContain('message_reaction')
     expect(asked).toContain('chat_member')
+  })
+})
+
+describe('where it is configured', () => {
+  it('takes the setting from the call that starts polling', async () => {
+    // A reader looking for what the bot subscribes to looks at `poll()`, so it
+    // is accepted there and wins over the client's own setting.
+    const transport = mockTransport()
+    transport.on('getMe', ok({ id: 1, is_bot: true, first_name: 'T', username: 't' }))
+    transport.on('getUpdates', ok([]))
+
+    const bot = Bot.fromToken(TOKEN, {
+      client: transport,
+      allowedUpdates: ['message'],
+      log: createLogger({ sink: silentSink() }),
+    })
+
+    bot.onMessage(() => {})
+
+    await bot.poll({ allowedUpdates: ['callback_query'] })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    await bot.stop({ timeout: 100 })
+
+    expect(transport.last('getUpdates')?.params['allowed_updates']).toEqual(['callback_query'])
   })
 })

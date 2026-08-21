@@ -24,7 +24,18 @@
 import { ValidationError } from '@yuigram/core'
 import type { RawApi } from '../api.js'
 import type { CallbackQuery, Message, ReactionType } from '../generated/types/index.js'
-import type { CallbackQueryActions, MessageActions, SendOptions } from './types.js'
+import type {
+  AnswerOptions,
+  CallbackQueryActions,
+  EditOptions,
+  ForwardOptions,
+  MessageActions,
+  PinOptions,
+  ReactOptions,
+  ReplyOptions,
+  SendContent,
+  SendOptions,
+} from './types.js'
 
 /** What building the message actions needs. */
 export interface MessageActionDeps {
@@ -52,6 +63,55 @@ function inherited(message: Message): Record<string, unknown> {
   return fields
 }
 
+/**
+ * Which method sends which media.
+ *
+ * The eight `sendX` methods that take exactly one file, keyed by the parameter
+ * that carries it. `sendMediaGroup` and `sendPaidMedia` take a list rather than
+ * a file, so there is no single key to dispatch on and they stay explicit
+ * calls.
+ */
+const MEDIA_METHODS: Readonly<Record<string, string>> = {
+  photo: 'sendPhoto',
+  video: 'sendVideo',
+  animation: 'sendAnimation',
+  audio: 'sendAudio',
+  document: 'sendDocument',
+  voice: 'sendVoice',
+  video_note: 'sendVideoNote',
+  sticker: 'sendSticker',
+}
+
+/** Call a method chosen at runtime, which the generated surface cannot type. */
+function callApi(api: RawApi, method: string, params: Record<string, unknown>): Promise<unknown> {
+  return (api as unknown as Record<string, (p: unknown) => Promise<unknown>>)[method]?.(
+    params,
+  ) as Promise<unknown>
+}
+
+/** Decide which method a `reply`/`send` call meant, and with what parameters. */
+function describeSend(
+  first: string | SendContent,
+  second: Record<string, unknown>,
+): { method: string; params: Record<string, unknown> } {
+  if (typeof first === 'string') {
+    return { method: 'sendMessage', params: { text: first, ...second } }
+  }
+
+  const params = first as Record<string, unknown>
+
+  for (const [key, method] of Object.entries(MEDIA_METHODS)) {
+    if (params[key] !== undefined) return { method, params }
+  }
+
+  // Nothing recognised. Naming the keys that would have worked beats a call to
+  // `sendMessage` with no text, which Telegram rejects with a message about a
+  // parameter the caller never mentioned.
+  throw new ValidationError(
+    `reply() was given an object with no media in it. Expected one of: ${Object.keys(MEDIA_METHODS).join(', ')}.`,
+  )
+}
+
 /** Normalize the two accepted reaction forms into what Telegram expects. */
 function toReactions(reaction: string | readonly ReactionType[]): ReactionType[] {
   if (typeof reaction !== 'string') return [...reaction]
@@ -66,12 +126,12 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
   const { api, message } = deps
 
   return {
-    reply(text: string, options: SendOptions = {}): Promise<Message> {
-      const { reply_parameters, ...rest } = options
+    reply(first: string | SendContent, second: ReplyOptions = {}): Promise<Message> {
+      const { method, params } = describeSend(first, second)
+      const { reply_parameters, ...rest } = params
 
-      return api.sendMessage({
+      return callApi(api, method, {
         ...inherited(message),
-        text,
         ...rest,
         // Merged rather than replaced: the quoted message is this one, but a
         // caller may still set `quote` or `allow_sending_without_reply`.
@@ -79,18 +139,16 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
           message_id: message.message_id,
           ...(reply_parameters as Record<string, unknown> | undefined),
         },
-      } as never) as Promise<Message>
+      }) as Promise<Message>
     },
 
-    send(text: string, options: SendOptions = {}): Promise<Message> {
-      return api.sendMessage({
-        ...inherited(message),
-        text,
-        ...options,
-      } as never) as Promise<Message>
+    send(first: string | SendContent, second: SendOptions = {}): Promise<Message> {
+      const { method, params } = describeSend(first, second)
+
+      return callApi(api, method, { ...inherited(message), ...params }) as Promise<Message>
     },
 
-    edit(text: string, options: SendOptions = {}): Promise<Message | true> {
+    edit(text: string, options: EditOptions = {}): Promise<Message | true> {
       // Editing addresses the message itself, so the thread is irrelevant and
       // only the business connection carries over.
       const business =
@@ -114,7 +172,7 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
       }) as Promise<true>
     },
 
-    forward(to: number | string, options: SendOptions = {}): Promise<Message> {
+    forward(to: number | string, options: ForwardOptions = {}): Promise<Message> {
       return api.forwardMessage({
         chat_id: to,
         from_chat_id: message.chat.id,
@@ -123,7 +181,7 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
       } as never) as Promise<Message>
     },
 
-    react(reaction: string | readonly ReactionType[], options: SendOptions = {}): Promise<true> {
+    react(reaction: string | readonly ReactionType[], options: ReactOptions = {}): Promise<true> {
       return api.setMessageReaction({
         chat_id: message.chat.id,
         message_id: message.message_id,
@@ -132,7 +190,7 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
       } as never) as Promise<true>
     },
 
-    pin(options: SendOptions = {}): Promise<true> {
+    pin(options: PinOptions = {}): Promise<true> {
       return api.pinChatMessage({
         chat_id: message.chat.id,
         message_id: message.message_id,
@@ -181,7 +239,7 @@ export function callbackQueryActions(api: RawApi, query: CallbackQuery): Callbac
   }
 
   return {
-    answer(text?: string, options: SendOptions = {}): Promise<true> {
+    answer(text?: string, options: AnswerOptions = {}): Promise<true> {
       return api.answerCallbackQuery({
         callback_query_id: query.id,
         ...(text === undefined ? {} : { text }),
@@ -193,15 +251,17 @@ export function callbackQueryActions(api: RawApi, query: CallbackQuery): Callbac
     // rather than throwing before one exists. A method that returns a promise
     // on the happy path and throws synchronously on the unhappy one cannot be
     // handled with `.catch()`, which is how most callers would write it.
-    async reply(text: string, options: SendOptions = {}): Promise<Message> {
-      return messageActions({ api, message: requireMessage('reply') }).reply(text, options)
+    async reply(first: string | SendContent, second: ReplyOptions = {}): Promise<Message> {
+      const actions = messageActions({ api, message: requireMessage('reply') })
+      return typeof first === 'string' ? actions.reply(first, second) : actions.reply(first)
     },
 
-    async send(text: string, options: SendOptions = {}): Promise<Message> {
-      return messageActions({ api, message: requireMessage('send') }).send(text, options)
+    async send(first: string | SendContent, second: SendOptions = {}): Promise<Message> {
+      const actions = messageActions({ api, message: requireMessage('send') })
+      return typeof first === 'string' ? actions.send(first, second) : actions.send(first)
     },
 
-    async edit(text: string, options: SendOptions = {}): Promise<Message | true> {
+    async edit(text: string, options: EditOptions = {}): Promise<Message | true> {
       // The one action that works for both forms, which is why the error above
       // points at it.
       if (query.inline_message_id !== undefined) {

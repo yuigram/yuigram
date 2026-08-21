@@ -285,6 +285,18 @@ export class Dispatcher<C extends Dispatchable> {
     }
   }
 
+  /**
+   * Hand an error to this dispatcher's error handling.
+   *
+   * For code that dispatches on its own — a router running its handlers inside
+   * one of ours, a transport failing between updates — and needs the failure to
+   * take the same route a handler's would, rather than a parallel one the
+   * application has not registered anything for.
+   */
+  async report(error: unknown, context: C): Promise<void> {
+    await this.#reportError(error, context)
+  }
+
   /** Route an error to the registered catchers, or to the fallback. */
   async #reportError(error: unknown, context: C): Promise<void> {
     if (this.#catchers.length === 0) {

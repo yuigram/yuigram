@@ -10,16 +10,7 @@
  * ```
  */
 
-import type { KV } from '@yuigram/core'
-import {
-  type AnyEventContext,
-  Bot,
-  createSession,
-  file,
-  memory,
-  type SessionFlavor,
-  userChatKey,
-} from 'yuigram'
+import { Bot, file, type KV, memory, type SessionFlavor, session, userChatKey } from 'yuigram'
 
 /** This bot remembers one number per person. */
 interface Seen {
@@ -75,10 +66,8 @@ const storage = counting(file<Seen>('./state'))
 
 // --- Using it ----------------------------------------------------------------
 
-const bot = Bot.fromToken<WithSeen>(token)
-
-bot.use(
-  createSession<AnyEventContext & WithSeen, Seen>({
+const bot = Bot.fromToken<WithSeen>(token).extend(
+  session<Seen>({
     storage,
     key: userChatKey,
     initial: () => ({ seen: 0 }),

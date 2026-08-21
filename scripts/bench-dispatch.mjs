@@ -10,6 +10,11 @@
  * transport. Handler and network time are excluded by construction, since the
  * handlers do nothing.
  *
+ * Context construction is the part most likely to regress, because it is the
+ * only step whose cost scales with the surface a handler is offered. The bound
+ * methods deliberately do not scale it: they live on a prototype built once per
+ * client, so adding a hundred of them costs nothing here.
+ *
  * ```sh
  * pnpm bench
  * ```
@@ -28,7 +33,7 @@ const ITERATIONS = 20_000
 const transport = mockTransport()
 transport.on('getMe', ok({ id: 1, is_bot: true, first_name: 'B', username: 'b' }))
 
-const bot = new Bot('0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000', {
+const bot = Bot.fromToken('0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000', {
   client: transport,
   log: createLogger({ sink: silentSink() }),
 })
@@ -40,9 +45,9 @@ for (let index = 0; index < 5; index += 1) {
 }
 
 bot.on('callback_query', () => {})
-bot.on('edited_message', () => {})
-bot.command('start', () => {})
-bot.text('ping', () => {})
+bot.on('message_edited', () => {})
+bot.onCommand('start', () => {})
+bot.onText('ping', () => {})
 
 let handled = 0
 bot.on('message', () => {

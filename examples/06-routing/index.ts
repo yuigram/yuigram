@@ -1,9 +1,13 @@
 /**
  * 06 — Routing and filters.
  *
- * Four ways to select updates, in increasing order of precision: by kind, by
- * command, by shorthand, and by composed filter. Registration decides what the
- * handler receives, so selecting more precisely also types more precisely.
+ * Five ways to select updates, in increasing order of precision: by kind, by
+ * name, by command, by shorthand, and by composed filter. Registration decides
+ * what the handler receives, so selecting more precisely also types more
+ * precisely.
+ *
+ * It also shows what a context can do once it has one: every method the update
+ * already addresses, with the identifiers filled in.
  *
  * ```sh
  * BOT_TOKEN=123456:ABC… pnpm tsx examples/06-routing/index.ts
@@ -34,6 +38,18 @@ bot.on(['message', 'channel_post'], (event) => {
 // A service message is promoted to its own kind, so it never reaches the
 // handlers above — and it is still a message, so it can reply.
 bot.on('chat_member_joined', (event) => event.reply('Welcome to the group!'))
+
+// --- By name -----------------------------------------------------------------
+
+// Every kind also has a named registration, generated from the same taxonomy
+// the dispatcher indexes. `on('chat_member_joined', …)` and the line below do
+// the same thing; the name is what autocomplete offers, which is how most
+// people find out that a member joining has its own kind at all.
+bot.onChatMemberJoined((event) => event.reply('Welcome!'))
+
+bot.onMessagePinned((event) => {
+  event.log.debug('someone pinned a message', { chat: event.chat.id })
+})
 
 // --- By command --------------------------------------------------------------
 
@@ -93,6 +109,30 @@ bot.on(privateWithLink, (message) => message.reply('A private message with forma
 bot.on(groupWithLink, (event) => {
   event.log.debug('a group message with formatting or a link')
 })
+
+// --- Acting on what arrived ---------------------------------------------------
+
+// Beyond `reply` and the other curated actions, a context carries every API
+// method it can address, under Telegram's own name and with the identifiers
+// already filled in. The chat comes from the update, so it is not passed —
+// and could not be, because a context never addresses a peer it did not hear
+// from. Reaching some other chat is the client's job, through `api`.
+bot.onCommand('kick', async (message) => {
+  const target = message.reply_to_message?.from
+
+  if (target === undefined) {
+    await message.reply('Reply to someone with /kick.')
+    return
+  }
+
+  // `chat_id` is supplied; only the person has to be named.
+  await message.banChatMember({ user_id: target.id })
+  await message.reply(`Removed ${target.first_name}.`)
+})
+
+// A send inherits the forum topic and the business connection from the message
+// that arrived, so a reply inside a topic stays inside it.
+bot.onCommand('here', (message) => message.sendChatAction({ action: 'typing' }))
 
 // --- Ordering ----------------------------------------------------------------
 

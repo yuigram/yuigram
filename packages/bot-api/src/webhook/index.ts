@@ -29,3 +29,4 @@ export {
   type WebhookResponse,
 } from './handler.js'
 export { type NodeAdapterOptions, type NodeListener, nodeWebhook } from './node.js'
+export { type FetchHandler, type WebAdapterOptions, webWebhook } from './web.js'

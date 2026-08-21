@@ -5,6 +5,9 @@
       "path": "01-basic-bot"
     },
     {
+      "path": "02-keyboards"
+    },
+    {
       "path": "05-middleware"
     },
     {
@@ -15,6 +18,12 @@
     },
     {
       "path": "08-storage"
+    },
+    {
+      "path": "09-routers"
+    },
+    {
+      "path": "10-production"
     }
   ]
 }
