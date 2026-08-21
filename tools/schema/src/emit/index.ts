@@ -11,9 +11,12 @@ import type { Dirent } from 'node:fs'
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { BotApiSchema } from '../bot-api/ir.js'
+import { emitBindings } from './bindings.js'
 import { emitContexts } from './contexts.js'
 import { describeServiceDetection, emitEvents } from './events.js'
+import { emitFieldLists } from './field-lists.js'
 import { emitMethods } from './methods.js'
+import { emitRegistrations } from './registrations.js'
 import type { EmittedFile } from './types.js'
 import { emitTypeNames, emitTypes } from './types.js'
 
@@ -25,6 +28,9 @@ export function emitAll(schema: BotApiSchema): EmittedFile[] {
     ...emitMethods(schema),
     emitEvents(schema),
     emitContexts(schema),
+    emitBindings(schema),
+    emitRegistrations(schema),
+    emitFieldLists(schema),
   ]
 }
 
