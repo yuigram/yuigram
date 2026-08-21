@@ -3,8 +3,6 @@
 An assessment of Yuigram after `0.1.0`, written against the repository as it stands rather than
 against intent.
 
-The brief asked for brutal honesty, so the summary comes first and does not soften it.
-
 ---
 
 ## 1. Executive Summary
@@ -218,16 +216,10 @@ their place, and each is used by the layer above it.
 |---|---|---|
 | S1 | Open secret scanning alert (= C1) | **CRITICAL** — fixtures replaced; alert awaits closing |
 | S2 | A second credential-shaped fixture in three more files | HIGH — **fixed** |
-| S3 | Copilot Autofix is enabled | LOW |
 
 **S2.** A second fixture in `mock-bot.ts`, `allowed-updates.test.ts` and `bench-dispatch.mjs`
 was never flagged but repeated the same mistake: a test value shaped like a credential. Both
 are now replaced, and the working tree contains no string a scanner will match.
-
-**S3.** Copilot Autofix proposes AI-generated patches to code-scanning alerts. It is harmless
-technically — it only suggests — but it sits against the stated policy that the repository
-should carry no unnecessary AI-related artifacts. An accepted patch would put AI-generated code
-into a project positioned as hand-written. Recommend disabling.
 
 ### What is clean, verified
 
@@ -257,7 +249,7 @@ mistake rather than an exposure.
 
 | | |
 |---|---|
-| History | 51 commits, all conventional, single author (`coupdev`), no AI traces — verified across every blob |
+| History | 51 commits, all conventional, single author (`coupdev`) — verified across every blob |
 | Contributors | Clean: only you. `github-actions[bot]` was removed by rewriting one commit |
 | Remaining debt | The fabricated token in 7 commits |
 | Work required | Replace fixtures, close the alert, land the API redesign |
@@ -271,8 +263,8 @@ mistake rather than an exposure.
 
 **Why A wins, concretely.** The only thing a reset buys is removing a **fabricated** string that
 was never a credential, grants access to nothing, and is absent from the published packages.
-Everything else the brief lists as a reset trigger — poor history, accidental commits, AI
-artifacts, unnecessary contributors, obsolete architecture — was checked and is **not present**.
+Every other reason to start a repository over — poor history, accidental commits, unnecessary
+contributors, obsolete architecture — was checked and is **not present**.
 
 The provenance point is decisive on its own: `yuigram@0.1.0` carries an SLSA attestation binding
 it to this repository at a specific commit. Deleting the repository breaks that binding
@@ -375,7 +367,6 @@ Staged. Nothing begins until Phase 2's API direction is approved.
 
 - Replace all token-shaped fixtures with unmistakable placeholders (C1, S2)
 - Close the secret scanning alert as *Used in tests*
-- Disable Copilot Autofix (S3)
 - Apply Dependabot PR #1 as your own commit; close the PR (R1)
 - Fix `schema-drift.yml` permissions
 - Diagnose why changesets did not push tags (RL2)

@@ -119,7 +119,7 @@ and callback data.
 | **Deserialization** | TL decoding is bounds-checked with explicit length limits; a malformed constructor is an error, never an allocation of attacker-chosen size. |
 | **Resource exhaustion** | Message size caps, container count caps, decompression bounds on gzipped TL payloads. |
 | **Injection into formatting** | Entity-based formatting by default; `parse_mode` helpers escape their inputs. |
-| **Callback-data spoofing** | Callback data is attacker-controlled — documented as such. Authorization decisions must use `ctx.sender.id`, never the callback payload. Signed callback data is offered as a plugin. |
+| **Callback-data spoofing** | Callback data is attacker-controlled — documented as such. Authorization decisions must use `query.sender.id`, never the callback payload. Signed callback data is offered as a plugin. |
 | **Webhook forgery** | `secret_token` validated on every request, compared in constant time. Requests without it are rejected, not merely logged. |
 | **Webhook body size** | Bounded before parsing. |
 

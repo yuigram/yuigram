@@ -121,8 +121,8 @@ A proxy, as in puregram — 185 methods with no per-method code, and forward com
 free:
 
 ```ts
-bot.raw.sendMessage({ chat_id, text })      // typed from the schema
-bot.raw.call('newMethod', { … })            // works before regeneration
+bot.api.sendMessage({ chat_id, text })      // typed from the schema
+bot.api.call('newMethod', { … })            // works before regeneration
 ```
 
 ### HTTP client
@@ -187,14 +187,14 @@ Telegram adds an update type, and the drift is invisible.
 
 ### Webhooks
 
-`bot.webhookHandler()` returns a pure function from a parsed request to a response. Every
+`bot.webhook()` returns a pure function from a parsed request to a response. Every
 adapter is the few lines that translate one framework's objects into it:
 
 ```ts
 import { createServer } from 'node:http'
 import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
 
-const handler = bot.webhookHandler({ secretToken })
+const handler = bot.webhook({ secretToken })
 
 createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
 app.use('/hook', expressWebhook(handler))        // express
@@ -293,30 +293,37 @@ Everything needed to run a real bot in production, and nothing else:
 - Full generated types and method surface for Bot API 10.2 (all 185 methods) — **shipped**
 - HTTP client and multipart encoding — **shipped**
 - Long polling with `allowedUpdates: 'auto'` — **shipped**
-- Webhook handler + node/express/fastify adapters — **shipped**
+- Bounded concurrency, ordered per chat — **shipped**
+- Webhook handler + node/express/fastify/fetch adapters — **shipped**
 - Event normalization with service-message promotion — **shipped**
-- File download and upload, `file_id` reuse — **shipped**
+- File download, streaming upload, `file_id` reuse, `media` sources — **shipped**
+- Keyboards, both inline and reply — **shipped**
+- Built-in filters, generated presence plus curated families — **shipped**
+- Formatting helpers with escaping — **shipped**
+- Inline-mode result builders — **shipped**
+- API hooks, with flood-wait retry and throttling on them — **shipped**
+- Inbound rate limiting — **shipped**
+- Routers with scoped middleware — **shipped**
 - Error taxonomy with `FloodError` — **shipped**
 - Raw API, typed and untyped — **shipped**
 - Local Bot API server support — **shipped**
 
 Every Bot API *capability* is reachable, because the surface is generated: all 185 methods and
-388 objects are typed, so "all of it" costs no more than twenty of it.
+388 objects are typed, so "all of it" costs no more than twenty of it. On top of that, every
+method a context can address is offered pre-filled, and every event kind has a named
+registration — both generated from the same schema.
 
-Two conveniences are not there yet, and neither blocks anything:
+What is not there yet, and what to do meanwhile:
 
 | Not yet | What to do instead | Planned |
 |---|---|---|
-| Keyboard builders | Pass the markup object directly — it is fully typed: `ctx.reply('hi', { reply_markup: { inline_keyboard: [[{ text: 'A', callback_data: 'a' }]] } })` | v0.x |
-| Streaming upload | Buffer the file first. Bot uploads cap at 50 MB, so this is wasteful rather than limiting | v0.x |
+| Scenes / conversations | `Router` plus sessions covers step-wise dialogue; the position is tracked by the application | v0.x |
+| Redis / SQLite storage | `KV` is four methods — write an adapter against the client the application already configures. See [storage.md](storage.md) | userland |
+| Media caching | A hook plus a `KV`, both of which ship | userland |
 
 ### v0.x
 
-- Keyboard builders for inline and reply markup
-- Streaming upload, so a large file need not be buffered
-- Remaining webhook adapters
-- Throttling plugin
-- Pagination helpers
+- Scenes, once the design questions in [bot-api-finalization.md](bot-api-finalization.md) §9 are answered
 - Business-account scoped API proxy
 - Rich messages (Bot API 10.2) as a first-class builder
 

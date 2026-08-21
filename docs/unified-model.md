@@ -68,7 +68,7 @@ deliberate post-1.0 addition rather than an accidental third code path.
 | **Storage** | ~ | ~ | **Partial** | A KV contract serves framework sessions on both. MTProto additionally needs a structured peer repository. Layer, do not merge. See [storage.md](storage.md). |
 | **Errors** | ~ | ~ | **Partial** | Common envelope, preserved originals. `429 + retry_after` vs `FLOOD_WAIT_N` map onto one `FloodError`; the rest do not. |
 | **Flood control** | ~ | ~ | **Partial** | Same *concept*, different mechanics: HTTP 429 and soft per-chat limits vs. per-method `FLOOD_WAIT`/`SLOWMODE_WAIT`. |
-| **Raw API** | ✓ | ✓ | **No — deliberately separate** | `bot.raw.sendMessage({…})` and `user.raw.messages.sendMessage({…})` are different type universes and must stay so. |
+| **Raw API** | ✓ | ✓ | **No — deliberately separate** | `bot.api.sendMessage({…})` and `user.api.messages.sendMessage({…})` are different type universes and must stay so. |
 | **Logging** | ✓ | ✓ | **Yes** | Framework concern. |
 | **Middleware / filters / routing** | ✓ | ✓ | **Yes** | Operate on normalized updates. Fully shared. |
 
@@ -127,7 +127,7 @@ type UserPeer = Peer | number | `@${string}`
 await user.resolve('@someone')   // may hit the network, may throw PeerNotFound
 ```
 
-Context-bound operations — `ctx.reply()`, `ctx.edit()`, `ctx.delete()` — are safe on both
+Context-bound operations — `message.reply()`, `message.edit()`, `message.delete()` — are safe on both
 clients, because the peer came from the incoming update and is therefore already known. This
 is the important practical point: **the overwhelming majority of handler code addresses
 peers it just heard from**, so the unified surface covers the common case honestly, and the
@@ -220,15 +220,15 @@ surface that misrepresents both.
 Type narrowing carries the divergence, so the compiler enforces what prose cannot.
 
 ```ts
-app.on('message', async (ctx) => {
-  await ctx.reply('works on both')       // unified surface
+app.onMessage(async (message) => {
+  await message.reply('works on both')       // unified surface
 
-  if (ctx.transport === 'mtproto') {
-    await ctx.client.raw.messages.readHistory({ … })   // narrowed to Account
+  if (message.transport === 'mtproto') {
+    await message.client.api.messages.readHistory({ … })   // narrowed to Account
   }
 
-  if (ctx.transport === 'bot-api') {
-    await ctx.client.raw.setMessageReaction({ … })     // narrowed to Bot
+  if (message.transport === 'bot-api') {
+    await message.client.api.setMessageReaction({ … })     // narrowed to Bot
   }
 })
 ```
@@ -237,8 +237,8 @@ Handlers registered directly on a client skip the discriminant entirely, because
 type is already known:
 
 ```ts
-bot.on('callback_query', async (ctx) => {
-  await ctx.answer('done')      // Bot-only, no narrowing needed
+bot.onCallbackQuery(async (query) => {
+  await query.answer('done')      // Bot-only, no narrowing needed
 })
 ```
 

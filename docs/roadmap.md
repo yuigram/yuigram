@@ -241,7 +241,7 @@ passes; no message loss under injected reordering, gaps and duplicates.
 Where the thesis becomes real.
 
 - `App` container: multiple clients, shared middleware, unified lifecycle
-- Cross-client handlers with `ctx.transport` discrimination
+- Cross-client handlers with `event.transport` discrimination
 - Unified context surface, exactly as constrained by
   [unified-model.md](unified-model.md) §5
 - Shared sessions and storage across client types
@@ -331,7 +331,7 @@ Roughly half at full-time.
    that ends up disabled in production.
 5. **Documentation ships with the feature.** Never after.
 6. **Invariants precede the code they constrain.** Retrofitted architecture rules do not hold.
-7. **`user.raw` is the answer to "method X is missing"** until demand justifies a wrapper. Depth
+7. **`user.api` is the answer to "method X is missing"** until demand justifies a wrapper. Depth
    of the protocol is non-negotiable; breadth of convenience wrappers is scheduling.
 8. **Correctness before speed.** Especially in crypto, where a fast wrong answer is worthless.
 9. **Automate anything recurring.** Schema regeneration, releases, audits, benchmarks. A solo

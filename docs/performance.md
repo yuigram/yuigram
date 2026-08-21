@@ -34,11 +34,11 @@ Effort belongs in these five places and nowhere else.
 | Phase | Budget | Notes |
 |---|---|---|
 | `import 'yuigram'` | < 100 ms | Dominated by module parse — keep the eager surface small |
-| `new Bot(token)` | < 1 ms | Nothing but validation |
-| `bot.start()` (polling) | < 500 ms | One `getMe`, one `setMyCommands` if configured |
-| `new Account(...)` | < 1 ms | No I/O in the constructor |
-| `user.start()` — resumed session | < 2 s | Load session, connect, handshake with existing key |
-| `user.start()` — fresh sign-in | network-bound | Full DH handshake plus interactive steps |
+| `Bot.fromToken(token)` | < 1 ms | Nothing but validation |
+| `bot.poll()` | < 500 ms | One `getMe`, one `setMyCommands` if configured |
+| `Account.fromSession(...)` | < 1 ms | No I/O in the factory |
+| `user.connect()` — resumed session | < 2 s | Load session, connect, handshake with existing key |
+| `user.signIn()` — fresh sign-in | network-bound | Full DH handshake plus interactive steps |
 
 Decisions that protect this:
 
@@ -63,7 +63,7 @@ Design choices that keep it there:
 | Kind-indexed handler map | Handler lookup is O(1), not a scan over every registration |
 | Filter `kinds` metadata | Irrelevant filters skipped before any predicate runs |
 | Chain composed at registration | Middleware chain built once, not per update |
-| Lazy context getters | `ctx.chat` decodes on access; an unused field costs nothing |
+| Lazy context getters | `message.chat` decodes on access; an unused field costs nothing |
 | Empty chains skipped | An unused hook costs zero, so hooks can exist generously |
 | No per-update class instantiation for unused wrappers | Wrapper objects created on demand |
 

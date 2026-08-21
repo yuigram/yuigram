@@ -103,7 +103,7 @@ synthetic updates:
 - `next()` semantics: skipping, short-circuiting, double-calling
 - error propagation outward through the onion
 - filter composition (`and`/`or`/`not`) and the `kinds` fast path
-- router mounting, prefixing, match order, `ctx.stop()`
+- router installation, prefixing, match order
 - session keying, lazy load, dirty tracking, concurrent-update serialization
 - storage contract conformance
 - lifecycle: start, drain, stop under in-flight load
@@ -124,7 +124,7 @@ expectTypeOf(bot.on).parameter(0).not.toMatchTypeOf<'mtproto:typing'>()
 
 Covering: filter narrowing through composition, `Modify<Base, Mod>` surviving chained access,
 event-map correctness per client type, plugin type accumulation via `.extend()`, and
-`ctx.transport` discrimination narrowing `ctx.client`.
+`event.transport` discrimination narrowing `event.client`.
 
 ---
 
@@ -137,7 +137,7 @@ records outgoing calls, and returns scripted responses.
 
 ```ts
 const { bot, send, calls } = mockBot()
-bot.command('start', (ctx) => ctx.reply('hi'))
+bot.onCommand('start', (message) => message.reply('hi'))
 
 await send.command('start', { from: { id: 1 } })
 expect(calls.last('sendMessage')).toMatchObject({ text: 'hi' })

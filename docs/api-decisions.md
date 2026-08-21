@@ -308,6 +308,95 @@ type system says so, rather than a method existing and throwing.
 
 ---
 
+## Decision 11 — Where an operation lives
+
+**Problem.** With a hundred methods offered on a context, the line between "the context does
+this" and "the client does this" stops being obvious. Drawn wrongly it produces either a
+context that cannot do the ordinary thing, or one that pretends to reach peers it has never
+heard of.
+
+**Decision.** The line is what the update already addressed.
+
+| Layer | Holds | Example |
+|---|---|---|
+| Context | Identifiers that arrived in the update | `message.banChatMember({ user_id })` |
+| Client | Anything requiring a peer to be resolved | `bot.api.sendMessage({ chat_id, text })` |
+
+A context never accepts a chat it was not given. Where a method genuinely takes a second peer
+— forwarding, copying — the *source* is supplied and the destination stays the caller's, which
+is why those methods are classified apart rather than by parameter name.
+
+**Reasoning, and why it matters more than it looks.** On the Bot API the distinction is mild:
+a `chat_id` is a number, and passing the wrong one is a logic error. On MTProto it is
+structural. Addressing a peer requires an `access_hash` the client holds in its peer cache,
+obtained from an earlier update or an explicit resolve that can fail, hit the network, or be
+rate-limited. A peer that arrived in an update needs none of that; a peer named out of the
+blue needs all of it. Putting the second on a context would mean either a context that owns a
+peer cache, or one whose methods fail in ways their signatures do not admit.
+
+Drawing the line here now means the same shape works when MTProto lands: the context binds
+what the update carried, the client resolves everything else.
+
+**What the references do.** Both, arriving from opposite directions, land on the same rule.
+
+*puregram* generates a context class per update kind, carrying its fields as lazy getters
+plus roughly 250 members — `reply`, the `replyWith*` family, `send*`, chat administration
+bound to the message's chat, about 120 `hasX` predicates and a set of shape tests. Addressing
+another chat is not on it: that is `tg.send(chat, text)` on the client, from a separately
+generated shortcut interface. The context is broad, and every one of its methods is addressed
+by what arrived.
+
+*mtcute* splits the same rule differently. Its `Message` is pure data — 54 getters, no client
+reference, no actions at all — and every operation is a client method taking the message as
+its first argument: `client.replyText(message, …)`, `client.deleteMessages(…)`. Its dispatcher
+then adds a `MessageContext extends Message` carrying `client` and about 25 thin delegations,
+each typed as `ParametersSkip1<TelegramClient['answerText']>` so the client method stays the
+single source of truth. Peer resolution is explicit and visible: `getCompleteSender()` and
+`getCompleteChat()` exist precisely because an MTProto update carries *incomplete* peers.
+
+The convergence is the finding. One framework generates a wide context, the other hand-writes
+a narrow one over a wide client, and both refuse to let a message address a peer that did not
+arrive with it.
+
+**Yuigram's position.** The same rule, reached by a third route: the classification is
+generated, so the surface is as wide as puregram's, and the parameter types are derived from
+the client's own method surface, so there is one source of truth as in mtcute. What neither
+does — and what having two transports requires — is state the rule as something a generator
+enforces rather than a convention a maintainer follows.
+
+**Status: Decided**, and implemented for the Bot API subsystem.
+
+---
+
+## Decision 12 — Breadth is generated as a table, not as methods
+
+**Problem.** Evidence 3 closed the question of *whether* to wrap broadly: generated wrappers
+cost nothing to maintain, so the argument for restraint disappears. It left open *how*.
+
+**Decision.** Emit the classification, derive the signatures.
+
+The generator emits which parameters each context supplies. The types come from `ApiMethods`
+— already generated — through a mapping that makes supplied parameters optional rather than
+absent. The runtime is one binder reading that table onto a prototype built once per client.
+
+**Reasoning.** Emitting a method per entry is the obvious approach and the one the reference
+takes, at 9,302 generated lines for the message surface. Both are maintenance-free; the
+difference is what consumers pay. A generated `.d.ts` is re-read by every user's TypeScript
+server on every keystroke, so the same surface in 7 KB rather than 358 KB is worth one layer
+of type-level indirection.
+
+It also keeps a property that matters for the second transport: the binder is transport-blind.
+When TL methods arrive, the same mechanism binds `peer` from the update — a different table
+and different resolvers, not a different design.
+
+**Trade-offs.** Hovering a bound method shows a computed type rather than a written one, which
+is less readable than an emitted signature. Accepted: the parameter documentation still comes
+through from the generated `XParams` interface, which is where a developer actually reads it.
+
+**Status: Decided**, and implemented.
+
+---
+
 ## The recommended minimal application
 
 ```ts

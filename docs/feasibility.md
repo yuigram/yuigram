@@ -244,7 +244,7 @@ four are planning failures rather than technical ones:
    begins.
 3. **Treating documentation as a post-1.0 task.** puregram's adoption outcome is the evidence.
 4. **Unbounded scope in the high-level MTProto surface.** mtcute spends ~23,000 LOC there and
-   it is still incomplete, because it is unbounded by nature. `user.raw` is the answer to
+   it is still incomplete, because it is unbounded by nature. `user.api` is the answer to
    "method X is missing" until demand justifies a wrapper.
 
 The distinction in item 4 is worth restating: **depth of the protocol implementation is
@@ -298,7 +298,7 @@ which the project has explicitly accepted.
 Complete Bot API support (all 185 methods, generated), the full framework core, and Yuigram's
 own MTProto stack through the updates manager and file transfer — both clients in one `App`
 with shared middleware, plus testing infrastructure and documentation. The high-level MTProto
-convenience surface is deliberately narrow at MVP, with `user.raw` covering the rest.
+convenience surface is deliberately narrow at MVP, with `user.api` covering the rest.
 
 **4. What is the hardest part?**
 The MTProto updates manager. Gap reconciliation across `pts`/`qts`/`seq` and per-channel boxes,
@@ -335,7 +335,7 @@ contract, sessions, storage, errors, logging — and nothing below it. Two clien
 documentation. See [unified-model.md](unified-model.md).
 
 **10. What should the public API look like?**
-`new Bot(token)`, `new Account({ apiId, apiHash, session })`, both optionally held by an `App`
+`Bot.fromToken(token)`, `Account.fromSession(path, { apiId, apiHash })`, both optionally held by an `App`
 with shared middleware. Everything from `import … from 'yuigram'`. Honest types: a member
 exists only where it works. See [api-design.md](api-design.md).
 
@@ -347,9 +347,9 @@ counters, and fail loudly. Merging them would be both a design and a security er
 [sessions.md](sessions.md).
 
 **12. How should raw API access work?**
-Two separate, typed escape hatches — `bot.raw.*` over the Bot API, `user.raw.*` over TL — each
+Two separate, typed escape hatches — `bot.api.*` over the Bot API, `user.api.*` over TL — each
 with an untyped `call()` for methods newer than the installed schema. Never merged; they are
-different type universes. `user.raw` is also what keeps the high-level surface bounded without
+different type universes. `user.api` is also what keeps the high-level surface bounded without
 limiting what users can do.
 
 **13. How can Yuigram avoid becoming a wrapper?**

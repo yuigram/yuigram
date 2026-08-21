@@ -24,45 +24,57 @@ shopping-cart store is a shared Redis with a permissive ACL.
 ### Model
 
 ```ts
-import { session, file } from 'yuigram'
+import { Bot, file, type SessionFlavor, session } from 'yuigram'
 
-const bot = new Bot(token).extend(
-  session({
+interface Cart {
+  count: number
+}
+
+const bot = Bot.fromToken<SessionFlavor<Cart>>(token).extend(
+  session<Cart>({
     storage: file('./sessions'),
-    key: (ctx) => ctx.sender?.id,
+    key: (event) => event.sender?.id,
     ttl: 60 * 60 * 24 * 7,
     initial: () => ({ count: 0 })
   })
 )
 
-bot.on('message', async (ctx) => {
-  ctx.session.count++
-  await ctx.reply(`message ${ctx.session.count}`)
+bot.onMessage(async (message) => {
+  message.session.count++
+  await message.reply(`message ${message.session.count}`)
 })
 ```
 
+`message.session.count++` changes the session in place, and that is enough: the value is
+tracked, so a change anywhere inside it — including a nested array pushed into — marks the
+session dirty and writes it back when the handler finishes. A session that was only read is
+never written, so read-only traffic does not hammer the store.
+
 ### Typing
 
-An application names its own state type and intersects the plugin's **flavour** into the
-context it hands the client:
+An application names its own state type and hands the plugin's **flavour** to the client as
+its type parameter:
 
 ```ts
-import { Bot, type Context, type SessionFlavor } from 'yuigram'
+import { Bot, memory, type SessionFlavor, session, userChatKey } from 'yuigram'
 
 interface Cart {
   count: number
   items?: CartItem[]
 }
 
-type MyContext = Context & SessionFlavor<Cart>
-
-const bot = new Bot<MyContext>(token)
-
-bot.use(createSession<MyContext, Cart>({ storage: memory(), key: userChatKey, initial: () => ({ count: 0 }) }))
+const bot = Bot.fromToken<SessionFlavor<Cart>>(token).extend(
+  session<Cart>({ storage: memory(), key: userChatKey, initial: () => ({ count: 0 }) })
+)
 ```
 
-`createSession` constrains the context to carry the flavour, so installing it on a client
-whose context does not declare one is a compile error rather than an `undefined` at runtime.
+The client's type parameter is what plugins add, not the whole context: the base context
+varies by event, so there is no single type for an application to name and extend.
+
+The value type is named once. `createSession` — which the plugin wraps — takes the context
+type as well, and is what to reach for when that type needs stating: middleware generic over
+the client, or two sessions installed under different properties. For the ordinary case the
+second type argument never caught a mistake, it only produced one to debug.
 
 #### Why not declaration merging
 
@@ -75,7 +87,7 @@ one bot or more than one package:
 | Augmentation is process-global | One session shape per program. Two bots in one repository cannot remember different things, and neither can two tenants in one process. |
 | It cannot cross a façade | The interface would live in `@yuigram/core`, but applications install `yuigram`. `declare module 'yuigram'` creates a *new* interface rather than merging — it compiles and silently does nothing — and the form that works names an internal package users are promised they never need to know. |
 
-A flavour also states something merging cannot: `ctx.session` exists exactly where the
+A flavour also states something merging cannot: `session` exists exactly where the
 middleware providing it is installed, rather than on every context in the program because some
 file imported the plugin.
 
@@ -89,10 +101,10 @@ same approach would put an internal package name in every application's source.
 The key function decides scope, and getting it wrong is the most common session bug:
 
 ```ts
-key: (ctx) => ctx.sender?.id                          // per user, across all chats
-key: (ctx) => ctx.chat?.id                            // per chat, shared by members
-key: (ctx) => `${ctx.chat?.id}:${ctx.sender?.id}`     // per user per chat  ← usual default
-key: (ctx) => `${ctx.chat?.id}:${ctx.threadId}`       // per forum topic
+key: (e) => e.sender?.id                              // per user, across all chats
+key: (e) => e.chat?.id                                // per chat, shared by members
+key: (e) => `${e.chat?.id}:${e.sender?.id}`           // per user per chat  ← usual default
+key: (e) => `${e.chat?.id}:${e.message?.message_thread_id}`  // per forum topic
 ```
 
 The default is per-user-per-chat, because a user's state in a group is rarely the state they
@@ -115,10 +127,10 @@ the classic lost-update race where two rapid messages both read `count: 0`.
 A conversation is a session with a resumable position, built on the same storage:
 
 ```ts
-bot.command('order', async (ctx) => {
-  const size  = await ctx.ask('What size?', f.text(/^(S|M|L)$/))
-  const count = await ctx.ask('How many?',  f.text(/^\d+$/))
-  await ctx.reply(`${count} × ${size}`)
+bot.onCommand('order', async (message) => {
+  const size  = await message.ask('What size?', f.text(/^(S|M|L)$/))
+  const count = await message.ask('How many?',  f.text(/^\d+$/))
+  await message.reply(`${count} × ${size}`)
 })
 ```
 
@@ -151,22 +163,17 @@ update state     pts, qts, seq, date, per-channel pts
 ### API
 
 ```ts
-const user = new Account({
-  apiId, apiHash,
-  session: './me.session'                 // path — file-backed
-})
+const user = Account.fromSession('./me.session', { apiId, apiHash })
 
-const user2 = new Account({
-  apiId, apiHash,
-  session: sqlite('./sessions.db', 'alice')  // driver instance
-})
+// A driver instance, where a file is not the right store.
+const user2 = Account.fromSession(sqlite('./sessions.db', 'alice'), { apiId, apiHash })
 ```
 
 Export and import for deployment, where writing a file is not an option:
 
 ```ts
 const serialized = await user.exportSession()   // opaque, secret-bearing string
-const user = new Account({ apiId, apiHash, session: fromString(process.env.SESSION!) })
+const user = Account.fromString(process.env.SESSION!, { apiId, apiHash })
 ```
 
 `exportSession()` returns an opaque string carrying live credentials. The documentation must
@@ -193,8 +200,8 @@ it finds permissions wider than that.
 Each `Account` owns an independent session; nothing is shared:
 
 ```ts
-const alice = app.add(new Account({ apiId, apiHash, session: './alice.session' }))
-const bob   = app.add(new Account({ apiId, apiHash, session: './bob.session' }))
+const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash }))
+const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash }))
 ```
 
 `apiId`/`apiHash` are per-*developer*, not per-account, so they are legitimately shared across
@@ -212,7 +219,7 @@ The tempting simplification:
 // Rejected.
 const storage = redis(…)
 new App({ storage })
-new Account({ apiId, apiHash, storage })
+Account.fromSession(storage, { apiId, apiHash })
 ```
 
 It fails on four counts:

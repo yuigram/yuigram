@@ -71,8 +71,14 @@ export const myStore = (client: MyClient): KV => ({
 })
 ```
 
-A conformance test suite ships as `@yuigram/storage-testing`, so third-party adapters can
-verify semantics — TTL expiry, prefix scans, concurrent writes — rather than guessing.
+That is the whole contract, and it is why Redis and SQL adapters are deliberately **not**
+shipped: an adapter is written against the client an application already configures, and
+shipping one would mean owning a driver dependency, a connection lifecycle and a version
+matrix on its behalf. `namespaced()` and `tiered()` compose whatever is written this way, and
+`file()` covers durability without a service.
+
+A conformance suite for third-party adapters — TTL expiry, concurrent writes, key isolation —
+is planned rather than shipped.
 
 ---
 
@@ -196,9 +202,9 @@ Full threat model in [security.md](security.md).
 
 | Phase | Deliverable |
 |---|---|
-| MVP | `memory()`, `file()`, the `KV` contract, MTProto file driver |
-| v0.x | `sqlite`, `redis`, `tiered`, `namespaced`, `encrypted`, conformance suite |
-| v1.0 | `sql` (Postgres/MySQL), migration tooling |
-| Post-1.0 | Community adapters, if demand appears |
+| Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, the `KV` contract |
+| v0.x | `encrypted()`, the conformance suite, MTProto file driver |
+| Userland | `redis`, `sqlite`, `sql` — four methods against a client the application already has |
+| Post-1.0 | Official adapters, if the userland ones turn out to disagree with each other |
 
 Nothing beyond memory and filesystem enters core's dependency tree at any phase.

@@ -15,9 +15,12 @@ One package. Bots and user accounts. One programming model.
 
 ---
 
-> **Status: 0.1.0 ships the Bot API subsystem.** Every Bot API capability is reachable, and
+> **Status: the Bot API subsystem is complete.** Every Bot API capability is reachable, and
 > nothing released is a stub — unimplemented means absent, not hollow. MTProto is next and is
 > being built bottom-up. See [the roadmap](docs/roadmap.md).
+>
+> The client surface changed after `0.1.0`. [docs/migration.md](docs/migration.md) lists every
+> rename.
 
 ## What it is
 
@@ -29,20 +32,31 @@ account in one process, sharing middleware, routing, sessions and error handling
 ```ts
 import { Bot } from 'yuigram'
 
-const bot = new Bot(process.env.BOT_TOKEN)
+const bot = Bot.fromToken(process.env.BOT_TOKEN)
 
-bot.command('start', (ctx) => ctx.reply('Hello.'))
-bot.on('message', (ctx) => ctx.reply(ctx.text ?? 'Say something.'))
+bot.onCommand('start', (message) => message.reply('Hello.'))
+bot.onText((message) => message.reply(message.text))
 
-bot.catch((error, ctx) => ctx.log.error('handler failed', { error }))
+bot.onError((error, event) => event.log.error('handler failed', { error }))
 
-await bot.start()
+await bot.poll()
 ```
+
+Registration decides what a handler receives. `onText` matched on the text, so
+`message.text` is a `string` there; `onMessage` cannot promise that, because a photo
+without a caption is a message with no text. The context types come from the Bot API
+schema, so what Telegram guarantees arrives guaranteed and what it leaves optional stays
+optional.
 
 Commands and routing, filters, middleware, sessions, storage, file downloads, long polling,
 webhooks with framework adapters, a typed surface generated from Bot API 10.2, and a testing
 harness that drives the real pipeline with only the network replaced. See
 [examples](examples).
+
+A context also carries every API method the update already addresses, with the identifiers
+filled in — `message.banChatMember({ user_id })`, `message.sendPhoto({ photo })` — and every
+event kind has a named registration. Both are generated from the schema, so the surface is
+complete without being maintained by hand.
 
 Every Bot API capability is reachable — all 185 methods and 388 objects are generated and
 typed. Two conveniences are still to come in v0.x: keyboard builders (pass the typed markup
@@ -55,17 +69,17 @@ import { Account, App, Bot } from 'yuigram'
 
 const app = new App()
 
-const bot = app.add(new Bot(process.env.BOT_TOKEN))
-const me = app.add(new Account({ apiId, apiHash, session: './me.session' }))
+const bot = app.add(Bot.fromToken(process.env.BOT_TOKEN))
+const me = app.add(Account.fromSession('./me.session', { apiId, apiHash }))
 
 // Shared middleware across both clients.
-app.use(async (ctx, next) => {
-  ctx.log.info({ client: ctx.client.name, kind: ctx.kind })
+app.use(async (event, next) => {
+  event.log.info({ transport: event.transport, kind: event.kind })
   await next()
 })
 
-bot.command('start', (ctx) => ctx.reply('Hello!'))
-me.on('message', (ctx) => archive(ctx.text))
+bot.onCommand('start', (message) => message.reply('Hello!'))
+me.onMessage((message) => archive(message.text))
 
 await app.start()
 ```
@@ -112,6 +126,7 @@ The research and architecture phase is complete. Start with [docs/README.md](doc
 | [API design](docs/api-design.md) | The intended public surface |
 | [MTProto](docs/mtproto.md) | The protocol implementation specification |
 | [Roadmap](docs/roadmap.md) | Phased delivery plan |
+| [Migration](docs/migration.md) | What changes between releases, and what to do about it |
 | [Feasibility](docs/feasibility.md) | Honest engineering assessment |
 
 ## Repository

@@ -638,7 +638,7 @@ makes it tractable rather than merely long:
   exhaustively offline. The session and updates layers are verifiable against a mock server
   that can inject conditions the live network produces only rarely.
 - **Scope is controlled at the top, not the bottom.** The protocol layers must be complete and
-  correct. The *high-level surface* above them is demand-driven, with `user.raw` covering
+  correct. The *high-level surface* above them is demand-driven, with `user.api` covering
   everything not yet wrapped.
 
 The distinction in that last point is the one that matters. Depth of the protocol

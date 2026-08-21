@@ -53,7 +53,7 @@ message_reaction_count
 ```
 
 against the Bot API's ordering, which scatters them. The raw Bot API name remains accessible
-via `ctx.raw`, and the mapping is documented — this is a naming choice in Yuigram's own
+via `event.raw`, and the mapping is documented — this is a naming choice in Yuigram's own
 vocabulary, which the framework is entitled to have, and it costs one line in the migration
 guide.
 
@@ -146,48 +146,47 @@ schema, so ingestion pipelines and logging never silently drop unknown data.
 
 ## 4. Type inference
 
-The event kind determines the context type through a generated map:
+The event kind determines the context type through a generated map — `ContextFor<K>` — built
+from the same schema that produces the method surface:
 
 ```ts
-interface BotEvents {
-  message:        MessageContext<Bot>
-  message_edited: MessageContext<Bot>
-  callback_query: CallbackQueryContext<Bot>
-  inline_query:   InlineQueryContext<Bot>
-  // …
-}
-
-interface UserEvents {
-  message:                MessageContext<Account>
-  'mtproto:typing':       TypingContext<Account>
-  // …
+interface EventFieldsByKind {
+  message:        MessageEventFields
+  message_edited: MessageEventFields
+  callback_query: CallbackQueryEventFields
+  inline_query:   InlineQueryEventFields
+  // …one entry per kind, generated
 }
 ```
 
 so that:
 
 ```ts
-bot.on('message',        (ctx) => ctx.text)        // MessageContext<Bot>
-bot.on('callback_query', (ctx) => ctx.answer())    // CallbackQueryContext<Bot>
-bot.on('mtproto:typing', (ctx) => …)               // ✗ compile error — not a Bot event
+bot.on('message',        (message) => message.text)     // MessageContext<'message'>
+bot.on('callback_query', (query) => query.answer())     // CallbackQueryContext
+bot.on('mtproto:typing', (event) => …)                  // ✗ compile error — not a Bot event
 ```
+
+The kind is a type-level input, not a runtime string the handler has to re-check. A handler
+registered for `callback_query` has `data`; one registered for `message` does not, and asking
+for it is a compile error rather than an `undefined`.
 
 Multiple kinds produce a union:
 
 ```ts
-bot.on(['message', 'message_edited'], (ctx) => {
-  ctx.text        // available on both
-  ctx.kind        // 'message' | 'message_edited'
+bot.on(['message', 'message_edited'], (event) => {
+  event.text      // available on both
+  event.kind      // 'message' | 'message_edited'
 })
 ```
 
 Cross-client handlers on the `App` intersect the two maps and expose only what both provide:
 
 ```ts
-app.on('message', (ctx) => {
-  ctx.text                       // available
-  ctx.transport                  // 'bot-api' | 'mtproto'
-  if (ctx.transport === 'mtproto') ctx.client.raw.messages…   // narrowed
+app.onMessage((message) => {
+  message.text                   // available
+  message.transport              // 'bot-api' | 'mtproto'
+  if (message.transport === 'mtproto') message.client.api.messages…   // narrowed
 })
 ```
 
@@ -198,24 +197,47 @@ app.on('message', (ctx) => {
 Every context carries three tiers, and the tiering is the honest part:
 
 ```ts
-interface MessageContext<C> {
-  // 1. Normalized — same meaning on both transports.
-  readonly kind: 'message'
-  readonly chat: Chat | undefined
-  readonly sender: User | undefined
-  readonly text: string | undefined
-  readonly date: Date
+interface MessageContext<K> {
+  // 1. Framework-owned — true whatever produced the event.
+  readonly kind: K                    // a literal type, so it discriminates
+  readonly transport: 'bot-api'
+  readonly updateId: number
+  readonly log: Logger
 
-  // 2. Transport-typed — the shape differs, the type says so.
-  readonly message: C extends Bot ? BotApi.Message : Tl.Message
+  // 2. Generated from the schema — the payload's own fields, its own optionality.
+  readonly message: Message           // the whole payload, under a domain name
+  readonly chat: Chat                 // guaranteed on a message
+  readonly sender: User | undefined   // absent on a channel post
+  readonly text: string | undefined   // a photo may carry no caption
+  readonly date: number               // Unix time, in the units Telegram sends
 
-  // 3. Raw — untouched.
-  readonly raw: unknown
+  // 3. Escape hatches — untouched update, and the full method surface.
+  readonly raw: Update
+  readonly api: RawApi
 }
 ```
 
-Tier 1 is what unified handlers use. Tier 2 is what transport-specific handlers use. Tier 3
-is the escape hatch. Nothing is hidden, and nothing pretends to be something it is not.
+Tier 1 is what generic middleware is written against. Tier 2 is what handlers read, and its
+optionality is Telegram's rather than a framework guess — nothing is asserted that Telegram
+does not guarantee, and nothing it does guarantee is thrown away. Tier 3 is what covers
+anything the framework has not modelled.
+
+The timestamp is deliberately not converted to a `Date`. It belongs to the payload, in the
+units Telegram sends, and a handler that wants a `Date` builds one — a conversion the
+framework performs on every update, for every handler, is a cost paid by everyone for the
+benefit of a few.
+
+Actions — `reply`, `send`, `edit`, `delete`, `forward`, `react`, `pin` — are hand-written and
+sit alongside the generated fields. Which fields a reply inherits from the message it answers,
+such as the forum topic and the business connection, is a judgement rather than a lookup, and
+getting it wrong sends a reply to the wrong place.
+
+Below them sits the **bound layer**: every API method this message or its chat can address,
+under Telegram's own names, with the identifiers supplied. It is generated from a
+classification of method parameters rather than written per method, so it is complete by
+construction — `message.banChatMember({ user_id })`, `message.sendPhoto({ photo })`,
+`message.getChatMember({ user_id })`. See [codegen.md](codegen.md) §2.5 for what the
+classification can and cannot decide on its own.
 
 ---
 
@@ -224,9 +246,11 @@ is the escape hatch. Nothing is hidden, and nothing pretends to be something it 
 Filters narrow both which event and which fields:
 
 ```ts
-bot.on('message', f.text(/^\d+$/), (ctx) => ctx.text)      // string, not undefined
-bot.on('message', f.media.photo, (ctx) => ctx.photo)        // Photo, not undefined
-bot.on('message', f.chat.private.and(f.sender.id(1)), h)
+bot.on(f.text(/^\d+$/), (message) => message.text)     // string, not undefined
+bot.on(f.media.photo, (message) => message.photo)      // Photo, not undefined
+
+const fromOneInPrivate = and(f.chat.private, f.sender.id(1))
+bot.on(fromOneInPrivate, handler)
 ```
 
 Filters carry runtime `kinds` metadata, so the dispatcher skips predicate evaluation for
@@ -274,7 +298,7 @@ filters, middleware and routing as Telegram events:
 ```ts
 app.defineEvent('payment_confirmed')
 
-app.on('payment_confirmed', (ctx) => ctx.reply('Thanks!'))
+app.on('payment_confirmed', (event) => event.reply('Thanks!'))
 app.emit('payment_confirmed', { chat, sender, orderId })
 ```
 
@@ -296,14 +320,23 @@ own error handling.
 
 ---
 
-## 9. Open questions for review
+## 9. Settled, and still open
 
-1. **`message_edited` vs `edited_message`.** §2 argues for the former; it diverges from Bot
-   API vocabulary. Worth confirming before the name is public and expensive to change.
-2. **`mtproto:` prefix.** Explicit and honest, but slightly verbose. The alternative —
-   unprefixed names available only on `Account` — is terser but makes availability invisible in
-   the name. Current recommendation is to keep the prefix.
-3. **Promotion depth.** ~40 promoted service events is a lot of surface. An alternative is to
-   promote only the commonly-handled ones and leave the rest as `message` with a filter. The
-   generated-table approach makes full promotion nearly free to maintain, which is the
-   argument for doing all of it.
+**Settled by the Bot API subsystem shipping.**
+
+1. **`message_edited`, not `edited_message`.** §2's argument won: the kind reads
+   subject-then-verb, which is what makes `message_edited` sort next to `message` and
+   `channel_post_edited` next to `channel_post`. The Bot API's own name is preserved in the
+   mapping table and reachable through `raw`.
+2. **Promotion depth: all of it.** All 54 service events are promoted to their own kinds from
+   a generated table, so the fifty-fourth costs no more to maintain than the first. A promoted
+   service message still carries the message context, and can still reply — it is a message
+   in an ordinary chat, which is what a developer selecting `chat_member_joined` expects to
+   be able to answer.
+
+**Still open.**
+
+3. **`mtproto:` prefix.** Explicit and honest, but slightly verbose. The alternative —
+   unprefixed names available only on `Account` — is terser but makes availability invisible
+   in the name. Current recommendation is to keep the prefix; it is decided when the MTProto
+   subsystem lands, and nothing shipped depends on it yet.

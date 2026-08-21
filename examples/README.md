@@ -17,20 +17,22 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | | Example | Shows |
 |---|---|---|
 | 01 | [basic bot](01-basic-bot) | The smallest complete bot: commands, an echo handler, clean shutdown |
+| 02 | [keyboards](02-keyboards) | Buttons, files, escaped formatting, filters, and a flood-wait hook |
 | 05 | [middleware](05-middleware) | Onion ordering, timing, priority bands, ending a chain early |
 | 06 | [routing](06-routing) | Selecting updates by kind, command, shorthand and composed filter |
-| 07 | [sessions](07-sessions) | Per-user state, typed through declaration merging |
+| 07 | [sessions](07-sessions) | Per-user state, typed through a flavour on the client |
 | 08 | [storage](08-storage) | The built-in adapters, TTLs, and writing your own |
+| 09 | [routers](09-routers) | Features as modules, each with its own scoped middleware |
+| 10 | [production](10-production) | Throttling, retry, rate limiting, concurrency, clean shutdown |
 
 ## Planned
 
-Numbering follows [../docs/roadmap.md](../docs/roadmap.md), so the gaps are deliberate — those
-examples need the MTProto client.
+The gaps are deliberate: the examples below need the MTProto client, and keep the numbers the
+[roadmap](../docs/roadmap.md) gives them.
 
 | | Example | Phase |
 |---|---|---|
-| 02 | basic userbot | 10 |
-| 03 | bot and userbot together | 10 |
-| 04 | multiple clients | 10 |
-| 09 | raw API | 10 |
-| 10 | production setup | 11 |
+| 03 | basic userbot | 10 |
+| 04 | bot and userbot together | 10 |
+| 11 | raw API across both transports | 11 |
+| 12 | multiple clients | 11 |

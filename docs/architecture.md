@@ -212,14 +212,14 @@ transport data to exist at all.
 
 ```
               ┌──────────────────┐
-              │  BaseContext     │   core — client, transport, kind, date, raw
+              │  BaseContext     │   core — kind, transport, log, raw
               └────────┬─────────┘
                        │
         ┌──────────────┴───────────────┐
         │                              │
 ┌───────┴────────┐            ┌────────┴────────┐
-│  BotContext    │            │  UserContext    │
-│  Bot API raw   │            │  TL raw         │
+│  Bot API       │            │  MTProto        │
+│  Update raw    │            │  TL raw         │
 │  answer()      │            │  readHistory()  │
 │  file_id ops   │            │  peer ops       │
 └───────┬────────┘            └────────┬────────┘
@@ -290,11 +290,11 @@ never destroy information — an error the user cannot diagnose from the object 
 Two separate escape hatches, never merged (see [unified-model.md](unified-model.md) §7):
 
 ```ts
-bot.raw.sendMessage({ chat_id, text })              // typed Bot API
-bot.raw.call('someNewMethod', { … })                // untyped, forward-compatible
+bot.api.sendMessage({ chat_id, text })              // typed Bot API
+bot.api.call('someNewMethod', { … })                // untyped, forward-compatible
 
-user.raw.messages.sendMessage({ peer, message })    // typed TL
-user.raw.call({ _: 'messages.sendMessage', … })     // untyped, forward-compatible
+user.api.messages.sendMessage({ peer, message })    // typed TL
+user.api.call({ _: 'messages.sendMessage', … })     // untyped, forward-compatible
 ```
 
 **Why both a typed and an untyped form:** the typed form covers everything in the current

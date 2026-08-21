@@ -4,21 +4,26 @@ Decision records: why Yuigram is built the way it is, and what it is being built
 
 ## What is implemented
 
-The **Bot API subsystem is complete and shipped**. Where a document describes it — polling and
-webhooks in [bot-api.md](bot-api.md), dispatch and errors in [middleware.md](middleware.md),
-typing in [sessions.md](sessions.md) — it describes running code, and the behaviour is pinned
-by tests.
+The **Bot API subsystem is complete**: `Bot.fromToken`, a named registration per event kind, a
+context type per event rather than one context degraded to serve all of them, and every API
+method a context can address bound to what the update carried. Where a document describes it — polling and webhooks in [bot-api.md](bot-api.md),
+dispatch and errors in [middleware.md](middleware.md), typing in [sessions.md](sessions.md) —
+it describes running code, and the behaviour is pinned by tests.
+
+[api-review.md](api-review.md), [api-proposals.md](api-proposals.md),
+[api-decisions.md](api-decisions.md) and [post-release-audit.md](post-release-audit.md) are the
+record of how that surface was arrived at. They quote the `0.1.0` API they argue against, and
+are deliberately left as written.
 
 **MTProto is not implemented.** Neither is the `App` container that holds several clients, nor
 anything that depends on it. [api-design.md](api-design.md) is labelled the *proposed* API and
-shows the whole target, including parts that do not exist yet — `Account`, `App`, `Router`, the
-`f` filter namespace and the `media` helpers among them. [naming.md](naming.md) records naming
-decisions for that target, not an inventory of what ships.
+shows the whole target, including parts that do not exist yet — `Account` and `App` among them.
+[naming.md](naming.md) records naming decisions for that target, not an inventory of what ships.
 
 The rule when reading: anything involving a bot and only a bot exists today; anything involving
-a user account, several clients, or the `f`/`media` namespaces is design. The
-[roadmap](roadmap.md) says when each part arrives, and nothing described anywhere here is a
-stub — unimplemented means absent, not hollow.
+a user account or several clients is design. The [roadmap](roadmap.md) says when each part
+arrives, and nothing described anywhere here is a stub — unimplemented means absent, not
+hollow.
 
 ## The premise
 
@@ -66,9 +71,11 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 17 | [naming.md](naming.md) | Package and import naming |
 | 18 | [feasibility.md](feasibility.md) | Honest engineering assessment + executive summary |
 | 19 | [roadmap.md](roadmap.md) | Phased delivery plan |
+| 20 | [migration.md](migration.md) | What changes between releases, and what to do about it |
+| 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, what was closed, and what will not be built |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
-the specification does not cover. Empty until implementation begins.
+the specification does not cover. Empty until the MTProto subsystem begins.
 
 The executive summary is at the end of [feasibility.md](feasibility.md).
 
@@ -101,8 +108,10 @@ whose implementation belongs to Yuigram, and there is no shorter route to it.
 
 ## Status
 
-Research phase: **complete, pending review.**
-Implementation: **not started, and must not start until this material is approved.**
+Research phase: **complete.**
+Bot API subsystem: **implemented**, on the redesigned public surface.
+MTProto subsystem: **not started** — the specification in [mtproto.md](mtproto.md) is what it
+will be built from.
 
 All measurements were taken from published package artifacts on 2026-08-19 against
 puregram 3.7.0 / @puregram/api 10.2.1, @mtcute/core 0.31.0 / @mtcute/tl 223.0.0, Bot API 10.2
