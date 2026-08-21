@@ -23,12 +23,11 @@
 
 import {
   type AnyFilter,
-  type AsyncFilter,
   ContextExtender,
   createLogger,
   Dispatcher,
   type ErrorHandler,
-  type Filter,
+  type FilterMeta,
   Lifecycle,
   type Logger,
   type Middleware,
@@ -93,6 +92,23 @@ export interface PollOptions {
 
 /** A handler for one event. */
 export type EventHandler<C> = (context: C) => unknown
+
+/**
+ * The context a filter proves it has.
+ *
+ * Both halves of a filter's promise are applied: `Base` is what matching
+ * establishes the value is, and `Mod` is what it refines on top. Extracted by
+ * conditional inference rather than by inferring through `Filter`'s own type
+ * parameters, which does not survive composition — `and(a, b)` produces an
+ * intersection that positional inference silently gives up on, falling back to
+ * the untyped overload.
+ */
+export type FilterContext<F> =
+  F extends AnyFilter<infer Base, infer Mod>
+    ? Base extends EventContext
+      ? Modify<Base, Mod>
+      : AnyEventContext
+    : AnyEventContext
 
 /**
  * A Telegram bot, over the Bot API.
@@ -214,6 +230,9 @@ export class Bot<Ext = unknown> {
    */
   on<K extends BotEventKind>(kind: K, handler: EventHandler<ContextFor<K> & Ext>): this
 
+  /** Register a handler for several kinds at once. */
+  on(match: readonly string[], handler: EventHandler<AnyEventContext & Ext>): this
+
   /**
    * Register a handler behind a filter.
    *
@@ -221,14 +240,20 @@ export class Bot<Ext = unknown> {
    * filter declaring `{ text: string }` hands the handler a context whose
    * `text` is a `string`, without the handler re-checking what matching
    * already established.
+   *
+   * Give a composed filter a name before registering it:
+   *
+   * ```ts
+   * const privateWithLink = and(isPrivate, hasEntities)
+   * bot.on(privateWithLink, (message) => …)
+   * ```
+   *
+   * Composing inline is rejected rather than accepted with a widened context.
+   * The compiler will not follow `Filter`'s recursive composition members
+   * deeply enough to infer through a nested call, and a handler that silently
+   * received every kind would be worse than a compile error.
    */
-  on<C extends EventContext, Mod>(
-    match: Filter<C, Mod> | AsyncFilter<C, Mod>,
-    handler: EventHandler<Modify<C, Mod> & Ext>,
-  ): this
-
-  /** Register a handler for several kinds at once. */
-  on(match: readonly string[] | AnyFilter, handler: EventHandler<AnyEventContext & Ext>): this
+  on<F extends FilterMeta>(match: F, handler: EventHandler<FilterContext<F> & Ext>): this
 
   on(match: string | readonly string[] | AnyFilter, handler: EventHandler<never>): this {
     this.#dispatcher.on(match, handler as never)

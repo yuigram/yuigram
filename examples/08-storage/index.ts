@@ -12,8 +12,8 @@
 
 import type { KV } from '@yuigram/core'
 import {
+  type AnyEventContext,
   Bot,
-  type Context,
   createSession,
   file,
   memory,
@@ -26,7 +26,8 @@ interface Seen {
   seen: number
 }
 
-type MyContext = Context & SessionFlavor<Seen>
+/** What the session plugin adds to this bot's contexts. */
+type WithSeen = SessionFlavor<Seen>
 
 const token = process.env['BOT_TOKEN']
 
@@ -74,10 +75,10 @@ const storage = counting(file<Seen>('./state'))
 
 // --- Using it ----------------------------------------------------------------
 
-const bot = new Bot<MyContext>(token)
+const bot = Bot.fromToken<WithSeen>(token)
 
 bot.use(
-  createSession<MyContext, Seen>({
+  createSession<AnyEventContext & WithSeen, Seen>({
     storage,
     key: userChatKey,
     initial: () => ({ seen: 0 }),
@@ -87,19 +88,19 @@ bot.use(
   }),
 )
 
-bot.command('start', (ctx) => ctx.reply('Send me anything. I remember across restarts.'))
+bot.onCommand('start', (message) => message.reply('Send me anything. I remember across restarts.'))
 
-bot.on('message', async (ctx) => {
-  if (ctx.text === undefined || ctx.text.startsWith('/')) return
+bot.onText(async (message) => {
+  if (message.text.startsWith('/')) return
 
-  ctx.session.seen += 1
-  await ctx.reply(`That is message ${ctx.session.seen}. Restart me and try again.`)
+  message.session.seen += 1
+  await message.reply(`That is message ${message.session.seen}. Restart me and try again.`)
 })
 
-bot.command('stats', (ctx) => ctx.reply(`Store reads so far: ${storage.reads}`))
+bot.onCommand('stats', (message) => message.reply(`Store reads so far: ${storage.reads}`))
 
-bot.catch((error, ctx) => {
-  ctx.log.error('handler failed', { kind: ctx.kind, error })
+bot.onError((error, event) => {
+  event.log.error('handler failed', { kind: event.kind, error })
 })
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
@@ -108,6 +109,6 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-await bot.start()
+await bot.poll()
 
 console.log('Storage example running. State is under ./state.')

@@ -389,21 +389,21 @@ describe('storage failure', () => {
 
 describe('userChatKey', () => {
   it('combines chat and sender', () => {
-    expect(userChatKey({ chat: { id: 10 }, sender: { id: 20 } })).toBe('10:20')
+    expect(userChatKey({ kind: 'message', chat: { id: 10 }, sender: { id: 20 } })).toBe('10:20')
   })
 
   it('distinguishes the same user across chats', () => {
-    const a = userChatKey({ chat: { id: 1 }, sender: { id: 99 } })
-    const b = userChatKey({ chat: { id: 2 }, sender: { id: 99 } })
+    const a = userChatKey({ kind: 'message', chat: { id: 1 }, sender: { id: 99 } })
+    const b = userChatKey({ kind: 'message', chat: { id: 2 }, sender: { id: 99 } })
     expect(a).not.toBe(b)
   })
 
   it('returns undefined when neither is present', () => {
-    expect(userChatKey({})).toBeUndefined()
+    expect(userChatKey({ kind: 'message' })).toBeUndefined()
   })
 
   it('still produces a key when only one is present', () => {
-    expect(userChatKey({ chat: { id: 1 } })).toBe('1:nosender')
-    expect(userChatKey({ sender: { id: 2 } })).toBe('nochat:2')
+    expect(userChatKey({ kind: 'message', chat: { id: 1 } })).toBe('1:nosender')
+    expect(userChatKey({ kind: 'message', sender: { id: 2 } })).toBe('nochat:2')
   })
 })

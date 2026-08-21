@@ -16,7 +16,7 @@
  * name and extend.
  */
 
-import type { Context, SessionFlavor } from '@yuigram/core'
+import { and, type Context, type SessionFlavor } from '@yuigram/core'
 import { assertType, describe, expectTypeOf, it } from 'vitest'
 import { Bot } from '../src/bot.js'
 import type { MessageContext } from '../src/events/index.js'
@@ -188,5 +188,49 @@ describe('filters', () => {
     bot.on(hasItems, (event) => {
       expectTypeOf(event.session).toEqualTypeOf<Cart>()
     })
+  })
+})
+
+describe('registering behind a filter', () => {
+  const isPrivate = filter<MessageContext>('isPrivate', (m) => m.chat.type === 'private')
+  const hasEntities = filter<MessageContext>('hasEntities', (m) => (m.entities?.length ?? 0) > 0)
+
+  it('hands the handler the context the filter names', () => {
+    const bot = Bot.fromToken('1:x')
+
+    bot.on(isPrivate, (message) => {
+      expectTypeOf(message.chat.type).toEqualTypeOf<string>()
+      assertType<(text: string) => Promise<unknown>>(message.reply)
+    })
+  })
+
+  it('applies what the filter refines on top', () => {
+    // `Mod` is the second half of a filter's promise: matching proves the value
+    // is a message *and* that its text is present.
+    const hasText = filter<MessageContext, { text: string }>('hasText', (m) => m.text !== undefined)
+    const bot = Bot.fromToken('1:x')
+
+    bot.on(hasText, (message) => {
+      expectTypeOf(message.text).toEqualTypeOf<string>()
+    })
+  })
+
+  it('carries the narrowing through a composed filter', () => {
+    // Named rather than composed inline. The compiler will not infer through a
+    // nested generic call here, and `on` rejects that outright rather than
+    // handing the handler every kind — see the overload's note.
+    const privateWithLink = and(isPrivate, hasEntities)
+    const bot = Bot.fromToken('1:x')
+
+    bot.on(privateWithLink, (message) => {
+      expectTypeOf(message.chat.type).toEqualTypeOf<string>()
+    })
+  })
+
+  it('refuses a filter composed in the argument position', () => {
+    const bot = Bot.fromToken('1:x')
+
+    // @ts-expect-error - name the composed filter first; see the overload's note
+    bot.on(and(isPrivate, hasEntities), (message) => void message.chat.id)
   })
 })

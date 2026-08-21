@@ -11,7 +11,7 @@
  * ```
  */
 
-import { Bot, type BotContext, type Middleware } from 'yuigram'
+import { type AnyEventContext, Bot, type Middleware } from 'yuigram'
 
 const token = process.env['BOT_TOKEN']
 
@@ -19,16 +19,16 @@ if (token === undefined) {
   throw new Error('Set BOT_TOKEN to the token BotFather gave you.')
 }
 
-const bot = new Bot(token)
+const bot = Bot.fromToken(token)
 
 /** Time every update and log the result on the way out. */
-const timing: Middleware<BotContext> = async (ctx, next) => {
+const timing: Middleware<AnyEventContext> = async (event, next) => {
   const began = performance.now()
 
   await next()
 
-  ctx.log.info('handled', {
-    kind: ctx.kind,
+  event.log.info('handled', {
+    kind: event.kind,
     ms: Math.round(performance.now() - began),
   })
 }
@@ -39,19 +39,25 @@ const timing: Middleware<BotContext> = async (ctx, next) => {
  * Rethrowing matters: the framework error handler still needs to see this, and
  * swallowing it here would hide the failure from the logs.
  */
-const friendlyErrors: Middleware<BotContext> = async (ctx, next) => {
+const friendlyErrors: Middleware<AnyEventContext> = async (event, next) => {
   try {
     await next()
   } catch (error) {
-    await ctx.reply('Something went wrong. It has been logged.').catch(() => undefined)
+    // Middleware sees every kind, and not every kind can reply — a poll answer
+    // has no chat. Narrowing here is the honest form: the alternative, casting
+    // to a message context, would compile and then throw on a poll answer.
+    if ('reply' in event) {
+      await event.reply('Something went wrong. It has been logged.').catch(() => undefined)
+    }
+
     throw error
   }
 }
 
 /** A crude per-user gate, to show middleware deciding not to continue. */
-const ignoreBots: Middleware<BotContext> = async (ctx, next) => {
+const ignoreBots: Middleware<AnyEventContext> = async (event, next) => {
   // Not calling `next()` ends the chain: no handler runs for this update.
-  if (ctx.sender?.is_bot === true) return
+  if ('sender' in event && event.sender?.is_bot === true) return
 
   await next()
 }
@@ -63,16 +69,16 @@ bot.use(timing, { priority: 'high' })
 bot.use(friendlyErrors)
 bot.use(ignoreBots)
 
-bot.command('slow', async (ctx) => {
+bot.onCommand('slow', async (ctx) => {
   await new Promise((resolve) => setTimeout(resolve, 500))
   await ctx.reply('That took a moment. Check the log for the timing.')
 })
 
-bot.command('boom', () => {
+bot.onCommand('boom', () => {
   throw new Error('deliberate failure, to show the error path')
 })
 
-bot.catch((error, ctx) => {
+bot.onError((error, ctx) => {
   ctx.log.error('handler failed', { kind: ctx.kind, error })
 })
 
@@ -82,6 +88,6 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-await bot.start()
+await bot.poll()
 
 console.log('Try /slow and /boom.')

@@ -248,11 +248,19 @@ async function persist<C extends BaseContext & SessionFlavor<V>, V>(
  * Supplied as a helper rather than a hardcoded default so the choice stays
  * visible at the call site — getting the scope wrong is the most common
  * session bug.
+ *
+ * The parameter is anchored on `kind` rather than being two optional fields
+ * alone. A type made only of optional properties is a weak type, and an event
+ * carrying neither a chat nor a sender — a poll update, say — would be rejected
+ * outright instead of simply yielding no key. One required member is enough to
+ * defeat that rule, and every context has this one.
  */
-export function userChatKey(context: {
-  chat?: { id?: number | undefined } | undefined
-  sender?: { id?: number | undefined } | undefined
-}): string | undefined {
+export function userChatKey(
+  context: Pick<BaseContext, 'kind'> & {
+    chat?: { id?: number | undefined } | undefined
+    sender?: { id?: number | undefined } | undefined
+  },
+): string | undefined {
   const chat = context.chat?.id
   const sender = context.sender?.id
 

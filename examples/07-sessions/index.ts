@@ -1,8 +1,9 @@
 /**
  * 07 — Sessions.
  *
- * Per-user state that survives between updates. Declaration merging gives the
- * session a shape, so `ctx.session` is typed rather than a bag of `unknown`.
+ * Per-user state that survives between updates. Naming the flavour once gives
+ * the session a shape, so `message.session` is typed rather than a bag of
+ * `unknown`.
  *
  * Two things are worth knowing before using this:
  *
@@ -17,7 +18,14 @@
  * ```
  */
 
-import { Bot, type Context, createSession, memory, type SessionFlavor, userChatKey } from 'yuigram'
+import {
+  type AnyEventContext,
+  Bot,
+  createSession,
+  memory,
+  type SessionFlavor,
+  userChatKey,
+} from 'yuigram'
 
 /** Whatever this bot needs to remember about someone. */
 interface Cart {
@@ -26,13 +34,13 @@ interface Cart {
 }
 
 /**
- * The context this bot's handlers receive.
+ * What the session plugin adds to this bot's contexts.
  *
- * Intersecting the flavour is what types `ctx.session`. It is per bot rather
- * than per program, so a second bot in this repository can remember something
- * else entirely.
+ * Naming the flavour is what types `message.session`. It is per bot rather than
+ * per program, so a second bot in this repository can remember something else
+ * entirely.
  */
-type MyContext = Context & SessionFlavor<Cart>
+type WithCart = SessionFlavor<Cart>
 
 const token = process.env['BOT_TOKEN']
 
@@ -40,10 +48,10 @@ if (token === undefined) {
   throw new Error('Set BOT_TOKEN to the token BotFather gave you.')
 }
 
-const bot = new Bot<MyContext>(token)
+const bot = Bot.fromToken<WithCart>(token)
 
 bot.use(
-  createSession<MyContext, Cart>({
+  createSession<AnyEventContext & WithCart, Cart>({
     storage: memory(),
     // Per user, per chat. The scope is passed explicitly rather than defaulted,
     // because getting it wrong is the most common session bug: a chat-wide key
@@ -54,7 +62,7 @@ bot.use(
   }),
 )
 
-bot.command('start', async (ctx) => {
+bot.onCommand('start', async (ctx) => {
   await ctx.reply('Send me anything and I will count it. /count shows the total, /reset clears.')
 })
 
@@ -66,11 +74,11 @@ bot.on('message', async (ctx) => {
   ctx.session.count += 1
 })
 
-bot.command('count', async (ctx) => {
+bot.onCommand('count', async (ctx) => {
   await ctx.reply(`I have seen ${ctx.session.count} message(s) from you here.`)
 })
 
-bot.command('name', async (ctx) => {
+bot.onCommand('name', async (ctx) => {
   if (ctx.command.rest === '') {
     await ctx.reply(ctx.session.name ?? 'I do not know your name. Try /name Alice.')
     return
@@ -80,13 +88,13 @@ bot.command('name', async (ctx) => {
   await ctx.reply(`I will call you ${ctx.session.name}.`)
 })
 
-bot.command('reset', async (ctx) => {
+bot.onCommand('reset', async (ctx) => {
   // Replacing the value wholesale also marks it dirty.
   ctx.session = { count: 0 }
   await ctx.reply('Forgotten.')
 })
 
-bot.catch((error, ctx) => {
+bot.onError((error, ctx) => {
   ctx.log.error('handler failed', { kind: ctx.kind, error })
 })
 
@@ -96,7 +104,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-await bot.start()
+await bot.poll()
 
 console.log('Session example running. State is in memory and vanishes on restart.')
 console.log('Swap memory() for file("./state") to keep it — see 08-storage.')
