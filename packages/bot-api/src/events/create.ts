@@ -14,9 +14,9 @@
  *   can reach the whole object without knowing which field carried it.
  *
  * Spreading rather than wrapping is a deliberate trade. It costs one shallow
- * copy per update, and it buys the reading experience the whole redesign exists
- * for. The copy is shallow: nested objects are shared with the raw update, not
- * cloned.
+ * copy per update, and it buys a handler that reads the payload's fields under
+ * their own names rather than through a wrapper. The copy is shallow: nested
+ * objects are shared with the raw update, not cloned.
  */
 
 import type { Logger } from '@yuigram/core'

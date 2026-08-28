@@ -1,9 +1,9 @@
 /**
  * Type-level prototype for the 0.2.0 surface.
  *
- * Nothing here is wired to a client. It exists to answer one question before
- * any implementation begins: **do the event-specific context types come out
- * clean, or does the design only look good in prose?**
+ * Nothing here is wired to a client. It holds the event-specific context types
+ * to the standard the design claims — that they come out clean at type level,
+ * independently of any runtime.
  *
  * The field shapes come from `generated/contexts.ts`, so this checks the real
  * generator output rather than a hand-copied approximation of it. Compiled by
@@ -11,12 +11,11 @@
  *
  * ---
  *
- * The audit first blamed `ctx.text` being `string | undefined` inside a message
- * handler. Checking the schema corrected that: Telegram itself declares
- * `Message.text` optional, because a photo without a caption is a message with
- * no text. Optional there is *honest*.
+ * `ctx.text` being `string | undefined` inside a message handler is not itself
+ * a defect. Telegram declares `Message.text` optional, because a photo without
+ * a caption is a message with no text. Optional there is *honest*.
  *
- * The real defect is narrower and worse: the single context type also loses the
+ * The defect is narrower and worse: a single context type also loses the
  * guarantees the schema does make. `Message.chat` is required and
  * `InlineQuery.query` is required, yet both arrived as `| undefined` because one
  * type had to serve twenty-six kinds and degrade every field to its weakest
