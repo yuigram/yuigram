@@ -465,7 +465,7 @@ The shared message object exposes **435 members** — `reply`, `send`, `edit`, `
 (`banChatMember`, `setChatTitle`, `promoteChatMember`), around 120 `hasX` predicates and a set
 of `isPrivate` / `isGroup` / `isReply` shape tests. The file is generated: 9,302 lines.
 
-**This overturns my earlier recommendation.** §6 argued for wrapping a modest set on the grounds
+**This overturns the position in §6.** That section argued for wrapping a modest set on the grounds
 that every wrapper is a maintenance commitment for years. That argument assumed the wrappers
 were hand-written. Generated from the same schema that already produces the method surface, the
 marginal cost of the two-hundredth wrapper is zero, and the reasoning against breadth

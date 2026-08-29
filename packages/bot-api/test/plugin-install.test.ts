@@ -1,10 +1,11 @@
 /**
  * When plugins install.
  *
- * Installation used to happen in `poll()`, which meant a webhook deployment —
- * the production shape — never installed anything. `bot.extend(session(…))`
- * compiled, ran, and did nothing, with no error to say so. Installation belongs
- * to dispatch, because dispatch is what every transport has in common.
+ * Installation happens when the client is constructed, not in `poll()`. Tying
+ * it to polling would leave a webhook deployment — the production shape — with
+ * nothing installed: `bot.extend(session(…))` would compile, run, and do
+ * nothing, with no error to say so. Installation belongs to dispatch, because
+ * dispatch is what every transport has in common.
  */
 
 import { createLogger, definePlugin, silentSink } from '@yuigram/core'
@@ -141,10 +142,10 @@ describe('what an installed plugin can do', () => {
   })
 
   it('has its work drained when the client stops', async () => {
-    // The other half of the same defect: a webhook client never reaches the
-    // `running` state, and `stop()` used to return immediately from `idle`.
-    // A SIGTERM then abandoned every handler still in flight, while reporting
-    // a clean shutdown.
+    // A webhook client never reaches the `running` state, so a `stop()` that
+    // returned immediately from `idle` would abandon every handler still in
+    // flight while reporting a clean shutdown. The drain is what a SIGTERM
+    // depends on.
     const { bot } = testBot()
     let finished = false
 

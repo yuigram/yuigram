@@ -73,6 +73,8 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 19 | [roadmap.md](roadmap.md) | Phased delivery plan |
 | 20 | [migration.md](migration.md) | What changes between releases, and what to do about it |
 | 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, how they were closed, and what is deliberately not built |
+| 22 | [mtproto-plan.md](mtproto-plan.md) | How the MTProto subsystem is built, in what order, behind what boundaries |
+| 23 | [mtproto-crypto.md](mtproto-crypto.md) | The cryptographic layer: every primitive, and how each is verified |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
 the specification does not cover. Empty until the MTProto subsystem begins.
