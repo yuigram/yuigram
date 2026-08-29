@@ -1,0 +1,27 @@
+// GENERATED FILE — do not edit.
+// TL types for the root namespace
+// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+
+export type * from './root/a.js'
+export type * from './root/b.js'
+export type * from './root/c.js'
+export type * from './root/d.js'
+export type * from './root/e.js'
+export type * from './root/f.js'
+export type * from './root/g.js'
+export type * from './root/h.js'
+export type * from './root/i.js'
+export type * from './root/j.js'
+export type * from './root/k.js'
+export type * from './root/l.js'
+export type * from './root/m.js'
+export type * from './root/n.js'
+export type * from './root/o.js'
+export type * from './root/p.js'
+export type * from './root/q.js'
+export type * from './root/r.js'
+export type * from './root/s.js'
+export type * from './root/t.js'
+export type * from './root/u.js'
+export type * from './root/v.js'
+export type * from './root/w.js'

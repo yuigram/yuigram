@@ -1,0 +1,60 @@
+// GENERATED FILE — do not edit.
+// TL types for the root namespace
+// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+
+import type { TlObject } from '../../../../tl/object.js'
+
+/** `jsonArray#f7444763` */
+export interface JsonArray {
+  readonly _: 'jsonArray'
+  readonly value: readonly TypeJSONValue[]
+}
+
+/** `jsonBool#c7345e6a` */
+export interface JsonBool {
+  readonly _: 'jsonBool'
+  readonly value: boolean
+}
+
+/** `jsonNull#3f6d7b68` */
+export interface JsonNull {
+  readonly _: 'jsonNull'
+}
+
+/** `jsonNumber#2be0dfa4` */
+export interface JsonNumber {
+  readonly _: 'jsonNumber'
+  readonly value: number
+}
+
+/** `jsonObject#99c1d49d` */
+export interface JsonObject {
+  readonly _: 'jsonObject'
+  readonly value: readonly TypeJSONObjectValue[]
+}
+
+/** `jsonObjectValue#c0de1bd9` */
+export interface JsonObjectValue {
+  readonly _: 'jsonObjectValue'
+  readonly key: string
+  readonly value: TypeJSONValue
+}
+
+/** `jsonString#b71e767a` */
+export interface JsonString {
+  readonly _: 'jsonString'
+  readonly value: string
+}
+
+/** Any `JSONObjectValue`. */
+export type TypeJSONObjectValue =
+  | JsonObjectValue
+
+/** Any `JSONValue`. */
+export type TypeJSONValue =
+  | JsonArray
+  | JsonBool
+  | JsonNull
+  | JsonNumber
+  | JsonObject
+  | JsonString
