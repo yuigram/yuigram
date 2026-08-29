@@ -73,7 +73,7 @@ Everything the protocol needs, and where it comes from.
 | **AES-256-IGE** | **Own implementation** | Not in any standard library. ~100 lines over `aes-256-ecb`. |
 | Modular exponentiation | Native `BigInt` | Removes the `long` dependency entirely |
 | **RSA with Telegram padding** | **Own implementation** | Two schemes — see §3.2 |
-| **PQ factorization** | **Own implementation** | Pollard's rho / Brent |
+| **PQ factorization** | **Own implementation** | Pollard's rho |
 | **Miller-Rabin** | **Own implementation** | Safe-prime validation |
 | **SRP 6a** | **Own implementation** | Telegram's variant — see §3.3 |
 | CSPRNG | `crypto.randomBytes` | Mandatory for DH secrets |

@@ -133,7 +133,7 @@ offline.
 **5a — Crypto (4–6 weeks)**
 - AES-256-IGE, validated against known-answer vectors
 - RSA with both Telegram padding schemes
-- PQ factorization (Pollard's rho / Brent)
+- PQ factorization (Pollard's rho)
 - Miller-Rabin primality, safe-prime validation
 - SRP 6a with Telegram's KDF
 - Constant-time comparison utilities
