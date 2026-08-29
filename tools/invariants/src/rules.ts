@@ -263,11 +263,97 @@ export function publicSurfaceIsClean(
   return { name: 'public-surface-is-clean', violations }
 }
 
+/**
+ * Directory edges that must not exist inside a package.
+ *
+ * The two rules above resolve a specifier to a package name and skip relative
+ * imports entirely, so neither can see one generated table reaching into
+ * another. That edge is exactly what keeps the service and API vocabularies
+ * apart: the plaintext handshake channel decodes with the service table alone,
+ * and an API constructor is unreachable there only while the modules stay
+ * separate.
+ *
+ * Branded identifiers stop a *value* crossing between tables. This stops a
+ * *module* crossing, which branding cannot express.
+ */
+interface ModuleBoundary {
+  /** Directory prefix, relative to the repository root. */
+  readonly from: string
+  /** Prefixes it must not reach. */
+  readonly to: readonly string[]
+  /** Why the edge is forbidden, shown when one appears. */
+  readonly rationale: string
+}
+
+export const MODULE_BOUNDARIES: readonly ModuleBoundary[] = [
+  {
+    from: 'packages/mtproto/src/generated/mtproto/',
+    to: ['packages/mtproto/src/generated/api/'],
+    rationale:
+      'The service table is decoded before an auth key exists. Reaching the API table from it would make an API constructor readable on the plaintext channel.',
+  },
+  {
+    from: 'packages/mtproto/src/generated/api/',
+    to: ['packages/mtproto/src/generated/mtproto/'],
+    rationale:
+      'The API layer travels only inside an encrypted session. Depending on the service table would couple a layer bump to the transport vocabulary.',
+  },
+  {
+    from: 'packages/mtproto/src/generated/core/',
+    to: ['packages/mtproto/src/generated/api/', 'packages/mtproto/src/generated/mtproto/'],
+    rationale:
+      'The core table holds the TL language itself. It is what the other two share, so it may not depend on either.',
+  },
+]
+
+/** Resolve a relative specifier against the importing file. */
+function resolveRelative(fromFile: string, specifier: string): string | null {
+  if (!specifier.startsWith('.')) return null
+
+  const segments = fromFile.split('/').slice(0, -1)
+  for (const part of specifier.split('/')) {
+    if (part === '.' || part === '') continue
+    if (part === '..') segments.pop()
+    else segments.push(part)
+  }
+
+  return segments.join('/')
+}
+
+export const moduleBoundaries: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) {
+      const boundary = MODULE_BOUNDARIES.find((rule) => source.path.startsWith(rule.from))
+      if (boundary === undefined) continue
+
+      for (const ref of source.imports) {
+        const target = resolveRelative(source.path, ref.specifier)
+        if (target === null) continue
+
+        const crossed = boundary.to.find((prefix) => target.startsWith(prefix))
+        if (crossed === undefined) continue
+
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `${boundary.from} imports '${ref.specifier}', which resolves into ${crossed}`,
+          rationale: boundary.rationale,
+        })
+      }
+    }
+  }
+
+  return { name: 'module-boundaries', violations }
+}
+
 /** All invariants that operate purely on the workspace description. */
 export const workspaceInvariants: readonly Invariant[] = [
   noTelegramDependencies,
   layerBoundaries,
   declaredImports,
+  moduleBoundaries,
 ]
 
 /** Run every workspace invariant and collect the results. */

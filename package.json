@@ -28,9 +28,10 @@
     "format": "biome format --write .",
     "invariants": "tsx tools/invariants/src/cli.ts",
     "smoke": "node scripts/smoke-package.mjs",
+    "check:declarations": "pnpm build && node scripts/check-declarations.mjs",
     "check:contents": "pnpm build && node scripts/check-package-contents.mjs",
     "bench": "pnpm build && node scripts/bench-dispatch.mjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test",
+    "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test && pnpm check:declarations",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish"
