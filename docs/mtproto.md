@@ -379,6 +379,20 @@ Four framings, per `core.telegram.org/mtproto/mtproto-transports`:
 **Default: intermediate** — 4 bytes of overhead, no CRC to maintain, and the best-supported
 option. Padded intermediate is available where traffic-shape obfuscation matters.
 
+Two properties of the envelopes decide correctness above them:
+
+**A four-byte frame is a transport error, not a payload.** The server reports a transport-level
+failure — a missing auth key, transport flood, a wrong datacenter — by sending the code as a
+negative signed 32-bit integer, framed exactly like a payload. The smallest encrypted message is
+40 bytes and the smallest plaintext one 20, so the length alone distinguishes them. A layer that
+handed those four bytes onward would try to decrypt an error report. Documented codes: 404 (auth
+key not found), 429 (transport flood), 444 (invalid datacenter).
+
+**Padded intermediate delivers its padding.** The length covers payload and padding together and
+nothing in the envelope says where the payload ends, so the transport cannot trim it. The message
+layer does, using the length its own header carries. That is a property of the framing, not an
+omission in it.
+
 ### Obfuscation
 
 A 64-byte init packet, AES-256-CTR:
