@@ -21,6 +21,9 @@
       "path": "tools/schema"
     },
     {
+      "path": "tools/tl"
+    },
+    {
       "path": "examples"
     }
   ]
