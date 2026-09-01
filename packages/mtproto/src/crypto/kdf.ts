@@ -111,6 +111,57 @@ export function deriveMessageKeys(
   }
 }
 
+/**
+ * The `msg_key` for a plaintext, MTProto 1.0.
+ *
+ * The low 128 bits of a SHA-1 over the plaintext alone — the auth key is not
+ * mixed in, and neither is the padding, which is appended after this is taken.
+ *
+ * The older schedule survives in exactly one place: the message that binds a
+ * temporary authorization key to a permanent one, which the protocol specifies
+ * in these terms and not in the current ones. It is not an alternative for
+ * anything else, and nothing else should reach for it.
+ */
+export function messageKeyLegacy(plaintext: Uint8Array): Uint8Array {
+  return sha1(plaintext).subarray(4, 20)
+}
+
+/**
+ * The AES key and IV for one message, MTProto 1.0.
+ *
+ * ```
+ * a   = SHA1(msg_key ‖ auth_key[x .. x+32])
+ * b   = SHA1(auth_key[32+x .. 48+x] ‖ msg_key ‖ auth_key[48+x .. 64+x])
+ * c   = SHA1(auth_key[64+x .. 96+x] ‖ msg_key)
+ * d   = SHA1(msg_key ‖ auth_key[96+x .. 128+x])
+ * key = a[0..8] ‖ b[8..20] ‖ c[4..16]
+ * iv  = a[8..20] ‖ b[0..8] ‖ c[16..20] ‖ d[0..8]
+ * ```
+ *
+ * Four hashes rather than two, and the slices interleave differently. Both are
+ * the specification's; neither is a simplification of the other, and a schedule
+ * that mixed them produces a message the far end discards without saying why.
+ */
+export function deriveMessageKeysLegacy(
+  authKey: Uint8Array,
+  msgKey: Uint8Array,
+  direction: MessageDirection,
+): AesParameters {
+  assertLength(authKey, AUTH_KEY_SIZE, 'auth key')
+  assertLength(msgKey, 16, 'msg_key')
+
+  const x = offsetFor(direction)
+  const a = sha1(msgKey, authKey.subarray(x, x + 32))
+  const b = sha1(authKey.subarray(32 + x, 48 + x), msgKey, authKey.subarray(48 + x, 64 + x))
+  const c = sha1(authKey.subarray(64 + x, 96 + x), msgKey)
+  const d = sha1(msgKey, authKey.subarray(96 + x, 128 + x))
+
+  return {
+    key: concatBytes(a.subarray(0, 8), b.subarray(8, 20), c.subarray(4, 16)),
+    iv: concatBytes(a.subarray(8, 20), b.subarray(0, 8), c.subarray(16, 20), d.subarray(0, 8)),
+  }
+}
+
 /** The 64-bit identifier every encrypted message carries in the clear. */
 export function authKeyId(authKey: Uint8Array): Uint8Array {
   assertLength(authKey, AUTH_KEY_SIZE, 'auth key')
