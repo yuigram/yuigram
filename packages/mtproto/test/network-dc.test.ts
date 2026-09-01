@@ -12,9 +12,11 @@ import { ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import {
   type DcAddress,
+  type DcConfiguration,
   DcDirectory,
   readDcConfiguration,
   readDcOption,
+  sameConfiguration,
 } from '../src/network/dc.js'
 import type { TlValue } from '../src/tl/index.js'
 
@@ -321,6 +323,80 @@ describe('what a directory reports', () => {
     expect(new DcDirectory(known.toConfiguration()).toConfiguration()).toEqual(
       known.toConfiguration(),
     )
+  })
+})
+
+describe('comparing two configurations', () => {
+  const base: DcConfiguration = {
+    thisDc: 2,
+    testMode: false,
+    options: [address({ id: 1 }), address({ id: 2, host: '10.0.0.2' })],
+  }
+
+  it('finds two separately built configurations the same', () => {
+    expect(sameConfiguration(base, { ...base, options: [...base.options] })).toBe(true)
+  })
+
+  it('separates them on the datacenter this client belongs to', () => {
+    expect(sameConfiguration(base, { ...base, thisDc: 4 })).toBe(false)
+  })
+
+  it('separates them on the network', () => {
+    expect(sameConfiguration(base, { ...base, testMode: true })).toBe(false)
+  })
+
+  it('separates them when an address was added or removed', () => {
+    const shorter = { ...base, options: [address({ id: 1 })] }
+    const longer = { ...base, options: [...base.options, address({ id: 3, host: '10.0.0.3' })] }
+
+    // Both directions: a comparison that only walked the left-hand list would
+    // call a configuration with extra addresses the same as one without them.
+    expect(sameConfiguration(base, shorter)).toBe(false)
+    expect(sameConfiguration(base, longer)).toBe(false)
+    expect(sameConfiguration(shorter, base)).toBe(false)
+  })
+
+  it('separates them on any field of any address', () => {
+    const fields: Array<Partial<DcAddress>> = [
+      { id: 9 },
+      { host: '10.0.0.99' },
+      { port: 80 },
+      { ipv6: true, host: '2001:db8::1' },
+      { mediaOnly: true },
+      { tcpoOnly: true },
+      { cdn: true },
+      { static: true },
+      { thisPortOnly: true },
+    ]
+
+    for (const field of fields) {
+      const changed = {
+        ...base,
+        options: [address({ id: 1, ...field }), base.options[1] as DcAddress],
+      }
+      expect(sameConfiguration(base, changed), JSON.stringify(field)).toBe(false)
+    }
+  })
+
+  it('separates them when the same addresses are published in a different order', () => {
+    // The order is the server's own order of preference, and selection takes
+    // the first candidate — so a rearrangement is a different configuration.
+    const reversed = { ...base, options: [...base.options].reverse() }
+
+    expect(sameConfiguration(base, reversed)).toBe(false)
+  })
+
+  it('compares an obfuscation secret by its bytes', () => {
+    const secret = Uint8Array.from({ length: 16 }, (_, index) => index)
+    const withSecret = { ...base, options: [address({ id: 1, secret })] }
+    const sameBytes = { ...base, options: [address({ id: 1, secret: Uint8Array.from(secret) })] }
+    const otherBytes = { ...base, options: [address({ id: 1, secret: new Uint8Array(16) })] }
+    const noSecret = { ...base, options: [address({ id: 1 })] }
+
+    expect(sameConfiguration(withSecret, sameBytes)).toBe(true)
+    expect(sameConfiguration(withSecret, otherBytes)).toBe(false)
+    expect(sameConfiguration(withSecret, noSecret)).toBe(false)
+    expect(sameConfiguration(noSecret, withSecret)).toBe(false)
   })
 })
 

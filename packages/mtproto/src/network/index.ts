@@ -27,6 +27,7 @@ export {
   type DcQuery,
   readDcConfiguration,
   readDcOption,
+  sameConfiguration,
 } from './dc.js'
 export { Link, type LinkOptions, type LinkState } from './link.js'
 export { type ByteStream, connectTcp, type TcpOptions } from './tcp.js'

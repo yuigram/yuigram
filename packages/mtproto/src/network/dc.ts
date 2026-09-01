@@ -247,6 +247,48 @@ export class DcDirectory {
 }
 
 /**
+ * Whether two configurations say the same thing.
+ *
+ * Compared field by field rather than by identity, because the point of asking
+ * is to tell a configuration that arrived from the server apart from the one
+ * already in force — two objects that never shared an origin.
+ *
+ * Order matters: the server publishes its addresses in its own order of
+ * preference, so a list with the same entries rearranged is a different
+ * configuration and is adopted as one.
+ */
+export function sameConfiguration(left: DcConfiguration, right: DcConfiguration): boolean {
+  return (
+    left.thisDc === right.thisDc &&
+    left.testMode === right.testMode &&
+    left.options.length === right.options.length &&
+    left.options.every((option, index) => sameAddress(option, right.options[index]))
+  )
+}
+
+function sameAddress(left: DcAddress, right: DcAddress | undefined): boolean {
+  return (
+    right !== undefined &&
+    left.id === right.id &&
+    left.host === right.host &&
+    left.port === right.port &&
+    left.ipv6 === right.ipv6 &&
+    left.mediaOnly === right.mediaOnly &&
+    left.tcpoOnly === right.tcpoOnly &&
+    left.cdn === right.cdn &&
+    left.static === right.static &&
+    left.thisPortOnly === right.thisPortOnly &&
+    sameSecret(left.secret, right.secret)
+  )
+}
+
+function sameSecret(left: Uint8Array | undefined, right: Uint8Array | undefined): boolean {
+  if (left === undefined || right === undefined) return left === right
+
+  return left.length === right.length && left.every((byte, index) => byte === right[index])
+}
+
+/**
  * Whether an address may serve a purpose.
  *
  * A CDN address holds no authorization of ours, so it can serve only what needs
