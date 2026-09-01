@@ -16,6 +16,6 @@
     "regenerate:offline": "tsx src/cli.ts emit"
   },
   "devDependencies": {
-    "node-html-parser": "^9.0.1"
+    "node-html-parser": "^9.0.2"
   }
 }
