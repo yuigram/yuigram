@@ -320,6 +320,57 @@ describe('transport errors', () => {
   })
 })
 
+describe('the maximum frame size', () => {
+  /**
+   * Every framing reads its length from the stream before it has the bytes that
+   * length describes, so the value is chosen by the other end. Without a bound,
+   * four bytes of corruption commit the receiver to buffering toward four
+   * gigabytes, emitting nothing and reporting nothing while it does.
+   */
+  it('refuses an intermediate length no connection could be carrying', () => {
+    const buffer = new FrameBuffer()
+    buffer.push(bytes(0xff, 0xff, 0xff, 0xff))
+
+    expect(() => new IntermediateFraming().decode(buffer)).toThrow(TransportError)
+    expect(() => new IntermediateFraming().decode(buffer)).toThrow(/exceeds the/)
+  })
+
+  it('refuses before consuming anything, so nothing is buffered on its behalf', () => {
+    const buffer = new FrameBuffer()
+    buffer.push(bytes(0xff, 0xff, 0xff, 0xff))
+
+    expect(() => new IntermediateFraming().decode(buffer)).toThrow(TransportError)
+    expect(buffer.available).toBe(4)
+  })
+
+  it('refuses an abridged length past the limit', () => {
+    // The escaped form counts words, so its field reaches 64 MB.
+    const buffer = new FrameBuffer()
+    buffer.push(bytes(0x7f, 0xff, 0xff, 0xff))
+
+    expect(() => new AbridgedFraming().decode(buffer)).toThrow(/exceeds the/)
+  })
+
+  it('refuses a full frame length past the limit', () => {
+    const buffer = new FrameBuffer()
+    buffer.push(bytes(0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0))
+
+    expect(() => new FullFraming().decode(buffer)).toThrow(/exceeds the/)
+  })
+
+  it('waits for a frame at the limit rather than refusing it', () => {
+    // The bound has to sit above anything the protocol sends; a frame exactly
+    // at it is incomplete, not invalid.
+    const buffer = new FrameBuffer()
+    const header = new Uint8Array(4)
+    new DataView(header.buffer).setUint32(0, 16 * 1024 * 1024, true)
+    buffer.push(header)
+
+    expect(new IntermediateFraming().decode(buffer)).toBeUndefined()
+    expect(buffer.available).toBe(4)
+  })
+})
+
 describe('the frame buffer', () => {
   it('grows past its initial capacity', () => {
     const buffer = new FrameBuffer(4)

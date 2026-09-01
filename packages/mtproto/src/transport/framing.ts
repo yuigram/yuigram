@@ -80,6 +80,32 @@ const ABRIDGED_ESCAPE = 0x7f
 const ABRIDGED_MAX = 0xff_ffff * 4
 
 /**
+ * Largest frame any framing will accept.
+ *
+ * Every framing takes its length from the stream before it has the bytes that
+ * length describes, so the value is chosen by whoever is on the other end. A
+ * decoder that trusted it would buffer toward four gigabytes on a single
+ * corrupted or hostile length field, having emitted nothing and reported
+ * nothing. The cap turns that into an immediate error on a connection that is
+ * already unusable.
+ *
+ * Sixteen megabytes is far above anything MTProto sends — the largest single
+ * message is a file part of at most one megabyte plus its envelope — and far
+ * below what it costs to hold.
+ */
+const MAX_FRAME_SIZE = 16 * 1024 * 1024
+
+/** Refuse a length the connection could not legitimately be carrying. */
+function checkFrameSize(length: number, framing: FramingName): number {
+  if (length > MAX_FRAME_SIZE) {
+    throw new TransportError(
+      `${framing} frame of ${length} bytes exceeds the ${MAX_FRAME_SIZE}-byte maximum`,
+    )
+  }
+  return length
+}
+
+/**
  * A growing view over bytes arriving from a stream.
  *
  * Reads are bounded and rewindable, because a decoder that discovers a frame is
@@ -226,7 +252,7 @@ export class AbridgedFraming implements Framing {
     if (first === undefined) return undefined
 
     if (first !== ABRIDGED_ESCAPE) {
-      const length = first * 4
+      const length = checkFrameSize(first * 4, this.name)
       if (buffer.available < 1 + length) return undefined
 
       buffer.skip(1)
@@ -239,7 +265,7 @@ export class AbridgedFraming implements Framing {
       (buffer.peekByte(1) ?? 0) |
       ((buffer.peekByte(2) ?? 0) << 8) |
       ((buffer.peekByte(3) ?? 0) << 16)
-    const length = words * 4
+    const length = checkFrameSize(words * 4, this.name)
     if (buffer.available < 4 + length) return undefined
 
     buffer.skip(4)
@@ -265,6 +291,8 @@ export class IntermediateFraming implements Framing {
   decode(buffer: FrameBuffer): Frame | undefined {
     const length = buffer.peekUint32()
     if (length === undefined) return undefined
+
+    checkFrameSize(length, this.name)
     if (buffer.available < 4 + length) return undefined
 
     buffer.skip(4)
@@ -344,6 +372,8 @@ export class FullFraming implements Framing {
 
     if (total < 12)
       throw new TransportError(`full frame length ${total} is below the 12-byte minimum`)
+
+    checkFrameSize(total, this.name)
     if (buffer.available < total) return undefined
 
     const frame = buffer.take(total)
