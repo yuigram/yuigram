@@ -93,6 +93,21 @@ export class AuthKey {
     return newNonceHash(newNonce, variant, this.#key)
   }
 
+  /**
+   * The key material, for storing it.
+   *
+   * The one deliberate way out, and the only one. Everything else about this
+   * object exists to stop the key leaving by accident — it is not a field, not
+   * enumerable, and not reachable from the string, JSON or inspected forms — but
+   * a key that cannot be written down has to be negotiated again on every start,
+   * and a client that does that looks like an intruder.
+   *
+   * A copy, so that what is handed out cannot be used to reach back in.
+   */
+  toBytes(): Uint8Array {
+    return Uint8Array.from(this.#key)
+  }
+
   /** Identify the key without exposing it. */
   toString(): string {
     return `AuthKey(${hex(this.id)})`

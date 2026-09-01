@@ -115,6 +115,28 @@ describe('the encrypted envelope', () => {
   })
 })
 
+describe('the key material', () => {
+  it('leaves the object only as a copy', () => {
+    const material = Uint8Array.from({ length: 256 }, (_, index) => (index * 7 + 3) & 0xff)
+    const key = AuthKey.from(material)
+
+    const taken = key.toBytes()
+    expect(taken).toEqual(material)
+
+    // Storing a key is the one deliberate way out. Handing out the array itself
+    // would let whatever wrote it down change the key that is still in use.
+    taken.fill(0)
+    expect(key.toBytes()).toEqual(material)
+  })
+
+  it('is not reachable from the forms meant for reading', () => {
+    const key = AuthKey.from(Uint8Array.from({ length: 256 }, () => 0xab))
+
+    expect(`${key}`).not.toContain('ab'.repeat(8))
+    expect(JSON.stringify(key)).not.toContain('ab'.repeat(8))
+  })
+})
+
 describe('the envelope refuses', () => {
   it('a message sealed under a different key', () => {
     const other = AuthKey.from(Uint8Array.from(KEY_BYTES, (byte) => byte ^ 0xff))
