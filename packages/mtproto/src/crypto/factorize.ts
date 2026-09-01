@@ -68,6 +68,17 @@ function rho(n: bigint, c: bigint): bigint | undefined {
 }
 
 /**
+ * Largest `pq` the protocol can carry.
+ *
+ * The field is a byte string of at most eight bytes, so a larger value is not
+ * something a server could legitimately send. The bound is load-bearing rather
+ * than cosmetic: the cost of this function grows with the size of its input,
+ * and the input arrives from an unauthenticated peer before any key exists. A
+ * 2048-bit value offered here would occupy the caller indefinitely.
+ */
+const MAX_PQ = 1n << 64n
+
+/**
  * Split `pq` into its two prime factors.
  *
  * The ascending order is part of the contract: the handshake serializes `p`
@@ -81,6 +92,9 @@ function rho(n: bigint, c: bigint): bigint | undefined {
  */
 export function factorizePq(pq: bigint): PqFactors {
   if (pq < 4n) throw new ValidationError('pq must be at least 4')
+  if (pq >= MAX_PQ) {
+    throw new ValidationError(`pq must be at most ${MAX_PQ - 1n}`)
+  }
 
   for (const small of SMALL_PRIMES) {
     if (pq % small === 0n) {

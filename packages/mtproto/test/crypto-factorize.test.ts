@@ -22,6 +22,15 @@ function expectFactors(pq: bigint): void {
 }
 
 describe('factorizePq', () => {
+  it('factors the value from the published worked example', () => {
+    // Taken from the protocol documentation's complete handshake, so the
+    // expected factors are not ones this implementation chose.
+    expect(factorizePq(3_358_800_871_349_344_843n)).toEqual({
+      p: 1_786_331_737n,
+      q: 1_880_278_339n,
+    })
+  })
+
   it('splits small semiprimes', () => {
     for (const pq of [6n, 15n, 21n, 35n, 77n, 143n, 323n, 1147n]) {
       expectFactors(pq)
@@ -65,6 +74,22 @@ describe('factorizePq', () => {
 })
 
 describe('malformed input', () => {
+  it('refuses a value larger than the protocol can carry', () => {
+    // `pq` arrives from an unauthenticated peer before any key exists, and the
+    // cost of factoring grows with its size. The field is eight bytes, so a
+    // larger value is refused rather than attempted.
+    expect(() => factorizePq(1n << 64n)).toThrow(/at most/)
+    expect(() => factorizePq((1n << 2048n) - 1n)).toThrow(ValidationError)
+  })
+
+  it('accepts the largest value the field can hold', () => {
+    // The bound must sit above every legitimate value, not merely above the
+    // ones seen in practice.
+    const pq = 4_294_967_291n * 4_294_967_279n
+    expect(pq).toBeLessThan(1n << 64n)
+    expect(factorizePq(pq)).toEqual({ p: 4_294_967_279n, q: 4_294_967_291n })
+  })
+
   it('rejects a prime pq', () => {
     // The protocol never sends one. A caller handed 1 x pq has no way to tell
     // that the factorization is trivial, so this refuses instead.
