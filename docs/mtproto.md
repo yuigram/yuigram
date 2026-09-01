@@ -1050,13 +1050,76 @@ positions.
 Transports sit behind an interface, so TCP, MTProxy, WebSocket and test transports are
 interchangeable.
 
+### The link
+
+Between a stream of bytes and everything above it sit three concerns that must happen in one
+order: the packet that opens the connection, the envelope around each message, and the
+obfuscation that hides both. A link owns that order and nothing else.
+
+It owns no socket, on the same terms as the protocol machine above it: bytes leave through a
+callback and arrive through a method, so the opening packet and every fragmentation case are
+decidable without a network. It holds no protocol state either — it cannot tell a handshake
+from a message, has no session, and moves whole payloads only.
+
+Four rules it enforces:
+
+- **the opening packet is written once and before anything else.** The far end reads the first
+  bytes without yet knowing what they are and decides from them alone, so a connection opened
+  twice, or opened after a message has gone out, is one it cannot read at all
+- **the init packet is the one thing sent in the clear.** It carries the material both
+  keystreams derive from; everything after it is obfuscated
+- **decryption consumes the stream, not a frame.** A keystream must take every byte exactly once
+  and in order, so bytes are deobfuscated as they arrive rather than per message
+- **a transport failure is not a message.** A four-byte frame carrying a negative code is
+  surfaced as what it is, because a layer that received it would try to decrypt it
+
+A chunk is not a message: it may carry part of one, several, or the tail of one and the head of
+the next. Every complete frame in a chunk is delivered, and an incomplete one leaves the buffer
+as it was.
+
 ---
 
 ## 8. Network and datacenters
 
 DC list from `help.getConfig` → `dcOption { id, ip_address, port, flags }`, with
-`media_only`, `cdn`, `tcpo_only`, `static`. Bootstrap addresses are compiled in; the live list
-replaces them after the first `getConfig`.
+`media_only`, `cdn`, `tcpo_only`, `static`.
+
+### Addresses and selection
+
+A datacenter is not one address. The server publishes several per identifier — an IPv4 and an
+IPv6 form, a media-only variant, a cache variant — and which applies depends on what the
+connection is for. Choosing wrongly does not fail cleanly: a media-only address answers
+ordinary calls with errors that name nothing about addressing, and a cache address holds no
+authorization at all.
+
+Three rules decide what may serve a purpose:
+
+- **a cache address serves cache traffic and nothing else.** It holds none of this client's
+  authorization, so an ordinary call sent there cannot succeed
+- **a media-only address is kept off ordinary calls**, and preferred for transfers. An ordinary
+  address serves transfers too, so it stays a candidate behind the one set aside for them
+- **the address family is a preference, not a requirement.** Whether a route to a family exists
+  is not knowable at this layer, so a client that asks for IPv6 and finds none is given IPv4
+  rather than nothing
+
+Selection is **deterministic**: the first candidate in the order the server published, which is
+its own order of preference. Spreading load across addresses needs to know what is already
+open, which is connection state and belongs to the layer that holds it.
+
+`test_mode` and `this_dc` are properties of the configuration rather than of any address — the
+test and production networks publish the same identifiers at different addresses, so which
+network a list belongs to cannot be read off a single entry.
+
+The configuration is replaced wholesale rather than merged. An address absent from a later
+configuration is one the server has stopped serving, and merging would keep it forever.
+
+**Bootstrap.** Fetching the list requires an address and the address comes from the list, so the
+last configuration is persisted and closes that loop on every start after the first. The very
+first address is supplied by the application: published addresses change, and a value compiled
+in here would be one more thing to be stale.
+
+**Not implemented here:** `help.getConfig` itself, which needs a connection to issue; migration;
+and connection pooling.
 
 ### Migration
 
