@@ -1099,6 +1099,42 @@ Backpressure adds no policy here. The socket queues what it cannot send yet and 
 reorders it, so what is queued is reported and left alone; a second queue would be a buffer with
 no consumer and a new way to reorder.
 
+### The channel
+
+Every layer below is deliberately unable to reach a network. A channel is where they are wired
+to each other and to a socket, which makes it the only place holding a real timer and a real
+file descriptor:
+
+```
+socket ──> link ──> key exchange ──┐
+                                   ├──> connection ──> a call
+socket <── link <──────────────────┘
+```
+
+**A channel is used once.** One socket, one exchange, one connection; once closed it stays
+closed. Reconnecting opens another, a pool holds several, and reaching a different datacenter
+opens one there — so none of those needs to unpick this wiring, and state belonging to a
+connection that ended cannot be read by the one that replaced it. It is the same discipline the
+schedule's epoch already enforces one layer down.
+
+What it does not own is the **authorization key**. A key outlives every socket it is ever used
+over, so it is supplied when one is known and reported when one is negotiated. Storing it is the
+caller's, which keeps persistence out of the live machinery.
+
+The exchange and the connection share the link: the exchange is a sequence of plaintext
+messages, and what follows is encrypted, and the link knows the difference between neither. The
+switch from one to the other is one-way.
+
+Failures divide by when they happen. Anything before the channel is usable — a refused socket, a
+key exchange that failed, a stream that ended mid-exchange — fails the attempt and leaves
+nothing open, because there is no channel yet to report against. Anything after arrives as an
+ending, once, carrying the failure when there was one; a peer that closed cleanly and a peer
+that vanished are different events to whatever will later decide about reconnecting. An ending
+the caller asked for is not reported back to it.
+
+**Not implemented here:** reconnection, pooling, migration and datacenter selection policy. Each
+of those composes channels rather than changing them.
+
 ---
 
 ## 8. Network and datacenters

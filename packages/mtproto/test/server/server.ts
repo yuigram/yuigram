@@ -837,6 +837,22 @@ export class MockServer {
    * names the query it answers, which is what the client checks it against.
    */
   #answer(element: { msgId: bigint; value: TlValue }): TlValue {
+    // A client states its layer and describes itself by wrapping its first
+    // call. A server unwraps both and answers the query inside, as a result.
+    const query = unwrapQuery(element.value)
+    if (query !== element.value) {
+      return {
+        _: 'rpc_result',
+        req_msg_id: element.msgId,
+        result: this.#answerQuery({ msgId: element.msgId, value: query }),
+      }
+    }
+
+    return this.#answerQuery(element)
+  }
+
+  /** What this peer replies with once the wrappers are off. */
+  #answerQuery(element: { msgId: bigint; value: TlValue }): TlValue {
     switch (element.value._) {
       case 'ping':
       case 'ping_delay_disconnect':
@@ -874,7 +890,9 @@ export class MockServer {
       }
 
       default:
-        throw new MockServerError(`'${element.value._}' is not something this peer answers`)
+        // A peer that models no API still has to answer one, or a call made
+        // through it never settles.
+        return { _: 'boolTrue' }
     }
   }
 
@@ -908,6 +926,27 @@ const OBFUSCATED_TAGS: ReadonlyMap<number, ObfuscatableFraming> = new Map([
  */
 const DEFAULT_SECRET_EXPONENT =
   (1n << 2047n) | 0x5f2c_a1d3_9e04_7b68_c35a_f912_86de_40b7_1e93_5cf6_2a08_d417_b6e2_930cn
+
+/**
+ * Strip the wrappers a client states its layer and identity with.
+ *
+ * `invokeWithLayer` may only be used together with `initConnection`, and the
+ * query the client meant is inside both.
+ */
+function unwrapQuery(value: TlValue): TlValue {
+  let query = value
+  for (let depth = 0; depth < 2; depth += 1) {
+    if (query._ !== 'invokeWithLayer' && query._ !== 'initConnection') return query
+
+    const inner = query['query']
+    if (typeof inner !== 'object' || inner === null) {
+      throw new MockServerError(`'${query._}' carries no query`)
+    }
+    query = inner as TlValue
+  }
+
+  return query
+}
 
 /** Read eight bytes as a little-endian signed 64-bit value, as TL does. */
 function readInt64LE(value: Uint8Array): bigint {

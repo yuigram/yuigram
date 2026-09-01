@@ -6,6 +6,14 @@
  */
 
 export {
+  type Channel,
+  type ChannelOptions,
+  type ChannelState,
+  type KnownAuthorization,
+  openChannel,
+  type StreamRequest,
+} from './channel.js'
+export {
   type DcAddress,
   type DcConfiguration,
   DcDirectory,

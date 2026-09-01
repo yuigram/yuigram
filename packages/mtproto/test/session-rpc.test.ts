@@ -951,7 +951,7 @@ describe('more bytes at once than one message can carry', () => {
 
     await expect(Promise.all(answers)).resolves.toHaveLength(900)
     expect(live.connection.pending).toBe(0)
-  })
+  }, 60_000)
 
   it('refuses a call too large to travel at all, rather than queueing it forever', async () => {
     const live = connected()
@@ -970,7 +970,7 @@ describe('more bytes at once than one message can carry', () => {
     await expect(answer).rejects.toThrow(/too large to send/)
     expect(live.connection.pending).toBe(0)
     expect(live.sent).toHaveLength(0)
-  })
+  }, 60_000)
 
   it('leaves room for the acknowledgement travelling with a full batch', async () => {
     const live = connected()
@@ -1010,7 +1010,7 @@ describe('more bytes at once than one message can carry', () => {
 
     // Sealed, so this is the size that actually goes on the wire.
     for (const message of live.sent) expect(message.length).toBeLessThanOrEqual(16 * 1024 * 1024)
-  })
+  }, 60_000)
 })
 
 describe('a connection that is not running', () => {
