@@ -64,14 +64,32 @@ const NEVER_ACKNOWLEDGED: ReadonlySet<string> = new Set([
 const CORRECTS_THE_CLOCK: ReadonlySet<number> = new Set([16, 17])
 
 /**
- * The notification codes a resend can repair.
+ * The notification codes a resend repairs.
+ *
+ * Both mean the identifier carried the wrong time, which the server states by
+ * refusing the message — so it did not run, and sending it again under a
+ * corrected identifier is the remedy the protocol names.
  *
  * Everything else — a sequence number the server will not accept, a container
  * it could not read, an identifier whose low bits are wrong — describes a
  * connection whose state the server and client disagree about, and resending
  * one message under that disagreement repeats it.
  */
-const REPAIRABLE_BY_RESEND: ReadonlySet<number> = new Set([16, 20])
+const REPAIRABLE_BY_RESEND: ReadonlySet<number> = new Set([16, 17])
+
+/**
+ * The notification code that reports an outcome nobody can determine.
+ *
+ * The protocol is explicit that for a message too old, it cannot be verified
+ * whether the server received it. Sending it again would be a guess: if it did
+ * run, a second copy runs a second time, and the identifier that would have
+ * stopped that belongs to a session the message is no longer part of.
+ *
+ * So the message is finished with, and what happened to it is reported as
+ * unknown. Deciding whether a particular call is worth making again needs to
+ * know what the call *was*, which is not something this layer holds.
+ */
+const OUTCOME_UNKNOWN = 20
 
 /** Why a message was not acted on. */
 export type DropReason =
@@ -89,6 +107,13 @@ export type SessionEvent =
   | { readonly kind: 'salt-changed'; readonly salt: bigint; readonly resend: bigint }
   /** The named message must be sent again, under the identifier it is given next. */
   | { readonly kind: 'resend'; readonly msgId: bigint; readonly reason: string }
+  /**
+   * The named message is finished with, and whether it ran is not knowable.
+   *
+   * Distinct from a resend on purpose: a resend follows the server saying it
+   * refused the message, and this follows the server saying it cannot tell.
+   */
+  | { readonly kind: 'outcome-unknown'; readonly msgId: bigint; readonly reason: string }
   /** The session was replaced. Everything in flight under the old one is lost. */
   | { readonly kind: 'reset'; readonly reason: string }
   /** The server started a new session. Messages before `firstMsgId` never ran. */
@@ -374,6 +399,15 @@ export class SessionDispatcher {
 
     if (REPAIRABLE_BY_RESEND.has(code)) {
       events.push({ kind: 'resend', msgId: badMsgId, reason: `bad_msg_notification ${code}` })
+      return
+    }
+
+    if (code === OUTCOME_UNKNOWN) {
+      events.push({
+        kind: 'outcome-unknown',
+        msgId: badMsgId,
+        reason: `bad_msg_notification ${code}`,
+      })
       return
     }
 

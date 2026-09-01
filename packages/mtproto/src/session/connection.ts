@@ -500,6 +500,10 @@ export class Connection {
         this.#resend(event.msgId)
         break
 
+      case 'outcome-unknown':
+        this.#giveUp(event.msgId, event.reason)
+        break
+
       case 'salts-offered':
         this.#salts.offer(event.salts, this.#session.serverNow())
         break
@@ -607,6 +611,28 @@ export class Connection {
       this.#containers.delete(container)
       this.#tracker.forget(container)
     }
+  }
+
+  /**
+   * Give up on a call whose outcome the server could not state.
+   *
+   * Not a resend. The server has said it cannot tell whether the message ran,
+   * and sending it again would run it a second time if it did. The caller is
+   * told the outcome is unknown, which is the only true thing there is to say —
+   * whether a particular call is worth making again depends on what the call
+   * was, and that is the caller's to know.
+   */
+  #giveUp(msgId: bigint, reason: string): void {
+    const request = this.#registry.byMessage(msgId)
+    const pending = request === undefined ? undefined : this.#pending.get(request.id)
+    if (request === undefined || pending === undefined) return
+
+    this.#pending.delete(pending.id)
+    this.#registry.fail(msgId)
+    this.#release(pending.id, msgId)
+    pending.reject(
+      new NetworkError(`'${pending.method}' was not answered for, and ${reason} says why not`),
+    )
   }
 
   /**

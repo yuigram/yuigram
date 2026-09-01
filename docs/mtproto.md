@@ -1132,6 +1132,30 @@ ending, once, carrying the failure when there was one; a peer that closed cleanl
 that vanished are different events to whatever will later decide about reconnecting. An ending
 the caller asked for is not reported back to it.
 
+#### What may be sent again
+
+A message that was sent and not answered for falls into one of three states, and only one of
+them permits sending it again.
+
+| The server said | Ran? | Action |
+|---|---|---|
+| `bad_server_salt`, `bad_msg_notification` 16 or 17 | no — it refused the message | send again under a new identifier |
+| `bad_msg_notification` 20 | **unknowable** — the protocol says so in as many words | give up; report the outcome as unknown |
+| nothing, because the connection died | unknowable | give up; report the outcome as unknown |
+
+The distinction is the whole of retry safety. A refusal is the server stating it did not act;
+silence is not. Within one session an identifier is used once and the server drops a repeat, so
+resending under the *same* identifier would be safe — but a resend uses a new one, and a new
+connection is a new session where the old identifier means nothing. Deduplication does not
+survive either.
+
+So **nothing is automatically sent again after an outcome that cannot be verified.** Whether a
+particular call is worth making a second time depends on what the call was: a read costs
+nothing, a send that carries its own deduplicating identifier is safe, and one that carries
+neither may act twice. The schema does not say which is which, so the decision cannot be derived
+from a method's definition — it is a policy, and it belongs to whoever knows what was being
+asked.
+
 A call that was waiting when a channel ends is told which kind of ending it was. One the caller
 withdrew must not be made again; one the connection lost is worth making on the next channel.
 Collapsing both into the same refusal would leave that decision to be guessed at from a message,

@@ -673,6 +673,80 @@ describe('a salt the server replaces', () => {
   })
 })
 
+describe('a message whose outcome the server cannot state', () => {
+  it('fails the call rather than running it a second time', async () => {
+    const live = connected()
+    const answer = live.connection.invoke(query())
+    const [element] = live.flush()
+    if (element === undefined) throw new Error('nothing was sent')
+
+    // Code 20: the protocol says it cannot be verified whether the server
+    // received this message. Sending it again would run it twice if it did.
+    live.connection.receive(
+      live.peer.seal({
+        _: 'bad_msg_notification',
+        bad_msg_id: element.msgId,
+        bad_msg_seqno: 1,
+        error_code: 20,
+      }),
+    )
+
+    await expect(answer).rejects.toBeInstanceOf(NetworkError)
+
+    live.advance(1)
+    expect(live.flush()).toEqual([])
+    expect(live.connection.pending).toBe(0)
+  })
+
+  it('releases what it gave up on, so the connection keeps working', async () => {
+    const live = connected()
+
+    // Every call given up on has to release its place, or the bound meant to
+    // catch runaway concurrency becomes a limit on how many calls a connection
+    // may ever make.
+    for (let call = 0; call < 2200; call += 1) {
+      live.advance(1)
+      const answer = live.connection.invoke(query())
+      const [element] = live.flush()
+      if (element === undefined) throw new Error(`call ${call} was not sent`)
+
+      live.connection.receive(
+        live.peer.seal({
+          _: 'bad_msg_notification',
+          bad_msg_id: element.msgId,
+          bad_msg_seqno: 1,
+          error_code: 20,
+        }),
+      )
+      await expect(answer).rejects.toBeInstanceOf(NetworkError)
+    }
+
+    expect(live.connection.pending).toBe(0)
+  }, 60_000)
+
+  it('still sends again when the server said it refused the message', async () => {
+    const live = connected()
+    const answer = live.connection.invoke(query())
+    void answer.catch(() => {})
+    const [element] = live.flush()
+    if (element === undefined) throw new Error('nothing was sent')
+
+    // Code 16 is the server stating it did not accept the message, so the
+    // remedy the protocol names is to send it again.
+    live.connection.receive(
+      live.peer.seal({
+        _: 'bad_msg_notification',
+        bad_msg_id: element.msgId,
+        bad_msg_seqno: 1,
+        error_code: 16,
+      }),
+    )
+
+    live.advance(1)
+    expect(live.flush()).toHaveLength(1)
+  })
+})
+
 describe('a message the server keeps refusing', () => {
   it('carries its attempt count across every change of identifier', async () => {
     const live = connected()

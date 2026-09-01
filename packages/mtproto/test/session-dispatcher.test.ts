@@ -710,23 +710,23 @@ describe('a refused message', () => {
     expect(session.serverNow()).toBe(Number(BigInt.asUintN(64, msgId) >> 32n))
   })
 
-  it('corrects the clock and replaces the session when the identifier was too high', () => {
-    // Code 17. A clock ahead of the server produces identifiers the server has
-    // already refused, so the session cannot continue as it was.
+  it('corrects the clock and sends again when the identifier was too high', () => {
+    // Code 17. The protocol says to synchronise the clock and re-send with the
+    // corrected identifier — the server refused the message, so it did not run.
     const { result, session, before } = notify(17)
 
-    expect(kinds(result.events)).toContain('reset')
-    expect(session.id).not.toBe(before.id)
+    expect(only(result.events, 'resend').msgId).toBe(0x0aaa_aaaa_aaaa_aaa0n)
+    expect(session.id).toBe(before.id)
   })
 
-  it('resends without touching the clock when the message was merely too old', () => {
-    // Code 20 says the message waited too long, which says nothing about the
-    // clock. Correcting from it would move a clock that was right.
+  it('gives up on a message too old, rather than sending it again', () => {
+    // Code 20. The protocol states that for a message this old it cannot be
+    // verified whether the server received it. Sending it again would run it a
+    // second time if it did, and the identifier that would have stopped that
+    // belongs to a session the message is no longer part of.
     const connection = connected()
     const before = connection.session.timeOffset
 
-    // Inside the window, but dated two hundred seconds back: a handler that
-    // corrected from it would move the offset by exactly that much.
     const result = connection.dispatcher.receive(
       connection.peer.seal(
         { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 20 },
@@ -734,7 +734,11 @@ describe('a refused message', () => {
       ),
     )
 
-    expect(only(result.events, 'resend').msgId).toBe(8n)
+    expect(only(result.events, 'outcome-unknown').msgId).toBe(8n)
+    expect(kinds(result.events)).not.toContain('resend')
+    expect(kinds(result.events)).not.toContain('reset')
+    // It says nothing about the clock, so correcting from it would move a clock
+    // that was right.
     expect(connection.session.timeOffset).toBe(before)
   })
 
@@ -963,7 +967,7 @@ describe('a message that must not be acted on', () => {
 
     dispatcher.receive(
       peer.seal(
-        { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 17 },
+        { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 34 },
         { msgId: nowMsgId(session, 7) },
       ),
     )
@@ -978,7 +982,7 @@ describe('a message that must not be acted on', () => {
     // The repeat names the session it was addressed to, which no longer exists.
     const { peer, dispatcher, session } = connected()
     const notification = peer.seal(
-      { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 17 },
+      { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 34 },
       { msgId: nowMsgId(session, 7) },
     )
 
