@@ -253,7 +253,7 @@ export class ConnectionSchedule {
   }
 
   /**
-   * Note that something is queued to send.
+   * Record that something is queued to send.
    *
    * Idempotent while a flush is already pending: the second message joins the
    * batch the first one armed rather than arming a batch of its own, which is
@@ -272,7 +272,7 @@ export class ConnectionSchedule {
   }
 
   /**
-   * Note that what was queued has gone out.
+   * Record that what was queued has gone out.
    *
    * A flush is the one duty that is not discharged by being noticed. The others
    * are moments — the moment to expire, the moment to ping — and taking the
