@@ -32,9 +32,11 @@ export {
   or,
   some,
 } from './filter/index.js'
+export * from './hook/index.js'
 export * from './lifecycle/index.js'
 export * from './log/index.js'
 export * from './middleware/index.js'
 export * from './plugin/index.js'
+export * from './scheduler/index.js'
 export * from './session/index.js'
 export * from './storage/index.js'

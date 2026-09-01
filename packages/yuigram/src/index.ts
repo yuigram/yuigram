@@ -41,6 +41,15 @@
  */
 
 export * from '@yuigram/bot-api'
+/**
+ * The scheduler this façade exposes is the Bot API one.
+ *
+ * Both packages carry a `createScheduler`: the core package's is generic over
+ * whatever a caller wants ordered, and the Bot API's supplies the chat as that
+ * key. A bot reaching for one wants the second, so the ambiguity is resolved
+ * here rather than left to whichever export happens to win.
+ */
+export { createScheduler } from '@yuigram/bot-api'
 export * from '@yuigram/core'
 
 /**

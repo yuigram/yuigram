@@ -9,7 +9,7 @@
  * a Telegram release never leaves a user unable to reach a new method.
  */
 
-import { YuigramError } from '@yuigram/core'
+import { type Hook, YuigramError } from '@yuigram/core'
 import type { CallOptions } from './api-options.js'
 import { toError, toNetworkError } from './errors.js'
 import type { ApiMethods } from './generated/api.js'
@@ -86,7 +86,7 @@ export interface ApiCall {
  * })
  * ```
  */
-export type ApiHook = (call: ApiCall, next: () => Promise<unknown>) => Promise<unknown>
+export type ApiHook = Hook<ApiCall>
 
 /** Options for {@link createApi}. */
 export interface CreateApiOptions {

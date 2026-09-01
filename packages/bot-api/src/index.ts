@@ -175,7 +175,7 @@ export {
   chatKeyOf,
   createScheduler,
   type Scheduler,
-  type SchedulerOptions,
+  type UpdateSchedulerOptions,
 } from './scheduler.js'
 export {
   createWindow,
