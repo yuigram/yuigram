@@ -19,7 +19,7 @@ The implementation is built **specification-first**:
 | `core.telegram.org/mtproto/*` | **Normative.** Protocol description, auth key generation, security guidelines, transports, TL |
 | `core.telegram.org/api/*` | **Normative.** Updates, datacenters, files, file references, SRP, PFS |
 | `core.telegram.org/schema` | **Normative.** TL schema, layer-tagged |
-| Existing clients (mtcute, Telethon, TDLib) | **Disambiguation only.** Consulted where the specification is silent or ambiguous, to learn *what Telegram actually does* |
+| Existing third-party clients | **Disambiguation only.** Consulted where the specification is silent or ambiguous, to learn *what Telegram actually does* |
 
 This ordering is deliberate and matters for two reasons beyond preference.
 
@@ -131,6 +131,11 @@ Sent as `InputCheckPasswordSRP { srp_id, A: g_a, M1 }`.
 **Mandatory before use:** validate that `p` is a safe prime and `g` generates the correct
 subgroup — the same checks as §5.2. Skipping them on the password path is a real
 vulnerability, not a shortcut.
+
+`p` and `g_b` arrive as TL byte strings, so §5.2's width bound applies to them before they
+become integers, not after. The value checks above cannot run until the conversion has already
+happened, which is the point at which an oversized field has already cost what it was sent to
+cost. `p` is 256 bytes; `g_b` is at most 256.
 
 ### 3.4 Server RSA keys
 
@@ -244,6 +249,24 @@ new_nonce_hash{n} = SHA1(new_nonce | n | auth_key_aux_hash)[4..20]   -- n in {1,
 server_salt       = new_nonce[0..8] XOR server_nonce[0..8]
 ```
 
+The three verdicts differ in what they ask of the client, and all three carry a hash over
+`new_nonce` and the key the server derived — so each is verified against the key the client
+derived before it is acted on. An acknowledgement that fails its hash is not a verdict about
+this exchange at all.
+
+| Verdict | Verifies | Action |
+|---|---|---|
+| `dh_gen_ok` | `new_nonce_hash1` | The key is established |
+| `dh_gen_retry` | `new_nonce_hash2` | Draw a **new `b`** and repeat from step 10. `retry_id` becomes the `auth_key_aux_hash` of the attempt that failed |
+| `dh_gen_fail` | `new_nonce_hash3` | Fatal. The exchange cannot be completed with this server |
+
+A retry asks for another exponent under the same exchange, not for the exchange to begin again:
+the nonces, the modulus and `g_a` all stand, and only the public value changes. `retry_id` is
+zero on the first attempt and names the previous failed key thereafter, which is how a server
+tells a retry apart from a fresh exchange. **Retries are bounded** — a server that asks
+indefinitely is one no exchange completes against, and an unbounded loop never reports the
+failure it is in.
+
 ### 5.2 Mandatory security checks
 
 From `core.telegram.org/mtproto/security_guidelines`. **None of these is optional and none is
@@ -264,6 +287,16 @@ in production.
 - first 20 bytes of the decrypted answer equal `SHA1` of the remainder without padding
 - `nonce`, `server_nonce`, `new_nonce` match the values from this protocol run
 - `pq` is composite (reject a prime `pq`)
+- **every server-supplied byte string that becomes an integer is bounded on its encoded width,
+  before the conversion.** Converting a byte string to an integer costs time quadratic in its
+  length, so a field carried at the transport's frame limit occupies the client for hours —
+  long before any check on the resulting *value* could run. `pq` is at most 8 bytes,
+  `dh_prime` and `g_a` at most 256. A wider field is not a value a server could legitimately
+  be sending
+- `pq` is also bounded as a value, so a caller reaching the factorization by another path
+  cannot drive it: the cost of factoring grows with the size of the input
+- the fingerprint named in `resPQ` is one the client actually holds; an unmatched fingerprint
+  ends the exchange rather than selecting a key by position
 - DH secrets `a`, `b` come from a CSPRNG
 
 **Every encrypted message:**
@@ -281,8 +314,43 @@ All comparisons on secret-derived material use constant-time equality.
 
 ### 5.3 Perfect forward secrecy
 
-Temporary auth keys via `p_q_inner_data_temp_dc` with `expires_in`, bound to the permanent key
-with `auth.bindTempAuthKey`. Re-negotiated before expiry. Per DC, indexed, with expiry stored.
+The permanent key never encrypts traffic. A second, short-lived key does, and the permanent
+key's only job is to vouch for it once — so compromising the key that protected a connection
+buys an attacker that key's lifetime and nothing before it, because the earlier ones no longer
+exist.
+
+Temporary keys come from the ordinary exchange with `p_q_inner_data_temp_dc` and `expires_in`,
+which the handshake already supports. The vouching is a separate construction: a
+`bind_auth_key_inner` naming both keys, the session and the expiry, encrypted under the
+**permanent** key and sent as a field of an `auth.bindTempAuthKey` request that travels under
+the **temporary** one. Only a client holding both could have produced that pair.
+
+Three things about the construction are unusual, and all three are the protocol's:
+
+- **it uses the older MTProto 1.0 key schedule**, alone among everything this subsystem sends —
+  four SHA-1 hashes interleaved differently from the current two, with the message key taken
+  over the plaintext alone rather than over a slice of the auth key as well
+- **the envelope's first sixteen bytes are filler.** The salt and session identifier a message
+  normally carries describe nothing here, because this is never delivered as a message; it
+  travels as a field. One random `int128` replaces both, keeping the header the receiver parses
+  the same width
+- **the binding names the identifier of the request carrying it.** The two must match, so the
+  identifier has to exist before either is built — which is why it is supplied to the builder
+  rather than drawn by it, and why this one message cannot go through the path that allocates
+  identifiers as it composes
+
+Yuigram additionally refuses to bind a key to itself. The server would accept it and the
+connection would then be encrypting under the permanent key, which is the one thing this exists
+to prevent — and nothing later would notice. That refusal is Yuigram's, not the protocol's.
+
+Per DC, indexed, with expiry stored; the authorization store already holds temporary keys
+against their expiry.
+
+**Not yet implemented:** re-negotiation before expiry, the `initConnection` that must follow a
+successful binding, the restriction limiting an unbound temporary key to
+`auth.bindTempAuthKey`, `help.getConfig` and `help.getNearestDc`, and the
+`ENCRYPTED_MESSAGE_INVALID` recovery path. Each needs the layer that sends API calls and owns
+key rotation, which does not exist yet.
 
 ### 5.4 Sign-in flows
 
@@ -303,8 +371,22 @@ The encrypted message layer, per `core.telegram.org/mtproto/description`.
 
 ### 6.1 Message format
 
+Before an auth key exists there is nothing to encrypt with, so the messages that negotiate one
+travel under a header that says so:
+
 ```
-outer:   [auth_key_id:8][msg_key:16][encrypted_data:…]
+unencrypted: [auth_key_id = 0:8][msg_id:8][length:4][body:length]
+```
+
+A zero `auth_key_id` is the entire signal, and it is the same field the encrypted form uses to
+name its key. The two envelopes are therefore distinguished by their first eight bytes, and a
+zero arriving after the handshake is a message that does not belong to the session.
+
+The declared length is authoritative: padded intermediate framing delivers its padding attached
+(§7), and this header is what trims it.
+
+```
+encrypted:   [auth_key_id:8][msg_key:16][encrypted_data:…]
 
 msg_key = SHA256( auth_key[88+x .. 120+x] | plaintext )[8..24]      -- middle 128 bits
 
@@ -318,6 +400,18 @@ plaintext: [salt:8][session_id:8][msg_id:8][seq_no:4][length:4][body][padding:12
 ```
 
 Padding is random, 12–1024 bytes, total length divisible by 16.
+
+Nothing outside the ciphertext records its length. The receiver therefore takes the boundary to
+be the **last whole block**, which is what recovers the message from underneath the 0–15 bytes
+padded intermediate framing may have appended (§7). Whole blocks appended past the end need no
+separate rule: they decrypt as part of the message, which changes the plaintext and so changes
+`msg_key`, and the comparison refuses them.
+
+A failed exchange is terminal. Partially established state is discarded rather than kept for a
+retry, because a second message acting on state an earlier one invalidated is indistinguishable
+from a message acting on state it was never entitled to. `new_nonce` in particular does not
+outlive the key it produced — it is the value an attacker holding a transcript would need, and
+it has no use afterwards.
 
 ### 6.2 Message identifiers
 
@@ -338,7 +432,442 @@ Time offset is learned from `server_DH_inner_data.server_time` and from
 `bad_msg_notification`, and applied to every subsequent `msg_id`. **Never trust the local
 clock** — a user with a skewed clock is a common, real condition.
 
-### 6.3 What the session must handle
+### 6.3 Scope of the session layer
+
+The session owns the sequences that cannot be duplicated without losing messages — the session
+identifier, the message identifiers, the sequence numbers — together with the salt and the
+clock correction in force. Inbound behaviour is split from it: what has already been seen is a
+separate record, and what one encrypted message carries is a separate flattening step, so the
+outbound path never touches replay state and the two can be reasoned about apart.
+
+**Implemented:** inbound duplicate and replay rejection, the acceptance window, container
+unpacking, transparent decompression, acknowledgement reporting, `bad_server_salt`,
+`bad_msg_notification`, `new_session_created`, session replacement and the clock correction
+those imply; outbound message tracking with acknowledgement state, resend eligibility and an
+attempt limit; `rpc_result` reported against the request it answers; `msgs_state_info` status
+decoding; composing outgoing messages, including container batching and the acknowledgements
+that travel with them; the reservoir of future salts and the answer that fills it; the schedule
+that decides when the connection's periodic work falls due, and liveness with it.
+
+**Deferred:** the transport itself, and therefore reconnection. The schedule states what a
+reconnect means for the work it holds, but nothing here opens a connection or writes to one.
+The table below is the specification the complete layer implements.
+
+#### Compression appears in two places
+
+Around a whole message, and inside the field that carries a result. The first is undone while
+flattening; the second is undone by the layer that knows the field is a result, because nothing
+below it does. Both go through one decompressor and therefore one ceiling — a second would be a
+second place for the bound to be forgotten.
+
+#### A failure is an error
+
+`rpc_error` becomes the error the rest of the framework raises, so a caller handling a Bot API
+failure is handling this one. An error naming how many seconds to wait becomes the shared
+rate-limit type, matched on that shape rather than on a single name: the Bot API decides by
+whether a delay was supplied at all, and reports slow mode the same way it reports a flood, so
+matching only `FLOOD_WAIT` would make the two transports disagree about one condition. Every
+other failure keeps the name Telegram gave it — a caller matching on `CHANNEL_PRIVATE` needs to
+see `CHANNEL_PRIVATE`.
+
+#### What survives a restart
+
+Very little, and the omissions are the design rather than an unfinished part of it.
+
+| Kept | Why |
+|---|---|
+| Authorization key, per datacenter | Expensive to obtain and identifies the client; losing it means signing in again |
+| Temporary keys, with the second they expire at | Judged when asked for, because a stored key outlives the process that wrote it and no timer survives with it |
+| Server salt, per datacenter | Cheap, but learning a new one costs a refused message and a round trip |
+
+| Not kept | Why |
+|---|---|
+| Session identifier and sequence numbers | A session belongs to one connection. Restoring an identifier with its counter back at zero recreates the disagreement the server answers by discarding messages, so a restarted client opens a new session |
+| Clock correction | True only relative to the local clock it was measured against, which may have been corrected while the process was down. It is relearned from the first refused message either way |
+| Requests, deadlines, ordering groups | Describe work whose outcome can no longer be observed, and whose caller is gone |
+| Message attempts, acknowledgement state, retry counts | Belong to a connection that no longer exists |
+
+Nothing executable is written: no promise, callback, timer or socket. A request in flight when a
+process stops is not resurrected, and the message that carried it is abandoned rather than
+retried — the server either processed it, in which case a retry would duplicate the effect, or
+did not, in which case nothing was lost. Deciding otherwise needs the caller's intent, which is
+exactly what did not survive.
+
+**Unreadable is not the same as absent.** Absent means sign in again; answering that for state
+that merely failed to decode discards a working authorization. Every stored value is validated
+on the way out — encoded width before the decode allocates, decoded width after, and the salt
+against the field that carries it — and a value that fails is refused rather than replaced with
+a default.
+
+Atomicity comes from the store, which writes to a temporary file and renames, so a process that
+stops mid-write leaves the previous state rather than a partial one. Encryption at rest is
+**not** part of this phase; it is a wrapper over any driver rather than a second protocol here.
+
+The failure policy differs from the framework's deliberately. Framework session storage degrades
+to memory and warns; authorization storage does not, because a client that silently continues
+without its key signs in again on every start.
+
+#### The request lifecycle
+
+A request is what a caller asked for; a message is one attempt at delivering it. An identifier
+is used once, so a resend is a new message, and anything that must outlive that succession is a
+property of the request rather than of any identifier — the attempt count, the deadline, and the
+ordering group all are.
+
+| State | Meaning | Leads to |
+|---|---|---|
+| `pending` | Created; no message carries it | `sent`, `cancelled`, `timed-out` |
+| `sent` | A message carries it; no answer | `acknowledged`, `blocked`, `completed`, `failed`, `cancelled`, `timed-out`, `sent` (resend) |
+| `acknowledged` | Received, not answered. Resend no longer required | `completed`, `failed`, `cancelled`, `timed-out` |
+| `blocked` | Refused because a predecessor is not ready | `sent` (resend), `completed`, `failed`, `cancelled`, `timed-out` |
+| `completed` · `failed` · `timed-out` · `cancelled` | Terminal | — |
+
+Acknowledgement and completion are separate because the server confirms receipt long before it
+answers, and they imply different things. An acknowledgement arriving after a refusal does not
+undo it: both come from the server and may arrive in either order, and letting the acknowledgement
+win would make a request that still needs sending again look like one merely awaiting an answer.
+
+**The deadline is absolute and fixed at creation.** It measures how long the caller is prepared
+to wait, so neither a resend nor an acknowledgement restarts it — a server able to restart it by
+refusing or merely receiving a message could hold a request open indefinitely. Expiry is
+reported once, because a caller acting on the same expiry twice would fail a request it had
+already failed.
+
+**Withdrawal is idempotent and never reverses an outcome.** A message already sent cannot be
+recalled, so withdrawing stops the request being sent again and stops the caller waiting; an
+answer that still arrives is discarded. A request the server has already answered stays answered.
+
+#### Ordering with `invokeAfterMsg`
+
+**The ordering is enforced by the server, not by the client.** The point of the wrapper is that
+a caller need not wait for one result before sending the next: both go out immediately, and the
+server sequences them. A client that withheld the second until the first succeeded would be
+correct on the wire and would discard the only reason the wrapper exists.
+
+Two orderings must be kept apart. **Client-side dependency tracking** records which request
+comes before which, and survives everything. **Server-enforced execution ordering** is what the
+wrapper buys, and it is expressed in concrete message identifiers.
+
+The wrapper names a **concrete message attempt**, not a logical request. A resend is a new
+message with a new identifier, so a group is recorded as the *requests* in it, in the order they
+joined, and the identifier to name is resolved at each send from the current attempt of the
+nearest usable earlier member. Recording identifiers instead would let a retry take a place of
+its own: the head resent after its dependent would be ordered behind it, while the dependent
+went on naming an identifier the server never saw. Neither would ever resolve — not degraded
+ordering but a deadlock.
+
+Because the resolution happens at send time, a dependent already on the wire keeps naming the
+attempt it was sent with; it picks up the predecessor's new identifier only when it is itself
+sent again. That is what converges a group after a resend, and the mechanism is the server's
+own refusal: a dependent naming a message the server does not know is refused, and the resend
+that follows resolves against what is current then.
+
+A member that failed, timed out, or was withdrawn is stepped over — the server has given up on
+it and answers a request naming it by refusing that one too. A member that completed is named
+as readily as one still running, because the server knows it finished and the dependent proceeds
+at once. A request is never told to run after one of its own earlier attempts.
+
+This is a line, not a graph: a request can only name one that joined ahead of it, so a cycle
+cannot be constructed and none is detected. Groups are independent and bounded by the number of
+requests that may be outstanding.
+
+| Server error | Means | Predecessor permanently failed? | Response |
+|---|---|---|---|
+| `MSG_WAIT_TIMEOUT` | The predecessor had not finished within the server's window | No | Send again once it settles |
+| `MSG_WAIT_FAILED` | The predecessor emitted an error | Yes | Send again, naming a usable predecessor or none |
+
+Both leave the request able to be sent again rather than settled, and the same request may
+receive each in turn. They differ in what they say about the *predecessor*, which the client
+learns from that predecessor's own answer — and which is what decides whether the next send
+steps over it.
+
+**Withdrawing a member does not fail those after it, and is an architectural choice rather than
+a protocol requirement.** Withdrawal is a client-side operation on a logical request: it does
+not unsend a message, and `rpc_drop_answer` asks the server to discard an *answer*, not to
+abandon the work — so a withdrawn request that reached the server may still execute. Two
+readings are therefore defensible, and the protocol settles neither:
+
+- *step over it* — later members proceed. If the withdrawn message does execute, a later member
+  may run before it, which is an ordering the caller originally asked against
+- *keep naming it* — ordering is preserved when the message executes, but a member naming one
+  the server never received waits until its own deadline, because a withdrawn request is not
+  sent again
+
+The first is taken here. Its failure is bounded and immediate; the second's is a request that
+appears to hang. A caller that needs the ordering to survive withdrawal should not withdraw the
+predecessor.
+
+**A group holds only what is still outstanding.** A member leaves it when the request is
+forgotten, and the group disappears with its last member. A group in continuous use never
+empties, so keeping finished members would grow it for as long as the connection lasts and
+lengthen every predecessor search with it.
+
+Nothing needs to be remembered about a member once it is gone. Every terminal state resolves to
+the same thing: one that completed imposes no further ordering, and one that failed, timed out
+or was withdrawn is stepped over. Naming a completed predecessor and naming nothing at all are
+indistinguishable to the server, which is why the record can be discarded rather than kept for
+the benefit of a later send.
+
+**Waiting on a predecessor consumes the dependent's own deadline.** The deadline measures how
+long the caller is prepared to wait, and time spent queued behind another request is time spent
+waiting. A predecessor timing out propagates nothing directly; it becomes unusable, which the
+next send steps over.
+
+#### Outbound tracking
+
+A message is delivered only once something says so, so what went out is recorded until it is
+answered for: identifier, sequence number, the second it was sent, whether it has been
+acknowledged, and how many times it has been tried.
+
+The record holds **no request state**. An identifier is the whole of what the protocol knows
+about an outgoing message; what that message *was* belongs to the layer that created it, and
+joining the two would make the protocol record depend on the shape of the caller above it.
+
+Three rules govern it:
+
+- **an answer is an acknowledgement.** The server does not reply to a message it never
+  processed, so a `rpc_result` acknowledges the request it names as surely as a `msgs_ack` does
+- **a container is acknowledged as a unit.** The server acknowledges what it read, and it read
+  the contents together, so acknowledging a container acknowledges everything inside it
+- **attempts are bounded, and the bound follows the succession rather than the identifier.** An
+  identifier is used once — the server ignores a repeat as a duplicate — so sending something
+  again means sending a *new* message carrying the same payload. A count kept against one
+  identifier would restart at every resend and never bind, so a replacement declares what it is
+  sent in place of and inherits the count. Replacing something untracked, acknowledged, or
+  already exhausted is refused: each would silently reset a count whose only purpose is to stop
+
+An acknowledgement for an identifier the record does not hold is *reported*, never recorded:
+acknowledgements arrive from the network, and creating an entry for one would let the far end
+decide how much is remembered.
+
+#### Message states
+
+`msgs_state_info` answers a state query with one byte per identifier asked about — low three
+bits for the state, the fourth for whether it had already been acknowledged:
+
+| State | Meaning | Resend |
+|---|---|---|
+| 1 | Nothing known; the identifier is too old to be remembered | yes |
+| 2 | Not received, within the range the server remembers | yes |
+| 3 | Not received, newer than anything the server has seen | yes |
+| 4 | Received | no |
+
+The correspondence is positional, so a byte naming no defined state is refused rather than
+skipped: one unreadable byte leaves every byte after it meaning something other than what it
+says. Deciding *when* to ask is scheduling, and belongs with the timers that are not yet built.
+
+#### Composing what goes out
+
+A connection does not send one protocol message per encrypted message. Several queries and the
+acknowledgements owed for what has arrived travel together in a container, which is what keeps a
+busy connection from spending a round trip per call. Composing is where the two sequences the
+session owns are actually spent, so it is the one place identifiers and sequence numbers are
+drawn for outgoing traffic.
+
+Four rules come from the specification and each fails silently when broken:
+
+- **a container's identifier is above every identifier inside it.** Drawing the container's
+  after its contents is what guarantees this, and it is checked rather than assumed. The
+  comparison is unsigned: an identifier is carried as a signed 64-bit value and turns negative
+  in 2038, and comparing the signed forms would make every container look malformed from that
+  day onward
+- **a container carries at most 1024 messages, and one acknowledgement names at most 8192
+  identifiers.** An excess is refused rather than truncated — a truncated acknowledgement leaves
+  the server resending what the client has already processed, and says nothing about which
+- **the container is not content-related and neither is the acknowledgement.** Each is an
+  envelope or a report rather than something the far end owes an answer for, so neither advances
+  the counter and neither is numbered odd
+- **a single message is sent as itself.** Wrapping one message in a container costs sixteen
+  bytes and gives the server nothing to do with them
+
+The acknowledgement is placed ahead of the work it accompanies: the server resends what it has
+not heard about, so telling it first stops a resend that working through the queries would
+otherwise race.
+
+Two things composing deliberately does not do. It does not wrap a query in `invokeAfterMsg` —
+that is a function of the API schema rather than the service one, so the ordering wrapper is
+part of building the query, and which message it names is resolved by the record that owns the
+ordering. And it does not compress: the protocol permits a compressed query but never requires
+one, so compression outbound is a cost with no correctness attached to it.
+
+A body arriving from a caller that is one of the constructors which are never content-related is
+refused. Those are the wrappers this layer builds itself, and one supplied from above means the
+caller is assembling an envelope that is not its to assemble — which this layer could not then
+number correctly.
+
+#### Salts held in reserve
+
+A salt rotates every thirty minutes, and the server's way of announcing the change is to refuse
+the message that used the old one. Handling that refusal is necessary and is implemented, but as
+the only mechanism it costs a round trip and a delayed message every half hour, forever. So
+salts are asked for ahead of time: the client may request between 1 and 64 of them, and the
+server answers with the window each is valid in.
+
+A salt belongs to the authorization key rather than to a session, so the reserve survives a
+session being replaced. It does not survive the process — what is persisted is the salt in
+force, and a restarted client refills the same way it filled the first time.
+
+The rules the reserve follows:
+
+- **an answer is matched to the query that asked for it.** The protocol requires the comparison.
+  Salts decide which messages the server will accept, so an answer taken without it is one that
+  did not have to be asked for
+- **a window that has closed, or that never opens, is not supply.** Such a salt can never be
+  selected, and storing it would let a server fill the reserve with values that look like supply
+  and are not. A salt already held is likewise not counted twice
+- **the salt in force is the newest whose window covers the moment.** Windows overlap while one
+  salt replaces the next: the old one stays *acceptable* for a further 1800 seconds, but new
+  messages carry the new one
+- **expired salts are reclaimed.** Selection already steps over them, so this changes no answer
+   — but without it a long-lived connection accumulates every salt it was ever given and stops
+  accepting new ones once the reserve is full
+
+How many salts must lie ahead before the supply counts as sufficient is a **policy**, not a
+protocol rule: the protocol says when a salt expires, not when to ask for the next. The default
+keeps two, the smallest number that tolerates one lost answer without falling back on being
+corrected by the server. Deciding *when* to send the request is scheduling, and belongs with the
+clock that is not yet built.
+
+#### When the connection acts
+
+A connection owes work that nothing in particular triggers: noticing that a request's deadline
+has passed, refilling the salt reserve, reconciling delivery, proving it is still there, and
+putting queued messages on the wire. Each is a question of *when*.
+
+Giving each its own timer would put a runtime's clock inside the protocol layer, make the
+behaviour untestable without waiting, and make the interleavings unenumerable. So there are no
+timers here. The schedule holds the moment each duty next falls due and answers, for a moment
+supplied to it, which have arrived; the layer that owns the socket keeps **one** real timer, set
+to the earliest of them. Every timing rule is then one place, and the whole of it is decidable
+from a number.
+
+The schedule holds no requests, no messages and no salts. It decides that the moment to act has
+come; *what* to expire, or which messages to ask about, stays with the records that own them.
+
+- **deadlines are armed, not polled.** The registry reports its earliest outstanding deadline
+  and the schedule wakes at exactly that moment. A poll would notice a deadline some interval
+  after it passed, and a deadline noticed late is one its caller waited past. One wake covers
+  every outstanding request, because the first to pass is the only one that can need attention
+  next
+- **periodic work counts from the slot, not from now.** A duty handled late does not push the
+  ones after it later with it, so the schedule stays where it started instead of drifting by
+  however long each pass took
+- **a pause is not a backlog.** A connection asleep for an hour owes one ping, not sixty.
+  Delivering the missed slots would answer a pause with a burst at the moment the connection is
+  least able to absorb one. The count is arithmetic rather than a loop, so a pause of a decade
+  costs what a pause of a second costs
+- **duties that fall due together are ordered.** Expiry first, so a request already given up on
+  is not then asked about or sent; the flush last, so what the others queued travels with it
+- **a flush is owed until it happens.** The other duties are moments, and taking the moment is
+  the whole of it. A flush is an obligation to put bytes on a wire, so it is reported for as
+  long as it is outstanding. That is also what keeps work queued while handling one duty out of
+  a second batch — the flush it would have armed is the one already owed
+
+Liveness lives here too, because a round trip is a measurement about time. A ping's departure is
+recorded against the schedule's clock and the pong that names it completes the measurement. A
+pong for a ping this connection did not send, one that arrives twice, or one claiming to have
+arrived before its ping left, all measure nothing — the last because that is a clock moving
+backwards rather than a fast network, and recording it would make a connection look healthiest
+at the moment its timekeeping broke.
+
+**A pong acknowledges its ping.** Nothing else confirms one, so a ping left outstanding would be
+resent until its attempts ran out.
+
+#### What a reconnect means
+
+The schedule does not reconnect — no transport exists to reconnect with — but what a reconnect
+means for the work it holds is settled:
+
+| State | Across a reconnect | Why |
+|---|---|---|
+| Periodic duties | Re-armed from the new connection | They describe the connection, which is new |
+| Round trips, unanswered pings | Discarded | Measurements of a connection that has ended |
+| A pending flush | Discarded | An intention to write to a socket that is gone; the messages are the outbound record's |
+| Request deadlines | Kept exactly | They say how long a *caller* will wait, which reconnecting does not change |
+| Resend eligibility | Untouched | The outbound record owns it and answers the same either side |
+
+Duplicate periodic work after a reconnect is impossible by construction: duties are moments
+rather than loops, so there is nothing a second start could duplicate, and starting while
+already running changes nothing. Because there are no callbacks, no stale callback can fire into
+a replaced connection — but a *decision* can outlive the connection it was made for, so every
+answer carries the epoch it was decided in, and the caller checks that epoch before acting.
+
+Two intervals here are **policy, not protocol**: how often the salt reserve is considered, and
+how often delivery is reconciled. The protocol provides the queries and says nothing about their
+frequency. The ping interval follows the protocol's own worked example of a client pinging once
+a minute.
+
+#### Inbound acceptance
+
+Three rules decide whether a message is allowed to have an effect, and each needs memory a
+single message cannot supply:
+
+- **parity** — server identifiers are odd. The envelope checks its own; a container element
+  carries its own identifier and bypasses that check, so it is checked again per element
+- **the window** — an identifier carries the second it was created, so a message more than
+  30 s ahead or 300 s behind the server's clock is refused. The bound is deliberately
+  asymmetric: clocks drift backwards more readily than messages arrive from the future
+- **duplication** — the server resends what it believes was not acknowledged, so a repeated
+  identifier is ordinary; acting on it twice is not. The record is bounded, and an identifier
+  older than everything retained is refused rather than admitted, because the record cannot
+  prove it is new
+
+A fourth applies to the envelope rather than to each message: **the session identifier must be
+the active one**. A message naming another session is refused rather than raised — replacing the
+session leaves whatever was in flight addressed to the old one, so a stale message is an
+ordinary consequence of a reset, and a caller that had to catch an exception for each would be
+catching the normal case. §5.2's "discard and reconnect" governs cryptographic failure, not a
+session the client itself replaced.
+
+A message failing any of these changes nothing about the session. The rules run before the
+rules that would adopt a salt, correct a clock, or reset anything, and the whole message is
+flattened before any of it is dispatched — so a structural failure anywhere in a container
+prevents every element of it from having an effect.
+
+#### Structure
+
+One encrypted message may carry many. A container's elements are bare and each carries its own
+identifier and sequence number, which replace the envelope's — an acknowledgement names an
+element, never the container that delivered it. **A container cannot carry another container**;
+that is refused for what it is rather than counted toward a depth, because no legitimate message
+has that shape. Compression may wrap a container or an element, and a chain of wrappers is
+bounded, as is what one may expand to.
+
+#### `bad_msg_notification`
+
+The notification's own identifier carries the server's clock. The payload names what was wrong,
+never what would have been right, so the correction comes from the identifier.
+
+| Code | Meaning | Response |
+|---|---|---|
+| 16 | `msg_id` too low | Correct the clock, resend the named message |
+| 17 | `msg_id` too high | Correct the clock, **replace the session** — a clock ahead of the server keeps producing identifiers it has already refused |
+| 20 | `msg_id` too old | Resend. **No clock correction** — the message waited, which says nothing about the clock |
+| 18, 19, 32–35, 48, 64 | Low bits, sequence numbers, containers | Replace the session. These describe a disagreement about the connection that resending one message under repeats |
+
+#### What is never acknowledged
+
+`msgs_ack`, `http_wait`, `bad_msg_notification`, `bad_server_salt`, `msgs_all_info`,
+`msgs_state_info`, `msg_detailed_info`, `msg_new_detailed_info`, `pong`, `future_salts`.
+
+Two reasons, not one. Acknowledging an acknowledgement does not terminate, and the notifications
+are the server's answer to something it already refused. A pong and a salt list are exempt on
+different grounds: each *is* the acknowledgement of the query that asked for it, so the exchange
+is complete when it arrives.
+
+A result is not exempt. Answering a query acknowledges the query, but the answer is a message
+like any other and is resent until it is acknowledged in turn.
+
+#### `new_session_created`
+
+Deduplicated by `unique_id`: the announcement reaches every connection sharing the session, and
+acting on it twice reports a gap that did not happen. The client's own session identifier does
+not change — the server is reporting that *it* has no state, not asking for a different
+identifier. What is lost is everything sent before `first_msg_id`, and any update that arrived
+while there was no session to deliver it to. The first announcement on a connection reports no
+gap, because a connection that has just opened fetches state anyway.
+
+### 6.4 What the session must handle
 
 | Message | Response |
 |---|---|
@@ -358,10 +887,74 @@ Outgoing responsibilities: acknowledgement tracking with resend, batching into c
 `invokeAfterMsg` chaining for ordered calls, per-request timeout and cancellation, and
 resend-on-reconnect for unacknowledged messages.
 
+Inbound replay and duplicate rejection, and the ±30 s / ±300 s acceptance window, belong with
+this table rather than with the envelope: all three need a record of what has already been seen
+on this connection, and a decoder that answered them from a single message would be guessing.
+
 **This layer is where silent message loss originates.** Omitting acknowledgement tracking or
 `bad_msg_notification` handling produces a client that works in testing and drops messages in
 production. It is built with a mock server that can inject each of these conditions
 deliberately.
+
+---
+
+### 6.5 The connection
+
+Everything above is a piece. A session numbers messages, a record remembers what was sent, a
+dispatcher interprets what arrives, a schedule says when to act — and none of them can answer a
+caller, because answering means holding the promise somebody is waiting on and knowing which
+arriving message belongs to it. That correlation is the connection, and it is the whole of what
+the layer adds.
+
+It owns no socket. Bytes leave through a callback, arrive through a method, and the moment is
+read from an injected clock, so the entire layer is decidable offline. Which datacenter the
+bytes go to, what carries them, and what to do when the link breaks are decisions for the layer
+above, which is why none of them appear here.
+
+Two things live here and nowhere else:
+
+- **the pending calls.** A promise cannot be persisted, resumed, or held by a record that
+  outlives the connection
+- **whether the server has been told what this client is.** The server keeps that against the
+  connection rather than against the key
+
+#### Announcing the client
+
+The protocol requires a connection to state which layer it speaks, and requires the layer to be
+announced by wrapping the call that carries the client description rather than on its own. So
+the query becomes `invokeWithLayer(layer, initConnection(…, query))`. The layer is the one the
+codecs were generated from and is not configurable: announcing another would claim a wire
+contract the generated types do not implement.
+
+Every call is wrapped until one **succeeds**, not merely until one is sent. The server processes
+a batch in whatever order it likes, so a bare call that overtook the wrapped one would reach a
+connection that had not been told anything yet. Wrapping until something is known to have
+arrived costs a few redundant bytes while a connection opens and removes that ordering hazard
+entirely.
+
+Binding a temporary key discards what the server was told, so the next call says it again. That
+is the protocol's rule, and it is applied by watching what succeeded rather than by asking the
+caller to remember.
+
+#### Answers finding their callers
+
+`rpc_result` names the message that asked. The request record already maps a message identifier
+back to the request it carried — across resends, since a resend is a new message for the same
+request — so correlation is a lookup rather than a second table.
+
+An answer naming a message no request claims settles nothing and is passed on rather than
+raised: a result for a call that was withdrawn, or that timed out while the server was still
+working on it, arrives after nobody is waiting, and that is ordinary. A failure becomes the
+error the rest of the framework raises, so a caller handling a Bot API failure is handling this
+one.
+
+A message that does not verify is the exception: it is raised, because material failing its
+integrity check means the stream is not what this connection thinks it is, and reading on would
+be guessing.
+
+**Not implemented here:** ordering groups, reconnection, datacenter selection, and acting on a
+delivery-state answer. The first three need a layer that owns the link; the last is resend
+policy, which belongs with them.
 
 ---
 
@@ -388,10 +981,32 @@ negative signed 32-bit integer, framed exactly like a payload. The smallest encr
 handed those four bytes onward would try to decrypt an error report. Documented codes: 404 (auth
 key not found), 429 (transport flood), 444 (invalid datacenter).
 
+Because the length is the only marker, an error frame is **never padded**. Padded intermediate
+frames may otherwise carry up to fifteen extra bytes, and a padded error frame would be
+indistinguishable from a short payload; a zero-padding frame is still a valid one.
+
 **Padded intermediate delivers its padding.** The length covers payload and padding together and
 nothing in the envelope says where the payload ends, so the transport cannot trim it. The message
 layer does, using the length its own header carries. That is a property of the framing, not an
 omission in it.
+
+**Every framing takes its length from the peer, so every framing bounds it.** A decoder reads a
+length before it holds the bytes that length describes, which makes the value the other end's to
+choose. Four bytes of corruption would otherwise commit the receiver to buffering toward four
+gigabytes while emitting nothing and reporting nothing. Frames are capped at **16 MB** — far
+above the largest message the protocol sends, a one-megabyte file part plus its envelope, and far
+below what it costs to hold. A length past the cap ends the connection rather than growing a
+buffer.
+
+**The opening of a connection is unambiguous, by construction.** A server reads the first bytes
+without yet knowing whether they are a framing tag or an obfuscation init packet, and it has to
+decide from them alone. This works because the init packet is *drawn* so that it can never begin
+with a tag: a leading `0xef`, a first word of `0xeeeeeeee` or `0xdddddddd`, one of four HTTP
+verbs, or a zero second word are all rejected and redrawn rather than corrected — correcting a
+byte would make that position non-uniform, which is the one thing the prefix must not be. Full
+framing is the exception and cannot be disambiguated: it announces nothing, so a peer expecting
+it has to be told. The rejection rules are therefore not defensive tidying; they are what makes
+the other end's detection sound rather than probabilistic.
 
 ### Obfuscation
 
