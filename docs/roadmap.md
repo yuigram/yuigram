@@ -159,7 +159,7 @@ deep-equal), as a generated test. Every crypto primitive matches its known-answe
 - DH auth key handshake
 - **All mandatory security checks** ([mtproto.md](mtproto.md) §5.2), non-bypassable
 - PFS temporary keys with `auth.bindTempAuthKey`
-- MTProto storage: auth keys, temp keys, salts, DC options
+- MTProto storage: auth keys, temp keys, salts, datacenter addresses and selection
 - Sign-in flows: phone, 2FA, bot token, QR, session resume
 
 Developed against **Telegram's test datacenters** with test-only accounts.

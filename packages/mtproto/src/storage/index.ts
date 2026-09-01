@@ -10,3 +10,8 @@ export {
   authorizationStore,
   StorageError,
 } from './authorization.js'
+export {
+  DatacenterStorageError,
+  type DatacenterStore,
+  datacenterStore,
+} from './datacenters.js'
