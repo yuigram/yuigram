@@ -344,9 +344,17 @@ describe('the configuration the server publishes', () => {
     const stores = { auth: memory(), dcs: memory() }
     const { layer } = await datacenters({}, stores)
     const channel = await layer.connect()
-    channel.invoke = async () => config()
+
+    const asked: TlValue[] = []
+    channel.invoke = async (query) => {
+      asked.push(query)
+      return config()
+    }
 
     const adopted = await layer.refresh(channel)
+
+    // The configuration comes from the one method that publishes it.
+    expect(asked).toEqual([{ _: 'help.getConfig' }])
 
     expect(adopted.thisDc).toBe(4)
     expect(layer.directory.identifiers()).toEqual([4, 5])
@@ -373,6 +381,90 @@ describe('the configuration the server publishes', () => {
 
     await expect(layer.refresh(channel)).rejects.toBeInstanceOf(ValidationError)
     // Nothing was adopted, so what was known is still what is used.
+    expect(layer.directory.thisDc).toBe(2)
+  })
+
+  it('leaves the directory alone when it cannot be written down', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const store = datacenterStore(stores.dcs.kv)
+    const failing = {
+      ...store,
+      save: async () => {
+        throw new Error('the disk is full')
+      },
+    }
+
+    const { layer } = await datacenters({ datacenters: failing }, stores)
+    const channel = await layer.connect()
+    channel.invoke = async () => config()
+
+    await expect(layer.refresh(channel)).rejects.toThrow(/disk is full/)
+
+    // Adopted in memory but not on disk is a client that reverts on restart and
+    // reported a failure while changing anyway.
+    expect(layer.directory.thisDc).toBe(2)
+    expect(layer.directory.identifiers()).toEqual([1, 2])
+  })
+
+  it('writes nothing when the server publishes what was already stored', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const store = datacenterStore(stores.dcs.kv)
+
+    let writes = 0
+    const counting = {
+      ...store,
+      save: async (configuration: DcConfiguration) => {
+        writes += 1
+        return store.save(configuration)
+      },
+    }
+
+    const { layer } = await datacenters({ datacenters: counting }, stores)
+    const channel = await layer.connect()
+    channel.invoke = async () => config()
+
+    await layer.refresh(channel)
+    expect(writes).toBe(1)
+
+    // The same configuration again is not a change, and rewriting it would put
+    // the store through a write for nothing on every refresh.
+    await layer.refresh(channel)
+    await layer.refresh(channel)
+    expect(writes).toBe(1)
+  })
+
+  it('is adopted the same way however many times it is asked for', async () => {
+    const { layer } = await datacenters()
+    const channel = await layer.connect()
+    channel.invoke = async () => config()
+
+    const first = await layer.refresh(channel)
+    const second = await layer.refresh(channel)
+
+    expect(second).toEqual(first)
+    expect(layer.directory.identifiers()).toEqual([4, 5])
+  })
+
+  it('is refused when the call itself fails, leaving what was known in place', async () => {
+    const { layer } = await datacenters()
+    const channel = await layer.connect()
+    channel.invoke = async () => {
+      throw new NetworkError('the call failed')
+    }
+
+    await expect(layer.refresh(channel)).rejects.toThrow(/the call failed/)
+    expect(layer.directory.thisDc).toBe(2)
+  })
+
+  it('is refused on a channel that has been closed', async () => {
+    const { layer } = await datacenters()
+    const channel = await layer.connect()
+    channel.invoke = async () => {
+      throw new NetworkError('the channel is closed')
+    }
+    channel.close()
+
+    await expect(layer.refresh(channel)).rejects.toBeInstanceOf(NetworkError)
     expect(layer.directory.thisDc).toBe(2)
   })
 

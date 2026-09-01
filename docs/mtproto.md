@@ -1158,6 +1158,33 @@ rather than unpicked out of this one.
   salt to use, which costs one round trip and corrects itself. The clock correction is
   deliberately not stored, so a resumed connection learns it the way a new one does
 
+#### Adopting what the server publishes
+
+`help.getConfig` is the one method that publishes the list, and its answer is read and checked
+in full before anything changes. A configuration accepted in part would be indistinguishable
+from one the server published that way, and the gap would surface as a datacenter that cannot be
+reached rather than as the answer that was wrong.
+
+Adoption is ordered so that nothing is in force that was not written down:
+
+1. read and validate the whole answer — a failure here changes nothing;
+2. compare it with what the store already holds — an unchanged configuration is not written
+   again, since the server publishes the same list on every call that changed nothing;
+3. write it;
+4. only then replace the directory in memory.
+
+Persisting before adopting is what makes the failure honest. A configuration held in memory that
+was never stored reverts on the next start, and reporting the failure while having changed
+anyway leaves a caller unable to say which list is in force. A store that refuses leaves the
+previous configuration entirely in place.
+
+Order is part of the comparison. The server publishes its addresses in its own order of
+preference and selection takes the first candidate, so the same addresses rearranged are a
+different configuration and are adopted as one.
+
+Everything that can go wrong leaves the previous configuration untouched: a call that failed, an
+answer that did not parse, a store that refused, and a channel that had already closed.
+
 The authorization key leaves its object exactly once, by an explicitly named method, and as a
 copy. Everything else about that object exists to stop the key escaping by accident — it is not
 a field, not enumerable, and absent from the string, JSON and inspected forms — but a key that

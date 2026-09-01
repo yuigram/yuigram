@@ -33,11 +33,17 @@ import type { ClientInfo } from '../session/connection.js'
 import type { SessionEvent } from '../session/dispatcher.js'
 import type { AuthorizationStore } from '../storage/authorization.js'
 import type { DatacenterStore } from '../storage/datacenters.js'
-import type { TlScope, TlValue } from '../tl/index.js'
+import type { TlScope } from '../tl/index.js'
 import type { Framing } from '../transport/framing.js'
 import type { Channel, ChannelOptions, StreamRequest } from './channel.js'
 import { openChannel as defaultOpenChannel } from './channel.js'
-import { type DcConfiguration, DcDirectory, type DcPurpose, readDcConfiguration } from './dc.js'
+import {
+  type DcConfiguration,
+  DcDirectory,
+  type DcPurpose,
+  readDcConfiguration,
+  sameConfiguration,
+} from './dc.js'
 import type { ByteStream } from './tcp.js'
 
 /** How the layer is built. */
@@ -125,13 +131,29 @@ export interface Datacenters {
  */
 export async function openDatacenters(options: DatacentersOptions): Promise<Datacenters> {
   const stored = await options.datacenters.load()
+  let persisted = stored
   let directory = new DcDirectory(stored ?? options.bootstrap)
 
   const openTheChannel = options.openChannel ?? defaultOpenChannel
 
+  /**
+   * Take a configuration as the one in force.
+   *
+   * Written down before it is adopted. A configuration held in memory that was
+   * never stored reverts on the next start, and reporting the failure while
+   * having changed anyway leaves a caller unable to say what is in force — so
+   * nothing changes here until the store has accepted it.
+   *
+   * A configuration the store already holds is not written again. The server
+   * publishes the same list on every call that changes nothing, and rewriting
+   * it would spend a write per refresh for no difference.
+   */
   const adopt = async (configuration: DcConfiguration): Promise<void> => {
-    directory = new DcDirectory(configuration)
+    if (persisted !== undefined && sameConfiguration(configuration, persisted)) return
+
     await options.datacenters.save(configuration)
+    persisted = configuration
+    directory = new DcDirectory(configuration)
   }
 
   return {
@@ -182,8 +204,10 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     },
 
     async refresh(channel) {
-      const answer = await channel.invoke({ _: 'help.getConfig' })
-      const configuration = readDcConfiguration(answer as TlValue)
+      // Read and checked in full before anything is adopted: a configuration
+      // accepted in part would be indistinguishable from one the server
+      // published that way.
+      const configuration = readDcConfiguration(await channel.invoke({ _: 'help.getConfig' }))
       await adopt(configuration)
 
       return configuration
