@@ -41,7 +41,30 @@ function join(...parts: Uint8Array[]): number[] {
   return parts.flatMap((part) => [...part])
 }
 
+function fromHex(value: string): Uint8Array {
+  return Uint8Array.from(Buffer.from(value, 'hex'))
+}
+
+function toHex(value: Uint8Array): string {
+  return Buffer.from(value).toString('hex').toUpperCase()
+}
+
 describe('deriveHandshakeKeys', () => {
+  it('reproduces the published worked example', () => {
+    // The protocol documentation carries a complete worked handshake with the
+    // temporary key and IV it arrives at. Every other expectation in this file
+    // restates the schedule under test, so a misread offset would be repeated
+    // in both; these two values were produced by Telegram, and are the only
+    // check here that a misreading cannot satisfy.
+    const nonce = fromHex('BF8CB5BD9C5B4FE7CF24D64D281F89311576D53C0DA65A83267E57315414C9A6')
+    const server = fromHex('63248F6748214EAB8A2F4CC876E11974')
+
+    const { key, iv } = deriveHandshakeKeys(nonce, server)
+
+    expect(toHex(key)).toBe('16F548177058E8D39C41CBAD4D419446BEB12EB9B8F5AD28EA824B8015F17D81')
+    expect(toHex(iv)).toBe('C4D14166C1378E35C698460047DBB6075441BE9984611C28837357EBBF8CB5BD')
+  })
+
   it('matches the published schedule', () => {
     const newServer = digest('sha1', newNonce, serverNonce)
     const serverNew = digest('sha1', serverNonce, newNonce)
@@ -170,6 +193,26 @@ describe('identifiers', () => {
 
   it('does not confuse the two halves', () => {
     expect([...authKeyId(authKey)]).not.toEqual([...authKeyAuxHash(authKey)])
+  })
+
+  it('reproduces the published worked example', () => {
+    // The acknowledgement that ends the handshake. It covers the auth key
+    // through `authKeyAuxHash`, so this value fixes three readings at once: the
+    // order of the concatenation, which half of SHA1(auth_key) the auxiliary
+    // hash takes, and which 128 bits of the outer hash are kept.
+    const nonce = fromHex('BF8CB5BD9C5B4FE7CF24D64D281F89311576D53C0DA65A83267E57315414C9A6')
+    const key = fromHex(
+      '8E1081A1B5CA1B399A9A9D7E08BB9A9182AB634F8C03F2A49F944E2F944A9C71' +
+        'EDBA61A32A70D3DADEB33752AE515B16B2D8E75039C40EBE18136775C3727372' +
+        'A8DF486606D671FD63842DF0A44ACC31E68B7B1EC6A731A1DC5C748F0CB46AC0' +
+        '0FDE363F0520B51D9B59EAE519EA511A8E8591FC7010DF0B07CDBAB04013DD85' +
+        '172CB54555DC5C982EA0A5DCF4411E798D338B823161FD8C93100B7A426186B4' +
+        'C16F9113521081C8D2075872F4A0CF238034843DC01F2C26828721A2E2FFD93A' +
+        '9B0142B8DF6355C43D9AEF5B448F1CC0D84E0E72A7FF494D4CC3B1650050DDEC' +
+        '5DC321ADA68E420F45098280CEAB58A1CBFAA60FFF3218E56B4741143AC5A6F0',
+    )
+
+    expect(toHex(newNonceHash(nonce, 1, key))).toBe('AA404B58DF404D8F363772B14CE5A56F')
   })
 
   it('builds new_nonce_hash from the variant', () => {
