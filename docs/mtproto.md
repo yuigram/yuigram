@@ -1077,6 +1077,28 @@ A chunk is not a message: it may carry part of one, several, or the tail of one 
 the next. Every complete frame in a chunk is delivered, and an incomplete one leaves the buffer
 as it was.
 
+### The socket
+
+One adapter opens an actual connection, and it is deliberately thin: it frames nothing,
+obfuscates nothing, buffers nothing for reassembly, and holds no protocol state. A chunk leaves
+exactly as it was given and arrives exactly as it came, because deciding where a message ends
+belongs to the layer that knows what a message is.
+
+It bounds the **handshake** and nothing else. How long a *request* may take is a different clock
+measured against different work, and belongs with the record that tracks requests — a bound that
+outlived the handshake would end healthy connections on a timer.
+
+It reports failures without acting on them. A refused connection, a handshake that never
+completed and a peer that hung up are all reported; recovering from any of them needs to know
+which datacenter was being reached and what was in flight, and neither is knowable at this
+level. A socket reports a failure and *then* closes, so the two are one ending and are delivered
+once, carrying the failure when there was one — a peer that closed cleanly and a peer that
+vanished are different events above.
+
+Backpressure adds no policy here. The socket queues what it cannot send yet and never drops or
+reorders it, so what is queued is reported and left alone; a second queue would be a buffer with
+no consumer and a new way to reorder.
+
 ---
 
 ## 8. Network and datacenters
