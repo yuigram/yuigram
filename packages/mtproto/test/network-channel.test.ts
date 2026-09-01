@@ -340,13 +340,14 @@ describe('closing a channel', () => {
     await expect(live.invoke({ _: 'ping', ping_id: 1n })).rejects.toThrow(/channel is closed/)
   })
 
-  it('refuses the calls that were still waiting', async () => {
+  it('withdraws the calls that were still waiting', async () => {
     const { opened } = await channel()
     const live = await opened
 
     const answer = live.invoke({ _: 'help.getNearestDc' })
     live.close()
 
+    // The caller asked for this, so the call was withdrawn rather than lost.
     await expect(answer).rejects.toBeInstanceOf(CancelledError)
   })
 })
@@ -394,13 +395,32 @@ describe('a channel that ends on its own', () => {
     expect(timers.every((timer) => timer.cancelled)).toBe(true)
   })
 
-  it('refuses the calls that were still waiting', async () => {
+  it('loses the calls that were still waiting, and says so', async () => {
     const { opened, wire } = await channel()
     const live = await opened
 
     const answer = live.invoke({ _: 'help.getNearestDc' })
     wire.fail(new NetworkError('reset by peer'))
 
-    await expect(answer).rejects.toBeInstanceOf(CancelledError)
+    // A call the connection lost is a different thing from one its caller
+    // withdrew: the first is worth making again on another channel and the
+    // second must not be. Whatever decides that must not have to read a message
+    // to tell them apart.
+    await expect(answer).rejects.toBeInstanceOf(NetworkError)
+    await expect(answer).rejects.not.toBeInstanceOf(CancelledError)
+    await answer.catch((error: unknown) => {
+      expect((error as Error).cause).toBeInstanceOf(NetworkError)
+    })
+  })
+
+  it('loses the calls that were waiting when the peer hangs up cleanly', async () => {
+    const { opened, wire } = await channel()
+    const live = await opened
+
+    const answer = live.invoke({ _: 'help.getNearestDc' })
+    wire.hangUp()
+
+    // Nobody withdrew the call. The connection simply stopped carrying it.
+    await expect(answer).rejects.toBeInstanceOf(NetworkError)
   })
 })

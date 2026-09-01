@@ -373,13 +373,21 @@ function live(context: {
     )
   }
 
-  const end = (error?: Error): void => {
+  /**
+   * End the channel, telling whatever was waiting why.
+   *
+   * The reason separates a call the caller withdrew from one the connection
+   * lost, which is the difference between a call that must not be made again
+   * and one that is worth making on the next channel. Collapsing them would
+   * leave that decision to be guessed at from a message.
+   */
+  const end = (reason: Error): void => {
     if (state === 'closed') return
     state = 'closed'
 
     cancelTimer?.()
     cancelTimer = undefined
-    connection.stop(error?.message ?? 'the connection was closed')
+    connection.stop(reason)
     context.shutdown()
   }
 
@@ -390,11 +398,14 @@ function live(context: {
     },
     ended: (error) => {
       const reported = state !== 'closed'
-      end(error)
+      end(new NetworkError('the connection ended', error === undefined ? {} : { cause: error }))
+
       // Only an ending the channel did not ask for is reported: closing it is
-      // something the caller already knows about.
-      if (reported && error !== undefined) options.onClosed?.(error)
-      else if (reported && error === undefined) options.onClosed?.()
+      // something the caller already knows about. A peer that hung up cleanly
+      // and one that vanished stay distinguishable here.
+      if (!reported) return
+      if (error === undefined) options.onClosed?.()
+      else options.onClosed?.(error)
     },
   })
 
@@ -417,7 +428,7 @@ function live(context: {
       return answer
     },
     close() {
-      end()
+      end(new CancelledError('the channel was closed'))
     },
   }
 }

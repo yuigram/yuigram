@@ -1132,6 +1132,12 @@ ending, once, carrying the failure when there was one; a peer that closed cleanl
 that vanished are different events to whatever will later decide about reconnecting. An ending
 the caller asked for is not reported back to it.
 
+A call that was waiting when a channel ends is told which kind of ending it was. One the caller
+withdrew must not be made again; one the connection lost is worth making on the next channel.
+Collapsing both into the same refusal would leave that decision to be guessed at from a message,
+by a layer that has no business reading messages — so the channel names the reason and the
+connection reports it unchanged.
+
 **Not implemented here:** reconnection, pooling, migration and datacenter selection policy. Each
 of those composes channels rather than changing them.
 

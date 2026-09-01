@@ -244,13 +244,18 @@ export class Connection {
    * caller is told rather than left holding one. This is a shutdown: what a
    * *reconnect* would preserve is a decision for the layer that owns the link,
    * and there is no link here to lose.
+   *
+   * The reason is supplied rather than built here, because whether a call died
+   * because its caller asked or because the connection failed is not something
+   * this layer knows — and it is exactly what decides whether the call is worth
+   * making again.
    */
-  stop(reason = 'the connection was closed'): void {
+  stop(reason: Error = new CancelledError('the connection was closed')): void {
     for (const pending of [...this.#pending.values()]) {
       this.#pending.delete(pending.id)
       this.#registry.cancel(pending.id)
       this.#release(pending.id, this.#registry.get(pending.id)?.msgId)
-      pending.reject(new CancelledError(reason))
+      pending.reject(reason)
     }
 
     this.#queue.length = 0
