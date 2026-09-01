@@ -1135,6 +1135,34 @@ the caller asked for is not reported back to it.
 **Not implemented here:** reconnection, pooling, migration and datacenter selection policy. Each
 of those composes channels rather than changing them.
 
+### Reaching a datacenter
+
+Three things have to come together before a channel can be opened, and each is owned elsewhere:
+which address serves the purpose, whether an authorization already exists for that datacenter,
+and what to do with one that has just been negotiated. One layer brings them together.
+
+**It is a factory, not a pool.** A channel it opens belongs to whoever asked for it. Holding
+them would mean asking twice returns the same connection, which is pooling — and pooling has to
+decide how many, for what, and what happens when one dies, none of which can be answered without
+the layer that will own reconnection. Caller ownership is what lets that layer be added above
+rather than unpicked out of this one.
+
+- **a stored configuration beats a supplied one.** The stored list came from a server; the
+  supplied addresses exist only to reach a server in the first place
+- **a stored authorization is reused rather than replaced.** A connection that reused one writes
+  nothing back, because there is nothing new to record
+- **a key that has just been negotiated is written down, or the connection fails.** A client
+  that cannot keep its key negotiates a new one on every start, which is what an intruder looks
+  like — so this fails loudly rather than working quietly
+- **a key without a salt is still usable.** The server refuses the first message and names the
+  salt to use, which costs one round trip and corrects itself. The clock correction is
+  deliberately not stored, so a resumed connection learns it the way a new one does
+
+The authorization key leaves its object exactly once, by an explicitly named method, and as a
+copy. Everything else about that object exists to stop the key escaping by accident — it is not
+a field, not enumerable, and absent from the string, JSON and inspected forms — but a key that
+cannot be written down is a key that must be negotiated again on every start.
+
 ---
 
 ## 8. Network and datacenters

@@ -14,6 +14,12 @@ export {
   type StreamRequest,
 } from './channel.js'
 export {
+  type ConnectOptions,
+  type Datacenters,
+  type DatacentersOptions,
+  openDatacenters,
+} from './datacenters.js'
+export {
   type DcAddress,
   type DcConfiguration,
   DcDirectory,
