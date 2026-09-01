@@ -363,6 +363,32 @@ key rotation, which does not exist yet.
 
 `PHONE_MIGRATE_X` and `NETWORK_MIGRATE_X` during sign-in redirect to another DC (§8).
 
+#### Proving a password
+
+The password never leaves the client. The server publishes a group, two salts and its own
+public value; the client answers with a public value and a proof that it knows the password,
+and the server checks the proof without being able to derive the password from it.
+
+Only one algorithm is defined for this, and a server naming any other — including the explicit
+unknown variant — is describing a scheme this client cannot perform. That is refused rather
+than guessed at: a proof built on a guess fails for reasons nothing reports, and spends one of
+the attempts the account allows.
+
+Three rules decide whether the proof is worth anything:
+
+- **the group is checked, with the same checks the handshake applies.** A password check over a
+  group the far end chose proves nothing, so there is no path that skips them
+- **the password is used as the bytes it was typed as.** No trimming, no normalization: the
+  protocol defines none, and applying either would lock out every password ending in a space
+  or carrying a combining mark, with nothing to tell the user why
+- **the proof answers one exchange.** The server holds its secret exponent against the
+  identifier it published, so a proof computed for one challenge proves nothing about another,
+  and the identifier travels with the proof rather than being paired with it at the call site
+
+**Not implemented here:** the sign-in sequences themselves, and setting or changing a password.
+The first needs the datacenter migration errors above; the second needs the verifier a new
+password is stored as, which is a different derivation from the proof that checks one.
+
 ---
 
 ## 6. Session layer
