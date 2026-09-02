@@ -1568,6 +1568,29 @@ it.
 The `min`-peer rule is the one most often got wrong: overwriting a good cached hash with a
 `min` placeholder degrades the cache permanently and produces failures far from the cause.
 
+### How it is arranged
+
+Peers are written down as they arrive rather than fetched when they are wanted, because nothing
+about them can be refilled on demand. A record keeps only what a reference is built from — kind,
+identifier, hash, names, number — and not the entity itself: titles and photos belong to whatever
+displays them, and unlike a hash they can always be asked for again.
+
+Three ways in, since a caller names a peer by whichever it has. The identifier is the record's
+own; the name and the number are indexes rewritten on every write, because a peer that gives up a
+username should stop answering to it and that name may since belong to somebody else. Identifiers
+and hashes are stored as text: a JSON number cannot carry sixty-four bits, and losing the low ones
+means a reference that is refused for no visible reason.
+
+A reduced peer is kept when nothing better is known and is replaced the moment the peer is known
+in full, but never the other way round. It is also never named on its own — a reference to one is
+built from the context it arrived in, and asking for an ordinary reference raises rather than
+producing something Telegram will refuse as a problem with the call. Nothing fabricates a hash: a
+name that resolves to a peer the answer did not describe is reported as unresolved.
+
+A name is resolved through Telegram only when nothing usable was harvested for it, and the answer
+is harvested whole before the peer asked for is picked out — a name usually resolves to a peer
+whose answer names others, and discarding them means asking again for what has already arrived.
+
 ---
 
 ## 11. Files
