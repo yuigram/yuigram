@@ -21,6 +21,7 @@
 import { createCipheriv, createHash, getDiffieHellman } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
 import { bytesToBigIntBE } from '../../src/crypto/bytes.js'
+import { authKeyId } from '../../src/crypto/kdf.js'
 import {
   createMessageIdGenerator,
   decodePlaintextMessage,
@@ -35,6 +36,7 @@ import {
   IntermediateFraming,
   PaddedIntermediateFraming,
 } from '../../src/transport/framing.js'
+import { type Binding, openBinding } from './bind.js'
 import { open as openMessage, seal } from './encrypted.js'
 import {
   HANDSHAKE_SCOPE,
@@ -98,6 +100,8 @@ export type SessionFault =
   | 'malformed-encrypted-message'
   /** Answer naming a session the client never opened. */
   | 'wrong-session'
+  /** Decline a binding that is otherwise correct. */
+  | 'refuse-binding'
 
 /** Every way this peer can be asked to misbehave. */
 export type Fault = HandshakeFault | SessionFault
@@ -120,6 +124,15 @@ export interface MockServerOptions {
   readonly serverNonce?: Uint8Array
   /** Seconds since the epoch, as reported during the exchange. */
   readonly serverTime?: number
+  /**
+   * The permanent key a client may vouch with.
+   *
+   * A binding arrives on the connection the temporary key established, and is
+   * only meaningful against the long-lived key the same client established
+   * earlier — on a different connection, which is why it is supplied rather
+   * than remembered.
+   */
+  readonly permanentKey?: Uint8Array
   /** Milliseconds since the epoch, for the peer's message identifiers. */
   readonly now?: () => number
   /** Padding and other filler. */
@@ -151,6 +164,19 @@ export interface MockServerOptions {
   readonly scope?: TlScope
 }
 
+/**
+ * Queries a connection sends on its own behalf.
+ *
+ * Each has an answer of its own shape which names the query it answers.
+ * Everything else is an API method, and an API method is answered as a result.
+ */
+const SERVICE_QUERIES: ReadonlySet<string> = new Set([
+  'ping',
+  'ping_delay_disconnect',
+  'get_future_salts',
+  'msgs_state_req',
+])
+
 /** A stream the peer could not read as MTProto. */
 export class MockServerError extends Error {
   override readonly name = 'MockServerError'
@@ -161,6 +187,7 @@ export class MockServer {
     Pick<MockServerOptions, 'pq' | 'dhPrime' | 'g' | 'a' | 'serverNonce' | 'serverTime' | 'random'>
   >
   readonly #key: ServerKey
+  readonly #permanentKey: Uint8Array | undefined
   readonly #untagged: FullFraming | undefined
   readonly #secret: Uint8Array | undefined
   readonly #faults: ReadonlySet<Fault> | undefined
@@ -175,6 +202,9 @@ export class MockServer {
 
   /** The session the client opened, and how many answers have been sent. */
   #session: bigint | undefined
+
+  /** Every binding this peer has accepted, oldest first. */
+  readonly #bindings: Binding[] = []
   #serverSeqNo = 0
 
   /**
@@ -204,6 +234,7 @@ export class MockServer {
 
   constructor(options: MockServerOptions = {}) {
     this.#key = options.key ?? createServerKey()
+    this.#permanentKey = options.permanentKey
     this.#untagged = options.untagged
     this.#secret = options.secret
     this.#faults = options.faults
@@ -236,6 +267,11 @@ export class MockServer {
   }
 
   /** What the exchange agreed on, once it has completed. */
+  /** The bindings this peer accepted, in the order they arrived. */
+  get bindings(): readonly Binding[] {
+    return this.#bindings
+  }
+
   get result(): HandshakeResult | undefined {
     return this.#handshake?.result
   }
@@ -848,7 +884,14 @@ export class MockServer {
       }
     }
 
-    return this.#answerQuery(element)
+    // A service message carries its own answer shape; an API method is answered
+    // as a result naming the call, whether or not it arrived wrapped. A method
+    // that must travel unwrapped — one sent under a key nothing has vouched for
+    // yet — is still a method.
+    const answer = this.#answerQuery(element)
+    if (SERVICE_QUERIES.has(element.value._)) return answer
+
+    return { _: 'rpc_result', req_msg_id: element.msgId, result: answer }
   }
 
   /** What this peer replies with once the wrappers are off. */
@@ -876,6 +919,9 @@ export class MockServer {
         }
       }
 
+      case 'auth.bindTempAuthKey':
+        return this.#answerBinding(element)
+
       case 'msgs_state_req': {
         const asked = element.value['msg_ids']
         const ids = Array.isArray(asked) ? asked : []
@@ -894,6 +940,54 @@ export class MockServer {
         // through it never settles.
         return { _: 'boolTrue' }
     }
+  }
+
+  /**
+   * Check a binding the way the server does, and answer it.
+   *
+   * Everything the request states in the clear is also stated inside the blob,
+   * which only a holder of the permanent key could have produced. Checking that
+   * the two agree is the whole of the proof, so a peer that answered without
+   * checking would let a broken binding look like a working one.
+   */
+  #answerBinding(element: { msgId: bigint; value: TlValue }): TlValue {
+    const permanent = this.#permanentKey
+    if (permanent === undefined) {
+      throw new MockServerError('no permanent key was supplied to check a binding against')
+    }
+
+    const encrypted = element.value['encrypted_message']
+    if (!(encrypted instanceof Uint8Array)) {
+      throw new MockServerError('the binding carries no encrypted message')
+    }
+
+    const binding = openBinding(encrypted, permanent)
+    if (this.#faulty('refuse-binding')) return { _: 'boolFalse' }
+    const result = this.#handshake?.result
+    if (result === undefined) throw new MockServerError('no key has been established')
+
+    // The identifier the blob names has to be the one the request travelled
+    // under; the server has no other way to tell a replayed blob from a fresh
+    // one.
+    if (binding.msgId !== element.msgId) {
+      return { _: 'rpc_error', error_code: 400, error_message: 'ENCRYPTED_MESSAGE_INVALID' }
+    }
+    if (binding.nonce !== element.value['nonce']) {
+      return { _: 'rpc_error', error_code: 400, error_message: 'ENCRYPTED_MESSAGE_INVALID' }
+    }
+    if (binding.tempAuthKeyId !== readInt64LE(authKeyId(result.authKey))) {
+      return { _: 'rpc_error', error_code: 400, error_message: 'ENCRYPTED_MESSAGE_INVALID' }
+    }
+    if (binding.permAuthKeyId !== element.value['perm_auth_key_id']) {
+      return { _: 'rpc_error', error_code: 400, error_message: 'ENCRYPTED_MESSAGE_INVALID' }
+    }
+    if (this.#session !== undefined && binding.tempSessionId !== this.#session) {
+      return { _: 'rpc_error', error_code: 400, error_message: 'ENCRYPTED_MESSAGE_INVALID' }
+    }
+
+    this.#bindings.push(binding)
+
+    return { _: 'boolTrue' }
   }
 
   #decrypt(data: Uint8Array): Uint8Array {
