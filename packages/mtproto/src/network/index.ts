@@ -52,6 +52,14 @@ export {
   transferAuthorization,
 } from './migration.js'
 export {
+  harvest,
+  inputPeer,
+  inputPeerFromMessage,
+  readPeerReference,
+  readPeers,
+  resolveUsername,
+} from './peers.js'
+export {
   type LoginTokenState,
   type Reach,
   requestLoginToken,
