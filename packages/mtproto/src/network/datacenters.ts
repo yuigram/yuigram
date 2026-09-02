@@ -26,7 +26,7 @@
  * nothing below is allowed to reach persistence at all.
  */
 
-import { CancelledError, NetworkError } from '@yuigram/core'
+import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import type { ServerRsaKey } from '../auth/keys.js'
 import { equalBytes } from '../crypto/bytes.js'
 import { authKeyId } from '../crypto/kdf.js'
@@ -48,6 +48,24 @@ import {
   sameConfiguration,
 } from './dc.js'
 import type { ByteStream } from './tcp.js'
+
+/**
+ * The temporary key slot a datacenter's authorization uses.
+ *
+ * One per datacenter, shared by every purpose reaching it. A datacenter has one
+ * authorization, and the key that encrypts traffic to it is part of that
+ * authorization rather than of any one connection to it.
+ */
+const TEMPORARY_INDEX = 0
+
+/**
+ * Seconds a temporary key is asked to live for.
+ *
+ * Long enough that obtaining one is rare and short enough that a key recovered
+ * from a captured connection is worth little. The server decides what it will
+ * grant; this is what is asked for.
+ */
+const TEMPORARY_LIFETIME = 24 * 60 * 60
 
 /** How the layer is built. */
 export interface DatacentersOptions {
@@ -227,6 +245,91 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     directory = new DcDirectory(configuration)
   }
 
+  /** The moment this layer judges an expiry against, in whole seconds. */
+  function seconds(): number {
+    return Math.floor((options.now ?? Date.now)() / 1000)
+  }
+
+  /**
+   * The long-lived key for a datacenter, obtained if there is not one.
+   *
+   * This key never encrypts traffic. Its one job is to vouch for the key that
+   * does, which is why it is loaded, used and let go of rather than kept.
+   */
+  async function permanentFor(id: number, address: DcAddress): Promise<AuthKey> {
+    const stored = await options.authorization.key(id)
+    if (stored !== undefined) return AuthKey.from(stored)
+
+    // Opened for the exchange alone, carrying nothing belonging to any one
+    // caller — no cancellation, no reports. The exchange is shared, so a caller
+    // that walks away must not take it from the others, and a caller that stays
+    // must not receive reports about a connection it never asked for. Each
+    // caller opens its own once the key exists.
+    const channel = await openTheChannel({
+      address,
+      scope: options.scope,
+      client: options.client,
+      keys: options.keys,
+      ...pass(options),
+    })
+
+    try {
+      // A key that cannot be written down has to be obtained again on every
+      // start, so failing to store one fails the connection rather than leaving
+      // a client that quietly re-authorizes forever.
+      await options.authorization.setKey(id, channel.authorization.key.toBytes())
+      await options.authorization.setSalt(id, channel.authorization.salt)
+    } finally {
+      channel.close()
+    }
+
+    return channel.authorization.key
+  }
+
+  /**
+   * A key with a lifetime, vouched for and written down.
+   *
+   * Nothing is stored until the datacenter has accepted the vouching, so a
+   * connection that failed anywhere in the middle leaves no key behind that
+   * nothing has agreed to.
+   */
+  async function obtainTemporary(
+    id: number,
+    address: DcAddress,
+    permanent: AuthKey,
+  ): Promise<KnownAuthorization> {
+    const channel = await openTheChannel({
+      address,
+      scope: options.scope,
+      client: options.client,
+      keys: options.keys,
+      expiresIn: TEMPORARY_LIFETIME,
+      ...pass(options),
+    })
+
+    try {
+      await channel.bind(permanent)
+
+      const authorization = channel.authorization
+      const expiresAt = authorization.expiresAt
+      if (expiresAt === undefined) {
+        throw new ValidationError('the exchange produced a key with no lifetime')
+      }
+
+      await options.authorization.setTemporaryKey(
+        id,
+        TEMPORARY_INDEX,
+        authorization.key.toBytes(),
+        expiresAt,
+      )
+      await options.authorization.setSalt(id, authorization.salt)
+
+      return authorization
+    } finally {
+      channel.close()
+    }
+  }
+
   /**
    * The authorization for a datacenter, obtained once.
    *
@@ -239,33 +342,15 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     if (running !== undefined) return running
 
     const attempt = authorize(id, async () => {
-      const stored = await loadAuthorization(options.authorization, id)
+      const stored = await loadTemporary(options.authorization, id, seconds())
       if (stored !== undefined) return stored
 
-      // Opened for the exchange alone, carrying nothing belonging to any one
-      // caller — no cancellation, no reports. The exchange is shared, so a
-      // caller that walks away must not take it from the others, and a caller
-      // that stays must not receive reports about a connection it never asked
-      // for. Each caller opens its own once the key exists.
-      const channel = await openTheChannel({
-        address,
-        scope: options.scope,
-        client: options.client,
-        keys: options.keys,
-        ...pass(options),
-      })
+      // The long-lived key first, because it is what vouches for the other. It
+      // is loaded rather than obtained whenever one is already stored: a client
+      // that re-authorizes on every start is one that looks like an intruder.
+      const permanent = await permanentFor(id, address)
 
-      try {
-        // A key that cannot be written down has to be obtained again on every
-        // start, so failing to store one fails the connection rather than
-        // leaving a client that quietly re-authorizes forever.
-        await options.authorization.setKey(id, channel.authorization.key.toBytes())
-        await options.authorization.setSalt(id, channel.authorization.salt)
-      } finally {
-        channel.close()
-      }
-
-      return channel.authorization
+      return obtainTemporary(id, address, permanent)
     })
 
     obtaining.set(id, attempt)
@@ -319,6 +404,22 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       // replacement, leaving a live connection authorized against a key stored
       // nowhere.
       await authorize(id, async () => {
+        // The key a connection presents is the one with a lifetime, so that is
+        // what a refusal names. Discarding it leaves the long-lived key exactly
+        // where it is: a replacement costs one exchange and one vouching, while
+        // losing the root credential would mean authorizing the client again.
+        //
+        // Read without regard to expiry, because a key the datacenter has just
+        // refused is worth removing whether or not this end already considered
+        // it finished.
+        const temporary = await options.authorization.temporaryKey(id, TEMPORARY_INDEX, 0)
+        if (temporary !== undefined) {
+          if (!equalBytes(authKeyId(temporary.key), keyId)) return
+
+          await options.authorization.setTemporaryKey(id, TEMPORARY_INDEX, undefined, 0)
+          return
+        }
+
         const stored = await options.authorization.key(id)
         if (stored === undefined) return
         if (!equalBytes(authKeyId(stored), keyId)) return
@@ -360,7 +461,11 @@ function abandonable<T>(work: Promise<T>, signal: AbortSignal | undefined): Prom
 }
 
 /**
- * The authorization stored for a datacenter, if there is one.
+ * The authorization a datacenter's connections are using, if there is one.
+ *
+ * The key with a lifetime, which is the one that encrypts traffic. A key that
+ * has run out is reported as absent, because the answer to one is the same as
+ * the answer to none: obtain another and have the long-lived key vouch for it.
  *
  * A key without a salt is still usable: the server refuses the first message
  * and names the salt to use, which costs one round trip and is self-correcting.
@@ -368,11 +473,19 @@ function abandonable<T>(work: Promise<T>, signal: AbortSignal | undefined): Prom
  * the clock it was measured against — so a resumed connection learns it the
  * same way a new one does.
  */
-async function loadAuthorization(store: AuthorizationStore, id: number) {
-  const key = await store.key(id)
-  if (key === undefined) return undefined
+async function loadTemporary(
+  store: AuthorizationStore,
+  id: number,
+  now: number,
+): Promise<KnownAuthorization | undefined> {
+  const stored = await store.temporaryKey(id, TEMPORARY_INDEX, now)
+  if (stored === undefined) return undefined
 
-  return { key: AuthKey.from(key), salt: (await store.salt(id)) ?? 0n }
+  return {
+    key: AuthKey.from(stored.key),
+    salt: (await store.salt(id)) ?? 0n,
+    expiresAt: stored.expires,
+  }
 }
 
 /** The channel settings that are the same for every datacenter. */
