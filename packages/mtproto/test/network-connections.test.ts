@@ -12,7 +12,7 @@
  * timer are supplied, so every wait below is a fact rather than a delay.
  */
 
-import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
+import { CancelledError, NetworkError, TelegramError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { AuthKey } from '../src/message/auth-key.js'
 import { AUTH_KEY_NOT_FOUND, type Channel, TransportError } from '../src/network/channel.js'
@@ -32,10 +32,14 @@ interface Fake extends Channel {
   /** Everything that was called on it. */
   readonly calls: TlValue[]
   readonly closed: boolean
+  /** What the channel was opened for, so a case can tell two of them apart. */
+  readonly purpose: string
   /** The channel ends on its own, the way a socket that dropped ends one. */
   die(error?: Error): void
   /** Something the connection did not answer itself. */
   emit(event: SessionEvent): void
+  /** The datacenter refuses the calls in flight without ending the channel. */
+  refuse(error: Error): void
   /**
    * The channel reports an ending it has already reported.
    *
@@ -57,6 +61,7 @@ function fakeChannel(query: ConnectOptions, key: AuthKey): Fake {
 
   return {
     dcId: query.id ?? 2,
+    purpose: query.purpose ?? 'main',
     authorization: { key, salt: 0x5a17n },
     calls,
     get closed() {
@@ -90,6 +95,9 @@ function fakeChannel(query: ConnectOptions, key: AuthKey): Fake {
     },
     reportLate(error) {
       query.onClosed?.(error)
+    },
+    refuse(error) {
+      fail(error)
     },
   }
 }
@@ -939,6 +947,178 @@ describe('a datacenter that does not know the key', () => {
     expect(forgotten).toEqual([{ id: 2, keyId: channels[0]?.authorization.key.id }])
     expect(channels[0]?.closed).toBe(true)
     expect(connection.state).toBe('waiting')
+  })
+
+  it('stops treating a new key as a recovery once they keep being refused', async () => {
+    const { layer, channels, timers, advance, fire } = harness()
+    const connection = layer.get()
+    await connection.ready()
+
+    // Every channel lives longer than the wait before it, so each one looks
+    // like a recovery on its own. What it is, is a datacenter refusing every
+    // key this client can obtain, at the cost of a key exchange each time.
+    for (let round = 0; round < 5; round += 1) {
+      advance(5000)
+      channels.at(-1)?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000, 4000, 8000, 16_000])
+    expect(connection.state).toBe('ready')
+  })
+
+  it('stops lengthening at the ceiling however long the refusals go on', async () => {
+    const { layer, channels, timers, advance, fire } = harness({
+      backoff: { base: 1000, cap: 4000 },
+    })
+    await layer.get().ready()
+
+    for (let round = 0; round < 6; round += 1) {
+      advance(5000)
+      channels.at(-1)?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000, 4000, 4000, 4000, 4000])
+  })
+
+  it('obtains a new key every time, and never presents a refused one twice', async () => {
+    const { layer, channels, forgotten, advance, fire } = harness()
+    await layer.get().ready()
+
+    for (let round = 0; round < 3; round += 1) {
+      advance(5000)
+      channels.at(-1)?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    const used = channels.map((channel) => channel.authorization.key.id.join(','))
+    expect(new Set(used).size).toBe(channels.length)
+    // Each discard names the key that was actually refused.
+    expect(forgotten.map((entry) => entry.keyId)).toEqual(
+      channels.slice(0, 3).map((channel) => channel.authorization.key.id),
+    )
+  })
+
+  it('counts a run of them for itself and not for its datacenter', async () => {
+    const { layer, script, channels, timers, advance, fire } = harness()
+    const media = layer.get({ purpose: 'media' })
+
+    // Media starts with an ordinary failure, so it has a wait to start over
+    // from and the reset is something a case can see.
+    script.push({ fail: new NetworkError('the socket dropped') })
+    void media.ready().catch(() => undefined)
+    await settle()
+    fire()
+    await settle()
+
+    const main = layer.get()
+    await main.ready()
+
+    const latest = (purpose: string) =>
+      channels.filter((channel) => channel.purpose === purpose).at(-1)
+
+    // Main works its way up the ramp on keys that keep being refused.
+    for (let round = 0; round < 2; round += 1) {
+      advance(5000)
+      latest('main')?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    // Media has had no refusal at all, so its first is still a recovery. Two
+    // purposes share a datacenter's authorization; they do not share the run.
+    advance(5000)
+    latest('media')?.die(refusal())
+    await settle()
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 1000, 2000, 1000])
+  })
+
+  it('starts the run over once something else goes wrong', async () => {
+    const { layer, channels, timers, advance, fire } = harness()
+    await layer.get().ready()
+
+    for (let round = 0; round < 2; round += 1) {
+      advance(5000)
+      channels.at(-1)?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    // An ordinary failure after a channel that worked resets the wait exactly
+    // as it always did — the run of refusals is over.
+    advance(5000)
+    channels.at(-1)?.die(new NetworkError('the socket dropped'))
+    await settle()
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000, 1000])
+  })
+
+  it('comes back as promptly as any other recovery the first time', async () => {
+    const { layer, script, channels, timers, advance, fire } = harness()
+    script.push({ fail: new NetworkError('refused') })
+
+    const connection = layer.get()
+    void connection.ready().catch(() => undefined)
+    await settle()
+    fire()
+    await settle()
+
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+
+    // The key has been replaced, so there is no reason for this connection to
+    // come back any more slowly than one that recovered from anything else.
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 1000])
+  })
+
+  it('starts the run over when an attempt fails for another reason', async () => {
+    const { layer, script, channels, timers, advance, fire } = harness()
+    await layer.get().ready()
+
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+
+    // The attempt that should have obtained a new key never got that far, so
+    // nothing was refused and the run is over.
+    script.push({ fail: new NetworkError('the network went away') })
+    fire()
+    await settle()
+    fire()
+    await settle()
+
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000, 1000])
+  })
+
+  it('is not what an error about the account means', async () => {
+    const { layer, channels, forgotten, timers } = harness()
+    const connection = layer.get()
+    const call = connection.invoke({ _: 'ping', ping_id: 1n })
+    await settle()
+
+    // An answer saying the key is not signed in is about the account, not about
+    // the key. The key is fine, the channel is fine, and nothing is discarded.
+    channels[0]?.refuse(new TelegramError('AUTH_KEY_UNREGISTERED'))
+
+    await expect(call).rejects.toBeInstanceOf(TelegramError)
+    expect(forgotten).toEqual([])
+    expect(timers).toEqual([])
+    expect(connection.state).toBe('ready')
   })
 
   it('does not discard a key when the refusal was about something else', async () => {

@@ -210,6 +210,16 @@ class Logical implements ManagedConnection {
   /** A refused key being discarded, awaited before the next attempt. */
   #discarding: Promise<void> | undefined
   #failures = 0
+  /**
+   * Whether the last thing to go wrong was the datacenter refusing the key.
+   *
+   * A datacenter that does not know the key a connection presents refuses it,
+   * and the answer is to obtain another — which works, once. Two in a row is a
+   * datacenter refusing every key this client can obtain, at the cost of a
+   * whole key exchange each time. Only that distinction is needed, so only that
+   * is kept: anything else going wrong ends the run.
+   */
+  #keyWasRefused = false
   #lastDelay = 0
   #readyAt = 0
   #waiters: Waiter[] = []
@@ -371,7 +381,16 @@ class Logical implements ManagedConnection {
 
     // A channel that lasted longer than the wait that preceded it is evidence
     // that the trouble has passed, so the next failure starts over.
-    if (this.#now() - this.#readyAt >= this.#lastDelay) this.#failures = 0
+    //
+    // A run of refused keys earns that once. Every attempt in such a run opens
+    // a connection, obtains a key and is refused again, and each new channel
+    // lives long enough to look like a recovery — so counting them as
+    // recoveries is exactly what holds the wait at its shortest while a
+    // datacenter rejects everything this client can offer it.
+    const dead = isDeadKey(error)
+    if ((!dead || !this.#keyWasRefused) && this.#now() - this.#readyAt >= this.#lastDelay) {
+      this.#failures = 0
+    }
 
     this.#lost(undefined, error ?? new NetworkError('the connection ended'), channel)
   }
@@ -404,13 +423,16 @@ class Logical implements ManagedConnection {
     this.#abort = undefined
     this.#state = 'waiting'
 
-    if (
-      refused !== undefined &&
-      error instanceof TransportError &&
-      error.code === AUTH_KEY_NOT_FOUND
-    ) {
-      this.#discard(refused)
-    }
+    // Only a key that was actually presented can have been refused. An attempt
+    // that failed before there was a channel has no key to answer for, whatever
+    // the far end said, so it ends a run rather than continuing one.
+    const refusedKey = refused !== undefined && isDeadKey(error)
+    if (refusedKey) this.#discard(refused)
+
+    // The run belongs to this connection, not to the datacenter: two purposes
+    // share one authorization, and one of them being refused is not a reason to
+    // lengthen the other's waits.
+    this.#keyWasRefused = refusedKey
 
     this.#options.onFailure?.(this, error)
 
@@ -511,9 +533,14 @@ class Logical implements ManagedConnection {
  * case where trying again promptly is the right thing to do.
  */
 function isProtocolFailure(error: Error): boolean {
-  if (error instanceof TransportError) return error.code !== AUTH_KEY_NOT_FOUND
+  if (error instanceof TransportError) return !isDeadKey(error)
 
   return error instanceof ValidationError
+}
+
+/** Whether the far end said the key the connection presented is unknown to it. */
+function isDeadKey(error: Error | undefined): boolean {
+  return error instanceof TransportError && error.code === AUTH_KEY_NOT_FOUND
 }
 
 /** A fraction in [0, 1) from four bytes. */

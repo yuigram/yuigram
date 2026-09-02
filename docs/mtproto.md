@@ -1329,7 +1329,20 @@ a middlebox or a wrong port is not something another attempt a second later will
 A refusal that names the authorization key is the exception, and the only refusal a client can
 act on rather than wait out. The key is discarded — named by what was refused, so it cannot
 remove one another connection obtained in the meantime — and the discard completes before the
-next attempt runs, since an attempt that presented the same key would be refused again. Obtaining
+next attempt runs, since an attempt that presented the same key would be refused again.
+
+That works once. Two in a row is a datacenter refusing every key this client can obtain, and each
+attempt in such a run opens a connection, completes a whole key exchange and is refused again.
+Every one of those channels lives long enough to look like a recovery, so counting them as
+recoveries is exactly what would hold the wait at its shortest while the run continued — one key
+exchange per base interval, for as long as the datacenter kept saying no. Only the first refusal
+after something that worked is treated as a recovery; from the second the wait lengthens like any
+other failure, up to the same ceiling. Anything else going wrong ends the run, including an
+attempt that failed before it had a key to be refused over.
+
+The run belongs to a logical connection rather than to a datacenter. Two purposes share one
+authorization, but one of them being refused is not evidence about the other, and making one
+purpose's trouble lengthen the other's waits would punish a connection that is working. Obtaining
 the replacement is left where it already happens: the datacenter shares one exchange between
 everything that asks, and a second way to ask would defeat that. An RPC error about the account's
 authorization is not this: it says the key exists but no account is signed in against it, which
