@@ -12,7 +12,7 @@
  * these are about which one is opened and with what.
  */
 
-import { NetworkError, ValidationError } from '@yuigram/core'
+import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { REGISTRY as API } from '../src/generated/api/registry.js'
 import { REGISTRY as CORE } from '../src/generated/core/registry.js'
@@ -135,7 +135,15 @@ async function datacenters(
     ...overrides,
   })
 
-  return { layer, opened, channels, auth, dcs, stores: { auth, dcs } }
+  /**
+   * The channels opened for a caller.
+   *
+   * A key exchange opens one of its own, carrying no caller's settings, so the
+   * cases below look past it.
+   */
+  const forCallers = () => opened.filter((entry) => entry.authorization !== undefined)
+
+  return { layer, opened, forCallers, channels, auth, dcs, stores: { auth, dcs } }
 }
 
 describe('what the layer starts from', () => {
@@ -172,29 +180,29 @@ describe('what the layer starts from', () => {
 
 describe('choosing where to connect', () => {
   it('connects to the datacenter this client belongs to by default', async () => {
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
     await layer.connect()
 
-    expect(opened[0]?.address.id).toBe(2)
-    expect(opened[0]?.address.host).toBe('10.0.0.2')
+    expect(forCallers()[0]?.address.id).toBe(2)
+    expect(forCallers()[0]?.address.host).toBe('10.0.0.2')
   })
 
   it('connects to the datacenter that was asked for', async () => {
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
     await layer.connect({ id: 1 })
 
-    expect(opened[0]?.address.host).toBe('10.0.0.1')
+    expect(forCallers()[0]?.address.host).toBe('10.0.0.1')
   })
 
   it('honours the purpose and the address family', async () => {
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
     await layer.connect({ purpose: 'media' })
     await layer.connect({ ipv6: true })
 
     // Media prefers the address set aside for it; the family is a preference
     // applied within the purpose.
-    expect(opened[0]?.address.host).toBe('10.0.0.2')
-    expect(opened[1]?.address.host).toBe('2001:db8::2')
+    expect(forCallers()[0]?.address.host).toBe('10.0.0.2')
+    expect(forCallers()[1]?.address.host).toBe('2001:db8::2')
   })
 
   it('refuses when no address serves what was asked for', async () => {
@@ -205,22 +213,25 @@ describe('choosing where to connect', () => {
   })
 
   it('passes the settings every connection shares', async () => {
-    const { layer, opened } = await datacenters({ obfuscated: true, connectTimeout: 250 })
+    const { layer, forCallers } = await datacenters({ obfuscated: true, connectTimeout: 250 })
     await layer.connect()
 
-    expect(opened[0]).toMatchObject({ obfuscated: true, connectTimeout: 250, client: CLIENT })
+    expect(forCallers()[0]).toMatchObject({ obfuscated: true, connectTimeout: 250, client: CLIENT })
   })
 })
 
 describe('the first authorization', () => {
-  it('is negotiated when none is stored', async () => {
-    const { layer, opened } = await datacenters()
+  it('is negotiated on a connection opened for that alone', async () => {
+    const { layer, opened, channels } = await datacenters()
     await layer.connect()
 
-    // No authorization to supply, so the channel is told which server keys an
-    // exchange may be answered with.
+    // The exchange opens its own connection, carrying the server keys and none
+    // of the caller's settings, and closes it once the key is stored.
     expect(opened[0]?.authorization).toBeUndefined()
     expect(opened[0]?.keys).toEqual([])
+    expect(opened[0]?.signal).toBeUndefined()
+    expect(opened[0]?.onClosed).toBeUndefined()
+    expect(channels[0]?.closed).toBe(true)
   })
 
   it('is written down, key and salt together', async () => {
@@ -275,6 +286,51 @@ describe('the first authorization', () => {
     const kept = await authorizationStore(stores.auth.kv).key(2)
     expect(kept).toEqual(first.authorization.key.toBytes())
     expect(kept).toEqual(second.authorization.key.toBytes())
+  })
+
+  it('is not abandoned because another caller abandoned its own request', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    let exchanges = 0
+
+    const watching = async (options: ChannelOptions): Promise<Channel> => {
+      if (options.authorization === undefined) {
+        exchanges += 1
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(resolve, 20)
+          options.signal?.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timer)
+              reject(new CancelledError('abandoned'))
+            },
+            { once: true },
+          )
+        })
+      }
+
+      return {
+        dcId: options.address.id,
+        authorization: options.authorization ?? {
+          key: AuthKey.from(material(exchanges)),
+          salt: 1n,
+        },
+        state: 'ready',
+        invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        close() {},
+      }
+    }
+
+    const { layer } = await datacenters({ openChannel: watching }, stores)
+
+    const mine = new AbortController()
+    const abandoned = layer.connect({ signal: mine.signal })
+    const other = layer.connect()
+    abandoned.catch(() => undefined)
+
+    setTimeout(() => mine.abort(), 5)
+
+    // The exchange is shared; one caller's cancellation is not.
+    await expect(other).resolves.toBeDefined()
   })
 
   it('is attempted again after an exchange that failed', async () => {
@@ -428,7 +484,7 @@ describe('the configuration the server publishes', () => {
   })
 
   it('changes where a later connection goes', async () => {
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
     const channel = await layer.connect()
     channel.invoke = async () => config()
     await layer.refresh(channel)
@@ -437,7 +493,7 @@ describe('the configuration the server publishes', () => {
 
     // The default is the datacenter this client belongs to, which the server
     // has just said is a different one.
-    expect(opened[1]?.address.id).toBe(4)
+    expect(forCallers().at(-1)?.address.id).toBe(4)
   })
 
   it('is refused whole when it is malformed', async () => {
@@ -547,13 +603,13 @@ describe('the configuration the server publishes', () => {
 
 describe('what the layer does not own', () => {
   it('opens a new channel every time rather than handing one back', async () => {
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
     const first = await layer.connect()
     const second = await layer.connect()
 
     // Holding channels would mean asking twice gives the same connection, which
     // is pooling — and pooling is not decided here.
-    expect(opened).toHaveLength(2)
+    expect(forCallers()).toHaveLength(2)
     expect(first).not.toBe(second)
   })
 
@@ -561,26 +617,29 @@ describe('what the layer does not own', () => {
     const { layer, channels } = await datacenters()
     const channel = await layer.connect()
 
-    expect(channels[0]?.closed).toBe(false)
+    // The exchange closes its own; the caller's stays open until the caller
+    // says otherwise.
+    const mine = channels.at(-1)
+    expect(mine?.closed).toBe(false)
     channel.close()
-    expect(channels[0]?.closed).toBe(true)
+    expect(mine?.closed).toBe(true)
   })
 
   it('passes cancellation through to the attempt', async () => {
     const controller = new AbortController()
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
 
     await layer.connect({ signal: controller.signal })
 
-    expect(opened[0]?.signal).toBe(controller.signal)
+    expect(forCallers()[0]?.signal).toBe(controller.signal)
   })
 
   it('passes the reports a caller asked for through to the channel', async () => {
     const onClosed = () => {}
-    const { layer, opened } = await datacenters()
+    const { layer, forCallers } = await datacenters()
 
     await layer.connect({ onClosed })
 
-    expect(opened[0]?.onClosed).toBe(onClosed)
+    expect(forCallers()[0]?.onClosed).toBe(onClosed)
   })
 })

@@ -26,7 +26,7 @@
  * nothing below is allowed to reach persistence at all.
  */
 
-import { NetworkError } from '@yuigram/core'
+import { CancelledError, NetworkError } from '@yuigram/core'
 import type { ServerRsaKey } from '../auth/keys.js'
 import { AuthKey } from '../message/auth-key.js'
 import type { ClientInfo } from '../session/connection.js'
@@ -38,6 +38,7 @@ import type { Framing } from '../transport/framing.js'
 import type { Channel, ChannelOptions, KnownAuthorization, StreamRequest } from './channel.js'
 import { openChannel as defaultOpenChannel } from './channel.js'
 import {
+  type DcAddress,
   type DcConfiguration,
   DcDirectory,
   type DcPurpose,
@@ -178,10 +179,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
    * share one exchange rather than each starting their own. A failure is not
    * remembered: the next caller tries again.
    */
-  function authorizationFor(
-    id: number,
-    negotiate: () => Promise<KnownAuthorization>,
-  ): Promise<KnownAuthorization> {
+  function authorizationFor(id: number, address: DcAddress): Promise<KnownAuthorization> {
     const running = obtaining.get(id)
     if (running !== undefined) return running
 
@@ -189,15 +187,30 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       const stored = await loadAuthorization(options.authorization, id)
       if (stored !== undefined) return stored
 
-      const obtained = await negotiate()
+      // Opened for the exchange alone, carrying nothing belonging to any one
+      // caller — no cancellation, no reports. The exchange is shared, so a
+      // caller that walks away must not take it from the others, and a caller
+      // that stays must not receive reports about a connection it never asked
+      // for. Each caller opens its own once the key exists.
+      const channel = await openTheChannel({
+        address,
+        scope: options.scope,
+        client: options.client,
+        keys: options.keys,
+        ...pass(options),
+      })
 
-      // A key that cannot be written down has to be obtained again on every
-      // start, so failing to store one fails the connection rather than leaving
-      // a client that quietly re-authorizes forever.
-      await options.authorization.setKey(id, obtained.key.toBytes())
-      await options.authorization.setSalt(id, obtained.salt)
+      try {
+        // A key that cannot be written down has to be obtained again on every
+        // start, so failing to store one fails the connection rather than
+        // leaving a client that quietly re-authorizes forever.
+        await options.authorization.setKey(id, channel.authorization.key.toBytes())
+        await options.authorization.setSalt(id, channel.authorization.salt)
+      } finally {
+        channel.close()
+      }
 
-      return obtained
+      return channel.authorization
     })()
 
     obtaining.set(id, attempt)
@@ -229,28 +242,18 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
         )
       }
 
-      const settings = {
+      const authorization = await abandonable(authorizationFor(id, address), query.signal)
+
+      return openTheChannel({
         address,
         scope: options.scope,
         client: options.client,
+        authorization,
         ...pass(options),
         ...(query.signal === undefined ? {} : { signal: query.signal }),
         ...(query.onClosed === undefined ? {} : { onClosed: query.onClosed }),
         ...(query.onEvent === undefined ? {} : { onEvent: query.onEvent }),
-      }
-
-      // The connection that runs the exchange keeps the one it opened; anyone
-      // waiting on it opens their own once the authorization exists.
-      let exchanged: Channel | undefined
-      const authorization = await authorizationFor(id, async () => {
-        exchanged = await openTheChannel({ ...settings, keys: options.keys })
-        return exchanged.authorization
-      }).catch((error: unknown) => {
-        exchanged?.close()
-        throw error
       })
-
-      return exchanged ?? openTheChannel({ ...settings, authorization })
     },
 
     async refresh(channel) {
@@ -265,6 +268,24 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
 
     adopt,
   }
+}
+
+/**
+ * Wait for something shared, but only for as long as this caller wants to.
+ *
+ * The work carries on: it is being done for everyone who asked, and one of them
+ * losing interest is not a reason to stop. What ends is this caller's wait.
+ */
+function abandonable<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (signal === undefined) return work
+  if (signal.aborted) return Promise.reject(new CancelledError('the connection was abandoned'))
+
+  return new Promise<T>((resolve, reject) => {
+    const abandon = () => reject(new CancelledError('the connection was abandoned'))
+    signal.addEventListener('abort', abandon, { once: true })
+
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abandon))
+  })
 }
 
 /**

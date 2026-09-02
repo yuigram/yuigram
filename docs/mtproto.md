@@ -1232,6 +1232,18 @@ authorization that exists nowhere else, and an account authorized against it wou
 unauthorized on the next start. Obtaining is therefore shared per datacenter while it is under
 way; each caller still gets a connection of its own, so nothing caches channels.
 
+Because it is shared, the exchange runs on a **connection of its own**, opened for that alone and
+closed once the key is stored. Carrying one caller's settings into shared work makes that caller's
+decisions everyone's: a caller that abandons its attempt would cancel an exchange the others are
+still waiting on, and a caller that stays would receive reports about a connection it never asked
+for. Only what is the same for every connection to that datacenter — the address, the framing, the
+socket settings — reaches it. Cancellation and reports belong to the channel each caller opens
+afterwards, and a caller that walks away ends its own wait while the exchange carries on for the
+rest.
+
+A failed exchange is not remembered. The next caller starts a new one rather than inheriting a
+failure it did not cause and cannot retry past.
+
 A salt adopted from `bad_server_salt` lives in the session and does not outlive the connection.
 Nothing writes it back, and nothing needs to: the server names the salt to use when it refuses a
 message, so a connection that starts from a stale one corrects itself. Persisting it would save
