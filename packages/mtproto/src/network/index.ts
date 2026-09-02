@@ -42,4 +42,13 @@ export {
   sameConfiguration,
 } from './dc.js'
 export { Link, type LinkOptions, type LinkState } from './link.js'
+export {
+  type Callable,
+  type ExportedAuthorization,
+  exportAuthorization,
+  importAuthorization,
+  readExportedAuthorization,
+  type TransferOptions,
+  transferAuthorization,
+} from './migration.js'
 export { type ByteStream, connectTcp, type TcpOptions } from './tcp.js'
