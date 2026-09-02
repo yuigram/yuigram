@@ -28,6 +28,8 @@
 
 import { CancelledError, NetworkError } from '@yuigram/core'
 import type { ServerRsaKey } from '../auth/keys.js'
+import { equalBytes } from '../crypto/bytes.js'
+import { authKeyId } from '../crypto/kdf.js'
 import { AuthKey } from '../message/auth-key.js'
 import type { ClientInfo } from '../session/connection.js'
 import type { SessionEvent } from '../session/dispatcher.js'
@@ -117,6 +119,17 @@ export interface Datacenters {
    * another, are decisions this layer does not make.
    */
   connect(options?: ConnectOptions): Promise<Channel>
+  /**
+   * Discard an authorization the datacenter has refused.
+   *
+   * Named by the identifier of the key that was refused, and does nothing
+   * unless that is still the key being kept. A datacenter serves more than one
+   * connection, so by the time a refusal is acted on another connection may
+   * already have obtained a replacement — and removing that replacement would
+   * leave a live connection authorized against a key stored nowhere, which is
+   * the same damage this guards everywhere else.
+   */
+  forget(id: number, keyId: Uint8Array): Promise<void>
   /** Ask the server for the current configuration, and adopt what it says. */
   refresh(channel: Channel): Promise<DcConfiguration>
   /** Take a configuration as the one in force, and remember it. */
@@ -254,6 +267,19 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
         ...(query.onClosed === undefined ? {} : { onClosed: query.onClosed }),
         ...(query.onEvent === undefined ? {} : { onEvent: query.onEvent }),
       })
+    },
+
+    async forget(id, keyId) {
+      // Read, compare, remove. Nothing has to be locked for the comparison to
+      // still hold at the removal: a key is written only by an exchange, an
+      // exchange runs only when no key is stored, and this is the only thing
+      // that removes one — so a key cannot be replaced between the two without
+      // having been removed first, which is what the comparison would see.
+      const stored = await options.authorization.key(id)
+      if (stored === undefined) return
+      if (!equalBytes(authKeyId(stored), keyId)) return
+
+      await options.authorization.forget(id)
     },
 
     async refresh(channel) {

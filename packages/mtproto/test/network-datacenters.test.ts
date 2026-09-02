@@ -88,6 +88,27 @@ function memory() {
   }
 }
 
+/** A channel that answers everything and reports whether it was closed. */
+function stubbed(options: ChannelOptions, negotiated: number): Channel {
+  const authorization = options.authorization ?? {
+    key: AuthKey.from(material(negotiated)),
+    salt: 0x5a17n,
+  }
+  let closed = false
+
+  return {
+    dcId: options.address.id,
+    authorization,
+    get state() {
+      return closed ? ('closed' as const) : ('ready' as const)
+    },
+    invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+    close() {
+      closed = true
+    },
+  }
+}
+
 /** The layer, with channels stubbed and every call to open one recorded. */
 async function datacenters(
   overrides: Record<string, unknown> = {},
@@ -447,6 +468,113 @@ describe('an authorization that already exists', () => {
     // Nothing was negotiated, so there is nothing to record.
     expect(writes).toBe(0)
     expect(await store.salt(2)).toBe(0xaan)
+  })
+})
+
+describe('forgetting an authorization the datacenter refused', () => {
+  /** The identifier of the nth key the stub negotiates. */
+  const idOf = (seed: number) => AuthKey.from(material(seed)).id
+
+  it('removes the key that was refused', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    await layer.forget(2, idOf(1))
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toBeUndefined()
+  })
+
+  it('makes the next connection obtain a new one', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer, forCallers } = await datacenters({}, stores)
+    await layer.connect()
+    await layer.forget(2, idOf(1))
+
+    await layer.connect()
+
+    // A second exchange ran, and what it settled on is what is kept.
+    expect(forCallers().at(-1)?.authorization?.key.id).toEqual(idOf(2))
+    expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(2))
+  })
+
+  it('keeps a key the refusal does not name', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    await layer.forget(2, idOf(9))
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(1))
+  })
+
+  it('does nothing when there is nothing stored', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+
+    await expect(layer.forget(2, idOf(1))).resolves.toBeUndefined()
+    expect(stores.auth.values.size).toBe(0)
+  })
+
+  it('does nothing the second time it is asked', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    await layer.forget(2, idOf(1))
+    await layer.forget(2, idOf(1))
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toBeUndefined()
+  })
+
+  it('leaves a replacement obtained since the refusal alone', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+    await layer.forget(2, idOf(1))
+    await layer.connect()
+
+    // The refusal was about a key that is already gone. A datacenter serves
+    // more than one connection, so this arrives after another has replaced it.
+    await layer.forget(2, idOf(1))
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(2))
+  })
+
+  it('leaves a replacement alone even while it is being obtained', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let exchanges = 0
+
+    const { layer } = await datacenters(
+      {
+        openChannel: async (options: ChannelOptions) => {
+          if (options.authorization !== undefined) return stubbed(options, 0)
+
+          exchanges += 1
+          // Only the second exchange is held open, so the case can act while a
+          // replacement is under way rather than after it has finished.
+          const seed = exchanges
+          if (seed === 2) await held
+
+          return stubbed(options, seed)
+        },
+      },
+      stores,
+    )
+
+    await layer.connect()
+    await layer.forget(2, idOf(1))
+
+    const second = layer.connect()
+    await layer.forget(2, idOf(1))
+    release()
+    await second
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(2))
   })
 })
 

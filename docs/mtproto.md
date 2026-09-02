@@ -1244,6 +1244,15 @@ rest.
 A failed exchange is not remembered. The next caller starts a new one rather than inheriting a
 failure it did not cause and cannot retry past.
 
+A key the datacenter has refused is discarded by naming the identifier of the key that was
+refused, and nothing happens unless that is still the key being kept. A datacenter serves more
+than one connection, so a refusal can arrive after another connection has already obtained a
+replacement, and removing the replacement would leave that connection authorized against a key
+stored nowhere — the same damage the shared exchange exists to prevent. Nothing has to be locked
+for the comparison to still hold when the removal happens: a key is written only by an exchange,
+an exchange runs only when no key is stored, and only this removes one, so a key cannot be
+replaced between the comparison and the removal without having been removed first.
+
 A salt adopted from `bad_server_salt` lives in the session and does not outlive the connection.
 Nothing writes it back, and nothing needs to: the server names the salt to use when it refuses a
 message, so a connection that starts from a stale one corrects itself. Persisting it would save
