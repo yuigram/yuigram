@@ -166,6 +166,48 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
   const obtaining = new Map<number, Promise<KnownAuthorization>>()
 
   /**
+   * The last authorization operation queued for a datacenter.
+   *
+   * A datacenter's authorization is read, compared and written across several
+   * store calls, and the store is free to take as long as it likes over any of
+   * them. Two operations left to interleave can therefore act on what the other
+   * has already replaced: a discard that read a key before another connection
+   * replaced it would compare against what it read and delete what is there
+   * now, which is the replacement.
+   *
+   * The store is a key-value store, so it cannot be asked to compare and delete
+   * in one step; the ordering has to be supplied here. Every operation that
+   * reads or writes a datacenter's authorization runs in this queue, so none of
+   * them can observe another halfway through. Datacenters have queues of their
+   * own, and nothing else is serialized — a connection being opened is not an
+   * authorization operation once the key is in hand.
+   */
+  const authorizing = new Map<number, Promise<unknown>>()
+
+  /**
+   * Run something with a datacenter's authorization to itself.
+   *
+   * Queued rather than locked, so nothing can hold the queue by failing to
+   * release it. What is queued behind is whether the previous operation
+   * finished, not what it produced — one that failed must not stop the next,
+   * which is not the one that failed and will read the store for itself.
+   */
+  function authorize<T>(id: number, work: () => Promise<T>): Promise<T> {
+    const queued = (authorizing.get(id) ?? Promise.resolve()).then(work)
+    const settled = queued.then(
+      () => undefined,
+      () => undefined,
+    )
+
+    authorizing.set(id, settled)
+    void settled.then(() => {
+      if (authorizing.get(id) === settled) authorizing.delete(id)
+    })
+
+    return queued
+  }
+
+  /**
    * Take a configuration as the one in force.
    *
    * Written down before it is adopted. A configuration held in memory that was
@@ -196,7 +238,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     const running = obtaining.get(id)
     if (running !== undefined) return running
 
-    const attempt = (async () => {
+    const attempt = authorize(id, async () => {
       const stored = await loadAuthorization(options.authorization, id)
       if (stored !== undefined) return stored
 
@@ -224,7 +266,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       }
 
       return channel.authorization
-    })()
+    })
 
     obtaining.set(id, attempt)
     void attempt
@@ -270,16 +312,19 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     },
 
     async forget(id, keyId) {
-      // Read, compare, remove. Nothing has to be locked for the comparison to
-      // still hold at the removal: a key is written only by an exchange, an
-      // exchange runs only when no key is stored, and this is the only thing
-      // that removes one — so a key cannot be replaced between the two without
-      // having been removed first, which is what the comparison would see.
-      const stored = await options.authorization.key(id)
-      if (stored === undefined) return
-      if (!equalBytes(authKeyId(stored), keyId)) return
+      // Read, compare, remove — with nothing else touching this datacenter's
+      // authorization in between, which is what makes the comparison still
+      // true at the removal. Without that, a discard whose read was slow would
+      // compare against a key that has since been replaced and delete the
+      // replacement, leaving a live connection authorized against a key stored
+      // nowhere.
+      await authorize(id, async () => {
+        const stored = await options.authorization.key(id)
+        if (stored === undefined) return
+        if (!equalBytes(authKeyId(stored), keyId)) return
 
-      await options.authorization.forget(id)
+        await options.authorization.forget(id)
+      })
     },
 
     async refresh(channel) {

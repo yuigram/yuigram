@@ -1248,10 +1248,21 @@ A key the datacenter has refused is discarded by naming the identifier of the ke
 refused, and nothing happens unless that is still the key being kept. A datacenter serves more
 than one connection, so a refusal can arrive after another connection has already obtained a
 replacement, and removing the replacement would leave that connection authorized against a key
-stored nowhere — the same damage the shared exchange exists to prevent. Nothing has to be locked
-for the comparison to still hold when the removal happens: a key is written only by an exchange,
-an exchange runs only when no key is stored, and only this removes one, so a key cannot be
-replaced between the comparison and the removal without having been removed first.
+stored nowhere — the same damage the shared exchange exists to prevent.
+
+The comparison only means something if it is still true when the removal happens, and reading,
+comparing and removing are separate calls into a store that is free to take as long as it likes
+over any of them. A store of keys and values cannot be asked to compare and remove in one step,
+so the ordering is supplied above it: **every operation that reads or writes a datacenter's
+authorization runs in a queue of that datacenter's own**, and none of them can observe another
+halfway through. A discard whose read was slow therefore compares against what is actually
+stored, finds a key it does not name, and leaves it alone. Datacenters have queues of their own,
+so one waiting on a slow store does not hold up the rest, and nothing else is serialized — once a
+key is in hand, opening a connection with it is not an authorization operation.
+
+What is queued behind is whether the previous operation finished, not what it produced. An
+operation that failed must not stop the next one, which is not the one that failed and reads the
+store for itself.
 
 A salt adopted from `bad_server_salt` lives in the session and does not outlive the connection.
 Nothing writes it back, and nothing needs to: the server names the salt to use when it refuses a

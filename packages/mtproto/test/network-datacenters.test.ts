@@ -88,6 +88,38 @@ function memory() {
   }
 }
 
+/** A store whose next read of an authorization key can be held open. */
+function memoryHoldingReads() {
+  const base = memory()
+  const held: Array<Promise<void>> = []
+
+  return {
+    values: base.values,
+    /** Hold the next reads of a key, one promise each, in order. */
+    hold(...untils: Array<Promise<void>>) {
+      held.push(...untils)
+    },
+    kv: {
+      get: async (key: string) => {
+        // Read first, delivered later: the value is what was there when the
+        // read was made, which is exactly what a slow store hands back.
+        const snapshot = await base.kv.get(key)
+        if (key.endsWith(':key')) {
+          const waiting = held.shift()
+          if (waiting !== undefined) await waiting
+        }
+
+        return snapshot
+      },
+      set: base.kv.set,
+      delete: base.kv.delete,
+    },
+  }
+}
+
+/** Let everything already queued run. */
+const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+
 /** A channel that answers everything and reports whether it was closed. */
 function stubbed(options: ChannelOptions, negotiated: number): Channel {
   const authorization = options.authorization ?? {
@@ -569,10 +601,145 @@ describe('forgetting an authorization the datacenter refused', () => {
     await layer.connect()
     await layer.forget(2, idOf(1))
 
+    // The refusal is acted on while the replacement is still being obtained.
+    // It cannot run halfway through that, so by the time it looks, the key it
+    // names is gone and the one that is there is not its business.
     const second = layer.connect()
-    await layer.forget(2, idOf(1))
+    const stale = layer.forget(2, idOf(1))
     release()
-    await second
+    await Promise.all([second, stale])
+
+    expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(2))
+  })
+
+  it('never removes a replacement obtained while it was still reading', async () => {
+    const auth = memoryHoldingReads()
+    const stores = { auth, dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    auth.hold(held)
+
+    // The read behind this discard takes longer than everything that follows
+    // it. A comparison made against what it read, applied to what is there when
+    // it finally acts, would remove a key it never looked at.
+    const stale = layer.forget(2, idOf(1))
+    await tick()
+
+    const replacing = (async () => {
+      await layer.forget(2, idOf(1))
+      await layer.connect()
+    })()
+
+    // Given every chance to run to completion first. It cannot, because the
+    // datacenter's authorization is not free — and that is the whole guarantee.
+    await tick()
+
+    release()
+    await Promise.all([stale, replacing])
+
+    expect(await authorizationStore(auth.kv).key(2)).toEqual(material(2))
+  })
+
+  it('lets an unrelated datacenter carry on while one is held up', async () => {
+    const auth = memoryHoldingReads()
+    const stores = { auth, dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect({ id: 1 })
+
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    auth.hold(held)
+
+    const stuck = layer.forget(2, idOf(9))
+    await tick()
+
+    let behind = false
+    const queuedBehind = layer.forget(2, idOf(9)).then(() => {
+      behind = true
+    })
+
+    // Datacenters have authorizations of their own, so one waiting on a slow
+    // store is not a reason for the others to wait with it — while anything
+    // else for the same datacenter waits exactly as it should.
+    await expect(layer.forget(1, idOf(1))).resolves.toBeUndefined()
+    expect(await authorizationStore(auth.kv).key(1)).toBeUndefined()
+    expect(behind).toBe(false)
+
+    release()
+    await Promise.all([stuck, queuedBehind])
+    expect(behind).toBe(true)
+  })
+
+  it('does not let one operation overtake another because an earlier one finished', async () => {
+    const auth = memoryHoldingReads()
+    const stores = { auth, dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    let release = () => {}
+    const slow = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // The first goes straight through; the second is still reading.
+    auth.hold(Promise.resolve(), slow)
+
+    const first = layer.forget(2, idOf(9))
+    const second = layer.forget(2, idOf(9))
+    await first
+    await tick()
+
+    let third = false
+    const queuedBehind = layer.forget(2, idOf(9)).then(() => {
+      third = true
+    })
+    await tick()
+
+    // One operation finishing says nothing about the one after it. Treating it
+    // as the end of the queue would let a third run alongside the second.
+    expect(third).toBe(false)
+
+    release()
+    await Promise.all([second, queuedBehind])
+    expect(third).toBe(true)
+  })
+
+  it('is not wedged by an operation that failed', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters(
+      {
+        openChannel: async (options: ChannelOptions) => {
+          if (options.authorization === undefined) throw new NetworkError('the exchange failed')
+
+          return stubbed(options, 0)
+        },
+      },
+      stores,
+    )
+
+    await expect(layer.connect()).rejects.toBeInstanceOf(NetworkError)
+
+    // The next operation is not the one that failed, and it reads the store for
+    // itself.
+    await expect(layer.forget(2, idOf(1))).resolves.toBeUndefined()
+  })
+
+  it('is safe when two connections to one datacenter refuse the same key', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+    await layer.connect()
+
+    // Main and media are one datacenter and one key, so both see the same
+    // refusal. The second discard names a key that the first has already
+    // removed.
+    await Promise.all([layer.forget(2, idOf(1)), layer.forget(2, idOf(1))])
+    await layer.connect({ purpose: 'media' })
 
     expect(await authorizationStore(stores.auth.kv).key(2)).toEqual(material(2))
   })
