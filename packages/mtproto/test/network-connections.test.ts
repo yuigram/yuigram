@@ -50,7 +50,7 @@ interface Fake extends Channel {
   reportLate(error?: Error): void
 }
 
-function fakeChannel(query: ConnectOptions, key: AuthKey): Fake {
+function fakeChannel(query: ConnectOptions, key: AuthKey, expiresAt?: number): Fake {
   const calls: TlValue[] = []
   const pending: Array<(error: Error) => void> = []
   let closed = false
@@ -62,7 +62,7 @@ function fakeChannel(query: ConnectOptions, key: AuthKey): Fake {
   return {
     dcId: query.id ?? 2,
     purpose: query.purpose ?? 'main',
-    authorization: { key, salt: 0x5a17n },
+    authorization: { key, salt: 0x5a17n, ...(expiresAt === undefined ? {} : { expiresAt }) },
     calls,
     get closed() {
       return closed
@@ -135,6 +135,7 @@ function harness(options: Record<string, unknown> = {}) {
   let clock = 0
   let exchanges = 0
   let holdForget: Promise<void> | undefined
+  let lifetimes = false
 
   const datacenters = {
     directory: { thisDc: 2 } as unknown as DcDirectory,
@@ -157,7 +158,7 @@ function harness(options: Record<string, unknown> = {}) {
         keys.set(id, key)
       }
 
-      const channel = fakeChannel(query, key)
+      const channel = fakeChannel(query, key, lifetimes ? 4_000_000_000 : undefined)
       channels.push(channel)
 
       // The ending arrives while the channel is still on its way to whoever
@@ -215,6 +216,16 @@ function harness(options: Record<string, unknown> = {}) {
     exchanges: () => exchanges,
     advance: (ms: number) => {
       clock += ms
+    },
+    /**
+     * Whether the channels opened from now on carry a key with a lifetime.
+     *
+     * Which of a datacenter's two keys a connection is using is what tells one
+     * refusal from another, and it is read off the authorization the channel
+     * holds.
+     */
+    withLifetimes: (on = true) => {
+      lifetimes = on
     },
     /** Hold the discarding of a key open, to see what runs while it is. */
     holdForgetting: (held: Promise<void>) => {
@@ -1096,6 +1107,55 @@ describe('a datacenter that does not know the key', () => {
     script.push({ fail: new NetworkError('the network went away') })
     fire()
     await settle()
+    fire()
+    await settle()
+
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000, 1000])
+  })
+
+  it('counts a run of refused keys the same way whichever key it is', async () => {
+    const { layer, channels, timers, advance, fire, withLifetimes } = harness()
+    withLifetimes()
+    await layer.get().ready()
+
+    // A key with a lifetime is replaceable material — obtaining another costs
+    // an exchange and a vouching, and the client stays authorized — but a
+    // datacenter refusing every one of them is still a loop worth slowing.
+    for (let round = 0; round < 2; round += 1) {
+      advance(5000)
+      channels.at(-1)?.die(refusal())
+      await settle()
+      fire()
+      await settle()
+    }
+
+    expect(timers.map((timer) => timer.delay)).toEqual([1000, 2000])
+  })
+
+  it('does not let a run of one kind lengthen the waits of the other', async () => {
+    const { layer, channels, timers, advance, fire, withLifetimes } = harness()
+    withLifetimes()
+    await layer.get().ready()
+
+    // Two refusals of the key in use put that run at two.
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+    fire()
+    await settle()
+
+    advance(5000)
+    channels.at(-1)?.die(refusal())
+    await settle()
+
+    // The long-lived key is a different credential, and a refusal of it starts
+    // a run of its own. However long the other had been going says nothing
+    // about this one.
+    withLifetimes(false)
     fire()
     await settle()
 

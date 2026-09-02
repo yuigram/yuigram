@@ -38,7 +38,12 @@ import { randomBytes } from '../crypto/random.js'
 import type { InvokeOptions } from '../session/connection.js'
 import type { SessionEvent } from '../session/dispatcher.js'
 import type { TlValue } from '../tl/index.js'
-import { AUTH_KEY_NOT_FOUND, type Channel, TransportError } from './channel.js'
+import {
+  AUTH_KEY_NOT_FOUND,
+  type Channel,
+  type KnownAuthorization,
+  TransportError,
+} from './channel.js'
 import type { Datacenters } from './datacenters.js'
 import type { DcPurpose } from './dc.js'
 
@@ -211,15 +216,21 @@ class Logical implements ManagedConnection {
   #discarding: Promise<void> | undefined
   #failures = 0
   /**
-   * Whether the last thing to go wrong was the datacenter refusing the key.
+   * The kind of key the datacenter refused last, if that is what went wrong.
    *
    * A datacenter that does not know the key a connection presents refuses it,
    * and the answer is to obtain another — which works, once. Two in a row is a
    * datacenter refusing every key this client can obtain, at the cost of a
-   * whole key exchange each time. Only that distinction is needed, so only that
-   * is kept: anything else going wrong ends the run.
+   * whole key exchange each time.
+   *
+   * The two kinds are counted apart. A key with a lifetime is replaceable
+   * material: the client stays authorized and obtaining another costs an
+   * exchange and a vouching. The long-lived key is the authorization itself,
+   * and losing it means starting again. A run of one says nothing about the
+   * other, so neither lengthens the other's waits. Anything else going wrong
+   * ends whichever run was open.
    */
-  #keyWasRefused = false
+  #refused: KeyKind | undefined
   #lastDelay = 0
   #readyAt = 0
   #waiters: Waiter[] = []
@@ -388,7 +399,10 @@ class Logical implements ManagedConnection {
     // recoveries is exactly what holds the wait at its shortest while a
     // datacenter rejects everything this client can offer it.
     const dead = isDeadKey(error)
-    if ((!dead || !this.#keyWasRefused) && this.#now() - this.#readyAt >= this.#lastDelay) {
+    if (
+      (!dead || this.#refused !== kindOf(channel.authorization)) &&
+      this.#now() - this.#readyAt >= this.#lastDelay
+    ) {
       this.#failures = 0
     }
 
@@ -432,7 +446,7 @@ class Logical implements ManagedConnection {
     // The run belongs to this connection, not to the datacenter: two purposes
     // share one authorization, and one of them being refused is not a reason to
     // lengthen the other's waits.
-    this.#keyWasRefused = refusedKey
+    this.#refused = refusedKey ? kindOf(refused.authorization) : undefined
 
     this.#options.onFailure?.(this, error)
 
@@ -523,6 +537,19 @@ class Logical implements ManagedConnection {
     this.#waiters = []
     for (const waiter of waiting) waiter.settle(error)
   }
+}
+
+/** Which of a datacenter's two keys a connection was using. */
+type KeyKind = 'temporary' | 'permanent'
+
+/**
+ * Which kind of key an authorization is.
+ *
+ * A lifetime is what tells them apart: the long-lived key does not have one,
+ * and the key that encrypts traffic does.
+ */
+function kindOf(authorization: KnownAuthorization): KeyKind {
+  return authorization.expiresAt === undefined ? 'permanent' : 'temporary'
 }
 
 /**
