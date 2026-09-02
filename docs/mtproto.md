@@ -1424,7 +1424,22 @@ on current DC:  auth.exportAuthorization(dc_id) -> { id, bytes }
 on target DC:   auth.importAuthorization(id, bytes)
 ```
 
-Each DC keeps its own auth key, salts and temp keys.
+Each DC keeps its own auth key, salts and temp keys. **No key moves.** The credential is about
+the account rather than about the keys protecting the connections carrying it, so the target
+datacenter's authorization key is obtained and stored the way every other one is; what the
+exchange establishes is that the account on one datacenter is the account on the other.
+
+A redirection reaches a caller as the datacenter it names rather than as text. Four errors say
+the same thing in different words — an account that lives elsewhere, a network that suggests
+elsewhere, an account that has moved, a file stored elsewhere — and the number in each is the
+whole content of the answer, so it is carried as a number. Acting on one is deliberately left to
+the layer that knows why the call was made: following a redirection means reaching another
+datacenter, and for an account it means carrying the authorization across first.
+
+The credential is issued and spent in one operation rather than stored. It is valid briefly and
+only once, so keeping it would leave something worthless by the time anything read it back. A
+transfer that failed at either end leaves nothing behind, and is repeated by asking for another
+credential rather than by presenting the same one again.
 
 ### Connection pools
 
