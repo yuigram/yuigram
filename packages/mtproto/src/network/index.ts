@@ -51,4 +51,15 @@ export {
   type TransferOptions,
   transferAuthorization,
 } from './migration.js'
+export {
+  type LoginTokenState,
+  type Reach,
+  requestLoginToken,
+  type SignInOptions,
+  type SignInState,
+  sendCode,
+  signIn,
+  signInAsBot,
+  signInWithPassword,
+} from './signin.js'
 export { type ByteStream, connectTcp, type TcpOptions } from './tcp.js'
