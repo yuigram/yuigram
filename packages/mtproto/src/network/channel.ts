@@ -88,6 +88,14 @@ export interface KnownAuthorization {
   readonly salt: bigint
   /** Seconds to add to the local clock to reach the server's. */
   readonly timeOffset?: number
+  /**
+   * The Unix second a temporary key stops being valid.
+   *
+   * Absent for a permanent key, which does not expire. Present for one that
+   * was asked to, so the layer that decides when to obtain another can tell
+   * without asking the server again.
+   */
+  readonly expiresAt?: number
 }
 
 /** How a channel is opened. */
@@ -112,6 +120,19 @@ export interface ChannelOptions {
    * cost nothing. Omitting it runs an exchange and reports the result.
    */
   readonly authorization?: KnownAuthorization
+  /**
+   * Seconds a negotiated key should live for.
+   *
+   * Asking for a lifetime makes the exchange produce a **temporary** key, which
+   * is what perfect forward secrecy rests on: the long-lived key vouches for it
+   * once and never encrypts traffic itself, so a key recovered from a captured
+   * connection buys its own lifetime and nothing before it. A key negotiated
+   * this way is not usable until something has vouched for it, which this layer
+   * does not do — it reports the key and when it expires.
+   *
+   * Ignored when an authorization is supplied, since no exchange runs.
+   */
+  readonly expiresIn?: number
   /** The envelope messages travel in. Defaults to the intermediate framing. */
   readonly framing?: Framing
   /** Hide the shape of the connection. */
@@ -260,6 +281,7 @@ export async function openChannel(options: ChannelOptions): Promise<Channel> {
         keys: options.keys ?? [],
         dcId: options.address.id,
         now,
+        ...(options.expiresIn === undefined ? {} : { expiresIn: options.expiresIn }),
         ...(options.random === undefined ? {} : { random: options.random }),
         signal: options.signal,
         accept: (handle) => {
@@ -306,6 +328,7 @@ function negotiate(options: {
   keys: readonly ServerRsaKey[]
   dcId: number
   now: () => number
+  expiresIn?: number
   random?: (length: number) => Uint8Array
   signal: AbortSignal | undefined
   accept: (wiring: Wiring) => void
@@ -318,6 +341,7 @@ function negotiate(options: {
     keys: options.keys,
     dcId: options.dcId,
     now: options.now,
+    ...(options.expiresIn === undefined ? {} : { expiresIn: options.expiresIn }),
     ...(options.random === undefined ? {} : { random: options.random }),
   })
 
@@ -360,6 +384,15 @@ function negotiate(options: {
               key: result.authKey,
               salt: result.serverSalt,
               timeOffset: result.timeOffset,
+              // Measured against the server's clock rather than this one. The
+              // lifetime the server granted is relative to when it granted it,
+              // and the offset is what the exchange just established.
+              ...(result.expiresIn === undefined
+                ? {}
+                : {
+                    expiresAt:
+                      Math.floor(options.now() / 1000) + result.timeOffset + result.expiresIn,
+                  }),
             }),
           )
         } catch (error) {

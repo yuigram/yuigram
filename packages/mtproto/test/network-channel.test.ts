@@ -133,8 +133,12 @@ function peerStream(peer: MockServer) {
 }
 
 /** Open a channel against a fresh peer, with everything deterministic. */
-async function channel(overrides: Record<string, unknown> = {}, seed = 11) {
-  const peer = new MockServer({ key: SERVER_KEY, scope: SCOPE })
+async function channel(
+  overrides: Record<string, unknown> = {},
+  seed = 11,
+  peerOptions: Record<string, unknown> = {},
+) {
+  const peer = new MockServer({ key: SERVER_KEY, scope: SCOPE, ...peerOptions })
   const wire = peerStream(peer)
   const closes: Array<Error | undefined> = []
   const timers: Array<{ run: () => void; delay: number; cancelled: boolean }> = []
@@ -306,6 +310,66 @@ describe('a channel that is ready', () => {
     expect(timers.some((timer) => !timer.cancelled)).toBe(true)
 
     live.close()
+  })
+})
+
+describe('a key with a lifetime', () => {
+  it('is asked for by the exchange when one was wanted', async () => {
+    const { opened, peer } = await channel({ expiresIn: 86_400 })
+    const live = await opened
+
+    // The lifetime is part of what the exchange asks for, not something added
+    // afterwards: the server has to agree to it while the key is being made.
+    expect(peer.result?.expiresIn).toBe(86_400)
+
+    live.close()
+  })
+
+  it('is reported with the moment it stops being valid', async () => {
+    const { opened } = await channel({ expiresIn: 3600 })
+    const live = await opened
+
+    // Measured against the server's clock, which the exchange has just
+    // established; the lifetime the server granted is relative to its own.
+    const offset = live.authorization.timeOffset ?? 0
+    expect(live.authorization.expiresAt).toBe(1_700_000_000 + offset + 3600)
+
+    live.close()
+  })
+
+  it('is measured against the server clock rather than this one', async () => {
+    // The far end is a minute ahead. A lifetime it granted is relative to its
+    // own clock, so an expiry read off this one would fall due a minute early.
+    const { opened } = await channel({ expiresIn: 3600 }, 11, { serverTime: 1_700_000_060 })
+    const live = await opened
+
+    expect(live.authorization.timeOffset).toBe(60)
+    expect(live.authorization.expiresAt).toBe(1_700_000_060 + 3600)
+
+    live.close()
+  })
+
+  it('is not what an ordinary exchange produces', async () => {
+    const { opened, peer } = await channel()
+    const live = await opened
+
+    expect(peer.result?.expiresIn).toBeUndefined()
+    expect(live.authorization.expiresAt).toBeUndefined()
+
+    live.close()
+  })
+
+  it('is carried through when one is supplied rather than negotiated', async () => {
+    const { opened } = await channel({ expiresIn: 3600 })
+    const first = await opened
+    const known = first.authorization
+    first.close()
+
+    const resumed = await (await channel({ authorization: known, keys: [] })).opened
+
+    expect(resumed.authorization.expiresAt).toBe(known.expiresAt)
+
+    resumed.close()
   })
 })
 
