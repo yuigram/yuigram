@@ -24,7 +24,7 @@ export {
   xorBytes,
 } from './bytes.js'
 export { factorizePq, type PqFactors } from './factorize.js'
-export { sha1, sha256 } from './hash.js'
+export { md5, sha1, sha256 } from './hash.js'
 export { igeDecrypt, igeEncrypt } from './ige.js'
 export {
   type AesParameters,
