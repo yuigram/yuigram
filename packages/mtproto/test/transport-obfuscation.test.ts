@@ -16,9 +16,9 @@ import { createCipheriv } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
   AbridgedFraming,
+  FramingError,
   IntermediateFraming,
   PaddedIntermediateFraming,
-  FramingError,
 } from '../src/transport/framing.js'
 import { createObfuscation } from '../src/transport/obfuscation.js'
 

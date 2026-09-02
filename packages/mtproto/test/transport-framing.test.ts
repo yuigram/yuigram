@@ -17,10 +17,10 @@ import {
   type Frame,
   FrameBuffer,
   type Framing,
+  FramingError,
   FullFraming,
   IntermediateFraming,
   PaddedIntermediateFraming,
-  FramingError,
 } from '../src/transport/framing.js'
 
 function hex(value: Uint8Array): string {
