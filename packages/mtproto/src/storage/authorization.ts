@@ -56,6 +56,13 @@ interface StoredTemporaryKey {
   readonly expires: number
 }
 
+/** A temporary key and the second it stops being valid. */
+export interface StoredKeyLifetime {
+  readonly key: Uint8Array
+  /** The Unix second the key expires at. */
+  readonly expires: number
+}
+
 /**
  * Durable authorization state.
  *
@@ -68,8 +75,15 @@ export interface AuthorizationStore {
   key(dc: number): Promise<Uint8Array | undefined>
   /** Record a permanent key, or forget it by passing `undefined`. */
   setKey(dc: number, key: Uint8Array | undefined): Promise<void>
-  /** A temporary key, if one is stored and has not expired at `now`. */
-  temporaryKey(dc: number, index: number, now: number): Promise<Uint8Array | undefined>
+  /**
+   * A temporary key, if one is stored and has not expired at `now`.
+   *
+   * The expiry comes back with it. A caller that holds the key also has to know
+   * when it stops being valid — to decide whether to replace it, and to say so
+   * again when vouching for it — and reading the record twice would leave the
+   * two answers able to disagree.
+   */
+  temporaryKey(dc: number, index: number, now: number): Promise<StoredKeyLifetime | undefined>
   /** Record a temporary key with the second it expires at. */
   setTemporaryKey(
     dc: number,
@@ -126,7 +140,12 @@ export function authorizationStore(kv: KV<unknown>): AuthorizationStore {
       // be judged against is the one it is asked for.
       if (expires <= now) return undefined
 
-      return decodeKey(record['key'], `dc${dc} temporary key ${index}`)
+      const key = decodeKey(record['key'], `dc${dc} temporary key ${index}`)
+      if (key === undefined) {
+        throw new StorageError(`dc${dc} temporary key ${index} has no key material`)
+      }
+
+      return { key, expires }
     },
 
     async setTemporaryKey(dc, index, key, expires) {

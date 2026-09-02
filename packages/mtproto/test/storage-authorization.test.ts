@@ -103,11 +103,21 @@ describe('what is kept', () => {
 })
 
 describe('temporary keys', () => {
+  it('are returned with the moment they stop being valid', async () => {
+    const { store: subject } = store()
+    await subject.setTemporaryKey(2, 0, keyBytes(4), 5000)
+
+    // A caller holding the key also has to know when it runs out, to decide
+    // whether to replace it and to say so again when vouching for it. Reading
+    // the record twice would leave the two answers able to disagree.
+    expect((await subject.temporaryKey(2, 0, 0))?.expires).toBe(5000)
+  })
+
   it('are returned while they are still live', async () => {
     const { store: subject } = store()
     await subject.setTemporaryKey(2, 0, keyBytes(4), 5000)
 
-    expect(hex((await subject.temporaryKey(2, 0, 4999)) ?? new Uint8Array(0))).toBe(
+    expect(hex((await subject.temporaryKey(2, 0, 4999))?.key ?? new Uint8Array(0))).toBe(
       hex(keyBytes(4)),
     )
   })
@@ -127,8 +137,12 @@ describe('temporary keys', () => {
     await subject.setTemporaryKey(2, 0, keyBytes(1), 5000)
     await subject.setTemporaryKey(2, 1, keyBytes(2), 5000)
 
-    expect(hex((await subject.temporaryKey(2, 0, 0)) ?? new Uint8Array(0))).toBe(hex(keyBytes(1)))
-    expect(hex((await subject.temporaryKey(2, 1, 0)) ?? new Uint8Array(0))).toBe(hex(keyBytes(2)))
+    expect(hex((await subject.temporaryKey(2, 0, 0))?.key ?? new Uint8Array(0))).toBe(
+      hex(keyBytes(1)),
+    )
+    expect(hex((await subject.temporaryKey(2, 1, 0))?.key ?? new Uint8Array(0))).toBe(
+      hex(keyBytes(2)),
+    )
   })
 
   it('can be forgotten', async () => {
