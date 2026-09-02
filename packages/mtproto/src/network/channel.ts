@@ -213,7 +213,28 @@ export async function openChannel(options: ChannelOptions): Promise<Channel> {
     ...(options.connectTimeout === undefined ? {} : { connectTimeout: options.connectTimeout }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     onData: (bytes) => {
-      if (!closed) link.receive(bytes)
+      if (closed) return
+
+      try {
+        link.receive(bytes)
+      } catch (error) {
+        // Reading is where the stream is judged, and a stream that fails that
+        // judgement — a frame that does not decode, a message that does not
+        // verify — is one there is no point reading further. It ends the
+        // channel the way a socket that dropped ends it, which is what puts the
+        // failure in front of whoever is waiting on this connection instead of
+        // leaving it to escape the callback that delivered the bytes.
+        // Bytes that arrive before anything is reading them belong to whoever
+        // is opening the channel, not to a channel that does not exist yet, so
+        // they are raised rather than reported. Nothing on a real stream can
+        // arrive in that window — a socket delivers on its own turn, and the
+        // exchange is listening before the first of them — so this is the
+        // answer to a stream that handed over bytes before it handed over
+        // itself.
+        if (ended === undefined) throw error
+
+        ended(error instanceof Error ? error : new NetworkError(String(error)))
+      }
     },
     onClose: (error) => {
       ended?.(error)

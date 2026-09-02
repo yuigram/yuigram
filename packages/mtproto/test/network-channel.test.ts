@@ -29,6 +29,7 @@ import {
 } from '../src/network/channel.js'
 import type { DcAddress } from '../src/network/dc.js'
 import { TlScope } from '../src/tl/index.js'
+import { FramingError, IntermediateFraming } from '../src/transport/index.js'
 import { createServerKey } from './server/keys.js'
 import { DH_PRIME, MockServer } from './server/server.js'
 
@@ -305,6 +306,124 @@ describe('a channel that is ready', () => {
     expect(timers.some((timer) => !timer.cancelled)).toBe(true)
 
     live.close()
+  })
+})
+
+describe('a stream that stops being the protocol', () => {
+  /** A frame header claiming more than any frame may carry. */
+  const impossibleFrame = () => {
+    const header = new Uint8Array(4)
+    new DataView(header.buffer).setUint32(0, 64 * 1024 * 1024, true)
+
+    return header
+  }
+
+  /** A well-formed frame whose contents are not a message this key can open. */
+  const unreadableMessage = () => new IntermediateFraming().encode(new Uint8Array(64))
+
+  it('ends the channel rather than escaping the callback that delivered it', async () => {
+    const { opened, wire, closes } = await channel()
+    const live = await opened
+
+    // The bytes arrive on a socket callback. An exception thrown here has
+    // nowhere to go but the runtime, which ends the process rather than the
+    // connection.
+    expect(() => wire.deliver(impossibleFrame())).not.toThrow()
+
+    expect(live.state).toBe('closed')
+    expect(closes[0]).toBeInstanceOf(FramingError)
+  })
+
+  it('reports a message that does not verify the same way', async () => {
+    const { opened, wire, closes } = await channel()
+    const live = await opened
+
+    expect(() => wire.deliver(unreadableMessage())).not.toThrow()
+
+    expect(live.state).toBe('closed')
+    // Whatever the layer that refused it raised, reported as it was raised.
+    expect(closes[0]).toBeInstanceOf(Error)
+    expect(closes[0]).not.toBeInstanceOf(CancelledError)
+  })
+
+  it('ends once, however much more arrives', async () => {
+    const { opened, wire, closes } = await channel()
+    await opened
+
+    wire.deliver(impossibleFrame())
+    wire.deliver(impossibleFrame())
+    wire.deliver(unreadableMessage())
+
+    expect(closes).toHaveLength(1)
+  })
+
+  it('withdraws the calls that were still waiting', async () => {
+    const { opened, wire } = await channel()
+    const live = await opened
+
+    const call = live.invoke({ _: 'ping', ping_id: 9n })
+    wire.deliver(impossibleFrame())
+
+    const failure = await call.catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(NetworkError)
+    // The outcome is unknown, and what made it unknown is kept.
+    expect((failure as Error).cause).toBeInstanceOf(FramingError)
+  })
+
+  it('stops the timer and the stream', async () => {
+    const { opened, wire, timers } = await channel()
+    await opened
+
+    wire.deliver(impossibleFrame())
+
+    expect(timers.every((timer) => timer.cancelled)).toBe(true)
+    expect(wire.stream.open).toBe(false)
+  })
+
+  it('leaves a stream that is still the protocol alone', async () => {
+    const { opened, peer, closes } = await channel()
+    const live = await opened
+
+    const answer = await live.invoke({ _: 'ping', ping_id: 11n })
+
+    expect(answer).toMatchObject({ _: 'pong', ping_id: 11n })
+    expect(closes).toEqual([])
+    expect(live.state).toBe('ready')
+    expect(peer.state).toBe('established')
+
+    live.close()
+  })
+
+  it('fails the attempt when bytes arrive before anything can read them', async () => {
+    const peer = new MockServer({ key: SERVER_KEY, scope: SCOPE })
+    const wire = peerStream(peer)
+
+    await expect(
+      openChannel({
+        address: ADDRESS,
+        scope: SCOPE,
+        client: CLIENT,
+        keys: [serverRsaKey(peer.key)],
+        // A stream that delivers before it has been handed over. There is
+        // nothing to end and nobody to tell, so the failure belongs to whoever
+        // is opening the channel.
+        open: async (request) => {
+          request.onData(Uint8Array.of(1, 2, 3, 4))
+
+          return wire.attach(request)
+        },
+      }),
+    ).rejects.toThrow(/link that is/)
+  })
+
+  it('fails the attempt when it happens before there is a channel', async () => {
+    const { opened, wire } = await channel({ authorization: undefined })
+
+    // Nothing is established yet, so there is no channel to end — the failure
+    // belongs to whoever is waiting for one.
+    queueMicrotask(() => wire.deliver(impossibleFrame()))
+
+    await expect(opened).rejects.toBeInstanceOf(FramingError)
   })
 })
 
