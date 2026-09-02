@@ -78,6 +78,7 @@ function fakeChannel(query: ConnectOptions, key: AuthKey): Fake {
       // flight when the channel ends.
       return new Promise<TlValue>((_resolve, reject) => pending.push(reject))
     },
+    async bind() {},
     close() {
       if (closed) return
       closed = true

@@ -135,6 +135,7 @@ function stubbed(options: ChannelOptions, negotiated: number): Channel {
       return closed ? ('closed' as const) : ('ready' as const)
     },
     invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+    bind: async () => {},
     close() {
       closed = true
     },
@@ -171,6 +172,7 @@ async function datacenters(
         return record.closed ? ('closed' as const) : ('ready' as const)
       },
       invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+      bind: async () => {},
       close() {
         record.closed = true
       },
@@ -324,6 +326,7 @@ describe('the first authorization', () => {
         authorization,
         state: 'ready',
         invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        bind: async () => {},
         close() {},
       }
     }
@@ -369,6 +372,7 @@ describe('the first authorization', () => {
         },
         state: 'ready',
         invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        bind: async () => {},
         close() {},
       }
     }
@@ -402,6 +406,7 @@ describe('the first authorization', () => {
         },
         state: 'ready',
         invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        bind: async () => {},
         close() {},
       }
     }

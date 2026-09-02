@@ -27,6 +27,7 @@
  */
 
 import { CancelledError, type ErrorOptions, NetworkError, ValidationError } from '@yuigram/core'
+import { bindTemporaryKey } from '../auth/bind.js'
 import { Handshake } from '../auth/handshake.js'
 import type { ServerRsaKey } from '../auth/keys.js'
 import type { AuthKey } from '../message/auth-key.js'
@@ -184,6 +185,18 @@ export interface Channel {
   readonly state: ChannelState
   /** Call a method and wait for its answer. */
   invoke(query: TlValue, options?: InvokeOptions): Promise<TlValue>
+  /**
+   * Vouch for this connection's key with a long-lived one.
+   *
+   * The key a channel negotiated with a lifetime is not usable until the
+   * permanent key has said so, once. The proof is a message naming both keys,
+   * encrypted under the permanent key and carried by a request sent under this
+   * one — so it can only be made where the connection is, which is here.
+   *
+   * The permanent key is used and not kept. It never encrypts anything this
+   * channel sends, which is the whole point of having a second one.
+   */
+  bind(permanent: AuthKey): Promise<void>
   /** Close everything, once. */
   close(): void
 }
@@ -520,6 +533,35 @@ function live(context: {
       rearm()
 
       return answer
+    },
+    async bind(permanent) {
+      if (state !== 'ready') throw new NetworkError('the channel is closed')
+
+      const expiresAt = authorization.expiresAt
+      if (expiresAt === undefined) {
+        throw new ValidationError('only a key with a lifetime is worth vouching for')
+      }
+
+      const answer = await connection.invokeNaming(
+        'auth.bindTempAuthKey',
+        (msgId) =>
+          bindTemporaryKey({
+            permanent,
+            temporary: authorization.key,
+            sessionId: connection.sessionId,
+            msgId,
+            expiresAt,
+            scope: options.scope,
+            ...(options.random === undefined ? {} : { random: options.random }),
+          }).body,
+      )
+      rearm()
+
+      // The server answers a Bool. Anything but agreement leaves a key nothing
+      // has vouched for, which must not be mistaken for one that is ready.
+      if (answer._ !== 'boolTrue') {
+        throw new ValidationError(`the datacenter refused the binding with ${answer._}`)
+      }
     },
     close() {
       end(new CancelledError('the channel was closed'))

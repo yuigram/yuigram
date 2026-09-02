@@ -20,6 +20,7 @@ import { validateDhParameters } from '../src/crypto/primes.js'
 import { REGISTRY as API } from '../src/generated/api/registry.js'
 import { REGISTRY as CORE } from '../src/generated/core/registry.js'
 import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
+import { AuthKey } from '../src/message/auth-key.js'
 import {
   AUTH_KEY_NOT_FOUND,
   type ByteStream,
@@ -370,6 +371,89 @@ describe('a key with a lifetime', () => {
     expect(resumed.authorization.expiresAt).toBe(known.expiresAt)
 
     resumed.close()
+  })
+})
+
+describe('vouching for a key with a lifetime', () => {
+  /** A permanent key established elsewhere, which this connection never uses. */
+  const permanent = () =>
+    AuthKey.from(Uint8Array.from({ length: 256 }, (_, index) => (index * 11 + 5) & 0xff))
+
+  /** A channel on a temporary key, against a peer that will check the binding. */
+  const bindable = async (key = permanent()) => {
+    const opened = await channel({ expiresIn: 3600 }, 11, { permanentKey: key.toBytes() })
+    return { ...opened, live: await opened.opened, key }
+  }
+
+  it('is accepted when both keys agree', async () => {
+    const { live, peer, key } = await bindable()
+
+    await expect(live.bind(key)).resolves.toBeUndefined()
+
+    // The peer checks every claim the request makes in the clear against the
+    // blob only a holder of the permanent key could have produced.
+    const [binding] = peer.bindings
+    expect(binding?.expiresAt).toBe(live.authorization.expiresAt)
+    expect(live.state).toBe('ready')
+
+    live.close()
+  })
+
+  it('names the session it was sent in', async () => {
+    const { live, peer, key } = await bindable()
+    await live.bind(key)
+
+    const [binding] = peer.bindings
+    expect(binding?.tempSessionId).toBeTypeOf('bigint')
+    expect(binding?.msgId).toBeTypeOf('bigint')
+
+    live.close()
+  })
+
+  it('is not mistaken for accepted when the datacenter declines it', async () => {
+    const key = permanent()
+    const opened = await channel({ expiresIn: 3600 }, 11, {
+      permanentKey: key.toBytes(),
+      faults: new Set(['refuse-binding']),
+    })
+    const live = await opened.opened
+
+    // Declined is not accepted. Treating it as accepted would leave the
+    // connection using a key nothing has vouched for.
+    await expect(live.bind(key)).rejects.toBeInstanceOf(ValidationError)
+
+    live.close()
+  })
+
+  it('is refused for a key with no lifetime', async () => {
+    const { opened } = await channel()
+    const live = await opened
+
+    // A permanent key vouching for itself would leave the long-lived key
+    // encrypting traffic, which is the one thing this exists to prevent.
+    await expect(live.bind(permanent())).rejects.toThrow(/only a key with a lifetime/)
+
+    live.close()
+  })
+
+  it('is refused on a channel that has been closed', async () => {
+    const { live, key } = await bindable()
+    live.close()
+
+    await expect(live.bind(key)).rejects.toThrow(/channel is closed/)
+  })
+
+  it('fails when the datacenter will not accept it', async () => {
+    // The peer expects one permanent key; the client vouches with another. The
+    // blob then opens to nothing the peer can recognise.
+    const other = AuthKey.from(
+      Uint8Array.from({ length: 256 }, (_, index) => (index * 3 + 1) & 0xff),
+    )
+    const { live } = await bindable(other)
+
+    await expect(live.bind(permanent())).rejects.toThrow()
+
+    live.close()
   })
 })
 
