@@ -16,6 +16,16 @@ export {
   TransportError,
 } from './channel.js'
 export {
+  type BackoffOptions,
+  type ConnectionInvokeOptions,
+  type ConnectionState,
+  type Connections,
+  type ConnectionsOptions,
+  type ConnectionTarget,
+  type ManagedConnection,
+  openConnections,
+} from './connections.js'
+export {
   type ConnectOptions,
   type Datacenters,
   type DatacentersOptions,

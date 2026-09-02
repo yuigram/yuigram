@@ -1267,6 +1267,79 @@ copy. Everything else about that object exists to stop the key escaping by accid
 a field, not enumerable, and absent from the string, JSON and inspected forms — but a key that
 cannot be written down is a key that must be negotiated again on every start.
 
+#### A connection that outlives its channels
+
+A channel is single-use: one socket, one exchange, one session, and once it ends it stays ended.
+That is what makes every layer below it decidable, and it is also what makes a channel unusable
+on its own — a caller holding one holds something that will eventually die and take its calls
+with it. One layer above turns that into an address a caller can keep.
+
+It is identified by **datacenter and purpose**, and by nothing else:
+
+- not the key, which belongs to the datacenter, is shared between purposes on it, and can be
+  replaced without the connection becoming a different connection;
+- not the address, which is chosen again from the directory on every attempt, so a configuration
+  adopted mid-life takes effect at the next reconnection;
+- not the address family, which is a preference the client holds — two connections differing only
+  in family would be two sessions competing for one endpoint.
+
+States are `idle`, `connecting`, `ready`, `waiting` and `closed`. There is deliberately no state
+between losing a channel and waiting to open another: it would own no timer and no attempt, which
+makes it indistinguishable from `idle` except by history, and anything able to observe it would
+be something that forgot to arrange the retry.
+
+```
+   idle ──> connecting ──> ready ──> waiting ──> connecting ──> ready
+              │  ▲                      ▲
+              └──┴──── failure ─────────┘
+
+   close() from any state ──> closed, and nothing after it
+```
+
+Only an idle connection starts an attempt, and that single test is what keeps every other state
+honest. `connecting` already has one in flight, so two callers cannot become two sockets;
+`ready` already has a channel; `waiting` has a timer armed, and cutting that wait short is
+exactly what the wait exists to prevent; `closed` is final.
+
+**Reconnection recovers the transport, not the requests.** A call that has been written has an
+unknown outcome once the channel dies, and repeating it would turn one message into two, so it
+fails and is never sent again. A call that has *not* been written is a different matter: it never
+reached a socket, so it goes out on whichever channel arrives next, and that is not a repeat. The
+write is the line, and it is the only line.
+
+Waits lengthen while failures continue and stop at a ceiling. Half of every interval is fixed and
+half is drawn, so connections that failed together do not all come back together. The ramp starts
+over once a channel has lasted longer than the wait that preceded it, which is the evidence that
+the trouble has passed — a datacenter that accepts a connection and drops it immediately is not
+healthy, and treating it as healthy is how a client ends up hammering. A refusal the far end
+chose to send, or an answer that was not the protocol, waits the longest interval from the start:
+a middlebox or a wrong port is not something another attempt a second later will fix.
+
+A refusal that names the authorization key is the exception, and the only refusal a client can
+act on rather than wait out. The key is discarded — named by what was refused, so it cannot
+remove one another connection obtained in the meantime — and the discard completes before the
+next attempt runs, since an attempt that presented the same key would be refused again. Obtaining
+the replacement is left where it already happens: the datacenter shares one exchange between
+everything that asks, and a second way to ask would defeat that. An RPC error about the account's
+authorization is not this: it says the key exists but no account is signed in against it, which
+is a sign-in concern and not a reason to discard anything.
+
+Every callback a channel makes is checked against the channel that is current. A channel that has
+been replaced must not arrange a reconnection for a connection that already has one, forward
+events as though they were current, or revive one that was shut down. Closing is terminal: the
+timer is cancelled, the attempt is abandoned, the channel is closed, everyone waiting is told,
+and a channel that arrives afterwards is closed rather than adopted.
+
+Timers stay where they were. A channel owns the one that paces the protocol; a connection owns
+the one that paces reconnection; and because the second exists only while there is no channel,
+**a logical connection owns at most one real timer at any moment.**
+
+This is not a pool. There is one channel per identity, no capacity, no selection and no
+distribution — deciding between several channels needs a notion of load and health that nothing
+here has. What this owns is the lifetime of one channel, which is the part a pool would otherwise
+have to absorb.
+
+
 ---
 
 ## 8. Network and datacenters
