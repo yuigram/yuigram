@@ -385,9 +385,28 @@ Three rules decide whether the proof is worth anything:
   identifier it published, so a proof computed for one challenge proves nothing about another,
   and the identifier travels with the proof rather than being paired with it at the call site
 
-**Not implemented here:** the sign-in sequences themselves, and setting or changing a password.
-The first needs the datacenter migration errors above; the second needs the verifier a new
-password is stored as, which is a different derivation from the proof that checks one.
+**Not implemented here:** setting or changing a password, which needs the verifier a new
+password is stored as — a different derivation from the proof that checks one.
+
+#### The sequences
+
+Three ways in, differing only in what is proved. A phone number is proved by a code sent to it
+and then, when the account is protected, by a password. A bot proves itself with its token in one
+call. A second device shows a token for another to approve, and a token that names a different
+datacenter is presented there rather than reported back — a caller handed a token it cannot
+display has been told nothing useful.
+
+Every step may be told it is on the wrong datacenter, so every step follows that. Two of the
+redirections arrive before an account is bound to anything and are answered by asking elsewhere;
+the third says the account has moved, which leaves the datacenter being redirected to knowing
+nothing about it, so the authorization is carried across first using the exchange in §8.
+Redirections are bounded, because datacenters that redirect to each other describe a loop that no
+number of attempts resolves.
+
+An account that turns out not to exist is reported as needing one rather than raised as a
+failure; registering is a separate sequence and is not implemented. Signing in stores nothing:
+what it changes lives on Telegram's side, and the keys it was proved over are kept by the layer
+that established them.
 
 ---
 
