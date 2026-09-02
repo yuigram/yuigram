@@ -480,8 +480,8 @@ describe('proving the password', () => {
     const peer = passwordPeer()
     const dcs = datacenters({
       2: {
-        'account.getPassword': () => ({
-          ...(peer.describe() as Record<string, unknown>),
+        'account.getPassword': (): TlValue => ({
+          ...(peer.describe() as TlValue),
           current_algo: { _: 'passwordKdfAlgoUnknown' },
         }),
         'auth.checkPassword': () => AUTHORIZED,
