@@ -40,9 +40,15 @@ export class ValidationError extends YuigramError {
   override readonly name = 'ValidationError'
 }
 
-/** Transport failure: connection refused, timeout, DNS, socket reset. */
+/**
+ * Transport failure: connection refused, timeout, DNS, socket reset.
+ *
+ * Subclassed per transport, since what a refusal carries — an HTTP status, a
+ * protocol-level code — differs by protocol. The shared contract is that a
+ * caller holding one knows the outcome of its request is unknown.
+ */
 export class NetworkError extends YuigramError {
-  override readonly name = 'NetworkError'
+  override readonly name: string = 'NetworkError'
 }
 
 /** Sign-in failure: invalid token, wrong code, 2FA required. */

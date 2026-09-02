@@ -27,7 +27,7 @@
 
 import { createCipheriv, createHash } from 'node:crypto'
 import { randomBytes as defaultRandom } from '../crypto/random.js'
-import { type Framing, TransportError } from './framing.js'
+import { type Framing, FramingError } from './framing.js'
 
 /** Length of the init packet. */
 const INIT_SIZE = 64
@@ -134,7 +134,7 @@ function drawInitPacket(random: (length: number) => Uint8Array): Uint8Array {
   for (let draw = 0; draw < MAX_DRAWS; draw += 1) {
     const packet = random(INIT_SIZE)
     if (packet.length !== INIT_SIZE) {
-      throw new TransportError(`init packet must be ${INIT_SIZE} bytes, received ${packet.length}`)
+      throw new FramingError(`init packet must be ${INIT_SIZE} bytes, received ${packet.length}`)
     }
 
     // A leading 0xef would be read as an abridged connection.
@@ -149,7 +149,7 @@ function drawInitPacket(random: (length: number) => Uint8Array): Uint8Array {
     return packet
   }
 
-  throw new TransportError('failed to draw a usable obfuscation init packet')
+  throw new FramingError('failed to draw a usable obfuscation init packet')
 }
 
 /**
@@ -169,7 +169,7 @@ function writeTag(packet: Uint8Array, tag: Uint8Array): void {
     return
   }
 
-  throw new TransportError(
+  throw new FramingError(
     `a framing tag must be 1 or 4 bytes to be obfuscated, received ${tag.length}`,
   )
 }

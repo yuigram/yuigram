@@ -6,12 +6,14 @@
  */
 
 export {
+  AUTH_KEY_NOT_FOUND,
   type Channel,
   type ChannelOptions,
   type ChannelState,
   type KnownAuthorization,
   openChannel,
   type StreamRequest,
+  TransportError,
 } from './channel.js'
 export {
   type ConnectOptions,

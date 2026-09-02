@@ -26,7 +26,7 @@
  * persistence out of the live machinery.
  */
 
-import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
+import { CancelledError, type ErrorOptions, NetworkError, ValidationError } from '@yuigram/core'
 import { Handshake } from '../auth/handshake.js'
 import type { ServerRsaKey } from '../auth/keys.js'
 import type { AuthKey } from '../message/auth-key.js'
@@ -39,6 +39,44 @@ import { createObfuscation } from '../transport/obfuscation.js'
 import type { DcAddress } from './dc.js'
 import { Link } from './link.js'
 import { type ByteStream, connectTcp } from './tcp.js'
+
+/**
+ * The datacenter refused the connection.
+ *
+ * A refusal the far end chose to send, framed like any other message. The code
+ * is what makes it actionable — one value says the key this connection
+ * presented is not one the datacenter knows, which is a reason to obtain
+ * another, while the rest are a reason to wait — so it is kept as a number.
+ * Deciding from the message text would turn the wording of an error into
+ * protocol, and the wording is not protocol.
+ *
+ * The code is the magnitude of what the wire carried, matching the frame it was
+ * read from: the sign is what identifies a frame as a refusal, and says nothing
+ * further once it has.
+ *
+ * It is a `NetworkError` because that is what it is to a caller waiting on a
+ * call — the connection ended and the outcome is unknown. The code is for the
+ * layer that decides what to do next, not for the caller.
+ */
+export class TransportError extends NetworkError {
+  override readonly name = 'TransportError'
+  /** The refusal code, as its magnitude. The wire carries it negated. */
+  readonly code: number
+
+  constructor(code: number, options: ErrorOptions = {}) {
+    super(`the datacenter refused the connection with transport code ${code}`, options)
+    this.code = code
+  }
+}
+
+/**
+ * The refusal that says the authorization key presented is unknown.
+ *
+ * The one refusal a client can act on rather than wait out: the key it holds
+ * does not exist at that datacenter, so no amount of retrying with it will
+ * work. Every other code is transient as far as this client can tell.
+ */
+export const AUTH_KEY_NOT_FOUND = 404
 
 /** How far a channel has got. */
 export type ChannelState = 'handshaking' | 'ready' | 'closed'
@@ -162,8 +200,10 @@ export async function openChannel(options: ChannelOptions): Promise<Channel> {
     ...(obfuscation === undefined ? {} : { obfuscation }),
     write: (bytes) => stream.write(bytes),
     onPayload: (payload) => deliver(payload),
+    // Reported as it arrived. A refusal carries its reason in the code, and a
+    // code turned into a sentence is a code the layer above cannot act on.
     onTransportError: (code) => {
-      ended?.(new NetworkError(`the datacenter refused the connection with code ${code}`))
+      ended?.(new TransportError(code))
     },
   })
 

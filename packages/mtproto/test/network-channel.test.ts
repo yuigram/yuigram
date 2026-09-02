@@ -20,7 +20,13 @@ import { validateDhParameters } from '../src/crypto/primes.js'
 import { REGISTRY as API } from '../src/generated/api/registry.js'
 import { REGISTRY as CORE } from '../src/generated/core/registry.js'
 import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
-import { type ByteStream, openChannel, type StreamRequest } from '../src/network/channel.js'
+import {
+  AUTH_KEY_NOT_FOUND,
+  type ByteStream,
+  openChannel,
+  type StreamRequest,
+  TransportError,
+} from '../src/network/channel.js'
 import type { DcAddress } from '../src/network/dc.js'
 import { TlScope } from '../src/tl/index.js'
 import { createServerKey } from './server/keys.js'
@@ -107,6 +113,10 @@ function peerStream(peer: MockServer) {
     fail(error: Error) {
       open = false
       onClose(error)
+    },
+    /** The peer sends something that was not an answer to anything. */
+    deliver(bytes: Uint8Array) {
+      onData(bytes)
     },
     /** The peer hangs up cleanly. */
     hangUp() {
@@ -295,6 +305,63 @@ describe('a channel that is ready', () => {
     expect(timers.some((timer) => !timer.cancelled)).toBe(true)
 
     live.close()
+  })
+})
+
+describe('a refusal from the datacenter', () => {
+  it('is reported as a code rather than as a sentence', async () => {
+    const { opened, wire, peer, closes } = await channel()
+    const live = await opened
+
+    wire.deliver(peer.transportError(AUTH_KEY_NOT_FOUND))
+
+    // The layer above has to tell one refusal from another to know whether the
+    // key it holds is worth keeping. Reading that back out of a message would
+    // make the wording protocol.
+    const [reported] = closes
+    expect(reported).toBeInstanceOf(TransportError)
+    expect((reported as TransportError).code).toBe(AUTH_KEY_NOT_FOUND)
+    expect(live.state).toBe('closed')
+  })
+
+  it('carries whatever code the far end sent', async () => {
+    for (const code of [1, 404, 429, 444, 100_000]) {
+      const { opened, wire, peer, closes } = await channel()
+      const live = await opened
+
+      wire.deliver(peer.transportError(code))
+
+      expect((closes[0] as TransportError).code).toBe(code)
+      live.close()
+    }
+  })
+
+  it('is still a network failure to anyone holding a call', async () => {
+    const { opened, wire, peer } = await channel()
+    const live = await opened
+
+    const call = live.invoke({ _: 'ping', ping_id: 7n })
+    wire.deliver(peer.transportError(AUTH_KEY_NOT_FOUND))
+
+    // A caller learns only that the outcome is unknown. The code is for the
+    // layer deciding what to open next, and it survives as the cause.
+    const failure = await call.catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(NetworkError)
+    expect(failure).not.toBeInstanceOf(TransportError)
+    expect((failure as Error).cause).toBeInstanceOf(TransportError)
+    expect(((failure as Error).cause as TransportError).code).toBe(AUTH_KEY_NOT_FOUND)
+  })
+
+  it('is a network failure in its own right', () => {
+    // Existing callers branch on NetworkError and must keep working.
+    expect(new TransportError(404)).toBeInstanceOf(NetworkError)
+    expect(new TransportError(404).name).toBe('TransportError')
+    expect(new TransportError(404).message).toContain('404')
+  })
+
+  it('keeps the cause it was given', () => {
+    const cause = new Error('the frame that carried it')
+    expect(new TransportError(429, { cause }).cause).toBe(cause)
   })
 })
 

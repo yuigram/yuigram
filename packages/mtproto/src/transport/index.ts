@@ -13,11 +13,11 @@ export {
   type Frame,
   FrameBuffer,
   type Framing,
+  FramingError,
   type FramingName,
   FullFraming,
   IntermediateFraming,
   PaddedIntermediateFraming,
-  TransportError,
 } from './framing.js'
 export {
   createObfuscation,

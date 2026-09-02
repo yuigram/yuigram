@@ -60,9 +60,16 @@ export interface Framing {
   decode(buffer: FrameBuffer): Frame | undefined
 }
 
-/** A frame the decoder refused. */
-export class TransportError extends YuigramError {
-  override readonly name = 'TransportError'
+/**
+ * A frame the decoder refused.
+ *
+ * Raised where the bytes themselves are wrong — a length that cannot be right,
+ * a failed checksum, an init packet of the wrong size. It says nothing about
+ * what the far end meant, only that what arrived is not this framing. A refusal
+ * the far end *chose* to send is a different thing and is reported as one.
+ */
+export class FramingError extends YuigramError {
+  override readonly name = 'FramingError'
 }
 
 /**
@@ -98,7 +105,7 @@ const MAX_FRAME_SIZE = 16 * 1024 * 1024
 /** Refuse a length the connection could not legitimately be carrying. */
 function checkFrameSize(length: number, framing: FramingName): number {
   if (length > MAX_FRAME_SIZE) {
-    throw new TransportError(
+    throw new FramingError(
       `${framing} frame of ${length} bytes exceeds the ${MAX_FRAME_SIZE}-byte maximum`,
     )
   }
@@ -141,7 +148,7 @@ export class FrameBuffer {
 
   /** Read `count` bytes, or `undefined` when they have not all arrived. */
   take(count: number): Uint8Array | undefined {
-    if (count < 0) throw new TransportError('negative frame length')
+    if (count < 0) throw new FramingError('negative frame length')
     if (this.available < count) return undefined
 
     const value = this.#bytes.slice(this.#offset, this.#offset + count)
@@ -168,7 +175,7 @@ export class FrameBuffer {
 
   /** Discard `count` bytes that have already been inspected. */
   skip(count: number): void {
-    if (count > this.available) throw new TransportError('cannot skip past the buffered bytes')
+    if (count > this.available) throw new FramingError('cannot skip past the buffered bytes')
     this.#offset += count
   }
 
@@ -201,7 +208,7 @@ function asFrame(payload: Uint8Array): Frame {
 /** Reject a payload the framing cannot express. */
 function checkAligned(payload: Uint8Array, framing: FramingName): void {
   if (payload.length % 4 !== 0) {
-    throw new TransportError(
+    throw new FramingError(
       `${framing} payloads must be a multiple of 4 bytes, received ${payload.length}`,
     )
   }
@@ -224,9 +231,7 @@ export class AbridgedFraming implements Framing {
   encode(payload: Uint8Array): Uint8Array {
     checkAligned(payload, this.name)
     if (payload.length > ABRIDGED_MAX) {
-      throw new TransportError(
-        `abridged payload of ${payload.length} bytes exceeds the length field`,
-      )
+      throw new FramingError(`abridged payload of ${payload.length} bytes exceeds the length field`)
     }
 
     const words = payload.length / 4
@@ -371,7 +376,7 @@ export class FullFraming implements Framing {
     if (total === undefined) return undefined
 
     if (total < 12)
-      throw new TransportError(`full frame length ${total} is below the 12-byte minimum`)
+      throw new FramingError(`full frame length ${total} is below the 12-byte minimum`)
 
     checkFrameSize(total, this.name)
     if (buffer.available < total) return undefined
@@ -384,12 +389,12 @@ export class FullFraming implements Framing {
     const actual = crc32(frame.subarray(0, total - 4))
 
     if (expected !== actual) {
-      throw new TransportError('full frame failed its CRC32 check')
+      throw new FramingError('full frame failed its CRC32 check')
     }
 
     const sequence = view.getUint32(4, true)
     if (sequence !== this.#received) {
-      throw new TransportError(`expected full frame ${this.#received}, received ${sequence}`)
+      throw new FramingError(`expected full frame ${this.#received}, received ${sequence}`)
     }
     this.#received += 1
 

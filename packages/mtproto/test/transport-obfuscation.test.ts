@@ -18,7 +18,7 @@ import {
   AbridgedFraming,
   IntermediateFraming,
   PaddedIntermediateFraming,
-  TransportError,
+  FramingError,
 } from '../src/transport/framing.js'
 import { createObfuscation } from '../src/transport/obfuscation.js'
 
@@ -201,7 +201,7 @@ describe('the constraints on the drawn prefix', () => {
   it('refuses a source that returns the wrong length', () => {
     expect(() =>
       createObfuscation(new IntermediateFraming(), { random: () => new Uint8Array(32) }),
-    ).toThrow(TransportError)
+    ).toThrow(FramingError)
   })
 })
 

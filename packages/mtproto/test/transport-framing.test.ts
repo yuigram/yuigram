@@ -20,7 +20,7 @@ import {
   FullFraming,
   IntermediateFraming,
   PaddedIntermediateFraming,
-  TransportError,
+  FramingError,
 } from '../src/transport/framing.js'
 
 function hex(value: Uint8Array): string {
@@ -331,7 +331,7 @@ describe('the maximum frame size', () => {
     const buffer = new FrameBuffer()
     buffer.push(bytes(0xff, 0xff, 0xff, 0xff))
 
-    expect(() => new IntermediateFraming().decode(buffer)).toThrow(TransportError)
+    expect(() => new IntermediateFraming().decode(buffer)).toThrow(FramingError)
     expect(() => new IntermediateFraming().decode(buffer)).toThrow(/exceeds the/)
   })
 
@@ -339,7 +339,7 @@ describe('the maximum frame size', () => {
     const buffer = new FrameBuffer()
     buffer.push(bytes(0xff, 0xff, 0xff, 0xff))
 
-    expect(() => new IntermediateFraming().decode(buffer)).toThrow(TransportError)
+    expect(() => new IntermediateFraming().decode(buffer)).toThrow(FramingError)
     expect(buffer.available).toBe(4)
   })
 
@@ -395,7 +395,7 @@ describe('the frame buffer', () => {
     const buffer = new FrameBuffer()
     buffer.push(bytes(1, 2))
 
-    expect(() => buffer.skip(3)).toThrow(TransportError)
+    expect(() => buffer.skip(3)).toThrow(FramingError)
   })
 
   it('returns undefined rather than a short read', () => {
