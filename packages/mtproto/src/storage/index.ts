@@ -15,3 +15,10 @@ export {
   type DatacenterStore,
   datacenterStore,
 } from './datacenters.js'
+export {
+  type PeerKind,
+  type PeerRecord,
+  PeerStorageError,
+  type PeerStore,
+  peerStore,
+} from './peers.js'
