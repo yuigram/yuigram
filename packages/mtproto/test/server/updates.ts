@@ -21,6 +21,7 @@
  * name, so a case describes the misbehaviour it is about and gets exactly that.
  */
 
+import { TelegramError } from '@yuigram/core'
 import type { TlValue } from '../../src/tl/index.js'
 
 /** The moment the server's clock starts at. */
@@ -153,6 +154,28 @@ export class UpdateServer {
     }
 
     this.#common.push({ pts: this.#pts, count, update })
+
+    return update
+  }
+
+  /**
+   * Messages removed from the common box.
+   *
+   * Carries no message of its own, so nothing about it can be recognised by
+   * identity — only the sequence can say whether it has already been applied.
+   */
+  deletion(ids: readonly number[]): TlValue {
+    this.#pts += ids.length
+    this.#date += 1
+
+    const update: TlValue = {
+      _: 'updateDeleteMessages',
+      messages: [...ids],
+      pts: this.#pts,
+      pts_count: ids.length,
+    }
+
+    this.#common.push({ pts: this.#pts, count: ids.length, update })
 
     return update
   }
@@ -311,7 +334,9 @@ export class UpdateServer {
     const key = id.toString()
     const behaviour = this.faults.channels?.get(key) ?? 'normal'
     if (behaviour === 'private') {
-      throw new UpdateServerError('CHANNEL_PRIVATE')
+      // Refused the way Telegram refuses it, so a client recognises it by the
+      // name rather than by the type the server happens to raise.
+      throw new TelegramError('CHANNEL_PRIVATE (400)')
     }
 
     const box = this.#channels.get(key) ?? { pts: 1, log: [] }
