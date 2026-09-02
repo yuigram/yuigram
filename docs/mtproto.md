@@ -1215,6 +1215,32 @@ different configuration and are adopted as one.
 Everything that can go wrong leaves the previous configuration untouched: a call that failed, an
 answer that did not parse, a store that refused, and a channel that had already closed.
 
+#### What an authorization is made of, and how long each part lives
+
+| State | Lives as long as | Persisted | Why |
+|---|---|---|---|
+| authorization key | the account's authorization | **required** | expensive to obtain and identifies the client; losing it means authorizing again |
+| server salt | half an hour, attached to the key | *optimization* | a stale one costs one refused message and a round trip, no more |
+| session identifier | one connection | never | a session belongs to one connection |
+| sequence numbers | one connection | never | they follow the session |
+| message identifiers | one connection | never | time-derived, and the server tracks them per session |
+| clock correction | one connection | never | only true relative to the clock it was measured against |
+
+A datacenter has **one** authorization. Two connections opened at the same moment must not each
+obtain a key, because only one can be kept — the other connection would be holding an
+authorization that exists nowhere else, and an account authorized against it would appear
+unauthorized on the next start. Obtaining is therefore shared per datacenter while it is under
+way; each caller still gets a connection of its own, so nothing caches channels.
+
+A salt adopted from `bad_server_salt` lives in the session and does not outlive the connection.
+Nothing writes it back, and nothing needs to: the server names the salt to use when it refuses a
+message, so a connection that starts from a stale one corrects itself. Persisting it would save
+a round trip per connection and is worth doing when something owns the moment a connection ends;
+it is not required for correctness.
+
+For the same reason, an authorization reported by a connection is the one it *started* with. A
+salt learned later is not reflected there, so it is not a source to persist from.
+
 The authorization key leaves its object exactly once, by an explicitly named method, and as a
 copy. Everything else about that object exists to stop the key escaping by accident — it is not
 a field, not enumerable, and absent from the string, JSON and inspected forms — but a key that

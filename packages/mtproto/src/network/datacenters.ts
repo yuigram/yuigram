@@ -35,7 +35,7 @@ import type { AuthorizationStore } from '../storage/authorization.js'
 import type { DatacenterStore } from '../storage/datacenters.js'
 import type { TlScope } from '../tl/index.js'
 import type { Framing } from '../transport/framing.js'
-import type { Channel, ChannelOptions, StreamRequest } from './channel.js'
+import type { Channel, ChannelOptions, KnownAuthorization, StreamRequest } from './channel.js'
 import { openChannel as defaultOpenChannel } from './channel.js'
 import {
   type DcConfiguration,
@@ -137,6 +137,21 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
   const openTheChannel = options.openChannel ?? defaultOpenChannel
 
   /**
+   * Exchanges under way, one per datacenter.
+   *
+   * A datacenter has one authorization, and only one can be kept. Two
+   * connections opened at the same moment would otherwise each obtain a key and
+   * the second would be written over the first — leaving a live connection
+   * holding an authorization that no longer exists anywhere, and, once signing
+   * in exists, an account authorized against a key that is discarded on the
+   * next start.
+   *
+   * Only the obtaining is shared. Each caller still gets a connection of its
+   * own, so this is not a cache of channels.
+   */
+  const obtaining = new Map<number, Promise<KnownAuthorization>>()
+
+  /**
    * Take a configuration as the one in force.
    *
    * Written down before it is adopted. A configuration held in memory that was
@@ -154,6 +169,45 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     await options.datacenters.save(configuration)
     persisted = configuration
     directory = new DcDirectory(configuration)
+  }
+
+  /**
+   * The authorization for a datacenter, obtained once.
+   *
+   * Registered before anything is awaited, so two callers arriving together
+   * share one exchange rather than each starting their own. A failure is not
+   * remembered: the next caller tries again.
+   */
+  function authorizationFor(
+    id: number,
+    negotiate: () => Promise<KnownAuthorization>,
+  ): Promise<KnownAuthorization> {
+    const running = obtaining.get(id)
+    if (running !== undefined) return running
+
+    const attempt = (async () => {
+      const stored = await loadAuthorization(options.authorization, id)
+      if (stored !== undefined) return stored
+
+      const obtained = await negotiate()
+
+      // A key that cannot be written down has to be obtained again on every
+      // start, so failing to store one fails the connection rather than leaving
+      // a client that quietly re-authorizes forever.
+      await options.authorization.setKey(id, obtained.key.toBytes())
+      await options.authorization.setSalt(id, obtained.salt)
+
+      return obtained
+    })()
+
+    obtaining.set(id, attempt)
+    void attempt
+      .catch(() => undefined)
+      .then(() => {
+        if (obtaining.get(id) === attempt) obtaining.delete(id)
+      })
+
+    return attempt
   }
 
   return {
@@ -175,32 +229,28 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
         )
       }
 
-      const known = await loadAuthorization(options.authorization, id)
-      const channel = await openTheChannel({
+      const settings = {
         address,
         scope: options.scope,
         client: options.client,
-        ...(known === undefined ? { keys: options.keys } : { authorization: known }),
         ...pass(options),
         ...(query.signal === undefined ? {} : { signal: query.signal }),
         ...(query.onClosed === undefined ? {} : { onClosed: query.onClosed }),
         ...(query.onEvent === undefined ? {} : { onEvent: query.onEvent }),
-      })
-
-      if (known !== undefined) return channel
-
-      // A key that cannot be written down has to be negotiated again on every
-      // start, so failing to store one fails the connection rather than leaving
-      // a client that quietly re-authorizes forever.
-      try {
-        await options.authorization.setKey(id, channel.authorization.key.toBytes())
-        await options.authorization.setSalt(id, channel.authorization.salt)
-      } catch (error) {
-        channel.close()
-        throw error
       }
 
-      return channel
+      // The connection that runs the exchange keeps the one it opened; anyone
+      // waiting on it opens their own once the authorization exists.
+      let exchanged: Channel | undefined
+      const authorization = await authorizationFor(id, async () => {
+        exchanged = await openTheChannel({ ...settings, keys: options.keys })
+        return exchanged.authorization
+      }).catch((error: unknown) => {
+        exchanged?.close()
+        throw error
+      })
+
+      return exchanged ?? openTheChannel({ ...settings, authorization })
     },
 
     async refresh(channel) {

@@ -241,6 +241,72 @@ describe('the first authorization', () => {
     expect(await store.key(2)).toBeUndefined()
   })
 
+  it('is obtained once, however many connections ask for it at the same time', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    let exchanges = 0
+
+    const slow = async (options: ChannelOptions): Promise<Channel> => {
+      const authorization = options.authorization ?? {
+        key: AuthKey.from(material(++exchanges)),
+        salt: BigInt(exchanges),
+      }
+      // An exchange takes a moment, as a real one does.
+      if (options.authorization === undefined) {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+      }
+
+      return {
+        dcId: options.address.id,
+        authorization,
+        state: 'ready',
+        invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        close() {},
+      }
+    }
+
+    const { layer } = await datacenters({ openChannel: slow }, stores)
+    const [first, second] = await Promise.all([layer.connect(), layer.connect()])
+
+    // A second exchange produces a second key, and only one can be kept — so
+    // the other connection would be holding an authorization that is discarded
+    // the moment it ends.
+    expect(exchanges).toBe(1)
+
+    const kept = await authorizationStore(stores.auth.kv).key(2)
+    expect(kept).toEqual(first.authorization.key.toBytes())
+    expect(kept).toEqual(second.authorization.key.toBytes())
+  })
+
+  it('is attempted again after an exchange that failed', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    let attempts = 0
+
+    const flaky = async (options: ChannelOptions): Promise<Channel> => {
+      attempts += 1
+      if (attempts === 1) throw new NetworkError('the exchange failed')
+
+      return {
+        dcId: options.address.id,
+        authorization: options.authorization ?? {
+          key: AuthKey.from(material(attempts)),
+          salt: 1n,
+        },
+        state: 'ready',
+        invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        close() {},
+      }
+    }
+
+    const { layer } = await datacenters({ openChannel: flaky }, stores)
+
+    await expect(layer.connect()).rejects.toThrow(/the exchange failed/)
+
+    // A failure is not remembered: the next caller starts a fresh exchange
+    // rather than being handed the one that failed.
+    const channel = await layer.connect()
+    expect(channel.authorization.key.toBytes()).toEqual(material(2))
+  })
+
   it('fails the connection when it cannot be written down', async () => {
     const stores = { auth: memory(), dcs: memory() }
     const failing = {
