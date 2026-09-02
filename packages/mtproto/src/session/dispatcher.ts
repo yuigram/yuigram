@@ -17,7 +17,7 @@
  * is held by the layer that sent it, which is the layer that must be told.
  */
 
-import { FloodError, SessionError, TelegramError } from '@yuigram/core'
+import { type ErrorOptions, FloodError, SessionError, TelegramError } from '@yuigram/core'
 import type { AuthKey } from '../message/auth-key.js'
 import { decodeEncryptedMessage } from '../message/encrypted.js'
 import { readObject, type TlScope, type TlValue } from '../tl/index.js'
@@ -460,6 +460,53 @@ export class SessionDispatcher {
 const WAIT_ERROR = /^[A-Z]+(?:_[A-Z]+)*_WAIT_(\d+)$/
 
 /**
+ * The refusals that name a datacenter instead of a problem.
+ *
+ * Four errors say the same thing in different words: what was asked for lives
+ * somewhere else. The number is the datacenter it lives at, and it is the whole
+ * content of the answer — a caller that cannot read it has been told nothing it
+ * can act on.
+ */
+const MIGRATE_ERROR = /^(PHONE|NETWORK|USER|FILE)_MIGRATE_(\d+)$/
+
+/** Which of the four redirections a datacenter asked for. */
+export type MigrationKind = 'phone' | 'network' | 'user' | 'file'
+
+/**
+ * The datacenter refused a request because it belongs somewhere else.
+ *
+ * Not a failure of the request so much as an address for it. The four kinds
+ * differ in what has moved rather than in what the client is told: an account
+ * that lives elsewhere, a network that suggests elsewhere, an account that has
+ * been moved, a file that is stored elsewhere. Each names the datacenter to use
+ * instead, and that number is kept as a number — a redirection a caller has to
+ * read out of a message is one it cannot act on without matching text.
+ *
+ * What to do about it is deliberately not decided here. Following a redirection
+ * means reaching another datacenter, and for an account it means carrying the
+ * authorization across; both belong to layers that know why the call was being
+ * made.
+ */
+export class MigrationError extends TelegramError {
+  override readonly name = 'MigrationError'
+
+  /** What the datacenter said has moved. */
+  readonly kind: MigrationKind
+
+  /** The datacenter to use instead. */
+  readonly dcId: number
+
+  constructor(
+    message: string,
+    options: ErrorOptions & { method?: string; kind: MigrationKind; dcId: number },
+  ) {
+    super(message, options.method === undefined ? {} : { method: options.method })
+    this.kind = options.kind
+    this.dcId = options.dcId
+  }
+}
+
+/**
  * The error a failed request should raise.
  *
  * A wait is the one failure both transports report and both callers handle the
@@ -472,6 +519,15 @@ export function rpcErrorToException(value: TlValue, method?: string): TelegramEr
   const text = value['error_message']
   const description = typeof text === 'string' ? text : ''
   const message = `${description || 'request failed'} (${code})`
+
+  const migrate = MIGRATE_ERROR.exec(description)
+  if (migrate !== null) {
+    return new MigrationError(message, {
+      kind: (migrate[1] ?? '').toLowerCase() as MigrationKind,
+      dcId: Number(migrate[2]),
+      ...(method === undefined ? {} : { method }),
+    })
+  }
 
   const flood = WAIT_ERROR.exec(description)
   if (flood !== null) {

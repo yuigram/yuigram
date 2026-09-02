@@ -19,6 +19,8 @@ import { REGISTRY as CORE } from '../src/generated/core/registry.js'
 import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
 import { encodeEncryptedMessage } from '../src/message/encrypted.js'
 import {
+  MigrationError,
+  type MigrationKind,
   rpcErrorToException,
   SessionDispatcher,
   type SessionEvent,
@@ -478,6 +480,59 @@ describe('turning a failure into an error', () => {
     for (const text of ['SLOWMODE_WAIT_10', 'FLOOD_PREMIUM_WAIT_7', 'FLOOD_WAIT_1']) {
       const error = rpcErrorToException({ _: 'rpc_error', error_code: 420, error_message: text })
       expect(error, text).toBeInstanceOf(FloodError)
+    }
+  })
+
+  it('raises a redirection as the datacenter it names', () => {
+    // The number is the whole content of the answer. A caller that has to read
+    // it back out of a message cannot act on it without matching text.
+    const error = rpcErrorToException({
+      _: 'rpc_error',
+      error_code: 303,
+      error_message: 'PHONE_MIGRATE_4',
+    })
+
+    expect(error).toBeInstanceOf(MigrationError)
+    expect((error as MigrationError).kind).toBe('phone')
+    expect((error as MigrationError).dcId).toBe(4)
+    expect(error.message).toContain('PHONE_MIGRATE_4')
+  })
+
+  it('recognises each of the four things that can have moved', () => {
+    const cases: Array<[string, MigrationKind, number]> = [
+      ['PHONE_MIGRATE_1', 'phone', 1],
+      ['NETWORK_MIGRATE_2', 'network', 2],
+      ['USER_MIGRATE_3', 'user', 3],
+      ['FILE_MIGRATE_5', 'file', 5],
+    ]
+
+    for (const [text, kind, dcId] of cases) {
+      const error = rpcErrorToException({ _: 'rpc_error', error_code: 303, error_message: text })
+
+      expect(error, text).toBeInstanceOf(MigrationError)
+      expect((error as MigrationError).kind, text).toBe(kind)
+      expect((error as MigrationError).dcId, text).toBe(dcId)
+    }
+  })
+
+  it('is still a refusal from Telegram, so a caller that handles those sees it', () => {
+    const error = rpcErrorToException(
+      { _: 'rpc_error', error_code: 303, error_message: 'USER_MIGRATE_2' },
+      'auth.signIn',
+    )
+
+    expect(error).toBeInstanceOf(TelegramError)
+    expect(error).not.toBeInstanceOf(FloodError)
+    expect(error.method).toBe('auth.signIn')
+  })
+
+  it('does not read a redirection into anything that merely mentions one', () => {
+    // The shape is the whole test: a name, the word, and a number. Anything
+    // else keeps the name Telegram gave it.
+    for (const text of ['MIGRATE_2', 'PHONE_MIGRATE', 'PHONE_MIGRATE_X', 'CHAT_MIGRATE_TO_5']) {
+      const error = rpcErrorToException({ _: 'rpc_error', error_code: 400, error_message: text })
+
+      expect(error, text).not.toBeInstanceOf(MigrationError)
     }
   })
 
