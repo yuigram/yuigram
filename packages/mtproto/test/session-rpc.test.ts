@@ -20,7 +20,7 @@ import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
 import { TL_LAYER } from '../src/generated/schema-info.js'
 import { Connection } from '../src/session/connection.js'
 import type { SessionEvent } from '../src/session/dispatcher.js'
-import { TlScope, type TlValue } from '../src/tl/index.js'
+import { TlScope, type TlValue, writeObject } from '../src/tl/index.js'
 import { FrameBuffer, IntermediateFraming } from '../src/transport/framing.js'
 import { createServerKey } from './server/keys.js'
 import { DH_PRIME, MockServer } from './server/server.js'
@@ -1194,5 +1194,88 @@ describe('what the schedule drives', () => {
     live.connection.tick()
 
     expect(live.sent).toHaveLength(0)
+  })
+})
+
+describe('a query that names the identifier it travels under', () => {
+  /** A ping whose identifier is the identifier the message is sent under. */
+  const selfNaming = (msgId: bigint) => writeObject({ _: 'ping', ping_id: msgId }, SCOPE)
+
+  /** Whatever went out, opened, without running the schedule first. */
+  const took = (live: ReturnType<typeof connected>) =>
+    live.sent.splice(0).flatMap((bytes) => [...live.peer.openClient(bytes)])
+
+  it('is sent under the identifier its body was built from', async () => {
+    const live = connected()
+    const answer = live.connection.invokeNaming('ping', selfNaming)
+
+    const [element] = took(live)
+    if (element === undefined) throw new Error('nothing was sent')
+
+    // The server compares the two, and a mismatch is refused without saying
+    // which half was wrong — so the two agreeing is the whole property.
+    expect(element.value).toMatchObject({ _: 'ping', ping_id: element.msgId })
+
+    live.connection.receive(live.peer.rpcResult(element.msgId, { _: 'boolTrue' }))
+    await expect(answer).resolves.toMatchObject({ _: 'boolTrue' })
+  })
+
+  it('travels on its own, in no container', async () => {
+    const live = connected()
+    const answer = live.connection.invokeNaming('ping', selfNaming)
+
+    const sent = live.sent.splice(0)
+    expect(sent).toHaveLength(1)
+    const opened = [...live.peer.openClient(sent[0] ?? new Uint8Array(0))]
+    expect(opened).toHaveLength(1)
+
+    void answer.catch(() => undefined)
+    live.connection.stop()
+  })
+
+  it('is not wrapped, even before the server has been told what this client is', async () => {
+    const live = connected()
+    expect(live.connection.initialised).toBe(false)
+
+    const answer = live.connection.invokeNaming('ping', selfNaming)
+    const [element] = took(live)
+
+    // A key that has not been vouched for yet may carry only a few named
+    // methods, and an ordering wrapper is not one of them.
+    expect(element?.value._).toBe('ping')
+
+    void answer.catch(() => undefined)
+    live.connection.stop()
+  })
+
+  it('is never sent again when the server asks for it to be', async () => {
+    const live = connected()
+    const answer = live.connection.invokeNaming('ping', selfNaming)
+    const [element] = took(live)
+    if (element === undefined) throw new Error('nothing was sent')
+
+    // A second attempt would travel under a new identifier, which the body it
+    // carries would no longer name.
+    live.connection.receive(
+      live.peer.seal({
+        _: 'bad_msg_notification',
+        bad_msg_id: element.msgId,
+        bad_msg_seqno: 0,
+        error_code: 16,
+      }),
+    )
+    live.connection.tick()
+
+    expect(took(live).filter((sent) => sent.value._ === 'ping')).toEqual([])
+
+    void answer.catch(() => undefined)
+    live.connection.stop()
+  })
+
+  it('is refused on a connection that is not running', async () => {
+    const live = connected()
+    live.connection.stop()
+
+    await expect(live.connection.invokeNaming('ping', selfNaming)).rejects.toThrow(/is not running/)
   })
 })

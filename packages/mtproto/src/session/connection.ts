@@ -295,6 +295,62 @@ export class Connection {
   }
 
   /**
+   * Send a query whose body names the identifier it will travel under.
+   *
+   * One construction needs this. A binding message names the identifier of the
+   * request carrying it, and the server compares the two, so the identifier has
+   * to exist before the body does — which is the one thing the composing path
+   * cannot offer, since that is where identifiers are drawn.
+   *
+   * It therefore travels on its own: drawn, built, sealed and sent, in no
+   * container and with nothing alongside it. Two omissions are deliberate.
+   * Nothing wraps it, because a key that has not been vouched for yet may only
+   * carry a few named methods and an ordering wrapper is not one of them. And
+   * nothing records it for delivery, because that record exists to say whether
+   * a message may be sent again and this one may not: a second attempt would
+   * travel under a new identifier, which the body it carries would no longer
+   * name.
+   */
+  invokeNaming(
+    method: string,
+    build: (msgId: bigint) => Uint8Array,
+    options: InvokeOptions = {},
+  ): Promise<TlValue> {
+    return new Promise<TlValue>((resolve, reject) => {
+      if (!this.#schedule.running) {
+        reject(new NetworkError(`'${method}' cannot be sent: the connection is not running`))
+        return
+      }
+
+      // In this order, as everywhere else: the sequence number counts the
+      // messages created before this one.
+      const msgId = this.#session.nextMsgId()
+      const seqNo = this.#session.nextSeqNo(true)
+      const body = build(msgId)
+
+      const id = this.#registry.create({
+        deadline: this.#now() + (options.timeout ?? this.#timeout),
+      })
+
+      this.#pending.set(id, { id, method, body, resolve, reject })
+      this.#schedule.expireAt(this.#registry.earliestDeadline())
+      this.#registry.sent(id, msgId)
+
+      this.#send(
+        encodeEncryptedMessage({
+          key: this.#key,
+          from: 'client',
+          salt: this.#session.salt,
+          sessionId: this.#session.id,
+          msgId,
+          seqNo,
+          body,
+        }),
+      )
+    })
+  }
+
+  /**
    * Interpret one sealed message from the server.
    *
    * A message that does not verify is raised rather than reported. Every other
