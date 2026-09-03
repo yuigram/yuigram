@@ -37,7 +37,7 @@ import {
   PaddedIntermediateFraming,
 } from '../../src/transport/framing.js'
 import { type Binding, openBinding } from './bind.js'
-import { open as openMessage, seal } from './encrypted.js'
+import { keyId, open as openMessage, seal } from './encrypted.js'
 import {
   HANDSHAKE_SCOPE,
   Handshake,
@@ -133,6 +133,18 @@ export interface MockServerOptions {
    * than remembered.
    */
   readonly permanentKey?: Uint8Array
+  /**
+   * Authorizations this client may already hold.
+   *
+   * A client that has a key opens a connection and starts using it, because
+   * there is nothing left to agree — so such a connection carries no exchange
+   * and its first frame is already encrypted. Which key it is using is named at
+   * the front of every message it sends, so it is looked up rather than
+   * assumed: a peer offered several picks the one the client actually named,
+   * and one offered none, or the wrong ones, refuses the message exactly as it
+   * would refuse any message under a key it does not hold.
+   */
+  readonly authorizations?: readonly HandshakeResult[]
   /** Milliseconds since the epoch, for the peer's message identifiers. */
   readonly now?: () => number
   /** Padding and other filler. */
@@ -188,6 +200,9 @@ export class MockServer {
   >
   readonly #key: ServerKey
   readonly #permanentKey: Uint8Array | undefined
+  readonly #authorizations: readonly HandshakeResult[]
+  /** The one this connection turned out to be using. */
+  #adopted: HandshakeResult | undefined
   readonly #untagged: FullFraming | undefined
   readonly #secret: Uint8Array | undefined
   readonly #faults: ReadonlySet<Fault> | undefined
@@ -235,6 +250,7 @@ export class MockServer {
   constructor(options: MockServerOptions = {}) {
     this.#key = options.key ?? createServerKey()
     this.#permanentKey = options.permanentKey
+    this.#authorizations = options.authorizations ?? []
     this.#untagged = options.untagged
     this.#secret = options.secret
     this.#faults = options.faults
@@ -276,10 +292,39 @@ export class MockServer {
     return this.#handshake?.result
   }
 
+  /** The authorization in force, however this connection came by it. */
+  get authorization(): HandshakeResult | undefined {
+    return this.#adopted ?? this.#handshake?.result
+  }
+
   /** How far the connection has progressed. */
   get state(): 'opening' | 'exchanging' | 'established' {
     if (this.#transport === undefined) return 'opening'
+    if (this.#adopted !== undefined) return 'established'
+
     return this.#handshake?.state === 'established' ? 'established' : 'exchanging'
+  }
+
+  /**
+   * Recognise a message sealed under a key this client already holds.
+   *
+   * Every encrypted message names its key at the front, so which one is in use
+   * is read rather than guessed. A message naming no key is the exchange, and a
+   * message naming one this peer was not offered is left alone — the paths
+   * below refuse it, as they refuse anything else they cannot open.
+   */
+  #recognise(bytes: Uint8Array): HandshakeResult | undefined {
+    if (bytes.length < 8) return undefined
+
+    const named = bytes.subarray(0, 8)
+    if (named.every((byte) => byte === 0)) return undefined
+
+    this.#adopted = this.#authorizations.find(
+      (authorization) =>
+        Buffer.compare(Buffer.from(named), Buffer.from(keyId(authorization.authKey))) === 0,
+    )
+
+    return this.#adopted
   }
 
   /**
@@ -312,7 +357,7 @@ export class MockServer {
       // Which envelope applies is decided by whether a key exists, exactly as
       // it is on a real connection: the handshake is the only traffic that can
       // travel unencrypted, and everything after it must not.
-      const established = handshake.result
+      const established = this.#adopted ?? handshake.result ?? this.#recognise(frame.bytes)
       if (established !== undefined) {
         const answer = this.#authenticated(frame.bytes, established)
         if (answer !== undefined) replies.push(this.#encrypt(framing.encode(answer)))
@@ -459,9 +504,15 @@ export class MockServer {
     )
   }
 
-  /** The state a sealed message needs, or a clear failure if none exists. */
+  /**
+   * The state a sealed message needs, or a clear failure if none exists.
+   *
+   * Whichever key this connection is using: the one it negotiated, or the one
+   * it was already holding when it opened. An answer has to travel under the
+   * same key the message it answers arrived under.
+   */
   #established(): { key: Uint8Array; sessionId: bigint; salt: bigint } {
-    const result = this.#handshake?.result
+    const result = this.#adopted ?? this.#handshake?.result
     if (result === undefined) {
       throw new MockServerError('no key has been established')
     }
@@ -827,7 +878,7 @@ export class MockServer {
   openClient(
     bytes: Uint8Array,
   ): ReadonlyArray<{ msgId: bigint; seqNo: number; value: TlValue; body: Uint8Array }> {
-    const result = this.#handshake?.result
+    const result = this.#adopted ?? this.#handshake?.result
     if (result === undefined) throw new MockServerError('no key has been established')
 
     const message = openMessage(result.authKey, bytes, 'client')
