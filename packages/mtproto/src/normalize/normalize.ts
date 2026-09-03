@@ -1,0 +1,263 @@
+/**
+ * Turning a TL update into the shape dispatch consumes.
+ *
+ * An update says what happened in Telegram's vocabulary and in Telegram's
+ * shape: which constructor it is decides where the chat is, whether there is a
+ * sender at all, and whether the thing that changed is nested or spread across
+ * the update's own fields. A handler should not have to know any of that, so
+ * this reads it once and produces a kind plus the few fields every reader wants.
+ *
+ * ```
+ *   TL update ──> kind ──┬── chat, sender   as peer references
+ *                        ├── message, text, date
+ *                        └── raw            untouched
+ * ```
+ *
+ * **Peers are referenced, not resolved.** An update names a peer by number; the
+ * full entity, with the hash needed to address it, lives in the peer store and
+ * is fetched. Doing that here would make the seam asynchronous and give it an
+ * opinion about storage, and it would still not be enough — addressing a peer
+ * is something a client does, and there is no client below this layer. What an
+ * update genuinely carries is the reference, so that is what comes out.
+ *
+ * **Nothing is dropped.** Telegram ships update kinds before a client is
+ * regenerated to know them. An unrecognised constructor arrives as `mtproto:raw`
+ * with the payload intact, because a framework trusted to deliver a stream that
+ * quietly discards part of it is worse than one that admits it does not know.
+ */
+
+import type { PeerKind } from '../storage/peers.js'
+import type { TlValue } from '../tl/index.js'
+import {
+  MESSAGE_UPDATES,
+  type MtprotoEventKind,
+  RAW_KIND,
+  SHORT_MESSAGE_UPDATES,
+  UPDATE_EVENTS,
+} from './events.js'
+
+/** A peer as an update names it: which sort of peer, and which one. */
+export interface PeerRef {
+  readonly kind: PeerKind
+  readonly id: bigint
+}
+
+/** One update, read into the fields dispatch and filters share. */
+export interface NormalizedUpdate {
+  /** Which event this is. */
+  readonly kind: MtprotoEventKind
+  /** The conversation this concerns, where the update names one. */
+  readonly chat: PeerRef | undefined
+  /**
+   * Who caused it, where the update says.
+   *
+   * Absent for anything the account itself did, and for updates that are about
+   * a conversation rather than about somebody acting in it — a read horizon
+   * moving has no author.
+   */
+  readonly sender: PeerRef | undefined
+  /** The message, for the kinds that carry a whole one. */
+  readonly message: TlValue | undefined
+  /** The messages a deletion names. */
+  readonly messageIds: readonly number[] | undefined
+  /** Message text, where the update carries a message with any. */
+  readonly text: string | undefined
+  /** When it happened, where the update says. Absent rather than invented. */
+  readonly date: Date | undefined
+  /** The untouched update. */
+  readonly raw: TlValue
+}
+
+/** Read a TL update into its normalized form. */
+export function normalizeUpdate(update: TlValue): NormalizedUpdate {
+  const kind = kindOf(update)
+
+  if (MESSAGE_UPDATES.has(update._)) return fromMessage(update, kind)
+  if (SHORT_MESSAGE_UPDATES.has(update._)) return fromShortMessage(update, kind)
+
+  return {
+    kind,
+    chat: chatOf(update),
+    sender: senderOf(update),
+    message: undefined,
+    messageIds: readIntVector(update['messages']),
+    text: undefined,
+    date: readDate(update['date']),
+    raw: update,
+  }
+}
+
+/**
+ * Which kind an update is.
+ *
+ * Almost always the constructor alone. A pinned dialog is the exception: one
+ * constructor says both that a dialog was pinned and that it was unpinned, and
+ * which of those happened is the only thing a reader cares about.
+ */
+function kindOf(update: TlValue): MtprotoEventKind {
+  const mapped = UPDATE_EVENTS[update._]
+  if (mapped === undefined) return RAW_KIND
+
+  if (update._ === 'updateDialogPinned') {
+    return update['pinned'] === true ? 'mtproto:dialog_pinned' : 'mtproto:dialog_unpinned'
+  }
+
+  return mapped
+}
+
+/** Read an update whose payload is a whole message. */
+function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
+  const message = asValue(update['message'])
+
+  return {
+    kind,
+    chat: message === undefined ? undefined : peerOf(message['peer_id']),
+    // Outgoing messages carry no author: the account itself sent them, and the
+    // account is not something an update needs to name.
+    sender: message === undefined ? undefined : peerOf(message['from_id']),
+    message,
+    messageIds: undefined,
+    text: message === undefined ? undefined : readString(message['message']),
+    date: message === undefined ? undefined : readDate(message['date']),
+    raw: update,
+  }
+}
+
+/**
+ * Read a compact message update.
+ *
+ * These carry the message spread across the update instead of nested, and name
+ * their peers by number rather than as peer objects — so the same fields are
+ * all present and none of them are in the same place.
+ */
+function fromShortMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
+  const outgoing = update['out'] === true
+  const chatId = readBigInt(update['chat_id'])
+  const userId = readBigInt(update['user_id'])
+
+  const chat: PeerRef | undefined =
+    chatId !== undefined
+      ? { kind: 'chat', id: chatId }
+      : userId !== undefined
+        ? { kind: 'user', id: userId }
+        : undefined
+
+  // In a private chat the other party is both the conversation and the author,
+  // unless the account is the one who wrote it. In a basic group the author is
+  // named separately.
+  const fromId = readBigInt(update['from_id'])
+  const sender: PeerRef | undefined =
+    fromId !== undefined
+      ? { kind: 'user', id: fromId }
+      : outgoing || userId === undefined
+        ? undefined
+        : { kind: 'user', id: userId }
+
+  return {
+    kind,
+    chat,
+    sender,
+    // There is no message object to hand back — the update is the message.
+    message: undefined,
+    messageIds: undefined,
+    text: readString(update['message']),
+    date: readDate(update['date']),
+    raw: update,
+  }
+}
+
+/**
+ * The conversation an update concerns.
+ *
+ * Every update names it differently, and some name it not at all: a deletion
+ * outside a channel says only which message numbers went, because message
+ * numbers are unique to the account outside channels and the peer is not needed
+ * to find them.
+ */
+function chatOf(update: TlValue): PeerRef | undefined {
+  const direct = peerOf(update['peer'])
+  if (direct !== undefined) return direct
+
+  // A dialog names its peer through a wrapper, which also has a form standing
+  // for a folder rather than a conversation.
+  const dialog = asValue(update['peer'])
+  if (dialog !== undefined) {
+    const inner = peerOf(dialog['peer'])
+    if (inner !== undefined) return inner
+  }
+
+  const channelId = readBigInt(update['channel_id'])
+  if (channelId !== undefined) return { kind: 'channel', id: channelId }
+
+  const chatId = readBigInt(update['chat_id'])
+  if (chatId !== undefined) return { kind: 'chat', id: chatId }
+
+  // A user typing in a private chat: the user is the conversation.
+  const userId = readBigInt(update['user_id'])
+
+  return userId === undefined ? undefined : { kind: 'user', id: userId }
+}
+
+/**
+ * Who acted, where an update says.
+ *
+ * Only where somebody genuinely did something. Reading the peer as the author
+ * would make every read horizon and every status change look like an action by
+ * whoever the update happens to be about.
+ */
+function senderOf(update: TlValue): PeerRef | undefined {
+  const from = peerOf(update['from_id'])
+  if (from !== undefined) return from
+
+  if (update._ === 'updateUserTyping' || update._ === 'updateUserStatus') {
+    const userId = readBigInt(update['user_id'])
+    if (userId !== undefined) return { kind: 'user', id: userId }
+  }
+
+  return undefined
+}
+
+/** Read a `Peer`, whichever of the three it is. */
+function peerOf(value: unknown): PeerRef | undefined {
+  const peer = asValue(value)
+  if (peer === undefined) return undefined
+
+  const user = readBigInt(peer['user_id'])
+  if (peer._ === 'peerUser' && user !== undefined) return { kind: 'user', id: user }
+
+  const chat = readBigInt(peer['chat_id'])
+  if (peer._ === 'peerChat' && chat !== undefined) return { kind: 'chat', id: chat }
+
+  const channel = readBigInt(peer['channel_id'])
+  if (peer._ === 'peerChannel' && channel !== undefined) return { kind: 'channel', id: channel }
+
+  return undefined
+}
+
+function asValue(value: unknown): TlValue | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+
+  return typeof (value as TlValue)._ === 'string' ? (value as TlValue) : undefined
+}
+
+function readBigInt(value: unknown): bigint | undefined {
+  if (typeof value === 'bigint') return value
+
+  return typeof value === 'number' && Number.isInteger(value) ? BigInt(value) : undefined
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function readIntVector(value: unknown): readonly number[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const numbers = value.filter((item): item is number => typeof item === 'number')
+
+  return numbers.length === value.length ? numbers : undefined
+}
+
+/** Read a Telegram timestamp, which counts seconds rather than milliseconds. */
+function readDate(value: unknown): Date | undefined {
+  return typeof value === 'number' && Number.isInteger(value) ? new Date(value * 1000) : undefined
+}
