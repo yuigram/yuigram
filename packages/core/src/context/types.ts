@@ -56,6 +56,17 @@ export interface BaseContext {
    * else.
    */
   readonly transport: string
+  /**
+   * The client this event arrived on.
+   *
+   * Structural, and deliberately thin: an application holding more than one
+   * client needs to know which one is speaking before it reads anything else,
+   * and naming the client's own type here would make the shared layer depend on
+   * whichever subsystem produced it. A transport narrows this to its own client
+   * type, so a handler registered on one client sees that client and a handler
+   * registered across several sees what they have in common.
+   */
+  readonly client: { readonly name: string }
   /** Logger scoped to this update. */
   readonly log: Logger
   /** The untouched payload, for anything the framework has not modelled. */

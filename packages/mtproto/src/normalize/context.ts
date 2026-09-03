@@ -44,10 +44,14 @@ export interface MtprotoContext extends BaseContext {
   readonly date: Date | undefined
   /** The untouched update, for everything this does not model. */
   readonly raw: TlValue
+  /** The client this update arrived on. */
+  readonly client: { readonly name: string }
 }
 
 /** What building a context needs beyond the update itself. */
 export interface ContextOptions {
+  /** The client the update arrived on. */
+  readonly client: { readonly name: string }
   /** Logger scoped to this update. */
   readonly log: Logger
 }
@@ -69,6 +73,7 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
     text: normalized.text,
     date: normalized.date,
     raw: normalized.raw,
+    client: options.client,
     log: options.log,
   }
 }

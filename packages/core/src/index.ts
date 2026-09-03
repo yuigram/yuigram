@@ -9,6 +9,7 @@
  * The boundary is enforced by the layer-boundary invariant.
  */
 
+export * from './app/index.js'
 export * from './context/index.js'
 export * from './dispatch/index.js'
 export * from './errors/index.js'

@@ -87,6 +87,14 @@ export interface EventContext<K extends BotEventKind = BotEventKind> {
   readonly raw: Update
   /** The full API surface, for anything the actions do not cover. */
   readonly api: RawApi
+  /**
+   * The client this update arrived on.
+   *
+   * Narrowed to what a bot is: an application holding several clients reads it
+   * to tell which one is speaking, and a handler registered on one client
+   * already knows.
+   */
+  readonly client: { readonly name: string }
   /** Scoped logger. */
   readonly log: Logger
 }

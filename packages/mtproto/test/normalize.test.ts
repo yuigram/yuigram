@@ -25,6 +25,9 @@ import type { TlValue } from '../src/tl/index.js'
 /** A logger that records nothing, so a case is about the event rather than the log. */
 const log = createLogger({ sink: silentSink() })
 
+/** Stands in for the client an update would have arrived on. */
+const client = { name: 'account' }
+
 const peerUser = (id: bigint): TlValue => ({ _: 'peerUser', user_id: id })
 const peerChat = (id: bigint): TlValue => ({ _: 'peerChat', chat_id: id })
 const peerChannel = (id: bigint): TlValue => ({ _: 'peerChannel', channel_id: id })
@@ -474,7 +477,7 @@ describe('the context an event arrives as', () => {
   it('says which transport produced it', () => {
     const context = mtprotoContext(
       { _: 'updateNewMessage', message: message(), pts: 1, pts_count: 1 },
-      { log },
+      { client, log },
     )
 
     expect(context.transport).toBe('mtproto')
@@ -483,7 +486,7 @@ describe('the context an event arrives as', () => {
 
   it('carries the update untouched', () => {
     const update: TlValue = { _: 'updateNewMessage', message: message(), pts: 1, pts_count: 1 }
-    const context = mtprotoContext(update, { log })
+    const context = mtprotoContext(update, { client, log })
 
     expect(context.raw).toBe(update)
   })
@@ -496,7 +499,7 @@ describe('the context an event arrives as', () => {
         pts: 1,
         pts_count: 1,
       },
-      { log },
+      { client, log },
     )
 
     expect(context.chat).toEqual({ kind: 'channel', id: 1n })

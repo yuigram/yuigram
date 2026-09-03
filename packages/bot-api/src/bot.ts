@@ -29,6 +29,7 @@ import {
   type ErrorHandler,
   type FilterMeta,
   Lifecycle,
+  LifecycleError,
   type Logger,
   type Middleware,
   type MiddlewareHost,
@@ -177,6 +178,8 @@ export class Bot<Ext = unknown> {
   readonly #plugins = new PluginRegistry<Bot<Ext>>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
+  /** Installed by an application that holds this bot. See `surround`. */
+  #surrounding: Middleware<AnyEventContext & Ext> | undefined
   readonly #options: BotOptions
 
   #polling: Polling | undefined
@@ -500,11 +503,22 @@ export class Bot<Ext = unknown> {
       createEventContext({
         normalized,
         api: this.api,
+        client: this,
         log: this.#log,
       }) as object,
     ) as AnyEventContext & Ext
 
-    await this.#dispatcher.dispatch(context)
+    if (this.#surrounding === undefined) {
+      await this.#dispatcher.dispatch(context)
+
+      return
+    }
+
+    // Outside the dispatcher entirely, so what an application installs
+    // surrounds this client's own middleware rather than sorting into it.
+    await this.#surrounding(context, async () => {
+      await this.#dispatcher.dispatch(context)
+    })
   }
 
   /**
@@ -568,6 +582,32 @@ export class Bot<Ext = unknown> {
         this.#lifecycle.track(work)
       },
     })
+  }
+
+  /**
+   * Bring the bot up by the mechanism it was configured for.
+   *
+   * Polling, which is the mechanism a bot that is asked to start rather than
+   * mounted is running. A webhook deployment is handed to a server instead and
+   * never asks anything to start, so it does not come through here.
+   */
+  async start(): Promise<void> {
+    await this.poll()
+  }
+
+  /**
+   * Put middleware around everything this bot dispatches.
+   *
+   * How an application reaches outside a client. Installed once: a bot already
+   * held by one application being added to another has two owners, and the
+   * second would silently replace the first's middleware.
+   */
+  surround(middleware: Middleware<AnyEventContext & Ext>): void {
+    if (this.#surrounding !== undefined) {
+      throw new LifecycleError(`the bot '${this.name}' is already held by an application`)
+    }
+
+    this.#surrounding = middleware
   }
 
   /**

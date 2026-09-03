@@ -33,6 +33,8 @@ import type { AnyEventContext, MessageEventKind } from './types.js'
 export interface CreateEventContextOptions {
   readonly normalized: NormalizedUpdate
   readonly api: RawApi
+  /** The client the update arrived on. */
+  readonly client: { readonly name: string }
   readonly log: Logger
 }
 
@@ -91,6 +93,7 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
     updateId: normalized.updateId,
     raw: normalized.raw,
     api,
+    client: options.client,
     log,
   }
 

@@ -39,6 +39,7 @@ function contextFor(update: unknown) {
   const context = createEventContext({
     normalized: normalizeUpdate(update as Update),
     api,
+    client: { name: 'bot' },
     log,
   })
 
