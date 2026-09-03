@@ -26,6 +26,23 @@ import {
 const KB = 1024
 const MB = 1024 * 1024
 
+/** Every start worth planning from: the grid, the boundary, and either side. */
+const OFFSETS = [0, 4 * KB, 8 * KB, 12 * KB, 512 * KB, MB - 4 * KB, MB + 4 * KB]
+
+/** Lengths that sit on, just short of, and just past the interesting edges. */
+const SIZES = [
+  1,
+  4 * KB + 1,
+  8 * KB + 100,
+  8292,
+  64 * KB,
+  MB - 1,
+  MB,
+  MB + 1,
+  2 * MB - 1,
+  3 * MB + 7 * KB,
+]
+
 describe('how a file may be cut up', () => {
   it('accepts every size that divides half a megabyte', () => {
     for (const size of [1 * KB, 2 * KB, 4 * KB, 32 * KB, 128 * KB, 256 * KB, 512 * KB]) {
@@ -222,6 +239,60 @@ describe('planning a file down', () => {
       }
     }
   })
+
+  it('rounds a short file up to a length the datacenter accepts', () => {
+    // Sitting on the grid is not enough: the length also has to divide the
+    // megabyte the file is served in. Rounding to the grid alone gives twelve
+    // kilobytes here, which is three whole grid steps and is still refused.
+    const [only] = planDownload({ size: 8 * KB + 100 })
+
+    expect(only).toEqual({ offset: 0, limit: 16 * KB })
+    expect(isUsableRange({ offset: 0, limit: only?.limit ?? 0 })).toBe(true)
+  })
+
+  it('produces an acceptable length for every short file', () => {
+    for (let size = 1; size <= 64 * KB; size += 97) {
+      for (const range of planDownload({ size })) {
+        expect(isUsableRange(range), `size ${size}`).toBe(true)
+      }
+    }
+  })
+
+  it('never lets the boundary spoil a length, wherever the caller starts', () => {
+    // Cutting a range back to the megabyte in front of it leaves that
+    // megabyte's remainder, which is exactly the length that does not divide
+    // one. Starting a single grid step in is enough to produce it.
+    for (const offset of OFFSETS) {
+      for (const range of planDownload({ size: offset + 3 * MB, offset })) {
+        expect(isUsableRange(range), `from ${offset}: ${range.offset}+${range.limit}`).toBe(true)
+      }
+    }
+  })
+
+  it.each(['normal', 'precise'] as const)(
+    'covers every start and every length with ranges the datacenter answers (%s)',
+    (mode) => {
+      for (const offset of OFFSETS) {
+        for (const size of SIZES) {
+          if (size <= offset) continue
+
+          const ranges = planDownload({ size, offset, mode })
+
+          // Contiguous from where the caller started, no gaps and no overlaps,
+          // reaching the end of the file — and every one of them askable.
+          let at = offset
+          for (const range of ranges) {
+            expect(range.offset, `${mode} ${offset}/${size}`).toBe(at)
+            expect(isUsableRange({ ...range, mode }), `${mode} ${offset}/${size}`).toBe(true)
+            at += range.limit
+          }
+
+          expect(at, `${mode} ${offset}/${size} reaches the end`).toBeGreaterThanOrEqual(size)
+          expect(ranges.length, `${mode} ${offset}/${size} makes progress`).toBeGreaterThan(0)
+        }
+      }
+    },
+  )
 
   it('never crosses a boundary even when asked for a length that would', () => {
     const ranges = planDownload({ size: 2 * MB, limit: MB, offset: 512 * KB })

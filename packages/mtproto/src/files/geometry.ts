@@ -236,6 +236,42 @@ export function checkRange(options: {
 }
 
 /**
+ * The length to ask for, given what is wanted and what will fit.
+ *
+ * Two rules pull in opposite directions. Sitting on the grid is not enough for
+ * an ordinary range — the length must also divide the megabyte the file is
+ * served in, so the lengths that qualify are the grid step doubled over and
+ * over — and a range must not cross into the next megabyte.
+ *
+ * So a length is rounded **up** to a qualifying one, because asking past the
+ * end of a file is allowed and the server simply answers with less. But when
+ * rounding up would cross the boundary, it is rounded **down** instead, because
+ * crossing is refused outright. Rounding only one way produces lengths the
+ * server will not answer: down alone under-fetches a short file into an
+ * off-grid remainder, up alone hands back the megabyte's leftover, which is
+ * exactly the length that does not divide it.
+ *
+ * A precise range has only the grid and the ceiling to satisfy, so what fits is
+ * always usable and only the rounding up matters.
+ */
+function lengthToAsk(wanted: number, room: number, alignment: number): number {
+  const up = Math.ceil(wanted / alignment) * alignment
+
+  if (alignment === PRECISE_ALIGNMENT) return Math.min(up, room, MEGABYTE)
+
+  let length = alignment
+  while (length < up && length < MEGABYTE) length *= 2
+
+  if (length <= room) return length
+
+  // Rounding up would cross the boundary, so take the largest that does not.
+  let fits = alignment
+  while (fits * 2 <= room && fits < MEGABYTE) fits *= 2
+
+  return fits
+}
+
+/**
  * Divide a download into ranges the server will answer.
  *
  * Each range is cut back to the megabyte boundary in front of it rather than
@@ -271,8 +307,7 @@ export function planDownload(options: {
     // not the file happens to end there.
     const toBoundary = MEGABYTE - (offset % MEGABYTE)
     const wanted = Math.min(limit, toBoundary, Math.max(size - offset, 1))
-    const aligned = Math.ceil(wanted / alignment) * alignment
-    const taken = Math.min(aligned, toBoundary)
+    const taken = lengthToAsk(wanted, toBoundary, alignment)
 
     checkRange({
       offset,

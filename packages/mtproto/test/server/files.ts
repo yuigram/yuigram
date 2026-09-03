@@ -93,10 +93,13 @@ export function contentOf(fileId: bigint, offset: number, length: number): Uint8
 
   const seed = Number(BigInt.asUintN(16, fileId))
 
-  return Uint8Array.from({ length }, (_, index) => {
+  const bytes = new Uint8Array(length)
+  for (let index = 0; index < length; index += 1) {
     const at = offset + index
-    return (seed * 7 + at * 31 + ((at >> 8) & 0xff) * 13 + 5) & 0xff
-  })
+    bytes[index] = (seed * 7 + at * 31 + ((at >> 8) & 0xff) * 13 + 5) & 0xff
+  }
+
+  return bytes
 }
 
 /**
