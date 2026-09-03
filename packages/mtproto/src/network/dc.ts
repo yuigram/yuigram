@@ -227,8 +227,21 @@ export class DcDirectory {
     )
 
     const preferred = usable.filter((option) => option.ipv6 === (query.ipv6 ?? false))
+    const family = preferred.length > 0 ? preferred : usable
 
-    return preferred.length > 0 ? preferred : usable
+    // A transfer goes to the address the server set aside for transfers. The
+    // ordinary address serves them too and stays a candidate behind it, so
+    // nothing is lost when there is no media address — but while there is one,
+    // it is the answer. The server publishes its main address first, so taking
+    // the list as it comes would send every file down the ordinary one.
+    if (purpose !== 'media') return family
+
+    // Stable within each group, because the order the server published is its
+    // own order of preference and only the grouping is this layer's opinion.
+    return [
+      ...family.filter((option) => option.mediaOnly),
+      ...family.filter((option) => !option.mediaOnly),
+    ]
   }
 
   /**
@@ -294,8 +307,8 @@ function sameSecret(left: Uint8Array | undefined, right: Uint8Array | undefined)
  * A CDN address holds no authorization of ours, so it can serve only what needs
  * none. A media-only address is refused for ordinary calls rather than tried
  * and allowed to fail, because what comes back names nothing about addressing.
- * For media the media-only addresses are preferred, but an ordinary address
- * serves files too, so both remain candidates.
+ * An ordinary address serves files, so it remains a candidate for them; which
+ * of the two comes first is decided where the candidates are ordered.
  */
 function serves(option: DcAddress, purpose: DcPurpose): boolean {
   if (purpose === 'cdn') return option.cdn

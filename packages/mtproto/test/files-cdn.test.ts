@@ -16,7 +16,6 @@
 
 import { CancelledError, NetworkError, TelegramError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
-import { sha256 } from '../src/crypto/hash.js'
 import { download, downloadTo } from '../src/files/download.js'
 import type { TlValue } from '../src/tl/index.js'
 import { contentOf, type FileFaults, FileServer } from './server/files.js'
@@ -629,6 +628,9 @@ describe('a delivery node that has not been given the range', () => {
       location,
       reach: (dcId: number) => ({
         invoke: async (query: TlValue) => {
+          // The reissue is answered so the case is about the bound on asking
+          // rather than about the datacenter refusing a token.
+          if (query._ === 'upload.reuploadCdnFile') return { _: 'vector', items: [] } as TlValue
           if (query._ !== 'upload.getCdnFile') return reach(dcId).invoke(query)
 
           asked += 1
@@ -681,34 +683,53 @@ describe('a delivery node that has not been given the range', () => {
     // The datacenter publishes nothing up front and answers the reissue with
     // the hashes for what it sent. Throwing those away means asking for them
     // again, which is a round trip for something already in hand.
-    const bytes = await download({
-      location,
-      reach: (dcId: number) => ({
-        invoke: async (query: TlValue) => {
-          const answer = await reach(dcId).invoke(query)
-          if (query._ !== 'upload.reuploadCdnFile') return answer
-
-          const items = []
-          for (let offset = 0; offset < size; offset += HASH_BLOCK) {
-            const limit = Math.min(HASH_BLOCK, size - offset)
-            items.push({
-              _: 'fileHash',
-              offset: BigInt(offset),
-              limit,
-              hash: sha256(contentOf(FILE, offset, limit)),
-            })
-          }
-
-          return { _: 'vector', items } as TlValue
-        },
-      }),
-      dcId: 2,
-      size,
-      cdn: true,
-    })
+    const bytes = await download({ location, reach, dcId: 2, size, cdn: true })
 
     expectSameBytes(bytes, contentOf(FILE, 0, size))
     expect(calls(server)).not.toContain('upload.getCdnFileHashes')
+  })
+
+  it('is refused by the datacenter when it quotes a token that names nothing', async () => {
+    // The token stands for one range. Quoting another asks the datacenter about
+    // something the node never mentioned, and it says so rather than sending
+    // whatever happens to be to hand.
+    const { location, reach } = viaCdn(200 * KB, { cdnReuploadFirst: true })
+
+    await expect(
+      download({
+        location,
+        reach: (dcId: number) => ({
+          invoke: async (query: TlValue) =>
+            query._ === 'upload.reuploadCdnFile'
+              ? await reach(dcId).invoke({ ...query, request_token: new Uint8Array([9, 9]) })
+              : await reach(dcId).invoke(query),
+        }),
+        dcId: 2,
+        size: 200 * KB,
+        cdn: true,
+        attempts: 1,
+      }),
+    ).rejects.toThrow(/REQUEST_TOKEN_INVALID/)
+  })
+
+  it('is refused when the file token is not one the datacenter issued', async () => {
+    const { location, reach } = viaCdn(200 * KB, { cdnReuploadFirst: true })
+
+    await expect(
+      download({
+        location,
+        reach: (dcId: number) => ({
+          invoke: async (query: TlValue) =>
+            query._ === 'upload.reuploadCdnFile'
+              ? await reach(dcId).invoke({ ...query, file_token: new Uint8Array([1, 2]) })
+              : await reach(dcId).invoke(query),
+        }),
+        dcId: 2,
+        size: 200 * KB,
+        cdn: true,
+        attempts: 1,
+      }),
+    ).rejects.toThrow(/FILE_TOKEN_INVALID/)
   })
 
   it('returns the token the node asked to be quoted', async () => {

@@ -285,7 +285,7 @@ describe('choosing where to connect', () => {
 
     // Media prefers the address set aside for it; the family is a preference
     // applied within the purpose.
-    expect(forCallers()[0]?.address.host).toBe('10.0.0.2')
+    expect(forCallers()[0]?.address.host).toBe('10.0.0.9')
     expect(forCallers()[1]?.address.host).toBe('2001:db8::2')
   })
 

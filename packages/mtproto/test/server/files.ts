@@ -126,6 +126,8 @@ export class FileServer {
   readonly #issued = new Map<string, number>()
   /** Ranges already asked for once, for the re-upload fault. */
   readonly #asked = new Set<string>()
+  /** Ranges a node has been told to ask for, by the token standing for each. */
+  readonly #reuploads = new Map<string, { fileId: bigint; offset: number }>()
 
   faults: FileFaults = {}
 
@@ -217,7 +219,7 @@ export class FileServer {
       case 'upload.getCdnFileHashes':
         return this.#cdnHashes(query)
       case 'upload.reuploadCdnFile':
-        return { _: 'vector', items: [] }
+        return this.#reupload(query)
       default:
         throw new FileServerError(`this datacenter was not asked to answer '${query._}'`)
     }
@@ -360,8 +362,12 @@ export class FileServer {
     // client has to ask the datacenter to send it there before asking again.
     if (this.faults.cdnReuploadFirst === true && !this.#asked.has(seen)) {
       this.#asked.add(seen)
+      const request = `reupload-${seen}`
+      // The token stands for this range and nothing else, so a client that
+      // quotes another one is asking about something the node never mentioned.
+      this.#reuploads.set(request, { fileId: held.fileId, offset })
 
-      return { _: 'upload.cdnFileReuploadNeeded', request_token: encode(`reupload-${seen}`) }
+      return { _: 'upload.cdnFileReuploadNeeded', request_token: encode(request) }
     }
 
     const file = this.#files.get(held.fileId.toString())
@@ -371,6 +377,35 @@ export class FileServer {
     const bytes = this.faults.corruptCdn === true ? plain.map((byte) => byte ^ 0xff) : plain
 
     return { _: 'upload.cdnFile', bytes: encrypt(bytes, held.key, held.iv, offset) }
+  }
+
+  /**
+   * Send a range to a delivery node that does not have it.
+   *
+   * Answered with the verification data for what was sent, which is what makes
+   * the answer worth keeping: it describes a range the node was holding nothing
+   * for a moment ago, and a client that discards it has to ask again for
+   * something it was already given.
+   */
+  #reupload(query: TlValue): TlValue {
+    const token = decode(readBytes(query, 'file_token'))
+    const held = this.#tokens.get(token)
+    if (held === undefined) throw new TelegramError('FILE_TOKEN_INVALID (400)')
+
+    const request = decode(readBytes(query, 'request_token'))
+    const wanted = this.#reuploads.get(request)
+    // A token this datacenter never issued names no range, and one issued for
+    // another file names a range this token cannot speak for.
+    if (wanted === undefined || wanted.fileId !== held.fileId) {
+      throw new TelegramError('REQUEST_TOKEN_INVALID (400)')
+    }
+
+    this.#reuploads.delete(request)
+
+    const file = this.#files.get(held.fileId.toString())
+    if (file === undefined) throw new FileServerError('a token outlived its file')
+
+    return { _: 'vector', items: this.#hashes(held.fileId, file, wanted.offset) }
   }
 
   #cdnHashes(query: TlValue): TlValue {

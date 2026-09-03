@@ -255,8 +255,48 @@ describe('choosing by purpose', () => {
     // An ordinary address serves files too, so it stays a candidate — behind
     // the one the server set aside for them.
     expect(known.candidates({ id: 2, purpose: 'media' }).map((entry) => entry.host)).toEqual([
-      '10.0.0.1',
       '10.0.0.2',
+      '10.0.0.1',
+    ])
+  })
+
+  it('routes a transfer to the media address even though the server lists it second', () => {
+    // The order the server publishes puts its ordinary address first, so a
+    // transfer that took the list as it comes would never reach the address
+    // set aside for transfers. Choosing the first candidate is only right once
+    // the candidates are in the order this layer means.
+    expect(known.select({ id: 2, purpose: 'media' })?.host).toBe('10.0.0.2')
+  })
+
+  it('falls back to the ordinary address when the server set none aside', () => {
+    const ordinary = directory([main])
+
+    expect(ordinary.select({ id: 2, purpose: 'media' })?.host).toBe('10.0.0.1')
+  })
+
+  it('keeps the published order among the addresses set aside for transfers', () => {
+    // Grouping is this layer's opinion; the order within a group is the
+    // server's, and it is its own order of preference.
+    const first = address({ host: '10.0.0.7', mediaOnly: true })
+    const second = address({ host: '10.0.0.8', mediaOnly: true })
+    const several = directory([main, first, second])
+
+    expect(several.candidates({ id: 2, purpose: 'media' }).map((entry) => entry.host)).toEqual([
+      '10.0.0.7',
+      '10.0.0.8',
+      '10.0.0.1',
+    ])
+  })
+
+  it('leaves the order alone for ordinary calls', () => {
+    // Only a transfer has an address set aside for it. Reordering anything
+    // else would override the preference the server published.
+    const extra = address({ host: '10.0.0.4' })
+    const several = directory([main, extra])
+
+    expect(several.candidates({ id: 2 }).map((entry) => entry.host)).toEqual([
+      '10.0.0.1',
+      '10.0.0.4',
     ])
   })
 
