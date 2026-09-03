@@ -33,7 +33,9 @@ import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import type { Callable } from '../network/migration.js'
 import { MigrationError } from '../session/dispatcher.js'
 import type { TlValue } from '../tl/index.js'
+import { CdnFile, type CdnRedirection, readRedirection } from './cdn.js'
 import { checkRange, type DownloadMode, planDownload } from './geometry.js'
+import { isStaleReference, type ManagedLocation } from './references.js'
 
 /** Attempts made on one range before the download gives up on it. */
 const DEFAULT_ATTEMPTS = 3
@@ -56,6 +58,23 @@ export interface DownloadOptions {
   readonly location: TlValue
   /** How to reach a datacenter, including the one to start at. */
   readonly reach: (dcId: number) => Callable
+  /**
+   * Let the datacenter hand the transfer to a delivery node.
+   *
+   * Off unless asked for: a node serves encrypted bytes that have to be checked
+   * against what was published for them, so it is a different way of fetching a
+   * file rather than a faster one, and a caller that has not said it can do
+   * that must not be told to.
+   */
+  readonly cdn?: boolean
+  /**
+   * Where a current reference comes from when the datacenter refuses the one
+   * the location carries.
+   *
+   * Without it a refused reference is simply a failure, which is what a caller
+   * that never stored the location wants.
+   */
+  readonly references?: ManagedLocation
   /** The datacenter to ask. */
   readonly dcId: number
   /**
@@ -151,6 +170,8 @@ interface Piece {
 class Transfer {
   #dcId: number
   #redirections = 0
+  /** Set once a datacenter has handed the transfer to a delivery node. */
+  #cdn: CdnFile | undefined
 
   constructor(private readonly options: DownloadOptions) {
     this.#dcId = options.dcId
@@ -389,20 +410,21 @@ class Transfer {
 
     const attempts = this.options.attempts ?? DEFAULT_ATTEMPTS
     let failure: unknown
+    // A refused reference is answered once. Refreshing again would ask the same
+    // origin the same question and be told the same thing.
+    let refreshed = false
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       this.#stopIfAbandoned()
+      const location = this.#location()
 
       try {
-        const answer = await this.options.reach(this.#dcId).invoke({
-          _: 'upload.getFile',
-          ...(this.options.mode === 'precise' ? { precise: true } : {}),
-          location: this.options.location,
-          offset: BigInt(piece.offset),
-          limit: piece.limit,
-        })
+        const bytes = await this.#ask(piece, location)
+        if (bytes !== undefined) return bytes
 
-        return readFile(answer)
+        // Handed to a delivery node. The range was answered with an address
+        // rather than with bytes, so it has not been tried yet.
+        attempt -= 1
       } catch (error) {
         if (error instanceof CancelledError) throw error
 
@@ -410,6 +432,14 @@ class Transfer {
           this.#redirect(error)
           // A redirection is not a failed attempt: the range was asked of the
           // wrong datacenter and has not been tried yet.
+          attempt -= 1
+          continue
+        }
+
+        if (!refreshed && this.options.references !== undefined && isStaleReference(error)) {
+          refreshed = true
+          await this.options.references.refresh(referenceOf(location))
+          // Nor is a refused reference: the file was never looked for.
           attempt -= 1
           continue
         }
@@ -422,12 +452,77 @@ class Transfer {
   }
 
   /**
+   * Put one range to whatever is serving the file.
+   *
+   * Answers with the bytes, or with nothing when the datacenter has handed the
+   * transfer to a delivery node instead of serving it — which is an answer
+   * about where the file is rather than a failure to produce it.
+   */
+  async #ask(piece: Piece, location: TlValue): Promise<Uint8Array | undefined> {
+    if (this.#cdn !== undefined) return await this.#cdn.fetch(piece.offset, piece.limit)
+
+    const answer = await this.options.reach(this.#dcId).invoke({
+      _: 'upload.getFile',
+      ...(this.options.mode === 'precise' ? { precise: true } : {}),
+      ...(this.options.cdn === true ? { cdn_supported: true } : {}),
+      location,
+      offset: BigInt(piece.offset),
+      limit: piece.limit,
+    })
+
+    // Only a caller that said it could follow one. A datacenter naming a
+    // delivery node to a client that never offered to use one is answering a
+    // question it was not asked, and the bytes it did not send are missing
+    // whatever is done about it.
+    const redirection = this.options.cdn === true ? readRedirection(answer) : undefined
+    if (redirection === undefined) return readFile(answer)
+
+    this.#followToCdn(redirection)
+
+    return undefined
+  }
+
+  /** The location as it should be sent now, reference and all. */
+  #location(): TlValue {
+    return this.options.references?.current() ?? this.options.location
+  }
+
+  /**
+   * Fetch the rest of this file from the delivery node the datacenter named.
+   *
+   * Once. The token covers the file rather than the range it arrived with, so
+   * every range still to come goes to the node from here — which is also what
+   * bounds this: a transfer that has been handed over is never asking a
+   * datacenter again, so it cannot be handed anywhere else. The ranges already
+   * in flight when the first one arrives are told the same thing a moment
+   * later, and there is nothing left for them to do about it.
+   */
+  #followToCdn(redirection: CdnRedirection): void {
+    if (this.#cdn !== undefined) return
+
+    this.#cdn = new CdnFile(redirection, {
+      reach: this.options.reach,
+      // Only the datacenter that issued the redirection can send a range to the
+      // node, so which one that was has to survive the transition.
+      originDcId: this.#dcId,
+      stop: () => {
+        this.#stopIfAbandoned()
+      },
+    })
+  }
+
+  /**
    * Move the transfer to the datacenter that claims the file.
    *
    * Bounded, because datacenters that redirect to each other describe a loop no
-   * number of attempts resolves.
+   * number of attempts resolves. What is counted is the transfer moving, not a
+   * range being told to move: every range in flight is told the same thing at
+   * the same time, so counting the tellings would spend the whole allowance on
+   * one move and make the bound a limit on how many ranges may be in flight.
    */
   #redirect(error: MigrationError): void {
+    if (error.dcId === this.#dcId) return
+
     this.#redirections += 1
     if (this.#redirections > MAX_REDIRECTIONS) {
       throw new ValidationError(
@@ -443,6 +538,13 @@ class Transfer {
       throw new CancelledError('the download was stopped')
     }
   }
+}
+
+/** The reference a location was sent with, if it carried one. */
+function referenceOf(location: TlValue): Uint8Array {
+  const reference = location['file_reference']
+
+  return reference instanceof Uint8Array ? reference : new Uint8Array(0)
 }
 
 /**

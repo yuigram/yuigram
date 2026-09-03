@@ -23,6 +23,7 @@ export {
   equalBytes,
   xorBytes,
 } from './bytes.js'
+export { AES_BLOCK, counterAt, ctrCrypt } from './ctr.js'
 export { factorizePq, type PqFactors } from './factorize.js'
 export { md5, sha1, sha256 } from './hash.js'
 export { igeDecrypt, igeEncrypt } from './ige.js'

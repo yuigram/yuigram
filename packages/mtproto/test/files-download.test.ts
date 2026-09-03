@@ -968,6 +968,65 @@ describe('a datacenter that says the file lives elsewhere', () => {
     expect(bytes).toEqual(contentOf(FILE, 0, size))
   })
 
+  it('counts the transfer moving, not each range being told to move', async () => {
+    // Every range in flight is refused at once when a file lives elsewhere. If
+    // each refusal counted against the allowance for being sent onward, the
+    // allowance would be spent on a single move — and the largest file that
+    // could be fetched would be decided by how many ranges are in flight.
+    const size = 4 * MB
+    const home = new FileServer(2)
+    const media = new FileServer(4)
+    home.add(FILE, { size, dcId: 4 })
+    const { reference } = media.add(FILE, { size, dcId: 4 })
+    const servers = new Map([
+      [2, home],
+      [4, media],
+    ])
+
+    const bytes = await download({
+      location: locate(reference),
+      reach: (dcId: number) => ({
+        invoke: async (query: TlValue) => {
+          const server = servers.get(dcId)
+          if (server === undefined) throw new Error(`no datacenter ${dcId}`)
+
+          return server.invoke(query)
+        },
+      }),
+      dcId: 2,
+      size,
+      concurrency: 4,
+    })
+
+    expectSameBytes(bytes, contentOf(FILE, 0, size))
+  })
+
+  it('still gives up on datacenters that pass a file between them', async () => {
+    // The bound has to survive counting moves rather than refusals.
+    let at = 2
+    let calls = 0
+
+    await expect(
+      download({
+        location: locate(new Uint8Array(1)),
+        reach: () => ({
+          invoke: async () => {
+            calls += 1
+            if (calls > 20) throw new ValidationError('the download never stopped')
+            at = at === 2 ? 4 : 2
+
+            throw new MigrationError(`FILE_MIGRATE_${at} (303)`, { kind: 'file', dcId: at })
+          },
+        }),
+        dcId: 2,
+        size: 4 * KB,
+        concurrency: 1,
+      }),
+    ).rejects.toThrow(/redirected more than/)
+
+    expect(calls).toBeLessThan(20)
+  })
+
   it('does not spend an attempt on being redirected', async () => {
     const { location, reach } = split(4 * KB)
 
