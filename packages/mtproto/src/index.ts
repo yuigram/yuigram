@@ -9,5 +9,17 @@
  * `@yuigram/bot-api`.
  */
 
+export {
+  Account,
+  type AccountContext,
+  type AccountOptions,
+} from './account.js'
+export type {
+  MtprotoContext,
+  MtprotoEventKind,
+  NormalizedUpdate,
+  PeerRef,
+} from './normalize/index.js'
+
 /** Package name, used by diagnostics and error messages. */
 export const PACKAGE_NAME = '@yuigram/mtproto'
