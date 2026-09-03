@@ -279,6 +279,21 @@ describe('which connection a caller gets', () => {
     expect(layer.get({ purpose: 'media' })).not.toBe(layer.get({ purpose: 'main' }))
   })
 
+  it('is a different one for a different slot', () => {
+    // A datacenter will hold more than one connection from a client. Asking for
+    // another slot asks for another connection, not another handle on this one.
+    const { layer } = harness()
+
+    expect(layer.get({ slot: 1 })).not.toBe(layer.get())
+    expect(layer.get({ slot: 1 })).toBe(layer.get({ slot: 1 }))
+  })
+
+  it('treats no slot as the first one', () => {
+    const { layer } = harness()
+
+    expect(layer.get()).toBe(layer.get({ slot: 0 }))
+  })
+
   it('is a different one for a different datacenter', () => {
     const { layer } = harness()
 
@@ -314,6 +329,42 @@ describe('which connection a caller gets', () => {
     expect(main.state).toBe('closed')
     expect(media.state).toBe('closed')
     expect(channels.every((channel) => channel.closed)).toBe(true)
+  })
+})
+
+describe('how much a connection has waiting on it', () => {
+  it('is nothing before anything is asked of it', () => {
+    const { layer } = harness()
+
+    expect(layer.get().inFlight).toBe(0)
+  })
+
+  it('counts a call from the moment it is made, not from the write', async () => {
+    // A call waiting for a channel to exist is work this connection has taken
+    // on. A layer choosing between connections that counted only written calls
+    // would send every one of them to the connection that has not opened yet.
+    const { layer } = harness()
+    const connection = layer.get()
+
+    const call = connection.invoke({ _: 'ping', ping_id: 1n })
+    expect(connection.inFlight).toBe(1)
+
+    await connection.ready()
+    void call.catch(() => undefined)
+    connection.close()
+    await call.catch(() => undefined)
+  })
+
+  it('stops counting a call once it has failed', async () => {
+    const { layer } = harness()
+    const connection = layer.get()
+
+    const call = connection.invoke({ _: 'ping', ping_id: 1n })
+    await connection.ready()
+    connection.close()
+    await call.catch(() => undefined)
+
+    expect(connection.inFlight).toBe(0)
   })
 })
 

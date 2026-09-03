@@ -60,6 +60,14 @@ export {
   resolveUsername,
 } from './peers.js'
 export {
+  openPools,
+  POOL_LIMITS,
+  type PoolPurpose,
+  type Pools,
+  type PoolsOptions,
+  type PoolTarget,
+} from './pools.js'
+export {
   type LoginTokenState,
   type Reach,
   requestLoginToken,

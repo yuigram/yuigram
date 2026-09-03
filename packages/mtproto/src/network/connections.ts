@@ -53,6 +53,16 @@ export interface ConnectionTarget {
   readonly id?: number
   /** Defaults to ordinary calls and updates. */
   readonly purpose?: DcPurpose
+  /**
+   * Which of several connections to one endpoint is wanted.
+   *
+   * A datacenter will hold more than one connection from a client, and bulk
+   * transfer wants several so that parts move at once. Each is a connection in
+   * its own right — its own channel, its own session — over the one
+   * authorization the datacenter holds, so a slot is a way of asking for
+   * another rather than a way of sharing this one. Defaults to the first.
+   */
+  readonly slot?: number
 }
 
 /**
@@ -117,6 +127,15 @@ export interface ManagedConnection {
   readonly purpose: DcPurpose
   readonly state: ConnectionState
   /**
+   * How many calls are waiting for an answer on this connection.
+   *
+   * What a layer choosing between several connections to one datacenter reads
+   * to tell a busy one from an idle one. Counted from the call being made
+   * rather than from the write, because a call waiting for a channel to exist
+   * is still work this connection has taken on.
+   */
+  readonly inFlight: number
+  /**
    * Wait until a channel is live.
    *
    * Rejects when this caller withdraws or when the connection is closed, never
@@ -162,7 +181,7 @@ export function openConnections(options: ConnectionsOptions): Connections {
 
       const id = target.id ?? options.datacenters.directory.thisDc
       const purpose = target.purpose ?? 'main'
-      const key = `${id}:${purpose}`
+      const key = `${id}:${purpose}:${target.slot ?? 0}`
 
       const existing = connections.get(key)
       // A connection that was closed is finished. Handing it back would give a
@@ -198,6 +217,7 @@ interface Attempt {
 class Logical implements ManagedConnection {
   readonly dcId: number
   readonly purpose: DcPurpose
+  #inFlight = 0
 
   readonly #options: ConnectionsOptions
   readonly #base: number
@@ -264,12 +284,25 @@ class Logical implements ManagedConnection {
     return this.#wait(options.signal)
   }
 
-  async invoke(query: TlValue, options: ConnectionInvokeOptions = {}): Promise<TlValue> {
-    const channel = await this.#live(options.signal)
+  get inFlight(): number {
+    return this.#inFlight
+  }
 
-    // The write. Everything before it may be repeated freely; nothing after it
-    // may be repeated at all.
-    return channel.invoke(query, options.timeout === undefined ? {} : { timeout: options.timeout })
+  async invoke(query: TlValue, options: ConnectionInvokeOptions = {}): Promise<TlValue> {
+    this.#inFlight += 1
+
+    try {
+      const channel = await this.#live(options.signal)
+
+      // The write. Everything before it may be repeated freely; nothing after
+      // it may be repeated at all.
+      return await channel.invoke(
+        query,
+        options.timeout === undefined ? {} : { timeout: options.timeout },
+      )
+    } finally {
+      this.#inFlight -= 1
+    }
   }
 
   close(): void {
