@@ -664,6 +664,324 @@ describe('what an application does to storage when it comes and goes', () => {
   })
 })
 
+describe('handling an event from any client', () => {
+  it('reaches a handler registered on the application', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.client.name))
+
+    await client.deliver()
+
+    expect(seen).toEqual(['alice'])
+  })
+
+  it('reaches one registered before the client was added', async () => {
+    // Registration is not a subscription to the clients present at the time: an
+    // application whose handlers depended on registration order would make
+    // `on` before `add` mean something different from the reverse.
+    const app = new App<Event>()
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.client.name))
+    const client = app.add(new Fake('alice'))
+
+    await client.deliver()
+
+    expect(seen).toEqual(['alice'])
+  })
+
+  it('reaches one registered after the client was added', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.client.name))
+
+    await client.deliver()
+
+    expect(seen).toEqual(['alice'])
+  })
+
+  it('hears from every client it holds', async () => {
+    const app = new App<Event>()
+    const alice = app.add(new Fake('alice'))
+    const bob = app.add(new Fake('bob'))
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.client.name))
+
+    await alice.deliver()
+    await bob.deliver()
+
+    expect(seen).toEqual(['alice', 'bob'])
+  })
+
+  it('says which client an event arrived on', async () => {
+    // The whole point of registering across clients: a handler that could not
+    // tell them apart would be a handler that must not read anything specific.
+    const app = new App<Event>()
+    const alice = app.add(new Fake('alice'))
+    const bob = app.add(new Fake('bob'))
+    const seen: Array<{ name: string; kind: string }> = []
+    app.on(['message', 'callback_query'], (event) =>
+      seen.push({ name: event.client.name, kind: event.kind }),
+    )
+
+    await bob.deliver('callback_query')
+    await alice.deliver('message')
+
+    expect(seen).toEqual([
+      { name: 'bob', kind: 'callback_query' },
+      { name: 'alice', kind: 'message' },
+    ])
+  })
+
+  it('runs handlers in the order they were registered', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const order: string[] = []
+    app.on('message', () => order.push('first'))
+    app.on('message', () => order.push('second'))
+
+    await client.deliver()
+
+    expect(order).toEqual(['first', 'second'])
+  })
+
+  it('runs every handler that matches, not only the first', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.on('message', () => ran.push('a'))
+    app.on(['message', 'callback_query'], () => ran.push('b'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['a', 'b'])
+  })
+
+  it('leaves an event no handler asked for alone', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const seen: string[] = []
+    app.on('callback_query', (event) => seen.push(event.kind))
+
+    await client.deliver('message')
+
+    expect(seen).toEqual([])
+  })
+
+  it('handles the next matching event once, when asked once', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    let count = 0
+    app.once('message', () => {
+      count += 1
+    })
+
+    await client.deliver()
+    await client.deliver()
+
+    expect(count).toBe(1)
+  })
+
+  it('forgets a handler that was taken off', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    let count = 0
+    const handler = () => {
+      count += 1
+    }
+    app.on('message', handler)
+
+    expect(app.off(handler)).toBe(true)
+    await client.deliver()
+
+    expect(count).toBe(0)
+  })
+})
+
+describe('where an application handler sits', () => {
+  it('runs inside the application middleware and outside the client', async () => {
+    const trace: string[] = []
+    const app = new App<Event>()
+    app.use(async (_event, next) => {
+      trace.push('app middleware in')
+      await next()
+      trace.push('app middleware out')
+    })
+    app.on('message', () => trace.push('app handler'))
+
+    const client = app.add(new Fake('alice'))
+    client.dispatcher.use(async (_event, next) => {
+      trace.push('client middleware in')
+      await next()
+      trace.push('client middleware out')
+    })
+    client.dispatcher.on('message', () => trace.push('client handler'))
+
+    await client.deliver()
+
+    expect(trace).toEqual([
+      'app middleware in',
+      'app handler',
+      'client middleware in',
+      'client handler',
+      'client middleware out',
+      'app middleware out',
+    ])
+  })
+
+  it('does not consume the update the client would have handled', async () => {
+    // Two tiers, both live. An application handler is an additional concern,
+    // not a claim on the update.
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.on('message', () => ran.push('app'))
+    client.dispatcher.on('message', () => ran.push('client'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['app', 'client'])
+  })
+
+  it('is stopped by application middleware that does not continue', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.use(async () => {
+      ran.push('middleware')
+    })
+    app.on('message', () => ran.push('app handler'))
+    client.dispatcher.on('message', () => ran.push('client handler'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['middleware'])
+  })
+
+  it('runs for a client that was never given handlers of its own', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.on('message', () => ran.push('app'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['app'])
+  })
+})
+
+describe('an application handler that fails', () => {
+  it('reports the failure the way a failed start is reported', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const failures: Array<{ name: string; error: unknown }> = []
+    app.onError(({ client: which, error }) => failures.push({ name: which.name, error }))
+    const boom = new Error('boom')
+    app.on('message', () => {
+      throw boom
+    })
+
+    await client.deliver()
+
+    // One error path in an application, and it names the client the failure
+    // belongs to — which is the only thing that makes it actionable.
+    expect(failures).toEqual([{ name: 'alice', error: boom }])
+  })
+
+  it('raises a failure nobody is listening for', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    app.on('message', () => {
+      throw new Error('boom')
+    })
+
+    await expect(client.deliver()).rejects.toThrow('boom')
+  })
+
+  it('lets the handlers after it run', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.onError(() => {})
+    app.on('message', () => {
+      throw new Error('boom')
+    })
+    app.on('message', () => ran.push('second'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['second'])
+  })
+
+  it('reports every failure from one update', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const failures: string[] = []
+    app.onError(({ error }) => failures.push((error as Error).message))
+    app.on('message', () => {
+      throw new Error('first')
+    })
+    app.on('message', () => {
+      throw new Error('second')
+    })
+
+    await client.deliver()
+
+    expect(failures).toEqual(['first', 'second'])
+  })
+
+  it('still lets the client handle the update', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+    app.onError(() => {})
+    app.on('message', () => {
+      throw new Error('boom')
+    })
+    client.dispatcher.on('message', () => ran.push('client'))
+
+    await client.deliver()
+
+    expect(ran).toEqual(['client'])
+  })
+})
+
+describe('what a lifecycle does to registration', () => {
+  it('keeps handlers across a stop and a start', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    let count = 0
+    app.on('message', () => {
+      count += 1
+    })
+
+    await app.start()
+    await client.deliver()
+    await app.stop()
+    await app.start()
+    await client.deliver()
+
+    // Two updates, two runs. A handler registered once must not be installed
+    // twice by a restart, and must not be forgotten by one either.
+    expect(count).toBe(2)
+    await app.stop()
+  })
+
+  it('reaches a handler registered while the application is running', async () => {
+    const app = new App<Event>()
+    const client = app.add(new Fake('alice'))
+    const ran: string[] = []
+
+    await app.start()
+    app.on('message', () => ran.push('late'))
+    await client.deliver()
+
+    expect(ran).toEqual(['late'])
+    await app.stop()
+  })
+})
+
 describe('what an application is called', () => {
   it('has a name for logs', () => {
     expect(new App<Event>({ name: 'production' }).name).toBe('production')

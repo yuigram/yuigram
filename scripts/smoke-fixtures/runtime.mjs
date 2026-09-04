@@ -39,6 +39,12 @@ check('the error hierarchy is exported', () => typeof FloodError === 'function')
 check('schemaInfo names the Bot API version', () => /^\d+\.\d+$/.test(schemaInfo.botApi))
 check('the MTProto client is re-exported', () => typeof Account === 'function')
 check('the container both transports meet in is re-exported', () => typeof App === 'function')
+check('the container registers across clients', () => {
+  const app = new App()
+  return (
+    typeof app.on === 'function' && typeof app.once === 'function' && typeof app.off === 'function'
+  )
+})
 check('schemaInfo names the TL layer', () => Number.isInteger(schemaInfo.tlLayer))
 check('the testing subpath resolves', () => typeof mockBot === 'function')
 check('the webhook subpath resolves', () =>

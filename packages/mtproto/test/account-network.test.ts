@@ -82,13 +82,17 @@ const asked = (datacenter: MockDatacenter) =>
 /**
  * Wait for something to become true rather than for a length of time.
  *
- * Turns of the queue, not milliseconds: the wait ends when the thing it is
- * waiting for has happened, however long that took, and fails loudly rather
- * than quietly proceeding if it never does.
+ * The wait ends the moment the thing it is waiting for has happened, however
+ * long that took, and fails loudly rather than quietly proceeding if it never
+ * does. What it waits *through* is a timer, not a microtask: a session sends
+ * what it has queued on a due time, and a loop that only yielded to the check
+ * phase could spin out its whole budget inside the millisecond before that
+ * timer came due — which is a failure that depends on how busy the machine is
+ * rather than on anything the case is about.
  */
 async function until(ready: () => boolean, what: string): Promise<void> {
   for (let turn = 0; turn < 200 && !ready(); turn += 1) {
-    await new Promise((resolve) => setImmediate(resolve))
+    await new Promise((resolve) => setTimeout(resolve, 0))
   }
 
   if (!ready()) throw new Error(`${what} never happened`)

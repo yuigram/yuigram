@@ -21,7 +21,7 @@
 
 import { describe, expect, it } from 'vitest'
 import * as yuigram from '../src/index.js'
-import { Account, App, memory } from '../src/index.js'
+import { Account, type AnyEventContext, App, type MtprotoContext, memory } from '../src/index.js'
 import { mockBot } from '../src/testing.js'
 
 /**
@@ -91,6 +91,145 @@ describe('the MTProto surface a consumer receives', () => {
     // off the context a handler is given.
     expect(typeof yuigram.normalizeUpdate).toBe('function')
     expect(yuigram.UNKNOWN_KIND).toBeDefined()
+  })
+})
+
+describe('a handler registered across both transports', () => {
+  /** An application typed for what the two transports have in common. */
+  const application = () => new App<AnyEventContext | MtprotoContext>()
+
+  /** A message as MTProto delivers one. */
+  const TL_MESSAGE = {
+    _: 'updateNewMessage',
+    message: {
+      _: 'message',
+      id: 1,
+      peer_id: { _: 'peerUser', user_id: 5n },
+      from_id: { _: 'peerUser', user_id: 5n },
+      message: 'from an account',
+      date: 1_700_000_000,
+    },
+    pts: 2,
+    pts_count: 1,
+  }
+
+  it('hears a Bot API message', async () => {
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    app.add(bot)
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.transport))
+
+    await send.message('hello')
+
+    expect(seen).toEqual(['bot-api'])
+  })
+
+  it('hears an MTProto message', async () => {
+    const app = application()
+    const user = account('me')
+    app.add(user)
+    const seen: string[] = []
+    app.on('message', (event) => seen.push(event.transport))
+
+    await user.deliver(TL_MESSAGE)
+
+    expect(seen).toEqual(['mtproto'])
+  })
+
+  it('hears both, and keeps them apart', async () => {
+    // The claim the framework exists for. One registration, two protocols, and
+    // a discriminant that survives the trip rather than a shape that pretends
+    // the two are the same thing.
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    const user = account('me')
+    app.add(bot)
+    app.add(user)
+    const seen: Array<{ transport: string; client: string }> = []
+    app.on('message', (event) =>
+      seen.push({ transport: event.transport, client: event.client.name }),
+    )
+
+    await send.message('from a bot')
+    await user.deliver(TL_MESSAGE)
+
+    expect(seen).toEqual([
+      { transport: 'bot-api', client: 'helper' },
+      { transport: 'mtproto', client: 'me' },
+    ])
+  })
+
+  it('reads what each transport actually carried', async () => {
+    // Not merely that both arrived: that the payload came through the right
+    // normalizer, so a handler branching on the transport reads real content.
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    const user = account('me')
+    app.add(bot)
+    app.add(user)
+    const texts: string[] = []
+    app.on('message', (event) => {
+      if (event.transport === 'mtproto') texts.push(event.text ?? '')
+      if (event.transport === 'bot-api' && event.kind === 'message') texts.push(event.text ?? '')
+    })
+
+    await send.message('from a bot')
+    await user.deliver(TL_MESSAGE)
+
+    expect(texts).toEqual(['from a bot', 'from an account'])
+  })
+
+  it('does not send one transport an event only the other has', async () => {
+    // Kinds are not a shared namespace by accident. A Bot API callback query has
+    // no MTProto counterpart, and a handler for it must not be run by the
+    // account merely because both clients are in one application.
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    const user = account('me')
+    app.add(bot)
+    app.add(user)
+    const seen: string[] = []
+    app.on('callback_query', (event) => seen.push(event.transport))
+
+    await user.deliver(TL_MESSAGE)
+    expect(seen).toEqual([])
+
+    await send.callback('buy:1')
+    expect(seen).toEqual(['bot-api'])
+  })
+
+  it('leaves each client handling its own updates as well', async () => {
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    app.add(bot)
+    const ran: string[] = []
+    app.on('message', () => ran.push('app'))
+    bot.onMessage(() => {
+      ran.push('bot')
+    })
+
+    await send.message('hello')
+
+    expect(ran).toEqual(['app', 'bot'])
+  })
+
+  it('reports a failing handler against the client it came from', async () => {
+    const app = application()
+    const { bot, send } = mockBot({ name: 'helper' })
+    const user = account('me')
+    app.add(bot)
+    app.add(user)
+    const blamed: string[] = []
+    app.onError(({ client }) => blamed.push(client.name))
+    app.on('message', () => {
+      throw new Error('boom')
+    })
+
+    await send.message('hello')
+    await user.deliver(TL_MESSAGE)
+
+    expect(blamed).toEqual(['helper', 'me'])
   })
 })
 

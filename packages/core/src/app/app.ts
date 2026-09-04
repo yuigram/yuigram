@@ -39,8 +39,9 @@
  * that cannot reach Telegram is no reason for an unrelated account to stop.
  */
 
-import type { Dispatchable } from '../dispatch/dispatcher.js'
+import { type Dispatchable, Dispatcher, type Handler } from '../dispatch/dispatcher.js'
 import { YuigramError } from '../errors/errors.js'
+import type { AnyFilter } from '../filter/types.js'
 import type { StopOptions } from '../lifecycle/lifecycle.js'
 import { compose, type Middleware } from '../middleware/compose.js'
 import { namespaced } from '../storage/compose.js'
@@ -115,6 +116,24 @@ export class App<C extends Dispatchable = Dispatchable> {
   readonly #byName = new Map<string, AppClient<C>>()
   readonly #middleware: Array<Middleware<C>> = []
   readonly #onError: Array<(failure: ClientFailure<C>) => unknown> = []
+  /**
+   * Cross-client handlers.
+   *
+   * The same dispatcher a client runs its own handlers on, so matching a kind,
+   * a list of kinds or a filter behaves identically wherever it is registered.
+   * It is not a second route an update can travel: nothing dispatches to this
+   * except the chain a client's update is already on.
+   */
+  readonly #handlers: Dispatcher<C>
+  /**
+   * What a handler threw, kept until the pass it belongs to is over.
+   *
+   * Handlers matching one update are independent concerns, so one of them
+   * failing must not cancel the rest. Failures are collected as they happen and
+   * reported afterwards, by the update they belong to — a shared list would
+   * hand a failure to whichever update happened to finish next.
+   */
+  readonly #failures = new WeakMap<object, unknown[]>()
   /** The store as given. Never handed out: what leaves here is always an area. */
   readonly #store: KV
   readonly #own: KV
@@ -125,6 +144,16 @@ export class App<C extends Dispatchable = Dispatchable> {
     // same way still keep their state apart.
     this.#store = options.storage ?? memory()
     this.#own = namespaced(this.#store, OWN)
+    this.#handlers = new Dispatcher<C>({
+      // Collected rather than raised here, so the handlers after this one still
+      // run. What happens to a failure is decided once the pass is done, by the
+      // application's own error path rather than by a second one.
+      onUnhandled: (error, context) => {
+        const held = this.#failures.get(context as object)
+        if (held === undefined) this.#failures.set(context as object, [error])
+        else held.push(error)
+      },
+    })
   }
 
   /**
@@ -178,9 +207,13 @@ export class App<C extends Dispatchable = Dispatchable> {
     this.#byName.set(client.name, client)
 
     // One chain per client, installed once. Middleware added later reaches it
-    // because the chain reads the list rather than closing over its contents.
+    // because the chain reads the list rather than closing over its contents,
+    // and handlers registered later reach it for the same reason.
     client.surround(async (context, next) => {
-      await compose<C>(this.#middleware)(context, next)
+      await compose<C>(this.#middleware)(context, async () => {
+        await this.#handle(client, context)
+        await next()
+      })
     })
 
     return client
@@ -203,6 +236,56 @@ export class App<C extends Dispatchable = Dispatchable> {
     this.#middleware.push(middleware)
 
     return this
+  }
+
+  /**
+   * Handle an event from any client this application holds.
+   *
+   * The cross-client half of registration. A handler registered here sees every
+   * client's updates and must say which transport it is holding before it reads
+   * anything transport-specific; a handler registered on a client already knows,
+   * and needs no discriminant. Both are live at once — an application handler
+   * does not replace or consume what a client handles itself.
+   *
+   * ```ts
+   * const app = new App<AnyEventContext | MtprotoContext>()
+   *
+   * app.on('message', (event) => {
+   *   if (event.transport === 'mtproto') event.text // narrowed to the account's
+   * })
+   * ```
+   *
+   * The union is named where the application is built rather than published
+   * here, because this layer describes neither transport and must not: naming
+   * one would make the shared layer depend on it. `client` stays the thin
+   * structural shape every context carries — the name of the client an update
+   * arrived on — and reaching a client's own surface is done through the client,
+   * which the caller already holds.
+   *
+   * `match` is a kind, a list of kinds, or a filter, exactly as on a client.
+   * Handlers run in the order they were registered, and all of them run: they
+   * are independent concerns that happened to match the same update.
+   *
+   * Registration is independent of the lifecycle. A handler added before or
+   * after `start` reaches the same updates, and stopping an application does not
+   * forget what was registered — only what is running.
+   */
+  on(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
+    this.#handlers.on(match, handler)
+
+    return this
+  }
+
+  /** Handle the next matching event from any client, then stop. */
+  once(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
+    this.#handlers.once(match, handler)
+
+    return this
+  }
+
+  /** Remove a cross-client handler. Says whether anything was registered. */
+  off(handler: Handler<C>): boolean {
+    return this.#handlers.off(handler)
   }
 
   /** Be told when a client fails to start or stop. */
@@ -250,6 +333,28 @@ export class App<C extends Dispatchable = Dispatchable> {
     }
 
     return drained
+  }
+
+  /**
+   * Run the cross-client handlers for one update.
+   *
+   * Inside the application's middleware and outside the client's, which is
+   * where an application-level concern belongs: it sees what the application
+   * decided the update is, and the client still handles it afterwards.
+   *
+   * A failure takes the same route a failed start takes. There is one error
+   * path in an application, and a handler that throws uses it.
+   */
+  async #handle(client: AppClient<C>, context: C): Promise<void> {
+    if (this.#handlers.size === 0) return
+
+    await this.#handlers.dispatch(context)
+
+    const failures = this.#failures.get(context as object)
+    if (failures === undefined) return
+
+    this.#failures.delete(context as object)
+    for (const error of failures) await this.#report(client, error)
   }
 
   /**

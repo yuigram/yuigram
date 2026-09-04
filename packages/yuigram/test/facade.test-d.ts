@@ -12,15 +12,18 @@ import type {
   Account,
   AccountContext,
   AccountOptions,
-  App,
+  AnyEventContext,
+  AnyFilter,
   AppClient,
   BaseContext,
+  Bot,
   Middleware,
   MtprotoContext,
   MtprotoEventKind,
   NormalizedUpdate,
   PeerRef,
 } from '../src/index.js'
+import { App } from '../src/index.js'
 
 describe('the MTProto types a consumer writes against', () => {
   it('describes what an account is built from', () => {
@@ -42,6 +45,82 @@ describe('the MTProto types a consumer writes against', () => {
 
   it('carries the account an event arrived on', () => {
     expectTypeOf<AccountContext>().not.toBeAny()
+  })
+})
+
+/**
+ * The union a cross-client application is written against.
+ *
+ * Named at the call site rather than published by core, which cannot describe
+ * either transport without depending on it. What the two have in common is
+ * already a type — the base every context extends — and what they do not is
+ * carried by the discriminant.
+ */
+type Cross = AnyEventContext | MtprotoContext
+
+declare const event: Cross
+
+describe('what a cross-client handler is given', () => {
+  it('discriminates on the transport', () => {
+    expectTypeOf(event.transport).toEqualTypeOf<'bot-api' | 'mtproto'>()
+  })
+
+  it('narrows to the MTProto context', () => {
+    if (event.transport === 'mtproto') {
+      expectTypeOf(event).toExtend<MtprotoContext>()
+      expectTypeOf(event.kind).toEqualTypeOf<MtprotoEventKind>()
+      expectTypeOf(event.chat).toEqualTypeOf<PeerRef | undefined>()
+    }
+  })
+
+  it('narrows to the Bot API context', () => {
+    if (event.transport === 'bot-api') {
+      expectTypeOf(event).toExtend<AnyEventContext>()
+      // Present on one transport and not the other, which is exactly why the
+      // discriminant has to be read before anything else is.
+      expectTypeOf(event.updateId).toEqualTypeOf<number>()
+    }
+  })
+
+  it('names the client an event arrived on, on either transport', () => {
+    expectTypeOf(event.client.name).toEqualTypeOf<string>()
+  })
+
+  it('is not collapsed into something that lost the difference', () => {
+    expectTypeOf<Cross>().not.toBeAny()
+    expectTypeOf<Cross>().not.toEqualTypeOf<AnyEventContext>()
+    expectTypeOf<Cross>().not.toEqualTypeOf<MtprotoContext>()
+  })
+})
+
+describe('registering across clients', () => {
+  it('hands a handler the context the application was declared with', () => {
+    const app = new App<Cross>()
+    app.on('message', (given) => {
+      expectTypeOf(given).toEqualTypeOf<Cross>()
+    })
+  })
+
+  it('takes a kind, a list of kinds, or a filter', () => {
+    const app = new App<Cross>()
+    expectTypeOf(app.on).parameter(0).toExtend<string | readonly string[] | AnyFilter>()
+  })
+
+  it('returns the application, so registrations chain', () => {
+    const app = new App<Cross>()
+    expectTypeOf(app.on('message', () => {})).toEqualTypeOf<App<Cross>>()
+    expectTypeOf(app.once('message', () => {})).toEqualTypeOf<App<Cross>>()
+  })
+
+  it('says whether taking a handler off found one', () => {
+    const app = new App<Cross>()
+    expectTypeOf(app.off).returns.toEqualTypeOf<boolean>()
+  })
+
+  it('holds a client of either kind under one union', () => {
+    const app = new App<Cross>()
+    expectTypeOf(app.add<Bot>).toBeFunction()
+    expectTypeOf(app.add<Account>).toBeFunction()
   })
 })
 

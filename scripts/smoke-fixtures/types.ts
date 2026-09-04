@@ -13,6 +13,7 @@
 
 import {
   type Account,
+  type AnyEventContext,
   App,
   Bot,
   type MtprotoContext,
@@ -75,6 +76,19 @@ app.add(bot)
 
 declare const user: Account
 app.add(user)
+
+// One registration across both transports, typed by the union the application
+// was declared with. A published build that lost the discriminant compiles the
+// call and silently stops narrowing, which is what this catches.
+const cross = new App<AnyEventContext | MtprotoContext>()
+cross.on('message', (event) => {
+  const transport: 'bot-api' | 'mtproto' = event.transport
+  if (event.transport === 'mtproto') {
+    const text: string | undefined = event.text
+    return [transport, text]
+  }
+  return [transport, event.updateId]
+})
 
 // The discriminant a handler installed on more than one client branches on. A
 // published build that widened it to `string` still compiles everywhere else.

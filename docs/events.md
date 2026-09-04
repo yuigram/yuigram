@@ -180,15 +180,51 @@ bot.on(['message', 'message_edited'], (event) => {
 })
 ```
 
-Cross-client handlers on the `App` intersect the two maps and expose only what both provide:
+Cross-client handlers on the `App` see every client's updates. The application is declared
+with the union it is written against, and the discriminant carries the divergence:
 
 ```ts
-app.onMessage((message) => {
-  message.text                   // available
-  message.transport              // 'bot-api' | 'mtproto'
-  if (message.transport === 'mtproto') message.client.api.messages…   // narrowed
+const app = new App<AnyEventContext | MtprotoContext>()
+
+app.on('message', (event) => {
+  event.transport                // 'bot-api' | 'mtproto'
+
+  if (event.transport === 'mtproto') event.text      // narrowed to the account's context
+  if (event.transport === 'bot-api') event.updateId  // narrowed to the bot's
 })
 ```
+
+The union is named at the call site rather than published by core, which describes neither
+transport and must not: the shared layer would otherwise depend on whichever subsystem
+produced the event. What the two have in common is already a type — the base every context
+extends — and `transport` carries what they do not.
+
+`on` takes a kind, a list of kinds, or a filter, exactly as on a client. Handlers run in
+registration order, and all of them run: they are independent concerns that matched the same
+update. `once` and `off` complete the set.
+
+An application handler runs inside the application's middleware and outside the client's:
+
+```
+App middleware
+  App handlers          every client, matching kinds
+    Client middleware
+      Client handlers   the client still handles its own update
+```
+
+Both tiers are live at once. Registering on the application does not consume the update or
+replace what a client handles itself, and registration is independent of the lifecycle — a
+handler added before or after `start` reaches the same updates, and stopping an application
+forgets nothing.
+
+A handler that throws takes the application's existing error path, naming the client the
+update arrived on:
+
+```ts
+app.onError(({ client, error }) => log.error({ client: client.name, error }))
+```
+
+A failure nobody is listening for is raised rather than dropped.
 
 ---
 
