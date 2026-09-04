@@ -74,9 +74,64 @@ export interface BaseContext {
 }
 
 /**
+ * What a handler can do with an event, whatever produced it.
+ *
+ * The unified surface is an action surface rather than a second entity model.
+ * Both subsystems model peers, messages and timestamps differently, and a
+ * shared type for any of those would be a union pretending to be a product
+ * type — so entities stay in the package that models them and are reached by
+ * narrowing on `transport`, or through `raw`.
+ *
+ * These two are different. They address the peer the update came from, which
+ * both subsystems already know: a bot replies to the chat the message arrived
+ * in, and an account replies to the peer it heard from, whose reference it
+ * already holds. That is what makes them safe to share, and it is what lets a
+ * handler installed across several clients answer any of them without first
+ * asking which one it is holding.
+ *
+ * The signatures are the smallest both can satisfy. Each subsystem offers more
+ * than this on its own contexts — the Bot API takes every option its schema
+ * accepts, and returns the message it sent — and a wider signature here would
+ * either promise one subsystem's options on the other or return a type only one
+ * of them has.
+ */
+export interface ContextActions {
+  /** Answer the message this event carries, in the conversation it arrived in. */
+  reply(text: string): Promise<unknown>
+  /** React to the message this event carries. */
+  react(emoji: string): Promise<unknown>
+}
+
+/**
  * The transport-agnostic context.
  *
  * Transport packages intersect their own members onto this, and applications
  * intersect the flavours of whatever plugins they install.
  */
 export type Context = BaseContext
+
+/**
+ * What a handler installed across several clients is written against.
+ *
+ * `BaseContext` and nothing else that is not true of every event: what the
+ * event is, which client and subsystem it came from, what it said where both
+ * agree on the meaning, and the two operations that address the peer it came
+ * from. An application names this when it holds clients of more than one kind.
+ *
+ * ```ts
+ * const app = new App<UnifiedContext>()
+ *
+ * app.on('message', (event) => event.reply(`heard on ${event.transport}`))
+ * ```
+ */
+export interface UnifiedContext extends BaseContext, ContextActions {
+  /**
+   * Message text, where the event carries a message with any.
+   *
+   * Optional rather than `string | undefined`, because the two subsystems
+   * declare it differently — one omits the property where a payload has no
+   * text, the other carries it as absent — and only the looser of the two
+   * accepts both.
+   */
+  readonly text?: string | undefined
+}

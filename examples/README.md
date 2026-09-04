@@ -18,6 +18,8 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 |---|---|---|
 | 01 | [basic bot](01-basic-bot) | The smallest complete bot: commands, an echo handler, clean shutdown |
 | 02 | [keyboards](02-keyboards) | Buttons, files, escaped formatting, filters, and a flood-wait hook |
+| 03 | [basic userbot](03-basic-userbot) | An account rather than a bot: a portable session, and answering what it hears |
+| 04 | [bot and userbot](04-bot-and-userbot) | One app, both identities, one handler — the unified action surface |
 | 05 | [middleware](05-middleware) | Onion ordering, timing, priority bands, ending a chain early |
 | 06 | [routing](06-routing) | Selecting updates by kind, command, shorthand and composed filter |
 | 07 | [sessions](07-sessions) | Per-user state, typed through a flavour on the client |
@@ -27,12 +29,10 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 
 ## Planned
 
-The gaps are deliberate: the examples below need the MTProto client, and keep the numbers the
-[roadmap](../docs/roadmap.md) gives them.
+The gaps are deliberate: the examples below need more of the MTProto surface than has shipped,
+and keep the numbers the [roadmap](../docs/roadmap.md) gives them.
 
 | | Example | Phase |
 |---|---|---|
-| 03 | basic userbot | 10 |
-| 04 | bot and userbot together | 10 |
 | 11 | raw API across both transports | 11 |
 | 12 | multiple clients | 11 |

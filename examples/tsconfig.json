@@ -8,6 +8,12 @@
       "path": "02-keyboards"
     },
     {
+      "path": "03-basic-userbot"
+    },
+    {
+      "path": "04-bot-and-userbot"
+    },
+    {
       "path": "05-middleware"
     },
     {

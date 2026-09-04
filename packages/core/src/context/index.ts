@@ -5,4 +5,10 @@ export {
   defineLazy,
   type LazyOptions,
 } from './extend.js'
-export type { BaseContext, Context, Flavor } from './types.js'
+export type {
+  BaseContext,
+  Context,
+  ContextActions,
+  Flavor,
+  UnifiedContext,
+} from './types.js'

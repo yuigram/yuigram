@@ -47,6 +47,7 @@ import {
   type UseOptions,
 } from '@yuigram/core'
 import type { ServerRsaKey } from './auth/keys.js'
+import { randomBytes } from './crypto/random.js'
 import { REGISTRY as API } from './generated/api/registry.js'
 import { REGISTRY as CORE } from './generated/core/registry.js'
 import { REGISTRY as MTPROTO } from './generated/mtproto/registry.js'
@@ -59,7 +60,7 @@ import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
-import { datacenterStore } from './storage/datacenters.js'
+import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
 import { TlScope } from './tl/index.js'
 import { openUpdates, type Updates } from './updates/manager.js'
@@ -416,7 +417,10 @@ export class Account<Ext = unknown> {
     const scope = new TlScope('api', [CORE, MTPROTO, API])
     const storage = this.#options.storage
 
-    await this.#seed(authorizationStore(namespaced(storage, 'auth:')))
+    await this.#seed(
+      authorizationStore(namespaced(storage, 'auth:')),
+      datacenterStore(namespaced(storage, 'dcs:')),
+    )
 
     const datacenters = await openDatacenters({
       scope,
@@ -468,14 +472,19 @@ export class Account<Ext = unknown> {
    * caller passed a string for is to be this account, so the string is
    * authoritative: a key already in the store for another datacenter belongs to
    * whoever was there before, and an account that reached that datacenter would
-   * use a stranger's key rather than its own. Every datacenter this account
-   * could reach is forgotten first — which is the set it was given addresses
-   * for, plus the one the session names.
+   * use a stranger's key rather than its own.
+   *
+   * Every datacenter this account can reach is forgotten first, and the set is
+   * read from the same place the datacenter layer reads it: a stored
+   * configuration if the store holds one, and the supplied addresses otherwise.
+   * A configuration the server published lists more datacenters than a bootstrap
+   * does, and it is preferred over the bootstrap — so clearing only what the
+   * bootstrap names would leave exactly the keys this account could still reach.
    *
    * A supplied store is still the caller's. This clears what would conflict
    * with the session it was asked to import, and nothing else.
    */
-  async #seed(authorization: AuthorizationStore): Promise<void> {
+  async #seed(authorization: AuthorizationStore, datacenters: DatacenterStore): Promise<void> {
     const imported = this.#importing
     if (imported === undefined) return
 
@@ -483,10 +492,17 @@ export class Account<Ext = unknown> {
     // authorizes from nothing rather than one holding somebody else's key.
     this.#importing = undefined
 
+    const configuration = (await datacenters.load()) ?? this.#options.bootstrap
     const reachable = new Set<number>([
       imported.dcId,
+      configuration.thisDc,
+      ...configuration.options.map((address) => address.id),
       ...this.#options.bootstrap.options.map((address) => address.id),
     ])
+
+    // Forgotten before the imported key is written, so a failure between the
+    // two leaves an account with no authorization rather than one holding both
+    // its own and somebody else's.
     for (const dcId of reachable) await authorization.forget(dcId)
 
     await authorization.setKey(imported.dcId, imported.authKey)
@@ -521,6 +537,14 @@ export class Account<Ext = unknown> {
     const context = mtprotoContext(update, {
       client: this,
       log: this.#log,
+      // What lets a handler answer what it just heard. The account supplies the
+      // peers it has learned and the way to reach a datacenter, because it owns
+      // both — nothing is resolved until a handler actually acts.
+      actions: {
+        peers: this.#peers,
+        invoke: async (query) => await this.#require().pools.get().invoke(query),
+        random: this.#options.random ?? randomBytes,
+      },
     }) as MtprotoContext & Ext
 
     if (this.#surrounding === undefined) {

@@ -10,31 +10,35 @@
  * account use one that opens nothing.
  */
 
-import { memory } from '@yuigram/core'
+import { memory, namespaced } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { Account } from '../src/account.js'
 import type { DcConfiguration } from '../src/network/dc.js'
 import { decodeSession, encodeSession } from '../src/session.js'
+import { datacenterStore } from '../src/storage/datacenters.js'
 
 /** A key of the right shape. Its content matters to nothing here. */
 const key = (seed: number): Uint8Array =>
   Uint8Array.from({ length: 256 }, (_, index) => (seed * 101 + index * 7 + 3) & 0xff)
 
+/** An address nothing routes to. */
+const address = (id: number) => ({
+  id,
+  host: `10.0.0.${id}`,
+  port: 443,
+  ipv6: false,
+  mediaOnly: false,
+  cdn: false,
+  secret: undefined,
+  tcpoOnly: false,
+  thisPortOnly: false,
+  static: false,
+})
+
 const bootstrap = (testMode: boolean, thisDc = 2): DcConfiguration => ({
   thisDc,
   testMode,
-  options: [2, 4].map((id) => ({
-    id,
-    host: `10.0.0.${id}`,
-    port: 443,
-    ipv6: false,
-    mediaOnly: false,
-    cdn: false,
-    secret: undefined,
-    tcpoOnly: false,
-    thisPortOnly: false,
-    static: false,
-  })),
+  options: [address(2), address(4)],
 })
 
 /** Every key a store currently holds, in order, so a case can read them. */
@@ -363,6 +367,65 @@ describe('what an imported session does to a store', () => {
     await account.connect()
 
     expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    await account.stop()
+  })
+
+  it('clears a key for a datacenter only the stored configuration reaches', async () => {
+    // The set the datacenter layer actually uses is the stored configuration
+    // when there is one, and it is wider than the bootstrap. A key for a
+    // datacenter named only there belongs to whoever was in this store before,
+    // and this account can still reach it.
+    const storage = memory()
+    await datacenterStore(namespaced(storage, 'dcs:')).save({
+      thisDc: 2,
+      testMode: false,
+      options: [address(2), address(5)],
+    })
+    await storage.set('auth:dc5:key', Buffer.from(key(99)).toString('base64'))
+
+    // The bootstrap names 2 and 4. Nothing in it mentions 5.
+    const account = Account.fromString(SESSION, { ...options(), storage })
+    await account.connect()
+
+    expect(await storage.get('auth:dc5:key')).toBeUndefined()
+    expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    await account.stop()
+  })
+
+  it('clears the datacenter a stored configuration says it belongs to', async () => {
+    // `thisDc` is where the account lives, and a stored configuration is
+    // untrusted data: one that names a datacenter its own list omits would
+    // otherwise leave that key behind.
+    const storage = memory()
+    await datacenterStore(namespaced(storage, 'dcs:')).save({
+      thisDc: 6,
+      testMode: false,
+      options: [address(2)],
+    })
+    await storage.set('auth:dc6:key', Buffer.from(key(99)).toString('base64'))
+
+    const account = Account.fromString(SESSION, { ...options(), storage })
+    await account.connect()
+
+    expect(await storage.get('auth:dc6:key')).toBeUndefined()
+    await account.stop()
+  })
+
+  it('still reaches a datacenter normally after clearing one', async () => {
+    const storage = memory()
+    await datacenterStore(namespaced(storage, 'dcs:')).save({
+      thisDc: 2,
+      testMode: false,
+      options: [address(2), address(5)],
+    })
+    await storage.set('auth:dc5:key', Buffer.from(key(99)).toString('base64'))
+
+    const account = Account.fromString(SESSION, { ...options(), storage })
+    await account.connect()
+
+    // The imported authorization is intact and the account writes it back out
+    // unchanged, so nothing about the clearing disturbed what it came with.
+    expect(await account.exportSession()).toBe(SESSION)
     await account.stop()
   })
 

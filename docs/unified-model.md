@@ -176,29 +176,42 @@ taxonomy, one logger — usable from a bot handler and a userbot handler without
 
 ## 5. What the unified context can honestly contain
 
-Only fields that exist with the same meaning on both sides, and only actions that are safe
-on both.
+The unified context is an **action surface, not a second entity model**. It carries the few
+members that mean the same thing whatever produced the update, and the operations §3 shows
+are safe on both because the peer came from the update itself.
 
 ```ts
 interface Context {
-  // Identity of the delivering client — always available, always honest.
-  readonly client: Bot | Account
-  readonly transport: 'bot-api' | 'mtproto'
+  // Which client and which subsystem produced this. The client is structural —
+  // a name — because naming a transport's own client type here would make the
+  // shared layer depend on the subsystem that produced the event.
+  readonly client: { readonly name: string }
+  readonly transport: string          // narrowed to a literal by each transport
 
-  // Normalized, present on both.
-  readonly chat: Chat | undefined
-  readonly sender: User | undefined
+  // Which event this is, and what it said, where both agree on the meaning.
+  readonly kind: string               // narrowed to a literal by each transport
   readonly text: string | undefined
-  readonly date: Date
+  readonly log: Logger
 
-  // Safe on both, because the peer came from the update.
-  reply (text: string, params?: ReplyParams): Promise<Message>
-  react (emoji: string): Promise<void>
+  // Safe on both, because the peer came from the update. See §3.
+  reply (text: string): Promise<unknown>
+  react (emoji: string): Promise<unknown>
 
   // The escape hatch, typed per transport.
   readonly raw: unknown   // narrowed by transport — see api-design.md §7
 }
 ```
+
+**Entities stay where they are modelled.** There is no unified `Chat`, `User`, `Message` or
+`Date` on this surface. The two protocols model peers differently — that is the whole of §3 —
+and a shared peer type would be the union-pretending-to-be-a-product-type §7 rejects. A Bot API
+context therefore keeps its schema `chat`, `sender` and `date`; an MTProto context keeps its
+peer references and its own timestamp; and a handler that needs either reads it after narrowing
+on `transport`, or reads the payload it came from under `raw`.
+
+Timestamps in particular are deliberately not normalized: the Bot API carries Unix seconds and
+MTProto carries its own, and converting on every update for every handler is a cost paid by
+everyone for the benefit of a few — see [events.md](events.md) §5.
 
 Everything else — `answerCallbackQuery`, `editMessageMedia`, `forwardMessages` with
 MTProto's semantics, `getFullUser` — lives on the client, where its availability is a
@@ -211,7 +224,8 @@ compile-time fact rather than a runtime surprise.
 > `raw`.
 
 This rule is what keeps Yuigram from over-abstracting the two protocols into a single
-surface that misrepresents both.
+surface that misrepresents both. Applied to entities it removes them; applied to
+context-bound actions it keeps them, which is the asymmetry §3 explains.
 
 ---
 
@@ -220,15 +234,15 @@ surface that misrepresents both.
 Type narrowing carries the divergence, so the compiler enforces what prose cannot.
 
 ```ts
-app.onMessage(async (message) => {
-  await message.reply('works on both')       // unified surface
+app.on('message', async (event) => {
+  await event.reply('works on both')         // unified surface, no branching
 
-  if (message.transport === 'mtproto') {
-    await message.client.api.messages.readHistory({ … })   // narrowed to Account
+  if (event.transport === 'mtproto') {
+    event.chat            // narrowed to MTProto's peer reference
   }
 
-  if (message.transport === 'bot-api') {
-    await message.client.api.setMessageReaction({ … })     // narrowed to Bot
+  if (event.transport === 'bot-api') {
+    event.chat.id         // narrowed to the Bot API's chat
   }
 })
 ```

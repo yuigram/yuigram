@@ -39,6 +39,7 @@
  * that cannot reach Telegram is no reason for an unrelated account to stop.
  */
 
+import type { UnifiedContext } from '../context/types.js'
 import { type Dispatchable, Dispatcher, type Handler } from '../dispatch/dispatcher.js'
 import { YuigramError } from '../errors/errors.js'
 import type { AnyFilter } from '../filter/types.js'
@@ -269,7 +270,20 @@ export class App<C extends Dispatchable = Dispatchable> {
    * Registration is independent of the lifecycle. A handler added before or
    * after `start` reaches the same updates, and stopping an application does not
    * forget what was registered — only what is running.
+   *
+   * The type parameter is how a handler says what the kinds it registered for
+   * actually carry. An application's own type has to describe every event any
+   * of its clients can produce, which is wider than any one registration: a
+   * poll answer carries no message to answer, so `reply` cannot be promised
+   * across all of them. Naming {@link UnifiedContext} — or anything else — says
+   * the registration is for kinds that do carry it, which is the same
+   * assumption registering by kind already makes.
+   *
+   * ```ts
+   * app.on<UnifiedContext>('message', (event) => event.reply('heard you'))
+   * ```
    */
+  on<Narrowed = C>(match: string | readonly string[] | AnyFilter, handler: Handler<Narrowed>): this
   on(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
     this.#handlers.on(match, handler)
 
@@ -277,6 +291,10 @@ export class App<C extends Dispatchable = Dispatchable> {
   }
 
   /** Handle the next matching event from any client, then stop. */
+  once<Narrowed = C>(
+    match: string | readonly string[] | AnyFilter,
+    handler: Handler<Narrowed>,
+  ): this
   once(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
     this.#handlers.once(match, handler)
 

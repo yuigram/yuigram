@@ -13,13 +13,14 @@
  * surprise.
  */
 
-import type { BaseContext, Logger } from '@yuigram/core'
+import { type BaseContext, type ContextActions, LifecycleError, type Logger } from '@yuigram/core'
 import type { TlValue } from '../tl/index.js'
+import { type ActionContext, updateActions } from './actions.js'
 import type { MtprotoEventKind } from './events.js'
 import { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize.js'
 
 /** One event from an account, ready for dispatch. */
-export interface MtprotoContext extends BaseContext {
+export interface MtprotoContext extends BaseContext, ContextActions {
   /** Which event this is. A literal type, so it discriminates. */
   readonly kind: MtprotoEventKind
   /**
@@ -46,6 +47,17 @@ export interface MtprotoContext extends BaseContext {
   readonly raw: TlValue
   /** The client this update arrived on. */
   readonly client: { readonly name: string }
+  /**
+   * Answer the message this event carries, in the conversation it arrived in.
+   *
+   * Safe because the peer came from the update: an account already holds a
+   * reference to somebody it just heard from. An event that carries no message,
+   * or names a peer this account has never written down, is refused rather than
+   * sent as something else.
+   */
+  reply(text: string): Promise<TlValue>
+  /** React to the message this event carries. An empty emoji clears it. */
+  react(emoji: string): Promise<TlValue>
 }
 
 /** What building a context needs beyond the update itself. */
@@ -54,6 +66,15 @@ export interface ContextOptions {
   readonly client: { readonly name: string }
   /** Logger scoped to this update. */
   readonly log: Logger
+  /**
+   * How this event acts on what it came from.
+   *
+   * Supplied by the account, which owns the peers and the way to reach a
+   * datacenter. Without it the two operations refuse rather than pretend: a
+   * context built outside an account can be read, and reading is all it can
+   * honestly offer.
+   */
+  readonly actions?: ActionContext
 }
 
 /** Build the context for one update, normalizing it on the way. */
@@ -75,5 +96,24 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
     raw: normalized.raw,
     client: options.client,
     log: options.log,
+    ...actionsFor(normalized, options),
   }
+}
+
+/**
+ * The two operations, or two that say why they cannot run.
+ *
+ * A context is a shape a handler is given, so the members exist either way —
+ * one that dropped them where an account was not supplied would fail with a
+ * missing property rather than with a reason.
+ */
+function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
+  const context = options.actions
+  if (context !== undefined) return updateActions(normalized, context)
+
+  const refuse = async (): Promise<never> => {
+    throw new LifecycleError(`an event built outside an account cannot act on '${normalized.kind}'`)
+  }
+
+  return { reply: refuse, react: refuse }
 }
