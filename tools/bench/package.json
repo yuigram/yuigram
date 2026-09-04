@@ -1,0 +1,16 @@
+{
+  "name": "@yuigram/bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Performance benchmarks with the budgets that fail the build",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "bench": "tsx src/cli.ts",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  }
+}

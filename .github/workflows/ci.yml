@@ -48,6 +48,14 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Performance is a property under test rather than an occasional
+      # investigation: each benchmark is judged against the budget
+      # `docs/performance.md` states for it, and a breach fails the build. The
+      # budgets are absolute rather than a comparison with a previous run, so a
+      # shared runner moves the measurement without moving the verdict.
+      - name: Performance budgets
+        run: pnpm bench
+
       # The cost of a large declaration file is paid by every consumer's editor,
       # on every keystroke, and generation is the only thing here able to
       # produce one. Measured against built output, which is what users get.
