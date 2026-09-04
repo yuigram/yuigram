@@ -283,7 +283,10 @@ export class App<C extends Dispatchable = Dispatchable> {
    * app.on<UnifiedContext>('message', (event) => event.reply('heard you'))
    * ```
    */
-  on<Narrowed = C>(match: string | readonly string[] | AnyFilter, handler: Handler<Narrowed>): this
+  on<Narrowed extends Dispatchable = C>(
+    match: string | readonly string[] | AnyFilter,
+    handler: Handler<Narrowed>,
+  ): this
   on(match: string | readonly string[] | AnyFilter, handler: Handler<C>): this {
     this.#handlers.on(match, handler)
 
@@ -291,7 +294,7 @@ export class App<C extends Dispatchable = Dispatchable> {
   }
 
   /** Handle the next matching event from any client, then stop. */
-  once<Narrowed = C>(
+  once<Narrowed extends Dispatchable = C>(
     match: string | readonly string[] | AnyFilter,
     handler: Handler<Narrowed>,
   ): this
