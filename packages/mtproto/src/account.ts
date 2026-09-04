@@ -42,6 +42,7 @@ import {
   type Logger,
   type Middleware,
   namespaced,
+  SessionError,
   type StopOptions,
   type UseOptions,
 } from '@yuigram/core'
@@ -56,7 +57,8 @@ import { openPools, type Pools } from './network/pools.js'
 import type { Reach } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
 import type { ClientInfo } from './session/connection.js'
-import { authorizationStore } from './storage/authorization.js'
+import { decodeSession, encodeSession, type PortableSession } from './session.js'
+import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { datacenterStore } from './storage/datacenters.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
 import { TlScope } from './tl/index.js'
@@ -165,6 +167,15 @@ export class Account<Ext = unknown> {
   #network: Network | undefined
   /** Installed by an application that holds this account. */
   #surrounding: Middleware<MtprotoContext & Ext> | undefined
+  /**
+   * A session this account was built from, until it has been written down.
+   *
+   * Held rather than applied because reading a session is immediate and writing
+   * one is not: a caller finds out that a string is malformed where they passed
+   * it, and the store learns about it on the way up, before anything reads an
+   * authorization.
+   */
+  #importing: PortableSession | undefined
 
   constructor(options: AccountOptions) {
     this.#options = options
@@ -193,6 +204,92 @@ export class Account<Ext = unknown> {
     options: Omit<AccountOptions, 'storage'>,
   ): Account<Ext> {
     return new Account<Ext>({ ...options, storage: file(directory) })
+  }
+
+  /**
+   * An account carried in a string.
+   *
+   * For somewhere with nowhere to write: the authorization travels as
+   * configuration and the account is assembled around it. The string **is** a
+   * logged-in account — see {@link Account.exportSession}.
+   *
+   * A store is supplied rather than made here. An account needs one to run at
+   * all, not merely to survive a restart: a key with a lifetime, the peers it
+   * learns and the addresses it is told are all written while it works. What a
+   * caller wants when there is nowhere to write is `memory()`, said out loud,
+   * rather than an account quietly holding a store nobody can see.
+   *
+   * ```ts
+   * const me = Account.fromString(process.env.SESSION!, {
+   *   apiId,
+   *   apiHash,
+   *   keys,
+   *   bootstrap,
+   *   storage: memory(),
+   * })
+   * ```
+   *
+   * The string is read here and now, so a malformed one fails where it was
+   * passed rather than at the first connection.
+   */
+  static fromString<Ext = unknown>(session: string, options: AccountOptions): Account<Ext> {
+    const imported = decodeSession(session)
+
+    if (imported.testMode !== options.bootstrap.testMode) {
+      // Addresses for one network and a key from the other cannot be made to
+      // work, and the failure they produce says nothing about why.
+      throw new SessionError(
+        `a session for the ${imported.testMode ? 'test' : 'production'} network cannot be used ` +
+          `with addresses for the ${options.bootstrap.testMode ? 'test' : 'production'} network`,
+      )
+    }
+
+    const account = new Account<Ext>({
+      ...options,
+      // The session names the datacenter its key belongs to, which is this
+      // account's own. A bootstrap says where to start looking, not whose key
+      // this is.
+      bootstrap: { ...options.bootstrap, thisDc: imported.dcId },
+    })
+    account.#importing = imported
+
+    return account
+  }
+
+  /**
+   * Write this account out as a string.
+   *
+   * The long-lived key for the datacenter this account belongs to, and enough
+   * to place it. Nothing that is obtained again rather than carried: no key with
+   * a lifetime, no salt, no peers, no update sequence, and neither of the
+   * application's credentials.
+   *
+   * **The result is a logged-in account.** Anyone who has it is signed in as
+   * this account until the authorization is revoked. It is not a configuration
+   * value: it does not belong in a repository, in a bug report, or in a message
+   * to somebody helping with a problem.
+   *
+   * Reads what has been written down rather than what is in flight, so it needs
+   * no connection, changes nothing, and gives the same answer twice.
+   */
+  async exportSession(): Promise<string> {
+    const storage = this.#options.storage
+    const authorization = authorizationStore(namespaced(storage, 'auth:'))
+    const configuration = await datacenterStore(namespaced(storage, 'dcs:')).load()
+    const dcId = configuration?.thisDc ?? this.#options.bootstrap.thisDc
+
+    const key = await authorization.key(dcId)
+    if (key === undefined) {
+      throw new SessionError(
+        `the account '${this.name}' has no authorization for datacenter ${dcId} to export`,
+      )
+    }
+
+    return encodeSession({
+      dcId,
+      testMode: configuration?.testMode ?? this.#options.bootstrap.testMode,
+      authKey: key,
+    })
   }
 
   /** How far through its lifecycle this account has got. */
@@ -319,6 +416,8 @@ export class Account<Ext = unknown> {
     const scope = new TlScope('api', [CORE, MTPROTO, API])
     const storage = this.#options.storage
 
+    await this.#seed(authorizationStore(namespaced(storage, 'auth:')))
+
     const datacenters = await openDatacenters({
       scope,
       client: { apiId: this.#options.apiId, ...DEVICE, ...this.#options.device },
@@ -360,6 +459,37 @@ export class Account<Ext = unknown> {
     })
 
     this.#network = { datacenters, connections, pools, updates }
+  }
+
+  /**
+   * Put an imported session where the datacenter layer will find it.
+   *
+   * Once, on the way up and before anything reads an authorization. What a
+   * caller passed a string for is to be this account, so the string is
+   * authoritative: a key already in the store for another datacenter belongs to
+   * whoever was there before, and an account that reached that datacenter would
+   * use a stranger's key rather than its own. Every datacenter this account
+   * could reach is forgotten first — which is the set it was given addresses
+   * for, plus the one the session names.
+   *
+   * A supplied store is still the caller's. This clears what would conflict
+   * with the session it was asked to import, and nothing else.
+   */
+  async #seed(authorization: AuthorizationStore): Promise<void> {
+    const imported = this.#importing
+    if (imported === undefined) return
+
+    // Cleared before it is used, so a failure part-way leaves an account that
+    // authorizes from nothing rather than one holding somebody else's key.
+    this.#importing = undefined
+
+    const reachable = new Set<number>([
+      imported.dcId,
+      ...this.#options.bootstrap.options.map((address) => address.id),
+    ])
+    for (const dcId of reachable) await authorization.forget(dcId)
+
+    await authorization.setKey(imported.dcId, imported.authKey)
   }
 
   /**

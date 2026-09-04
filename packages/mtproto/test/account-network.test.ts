@@ -363,6 +363,60 @@ describe('an account authorizing inside an application', () => {
   })
 })
 
+describe('an account carried to another process', () => {
+  it('is exported, imported and used, against a datacenter that remembers it', async () => {
+    // The whole point of a portable session, end to end and for real: a key
+    // established over a genuine exchange, written out as a string, read back
+    // into an account that shares nothing else with the first, and used to talk
+    // to the datacenter that issued it.
+    const first = harness({ name: 'first' })
+    await reach(first)
+    const session = await first.account.exportSession()
+    await first.account.stop()
+    const spent = first.datacenter(2).connections.length
+
+    // The same datacenters, still remembering this client. Everything the
+    // second account knows arrived in the string.
+    const carried = harness({ name: 'carried', datacenters: first.datacenters, session })
+    await carried.account.connect()
+    const answer = await carried.account.reach(2).invoke({ _: 'ping', ping_id: 77n })
+
+    expect(answer['ping_id']).toBe(77n)
+
+    // Two connections rather than three: the long-lived key came in the string,
+    // so only the key with a lifetime had to be negotiated and vouched for.
+    const opened = first.datacenter(2).connections.slice(spent)
+    expect(opened).toHaveLength(2)
+    expect(opened.map((connection) => connection.peer.result !== undefined)).toEqual([true, false])
+    expect(opened[0]?.peer.bindings).toHaveLength(1)
+
+    // And the string it writes out is the string it was given.
+    expect(await carried.account.exportSession()).toBe(session)
+    await carried.account.stop()
+  })
+
+  it('writes its own store rather than the one it was exported from', async () => {
+    const first = harness({ name: 'first' })
+    await reach(first)
+    const session = await first.account.exportSession()
+    await first.account.stop()
+
+    const carried = harness({ name: 'carried', datacenters: first.datacenters, session })
+    await carried.account.connect()
+    await carried.account.reach(2).invoke({ _: 'ping', ping_id: 1n })
+
+    // Its own key, salt and temporary key, in a store the first account never
+    // saw. The string carried the authorization; nothing else travelled.
+    expect([...carried.stored.keys()].toSorted()).toEqual([
+      'auth:dc2:key',
+      'auth:dc2:salt',
+      'auth:dc2:temp0',
+    ])
+    expect(carried.stored).not.toBe(first.stored)
+    await carried.account.stop()
+  })
+})
+
 describe('a datacenter an account cannot make sense of', () => {
   /** Authorize against a well-behaved datacenter, then make it misbehave. */
   async function misbehaving(fault: Fault) {

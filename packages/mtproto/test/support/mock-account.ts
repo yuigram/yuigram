@@ -97,6 +97,13 @@ export interface MockAccountOptions
   /** State to begin from, rather than nothing. */
   readonly stored?: Map<string, unknown>
   /**
+   * A session to build the account from, rather than an empty one.
+   *
+   * The account is made by the public factory instead of the constructor, so a
+   * case about a carried session drives the same path a caller would.
+   */
+  readonly session?: string
+  /**
    * Misbehaviour every datacenter here performs.
    *
    * Consulted as each answer is composed rather than read once, so a case that
@@ -133,6 +140,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     datacenters: existing,
     stored = new Map<string, unknown>(),
     faults,
+    session,
     ...rest
   } = options
   const key = shared ?? createServerKey()
@@ -161,7 +169,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     options: places.map(address),
   }
 
-  const account = new Account({
+  const settings = {
     apiId: 10_000,
     apiHash: 'mock-api-hash',
     now: clock(),
@@ -190,12 +198,15 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     // Recorded duties are actually run: a connection only acts when its clock
     // is driven, so a scheduler that recorded and never fired would test an
     // account that never sends anything.
-    schedule: (run, delay) => {
+    schedule: (run: () => void, delay: number) => {
       const timer = setTimeout(run, delay)
 
       return () => clearTimeout(timer)
     },
-  })
+  } satisfies AccountOptions
+
+  const account =
+    session === undefined ? new Account(settings) : Account.fromString(session, settings)
 
   return {
     account,

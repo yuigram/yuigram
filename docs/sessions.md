@@ -181,6 +181,62 @@ be blunt: **this string is equivalent to being logged in**. It is not a configur
 it does not belong in a repository, and it should not be pasted into a chat for debugging.
 See [security.md](security.md) §3.
 
+### The portable format
+
+259 bytes, then standard base64 — a canonical string of exactly 348 characters:
+
+```
+offset  size  field
+──────────────────────────────────────────────────────
+0       1     version    0x01
+1       1     flags      bit 0 = test network; 1-7 reserved
+2       1     dcId       1..255
+3     256     authKey
+──────────────────────────────────────────────────────
+```
+
+It carries one datacenter's long-lived key and enough to place it: which datacenter the key
+belongs to, and which network that datacenter is on. Everything else is left out because it
+is obtained again rather than carried — a key with a lifetime is negotiated on connecting, a
+salt is named by the server on the first message that lacks one, addresses are supplied to the
+account and republished by the server, and the peers and the update sequence are caches of
+what the network already knows. `apiId` and `apiHash` stay outside it: they belong to the
+application rather than to the account, and are passed alongside.
+
+Encoding is standard base64 with mandatory padding, and decoding is strict — the alphabet, the
+padding and the unused bits of the final character are all checked, so one session has exactly
+one string. A string that is not exactly one is refused with `SessionError`, naming what was
+wrong without repeating what it read.
+
+**There is no checksum, and no encryption.** A session damaged in a way that survives decoding
+is refused by the datacenter, which is where a revoked one is refused too. Nothing in the
+format authenticates it: whoever holds the string is the account.
+
+Only version `0x01` is read. A later version is refused rather than guessed at, so a session
+written by a newer build fails where it is passed instead of somewhere further in.
+
+```ts
+const me = Account.fromString(process.env.SESSION!, {
+  apiId,
+  apiHash,
+  keys,
+  bootstrap,
+  storage: memory(),
+})
+```
+
+A store is supplied rather than made for you. An account needs one to run at all, not merely
+to survive a restart — a key with a lifetime, the peers it learns and the addresses it is told
+are all written while it works. `memory()` is what to pass when there is nowhere to write; the
+string is then the only thing that has to survive, which is the point of having one.
+
+Importing is authoritative: any authorization already in the supplied store for a datacenter
+this account could reach is cleared before the imported key is installed, so an account built
+from one session can never end up using a key left behind by another.
+
+The first connection after an import negotiates a key with a lifetime and has the imported key
+vouch for it; the long-lived exchange is skipped because that is what the string carried.
+
 ### Encryption at rest
 
 ```ts

@@ -156,8 +156,12 @@ export class MockDatacenter {
       const settled = connection.peer.result
       if (settled === undefined) continue
 
+      // A long-lived key is established once and kept. A key with a lifetime is
+      // replaced: a client that negotiates another has stopped using the one
+      // before it, and a datacenter that kept the older one would refuse the
+      // traffic the client is actually sending.
       if (settled.expiresIn === undefined) this.#permanent ??= settled
-      else this.#temporary ??= settled
+      else this.#temporary = settled
     }
   }
 }

@@ -21,6 +21,7 @@ export type {
   NormalizedUpdate,
   PeerRef,
 } from './normalize/index.js'
+export type { PortableSession } from './session.js'
 
 /** Package name, used by diagnostics and error messages. */
 export const PACKAGE_NAME = '@yuigram/mtproto'
