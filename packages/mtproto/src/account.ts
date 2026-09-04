@@ -110,7 +110,22 @@ export interface AccountOptions {
   readonly log?: Logger
   /** Hide the shape of connections. Defaults to hiding them. */
   readonly obfuscated?: boolean
-  /** Open a channel. Replaced only to drive the account without a network. */
+  /**
+   * Open the byte stream a connection travels over.
+   *
+   * The network, and only the network. Everything above it — the handshake, the
+   * authorization, the channel, the session, the sequence — runs exactly as it
+   * does against Telegram, which is what makes a test of an account a test of
+   * the account rather than of something standing in for one.
+   */
+  readonly open?: Parameters<typeof openDatacenters>[0]['open']
+  /**
+   * Assemble a channel.
+   *
+   * A coarser seam than {@link AccountOptions.open}: it replaces the handshake
+   * along with the socket, so it suits a case about what an account does with a
+   * channel rather than about how one comes to exist.
+   */
   readonly openChannel?: Parameters<typeof openDatacenters>[0]['openChannel']
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
   readonly now?: () => number
@@ -312,6 +327,7 @@ export class Account<Ext = unknown> {
       datacenters: datacenterStore(namespaced(storage, 'dcs:')),
       bootstrap: this.#options.bootstrap,
       ...(this.#options.obfuscated === undefined ? {} : { obfuscated: this.#options.obfuscated }),
+      ...(this.#options.open === undefined ? {} : { open: this.#options.open }),
       ...(this.#options.openChannel === undefined
         ? {}
         : { openChannel: this.#options.openChannel }),
