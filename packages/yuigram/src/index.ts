@@ -18,6 +18,21 @@
  *
  * **What is here today:** the Bot API subsystem, complete — clients, polling,
  * webhooks, routing, sessions, storage, files, errors and the testing harness.
+ * The MTProto subsystem's account client. And `App`, which holds several
+ * clients of either kind at once:
+ *
+ * ```ts
+ * import { App, Account, Bot } from 'yuigram'
+ *
+ * const app = new App()
+ *
+ * app.add(Bot.fromToken(process.env.BOT_TOKEN!))
+ * app.add(new Account({ name: 'me', ...credentials }))
+ *
+ * await app.start()
+ * ```
+ *
+ * Neither subsystem imports the other — they meet here, and nowhere else.
  *
  * There is no single `Context` type to name, because registration decides what
  * a handler receives: `onCommand` hands you a message whose `text` is a
@@ -35,10 +50,12 @@
  * Two bots in one program can then hold different state, which a merged
  * interface cannot express.
  *
- * **What is not:** the MTProto subsystem, and the `App` container that will
- * hold several clients at once. Both are planned rather than stubbed; see
- * `docs/roadmap.md`. Nothing exported here is a placeholder.
+ * **What is not:** the high-level MTProto surface — messages, chats, channels,
+ * dialogs — which is demand-driven rather than stubbed; see `docs/roadmap.md`.
+ * Nothing exported here is a placeholder.
  */
+
+import { TL_LAYER } from '@yuigram/mtproto'
 
 export * from '@yuigram/bot-api'
 /**
@@ -51,6 +68,25 @@ export * from '@yuigram/bot-api'
  */
 export { createScheduler } from '@yuigram/bot-api'
 export * from '@yuigram/core'
+/**
+ * The MTProto subsystem, named rather than starred.
+ *
+ * The other two are re-exported wholesale because everything they publish is
+ * meant for a user. This one is listed because two of its exports are not:
+ * `PACKAGE_NAME` is a diagnostic that means nothing from here, and its
+ * `NormalizedUpdate` shares a name with the Bot API's while describing a
+ * different shape — starring both would leave neither reachable, silently. A
+ * caller reads those fields off {@link MtprotoContext}, which is what a handler
+ * is actually given.
+ */
+export {
+  Account,
+  type AccountContext,
+  type AccountOptions,
+  type MtprotoContext,
+  type MtprotoEventKind,
+  type PeerRef,
+} from '@yuigram/mtproto'
 
 /**
  * Schema versions this build was generated against.
@@ -62,6 +98,6 @@ export * from '@yuigram/core'
 export const schemaInfo = {
   /** Telegram Bot API version the generated surface was emitted from. */
   botApi: '10.2',
-  /** Telegram TL schema layer. Populated once the MTProto subsystem lands. */
-  tlLayer: null,
+  /** Telegram TL schema layer the generated MTProto surface was emitted from. */
+  tlLayer: TL_LAYER,
 } as const

@@ -6,6 +6,8 @@
  */
 
 import {
+  Account,
+  App,
   Bot,
   createSession,
   filter,
@@ -35,11 +37,18 @@ check('core is re-exported', () => typeof memory === 'function' && typeof create
 check('the bot filter helpers are exported', () => typeof filter === 'function')
 check('the error hierarchy is exported', () => typeof FloodError === 'function')
 check('schemaInfo names the Bot API version', () => /^\d+\.\d+$/.test(schemaInfo.botApi))
+check('the MTProto client is re-exported', () => typeof Account === 'function')
+check('the container both transports meet in is re-exported', () => typeof App === 'function')
+check('schemaInfo names the TL layer', () => Number.isInteger(schemaInfo.tlLayer))
 check('the testing subpath resolves', () => typeof mockBot === 'function')
 check('the webhook subpath resolves', () =>
   [nodeWebhook, expressWebhook, fastifyWebhook].every((f) => typeof f === 'function'))
 const entry = await import('yuigram')
 check('the adapters stay out of the entry point', () => !('nodeWebhook' in entry))
+// The mock datacenter runs a real key exchange. It belongs to the test tree,
+// and this is the only check that can see whether it reached a consumer.
+check('the MTProto test infrastructure stays out of the installed package', () =>
+  ['mockAccount', 'MockServer', 'MockDatacenter', 'PACKAGE_NAME'].every((name) => !(name in entry)))
 
 const { bot, send, calls } = mockBot()
 bot.onCommand('start', (message) => message.reply('hello'))

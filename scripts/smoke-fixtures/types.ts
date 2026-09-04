@@ -11,7 +11,17 @@
  * the surface is supposed to produce, by using it.
  */
 
-import { Bot, memory, Router, type SessionFlavor, session, userChatKey } from 'yuigram'
+import {
+  type Account,
+  App,
+  Bot,
+  type MtprotoContext,
+  memory,
+  Router,
+  type SessionFlavor,
+  session,
+  userChatKey,
+} from 'yuigram'
 import { mockBot } from 'yuigram/testing'
 import { nodeWebhook } from 'yuigram/webhook'
 
@@ -56,6 +66,20 @@ bot.onMessage((message) => message.sendMessage({ chat_id: 2, text: 'elsewhere' }
 const cart = new Router<WithCart>()
 cart.onCommand('cart', (message) => message.reply(`${message.session.items.length} items`))
 bot.extend(cart)
+
+// One application holding both transports, which is the whole point of the
+// façade: the two subsystems never import each other, so this is the only way a
+// consumer can put them together — and it has to type-check as installed.
+const app = new App()
+app.add(bot)
+
+declare const user: Account
+app.add(user)
+
+// The discriminant a handler installed on more than one client branches on. A
+// published build that widened it to `string` still compiles everywhere else.
+declare const context: MtprotoContext
+export const transport: 'mtproto' = context.transport
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()

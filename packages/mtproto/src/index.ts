@@ -14,6 +14,7 @@ export {
   type AccountContext,
   type AccountOptions,
 } from './account.js'
+export { TL_LAYER } from './generated/schema-info.js'
 export type {
   MtprotoContext,
   MtprotoEventKind,

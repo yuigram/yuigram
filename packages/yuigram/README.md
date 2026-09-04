@@ -30,9 +30,10 @@ Registration decides what a handler receives. `onText` matched on the text, so `
 is a `string` there; `onMessage` cannot promise that, because a photo without a caption is a
 message with no text.
 
-> **The Bot API subsystem is complete.** MTProto is next and is being built bottom-up. Nothing
-> released is a stub — unimplemented means absent, not hollow. See the
-> [roadmap](https://github.com/yuigram/yuigram/blob/main/docs/roadmap.md).
+> **The Bot API subsystem is complete, and the MTProto account client is reachable.** `App`
+> holds clients of both kinds at once. The high-level MTProto surface — messages, chats,
+> dialogs — is still being built. Nothing released is a stub: unimplemented means absent, not
+> hollow. See the [roadmap](https://github.com/yuigram/yuigram/blob/main/docs/roadmap.md).
 
 ## What you get
 

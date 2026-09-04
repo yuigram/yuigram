@@ -63,6 +63,7 @@
   },
   "dependencies": {
     "@yuigram/bot-api": "workspace:*",
-    "@yuigram/core": "workspace:*"
+    "@yuigram/core": "workspace:*",
+    "@yuigram/mtproto": "workspace:*"
   }
 }

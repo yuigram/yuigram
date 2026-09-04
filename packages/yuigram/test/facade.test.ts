@@ -139,8 +139,10 @@ describe('the schema version', () => {
     expect(yuigram.schemaInfo.botApi).toMatch(/^\d+\.\d+$/)
   })
 
-  it('does not claim an MTProto layer it does not have', () => {
-    expect(yuigram.schemaInfo.tlLayer).toBeNull()
+  it('names the TL layer the MTProto surface was generated from', () => {
+    // Taken from the generated schema rather than written down here, so it
+    // cannot drift from the codecs that were emitted alongside it.
+    expect(yuigram.schemaInfo.tlLayer).toBeTypeOf('number')
   })
 })
 

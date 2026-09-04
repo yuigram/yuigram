@@ -58,6 +58,9 @@ importers:
       '@yuigram/core':
         specifier: workspace:*
         version: link:../core
+      '@yuigram/mtproto':
+        specifier: workspace:*
+        version: link:../mtproto
 
   tools/invariants: {}
 
@@ -66,6 +69,8 @@ importers:
       node-html-parser:
         specifier: ^9.0.1
         version: 9.0.1
+
+  tools/tl: {}
 
 packages:
 

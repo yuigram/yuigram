@@ -15,9 +15,10 @@ One package. Bots and user accounts. One programming model.
 
 ---
 
-> **Status: the Bot API subsystem is complete.** Every Bot API capability is reachable, and
-> nothing released is a stub — unimplemented means absent, not hollow. MTProto is next and is
-> being built bottom-up. See [the roadmap](docs/roadmap.md).
+> **Status: the Bot API subsystem is complete, and the MTProto account client is reachable
+> through the same entry point.** Every Bot API capability is reachable, and nothing released is
+> a stub — unimplemented means absent, not hollow. The high-level MTProto surface is still being
+> built bottom-up. See [the roadmap](docs/roadmap.md).
 >
 > The client surface changed after `0.1.0`. [docs/migration.md](docs/migration.md) lists every
 > rename.
