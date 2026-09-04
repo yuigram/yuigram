@@ -17,6 +17,7 @@ import { App, AppError } from '../src/app/index.js'
 import { type Dispatchable, Dispatcher } from '../src/dispatch/dispatcher.js'
 import { LifecycleError } from '../src/lifecycle/lifecycle.js'
 import type { Middleware } from '../src/middleware/compose.js'
+import type { KV } from '../src/storage/index.js'
 
 interface Event extends Dispatchable {
   readonly kind: string
@@ -78,6 +79,24 @@ class Fake implements AppClient<Event> {
     await this.#surrounding(event, async () => {
       await this.dispatcher.dispatch(event)
     })
+  }
+}
+
+/** A store that keeps every key exactly as it was written, so a case can read it. */
+function recording() {
+  const entries = new Map<string, unknown>()
+
+  return {
+    entries,
+    kv: {
+      get: async (key: string) => entries.get(key),
+      set: async (key: string, value: unknown) => {
+        entries.set(key, value)
+      },
+      delete: async (key: string) => {
+        entries.delete(key)
+      },
+    } satisfies KV,
   }
 }
 
@@ -458,6 +477,190 @@ describe('bringing an application up and down', () => {
     // Idempotence is the client's own contract; the container must not turn one
     // call into two transitions of its own.
     expect(trace).toEqual(['bot:started', 'bot:started'])
+  })
+})
+
+describe('where an application keeps what belongs to it', () => {
+  it('takes the store it is given', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+
+    await app.storage.set('greeting', 'hello')
+
+    expect(await app.storage.get('greeting')).toBe('hello')
+  })
+
+  it('has a store of its own when given none', async () => {
+    const app = new App<Event>()
+
+    await app.storage.set('greeting', 'hello')
+
+    expect(await app.storage.get('greeting')).toBe('hello')
+  })
+
+  it('keeps what it was given to itself', async () => {
+    // The store goes in; areas of it come out. A container that handed back
+    // what it was given would let a client reach everything in it.
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+
+    await app.storage.set('greeting', 'hello')
+
+    expect(store.entries.has('greeting')).toBe(false)
+    expect([...store.entries.keys()]).toEqual(['app:greeting'])
+  })
+
+  it('gives a client an area of its own', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const client = app.add(new Fake('alice'))
+
+    await app.storageFor(client).set('cart', 1)
+
+    expect([...store.entries.keys()]).toEqual(['clients:alice:cart'])
+  })
+
+  it('has no area for a client it does not hold', () => {
+    const app = new App<Event>({ storage: recording().kv })
+    const stranger = new Fake('alice')
+
+    expect(() => app.storageFor(stranger)).toThrow(AppError)
+  })
+
+  it('has no area for an impostor wearing a name it holds', () => {
+    // Identity, not the name: two clients answering to one name would otherwise
+    // share an area, which is the collision the check exists to prevent.
+    const app = new App<Event>({ storage: recording().kv })
+    app.add(new Fake('alice'))
+
+    expect(() => app.storageFor(new Fake('alice'))).toThrow(AppError)
+  })
+})
+
+describe('what an application keeps apart', () => {
+  it('keeps a client out of what the application keeps', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const client = app.add(new Fake('alice'))
+
+    await app.storage.set('secret', 'application')
+    await app.storageFor(client).set('secret', 'client')
+
+    expect(await app.storage.get('secret')).toBe('application')
+    expect(await app.storageFor(client).get('secret')).toBe('client')
+  })
+
+  it('keeps two clients out of each other', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const alice = app.add(new Fake('alice'))
+    const bob = app.add(new Fake('bob'))
+
+    await app.storageFor(alice).set('cart', 'hers')
+    await app.storageFor(bob).set('cart', 'his')
+
+    expect(await app.storageFor(alice).get('cart')).toBe('hers')
+    expect(await app.storageFor(bob).get('cart')).toBe('his')
+  })
+
+  it('keeps apart two clients whose names could be read as one area', async () => {
+    // The collision a bare prefix would allow: `a` writing `b:cart` and `a:b`
+    // writing `cart` both read as `clients:a:b:cart`. Names being unique does
+    // not help, because these are two different names.
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const outer = app.add(new Fake('a'))
+    const inner = app.add(new Fake('a:b'))
+
+    await app.storageFor(outer).set('b:cart', 'outer')
+    await app.storageFor(inner).set('cart', 'inner')
+
+    expect(await app.storageFor(outer).get('b:cart')).toBe('outer')
+    expect(await app.storageFor(inner).get('cart')).toBe('inner')
+    expect(store.entries.size).toBe(2)
+  })
+
+  it('keeps a client named after the application area out of it', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const client = app.add(new Fake('app'))
+
+    await app.storage.set('secret', 'application')
+    await app.storageFor(client).set('secret', 'client')
+
+    expect(await app.storage.get('secret')).toBe('application')
+    expect(store.entries.size).toBe(2)
+  })
+
+  it('keeps two applications on separate stores apart', async () => {
+    const first = new App<Event>({ storage: recording().kv })
+    const second = new App<Event>({ storage: recording().kv })
+
+    await first.storage.set('greeting', 'first')
+    await second.storage.set('greeting', 'second')
+
+    expect(await first.storage.get('greeting')).toBe('first')
+    expect(await second.storage.get('greeting')).toBe('second')
+  })
+
+  it('keeps two applications that were given nothing apart', async () => {
+    // A store made per application rather than shared from the module. Two
+    // built the same way must not find each other's keys.
+    const first = new App<Event>()
+    const second = new App<Event>()
+
+    await first.storage.set('greeting', 'first')
+
+    expect(await second.storage.get('greeting')).toBeUndefined()
+  })
+
+  it('shares one store between two applications that were given one', async () => {
+    // Deliberate sharing still works, and that is the point: an area is a
+    // function of nothing but the prefix, so a later run finds what an earlier
+    // one left rather than a fresh and empty place.
+    const store = recording()
+    const first = new App<Event>({ storage: store.kv })
+    const second = new App<Event>({ storage: store.kv })
+
+    await first.storage.set('greeting', 'hello')
+
+    expect(await second.storage.get('greeting')).toBe('hello')
+  })
+})
+
+describe('what an application does to storage when it comes and goes', () => {
+  it('leaves what it kept where it was across a stop and a start', async () => {
+    const store = recording()
+    const app = new App<Event>({ storage: store.kv })
+    const client = app.add(new Fake('alice'))
+
+    await app.start()
+    await app.storage.set('greeting', 'hello')
+    await app.storageFor(client).set('cart', 1)
+    await app.stop()
+    await app.start()
+
+    // Nothing was replaced, cleared or re-scoped: a lifecycle moves clients,
+    // not the state a container was handed.
+    expect(await app.storage.get('greeting')).toBe('hello')
+    expect(await app.storageFor(client).get('cart')).toBe(1)
+    expect([...store.entries.keys()].toSorted()).toEqual(['app:greeting', 'clients:alice:cart'])
+    await app.stop()
+  })
+
+  it('reads the same area a previous application wrote', async () => {
+    // What makes the naming worth anything: a store that outlives a process
+    // hands the next one back its own keys.
+    const store = recording()
+
+    const before = new App<Event>({ storage: store.kv })
+    const alice = before.add(new Fake('alice'))
+    await before.storageFor(alice).set('cart', 3)
+
+    const after = new App<Event>({ storage: store.kv })
+    const again = after.add(new Fake('alice'))
+
+    expect(await after.storageFor(again).get('cart')).toBe(3)
   })
 })
 

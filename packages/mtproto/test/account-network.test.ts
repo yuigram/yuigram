@@ -24,6 +24,7 @@
  * cases cost seconds rather than milliseconds.
  */
 
+import { App } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import type { MockDatacenter } from './server/datacenter.js'
 import { createServerKey } from './server/keys.js'
@@ -290,6 +291,71 @@ describe('an account shutting down', () => {
     expect(answer['ping_id']).toBe(5n)
     expect(sockets(instance.datacenter(2)).at(-1)).toBe(true)
     await instance.dispose()
+  })
+})
+
+describe('an account authorizing inside an application', () => {
+  it('writes its authorization to its own store and nowhere else', async () => {
+    // The one case where this can be shown rather than assumed. An account only
+    // establishes a key when something needs to travel, so a container holding
+    // an idle account proves nothing about where a key would have gone. Here
+    // one actually goes out, and the container's store stays empty of it.
+    const shared = new Map<string, unknown>()
+    const app = new App({
+      storage: {
+        get: async (key: string) => shared.get(key),
+        set: async (key: string, value: unknown) => {
+          shared.set(key, value)
+        },
+        delete: async (key: string) => {
+          shared.delete(key)
+        },
+      },
+    })
+    const instance = harness({ name: 'alice' })
+    app.add(instance.account)
+
+    await app.storage.set('greeting', 'hello')
+    await reach(instance)
+
+    // The account established a key, a salt and a temporary key, all under the
+    // names the MTProto subsystem owns.
+    expect([...instance.stored.keys()].toSorted()).toEqual([
+      'auth:dc2:key',
+      'auth:dc2:salt',
+      'auth:dc2:temp0',
+    ])
+    // None of which is anywhere near the application's store.
+    expect([...shared.keys()]).toEqual(['app:greeting'])
+    await app.stop()
+  })
+
+  it('keeps the application area beside the authorization, not inside it', async () => {
+    // Both exist at once and neither is reachable from the other: framework
+    // state in the container's store under the client's area, protocol state in
+    // the account's own store under the subsystem's names.
+    const shared = new Map<string, unknown>()
+    const app = new App({
+      storage: {
+        get: async (key: string) => shared.get(key),
+        set: async (key: string, value: unknown) => {
+          shared.set(key, value)
+        },
+        delete: async (key: string) => {
+          shared.delete(key)
+        },
+      },
+    })
+    const instance = harness({ name: 'alice' })
+    app.add(instance.account)
+
+    await reach(instance)
+    await app.storageFor(instance.account).set('seen', 1)
+
+    expect([...shared.keys()]).toEqual(['clients:alice:seen'])
+    expect(await app.storageFor(instance.account).get('auth:dc2:key')).toBeUndefined()
+    expect(instance.stored.has('clients:alice:seen')).toBe(false)
+    await app.stop()
   })
 })
 

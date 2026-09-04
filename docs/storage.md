@@ -97,6 +97,39 @@ encrypted(store, process.env.KEY!)         // AES-256-GCM at rest
 `tiered` matters in practice: session reads happen on every update, and a hot in-memory layer
 over a persistent store removes almost all of that traffic without changing application code.
 
+### What an `App` divides
+
+An application is given one store and divides it, so that what belongs to the container and
+what belongs to each client stay apart:
+
+```
+app:                the application's own state
+clients:<name>:     one area per client it holds
+```
+
+```ts
+const app = new App({ storage: file('./state') })
+const bot = app.add(Bot.fromToken(token, { name: 'support' }))
+
+await app.storage.set('deployed', Date.now())   // app:deployed
+await app.storageFor(bot).set('cursor', 42)     // clients:support:cursor
+```
+
+Neither prefix begins the other, so no key written under one is reachable under the other. A
+client's name is percent-encoded on the way in: names are unique within an application, but
+uniqueness alone would still let a client called `a` writing `b:x` collide with one called
+`a:b` writing `x`. Encoding leaves no `:` inside a name, which makes the mapping one-to-one.
+
+An area is a function of the prefix and nothing else, so a later run of the same application
+against the same store reads what the previous one wrote.
+
+The store itself never leaves the application — only areas of it do. And storage is handed out
+on request rather than pushed into a client, because a client is usable without an application
+and one that had been given its storage by a container would stop being.
+
+This divides *framework* state only. An MTProto account's authorization does not appear here at
+all; see §4 and [sessions.md](sessions.md) §4 for why it is a different contract entirely.
+
 ---
 
 ## 4. MTProto authorization storage

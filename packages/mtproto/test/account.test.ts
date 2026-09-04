@@ -512,6 +512,72 @@ describe('updates arriving at an account', () => {
   })
 })
 
+/** A peer to write, so a case can see where an account puts one. */
+const PEER = { kind: 'user', id: 7n, accessHash: 9n, min: false, usernames: [] } as const
+
+describe('an account held by an application that keeps its own state', () => {
+  it('keeps the peers it learns out of the application store', async () => {
+    // The line the design draws: a container keeps framework state, an account
+    // keeps protocol state, and the two never meet in one place. A peer table
+    // and a shopping cart have different owners, and a store holding both would
+    // give each to whichever of them asked last.
+    const shared = memory()
+    const app = new App({ storage: shared.kv })
+    const alice = harness({ name: 'alice' })
+    app.add(alice.account)
+
+    await app.storage.set('greeting', 'hello')
+    await alice.account.connect()
+    await alice.account.peers.save(PEER)
+    await app.stop()
+
+    // Everything the account wrote is in the account's own store, under the
+    // names the MTProto subsystem owns.
+    expect([...alice.storage.entries.keys()].some((key) => key.startsWith('peers:'))).toBe(true)
+    // And none of it reached the application's.
+    expect([...shared.entries.keys()]).toEqual(['app:greeting'])
+  })
+
+  it('keeps two accounts in one application apart', async () => {
+    const shared = memory()
+    const app = new App({ storage: shared.kv })
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await alice.account.connect()
+    await bob.account.connect()
+    await alice.account.peers.save(PEER)
+    await app.stop()
+
+    // Separate stores, because each account was built with its own. An
+    // application holding both changes nothing about that.
+    expect(alice.storage.entries.size).toBeGreaterThan(0)
+    expect([...bob.storage.entries.keys()]).not.toContain('peers:user:7')
+    expect(alice.storage.entries).not.toBe(bob.storage.entries)
+  })
+
+  it('gives each account a separate area of the application store', async () => {
+    const shared = memory()
+    const app = new App({ storage: shared.kv })
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await app.storageFor(alice.account).set('seen', 1)
+    await app.storageFor(bob.account).set('seen', 2)
+
+    expect(await app.storageFor(alice.account).get('seen')).toBe(1)
+    expect(await app.storageFor(bob.account).get('seen')).toBe(2)
+    expect([...shared.entries.keys()].toSorted()).toEqual([
+      'clients:alice:seen',
+      'clients:bob:seen',
+    ])
+  })
+})
+
 describe('an account held by an application', () => {
   it('is surrounded by the application, outside its own middleware', async () => {
     // The ordering the container exists for. An account's own middleware runs
