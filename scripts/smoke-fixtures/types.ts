@@ -16,6 +16,7 @@ import {
   type AnyEventContext,
   App,
   Bot,
+  encrypted,
   type MtprotoContext,
   memory,
   Router,
@@ -94,6 +95,13 @@ cross.on('message', (event) => {
 // published build that widened it to `string` still compiles everywhere else.
 declare const context: MtprotoContext
 export const transport: 'mtproto' = context.transport
+
+// An encrypted store keeps the value type a caller asked for while the store it
+// wraps holds ciphertext. A published build that collapsed either half would
+// hand every read back as `unknown`.
+const vault = encrypted<Cart>(memory<string>(), 'a-secret-for-the-smoke-test')
+export const stored: Promise<Cart | undefined> = vault.get('a')
+export const persists: boolean = vault.info.persistent
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()

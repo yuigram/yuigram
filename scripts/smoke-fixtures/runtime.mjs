@@ -10,6 +10,7 @@ import {
   App,
   Bot,
   createSession,
+  encrypted,
   filter,
   FloodError,
   inline,
@@ -17,6 +18,7 @@ import {
   memory,
   Router,
   schemaInfo,
+  StorageError,
   throttle,
 } from 'yuigram'
 import { mockBot } from 'yuigram/testing'
@@ -36,6 +38,7 @@ check('the entry point exports the client', () => typeof Bot === 'function')
 check('core is re-exported', () => typeof memory === 'function' && typeof createSession === 'function')
 check('the bot filter helpers are exported', () => typeof filter === 'function')
 check('the error hierarchy is exported', () => typeof FloodError === 'function')
+check('the storage failure is exported', () => typeof StorageError === 'function')
 check('schemaInfo names the Bot API version', () => /^\d+\.\d+$/.test(schemaInfo.botApi))
 check('the MTProto client is re-exported', () => typeof Account === 'function')
 check('the container both transports meet in is re-exported', () => typeof App === 'function')
@@ -55,6 +58,20 @@ check('the adapters stay out of the entry point', () => !('nodeWebhook' in entry
 // and this is the only check that can see whether it reached a consumer.
 check('the MTProto test infrastructure stays out of the installed package', () =>
   ['mockAccount', 'MockServer', 'MockDatacenter', 'PACKAGE_NAME'].every((name) => !(name in entry)))
+
+// Encryption at rest, through the published build: scrypt derivation, AES-GCM
+// and the wrapped store all reached by whatever the package resolves to.
+const backing = memory()
+const vault = encrypted(backing, 'a-secret-for-the-smoke-test')
+await vault.set('note', { text: 'a-recognisable-string' })
+const readBack = await vault.get('note')
+const underneath = String(await backing.get('note'))
+
+check('an encrypted store round-trips a value', () => readBack?.text === 'a-recognisable-string')
+check(
+  'the value it wrapped is not readable underneath',
+  () => !underneath.includes('a-recognisable-string'),
+)
 
 const { bot, send, calls } = mockBot()
 bot.onCommand('start', (message) => message.reply('hello'))

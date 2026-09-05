@@ -61,6 +61,18 @@ export class SessionError extends YuigramError {
   override readonly name = 'SessionError'
 }
 
+/**
+ * Stored state could not be read.
+ *
+ * Distinct from a miss, which is not a failure: this says a value is there and
+ * cannot be used — written under a different secret, altered since, or in a
+ * format this build does not know. A caller that treated it as absent would
+ * overwrite data that is very likely still good.
+ */
+export class StorageError extends YuigramError {
+  override readonly name = 'StorageError'
+}
+
 /** A peer could not be resolved, or its access hash is no longer valid. */
 export class PeerError extends YuigramError {
   override readonly name = 'PeerError'

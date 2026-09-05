@@ -242,4 +242,4 @@ looked at once.
 - [ ] DH validation cannot be bypassed by configuration
 - [ ] TL decoder fuzzed for bounds and allocation limits
 - [ ] Ban-risk warning present in MTProto documentation
-- [ ] Session encryption at rest, and a permission warning when a session file is too open
+- [ ] Session encryption at rest (`encrypted()` ships; the permission warning does not yet)

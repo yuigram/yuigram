@@ -10,10 +10,16 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { App } from '../src/app/app.js'
+import { ConfigError, StorageError } from '../src/errors/errors.js'
 import { namespaced, tiered } from '../src/storage/compose.js'
+import { encrypted } from '../src/storage/encrypted.js'
 import { file } from '../src/storage/file.js'
 import { memory } from '../src/storage/memory.js'
-import type { DescribedKV } from '../src/storage/types.js'
+import type { DescribedKV, KV } from '../src/storage/types.js'
+
+/** Key material for the encrypted-store cases. Not a credential for anything. */
+const SECRET = 'a-secret-for-tests-only'
 
 /** Controllable clock, so TTL behaviour is tested without waiting. */
 function clock(start = 1_000_000): { now: () => number; advance: (seconds: number) => void } {
@@ -146,6 +152,7 @@ function contractSuite(
 }
 
 contractSuite('memory', (now) => memory({ now }))
+contractSuite('encrypted', (now) => encrypted(memory<string>({ now }), SECRET))
 
 describe('file driver', () => {
   let directory: string
@@ -334,6 +341,319 @@ describe('tiered', () => {
     await store.set('b', 2)
 
     expect(await store.get('a')).toBe(1)
+  })
+})
+
+describe('encrypted', () => {
+  it('leaves nothing readable in the store it wraps', async () => {
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('cart', { items: ['a-recognisable-string'] })
+
+    const stored = await inner.get('cart')
+
+    expect(stored).toBeTypeOf('string')
+    expect(stored).not.toContain('a-recognisable-string')
+    expect(stored).not.toContain('items')
+  })
+
+  it('passes keys through untouched, so prefixes still work', async () => {
+    // Encrypting keys would break `namespaced`, `clear(prefix)` and `keys()`,
+    // which are how every other part of the storage layer scopes itself.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('sessions:42', 1)
+
+    expect(await inner.get('sessions:42')).toBeDefined()
+  })
+
+  it('reads back what an earlier store wrote under the same secret', async () => {
+    // The salt travels with the value, so a later process derives the same key
+    // from the same secret without being told anything else.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', { n: 1 })
+
+    expect(await encrypted(inner, SECRET).get('a')).toEqual({ n: 1 })
+  })
+
+  it('survives a restart when the store it wraps does', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-encrypted-'))
+    try {
+      await encrypted(file<string>(directory), SECRET).set('a', { n: 1 })
+
+      expect(await encrypted(file<string>(directory), SECRET).get('a')).toEqual({ n: 1 })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses to read what another secret wrote', async () => {
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', 1)
+
+    await expect(encrypted(inner, 'a-different-secret').get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a value that has been altered', async () => {
+    // The reason for an authenticated cipher: a changed byte is detected here
+    // rather than decrypting to something plausible.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', { n: 1 })
+
+    const raw = Buffer.from((await inner.get('a')) ?? '', 'base64')
+    const last = raw.length - 1
+    raw[last] = (raw[last] ?? 0) ^ 0xff
+    await inner.set('a', raw.toString('base64'))
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a value moved to another key', async () => {
+    // The key is authenticated alongside the value. Without that, anyone who
+    // could write to the store could swap one user's session onto another's
+    // key and it would decrypt perfectly.
+    const inner = memory<string>()
+    const store = encrypted(inner, SECRET)
+    await store.set('user:1', { admin: true })
+
+    await inner.set('user:2', (await inner.get('user:1')) ?? '')
+
+    await expect(store.get('user:2')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a value it did not write', async () => {
+    // Pointing an encrypted store at one that already holds plaintext. Reading
+    // it as absent would look like an empty store and invite overwriting it.
+    const inner = memory<string>()
+    await inner.set('a', 'plain text nobody encrypted')
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a value written in a format it does not know', async () => {
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', 1)
+
+    const raw = Buffer.from((await inner.get('a')) ?? '', 'base64')
+    raw[0] = 0x02
+    await inner.set('a', raw.toString('base64'))
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('keeps a value it could not read', async () => {
+    // A wrong secret is usually a typo, and the data is still good under the
+    // right one. Discarding it the way a corrupt file is discarded would turn
+    // a mistake into data loss.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', { n: 1 })
+
+    await expect(encrypted(inner, 'wrong').get('a')).rejects.toThrow(StorageError)
+
+    expect(await encrypted(inner, SECRET).get('a')).toEqual({ n: 1 })
+  })
+
+  it('writes the same value differently every time', async () => {
+    // A fresh nonce per write. Without one, equal values would be visibly
+    // equal in the store, which leaks more than it looks like it does.
+    const inner = memory<string>()
+    const store = encrypted(inner, SECRET)
+
+    await store.set('a', 'same')
+    const first = await inner.get('a')
+    await store.set('a', 'same')
+
+    expect(await inner.get('a')).not.toBe(first)
+    expect(await store.get('a')).toBe('same')
+  })
+
+  it('gives each store its own salt', async () => {
+    // A constant salt would mean one precomputation against this library, not
+    // against a deployment. The salt travels with the value, which is what
+    // still lets a later store read what this one wrote.
+    const saltOf = async (store: DescribedKV<unknown>, inner: KV<string>): Promise<string> => {
+      await store.set('a', 1)
+
+      return Buffer.from((await inner.get('a')) ?? '', 'base64')
+        .subarray(1, 17)
+        .toString('hex')
+    }
+
+    const first = memory<string>()
+    const second = memory<string>()
+
+    expect(await saltOf(encrypted(first, SECRET), first)).not.toBe(
+      await saltOf(encrypted(second, SECRET), second),
+    )
+  })
+
+  it('refuses a stored value that is not text', async () => {
+    // An adapter is four methods against whatever database an application
+    // already runs, and one that hands back a parsed object rather than the
+    // string it was given must not reach the cipher.
+    const inner: KV<string> = {
+      get: async () => ({ not: 'text' }) as unknown as string,
+      set: async () => {},
+      delete: async () => {},
+    }
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a stored value that cannot even be described', async () => {
+    // A null-prototype object is what several JSON parsers hand back. Coercing
+    // one to text throws, so it has to be rejected as a value rather than
+    // turned into one on the way to the cipher.
+    const inner: KV<string> = {
+      get: async () => Object.create(null) as string,
+      set: async () => {},
+      delete: async () => {},
+    }
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('refuses a value cut short after it was written', async () => {
+    // A partial write: the format marker survives, the rest does not. Taking
+    // it apart anyway hands the cipher an empty nonce and tag, which fails as
+    // something other than a storage problem.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', { n: 1 })
+
+    const raw = Buffer.from((await inner.get('a')) ?? '', 'base64')
+    await inner.set('a', raw.subarray(0, 20).toString('base64'))
+
+    await expect(encrypted(inner, SECRET).get('a')).rejects.toThrow(StorageError)
+  })
+
+  it('reads a value written as undefined as absent', async () => {
+    // What every other driver answers, because a value that is `undefined` and
+    // one that was never written are the same thing under this contract.
+    const store = encrypted(memory<string>(), SECRET)
+    await store.set('a', undefined)
+
+    expect(await store.get('a')).toBeUndefined()
+  })
+
+  it('round-trips values with nothing in them', async () => {
+    const store = encrypted(memory<string>(), SECRET)
+
+    await store.set('text', '')
+    await store.set('object', {})
+    await store.set('list', [])
+
+    expect(await store.get('text')).toBe('')
+    expect(await store.get('object')).toEqual({})
+    expect(await store.get('list')).toEqual([])
+  })
+
+  it('stays correct over repeated writes and reads', async () => {
+    const store = encrypted(memory<string>(), SECRET)
+
+    for (let index = 0; index < 20; index += 1) await store.set('a', index)
+
+    expect(await store.get('a')).toBe(19)
+  })
+
+  it('serves concurrent reads, deriving the key once', async () => {
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', { n: 1 })
+
+    const store = encrypted(inner, SECRET)
+    const reads = await Promise.all(Array.from({ length: 10 }, async () => store.get('a')))
+
+    expect(reads).toEqual(Array.from({ length: 10 }, () => ({ n: 1 })))
+  })
+
+  it('answers whether a value exists without needing the secret', async () => {
+    // Presence is the wrapped store's answer, not a decryption. A caller
+    // checking for a key should not have to be able to read it.
+    const inner = memory<string>()
+    await encrypted(inner, SECRET).set('a', 1)
+
+    expect(await encrypted(inner, 'a-different-secret').has?.('a')).toBe(true)
+  })
+
+  it('deletes and clears through to the store it wraps', async () => {
+    const inner = memory<string>()
+    const store = encrypted(inner, SECRET)
+
+    await store.set('a:1', 1)
+    await store.set('b:1', 2)
+    await store.delete('a:1')
+
+    expect(await inner.get('a:1')).toBeUndefined()
+
+    await store.clear?.()
+    expect(await inner.get('b:1')).toBeUndefined()
+  })
+
+  it('refuses to be built without a secret', async () => {
+    // `process.env.KEY!` is `undefined` at run time when the variable is not
+    // set, whatever the type says, and a store built from it would encrypt
+    // everything under a key nobody chose.
+    expect(() => encrypted(memory<string>(), '')).toThrow(ConfigError)
+  })
+
+  it('reports the persistence of the store it wraps', () => {
+    expect(encrypted(memory<string>(), SECRET).info.persistent).toBe(false)
+  })
+
+  it('is persistent over a store that is', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-encrypted-'))
+    try {
+      expect(encrypted(file<string>(directory), SECRET).info.persistent).toBe(true)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('does not claim persistence for an adapter that does not say', () => {
+    // The four documented methods and nothing else, which is what an adapter
+    // written against the contract looks like.
+    const bare: KV<string> = {
+      get: async () => undefined,
+      set: async () => {},
+      delete: async () => {},
+    }
+
+    expect(encrypted(bare, SECRET).info.persistent).toBe(false)
+  })
+
+  it('does not take an unrelated info field as a description', async () => {
+    // `info` is a small enough name that an adapter may already use it for
+    // something else. Believing it would report persistence nobody claimed.
+    const inner = {
+      ...memory<string>(),
+      info: 'a note about this adapter',
+    } as unknown as KV<string>
+
+    expect(encrypted(inner, SECRET).info.persistent).toBe(false)
+  })
+
+  it('composes with namespaced in either order', async () => {
+    const inner = memory<string>()
+
+    const outside = namespaced(encrypted(inner, SECRET), 'a:')
+    const inside = encrypted(namespaced(inner, 'b:'), SECRET)
+
+    await outside.set('k', 1)
+    await inside.set('k', 2)
+
+    expect(await outside.get('k')).toBe(1)
+    expect(await inside.get('k')).toBe(2)
+    expect(await inner.get('a:k')).toBeTypeOf('string')
+    expect(await inner.get('b:k')).toBeTypeOf('string')
+  })
+})
+
+describe('an application over an encrypted store', () => {
+  it('keeps its own state and its clients apart, and neither in the clear', async () => {
+    const inner = memory<string>()
+    const app = new App({ storage: encrypted(inner, SECRET) })
+
+    await app.storage.set('deployed', 'a-recognisable-string')
+
+    expect(await app.storage.get('deployed')).toBe('a-recognisable-string')
+    expect(await inner.get('app:deployed')).not.toContain('a-recognisable-string')
   })
 })
 

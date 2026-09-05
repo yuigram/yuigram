@@ -87,15 +87,27 @@ is planned rather than shipped.
 Adapters are values, so they compose:
 
 ```ts
-import { memory, sqlite, tiered, namespaced, encrypted } from 'yuigram'
+import { memory, file, tiered, namespaced, encrypted } from 'yuigram'
 
-namespaced(store, 'sessions:')             // key prefixing
-tiered(memory({ max: 1000 }), sqlite(…))   // read-through cache
-encrypted(store, process.env.KEY!)         // AES-256-GCM at rest
+namespaced(store, 'sessions:')                    // key prefixing
+tiered(memory({ max: 1000 }), file('./state'))    // read-through cache
+encrypted(file<string>('./state'), process.env.KEY!)   // AES-256-GCM at rest
 ```
 
 `tiered` matters in practice: session reads happen on every update, and a hot in-memory layer
 over a persistent store removes almost all of that traffic without changing application code.
+
+`encrypted` wraps a store that holds text, because that is what it writes there: a value is
+serialized, sealed, and stored as one base64 string. Keys are **not** encrypted — they pass
+through untouched, so `namespaced`, `clear(prefix)` and `keys(prefix)` keep working and the
+two compose in either order. A reader of the store therefore learns what an application
+stores things under, and nothing about what it stored.
+
+A value that does not decrypt **throws** `StorageError` rather than reading as absent, and
+nothing is deleted: a mistyped secret would otherwise look exactly like an empty store, and an
+application would carry on and overwrite data that is still good under the right key. This is
+the one place where a driver does not degrade quietly, and §5's corrupt-data row does not
+apply to it for that reason.
 
 ### What an `App` divides
 
@@ -220,7 +232,12 @@ Storage is where secrets end up, so the defaults matter more than the options:
 
 - Session files are created `0600`; the driver warns on wider permissions.
 - `encrypted()` wraps any adapter with AES-256-GCM, key via scrypt — authenticated, so
-  tampering surfaces as a decryption failure rather than a protocol error.
+  tampering surfaces as a decryption failure rather than a protocol error. Each store salts
+  its own derivation and carries the salt with every value it writes, so a key derived for one
+  deployment is useless against another and a later process still reads what an earlier one
+  wrote. Each write gets a fresh nonce, so equal values are not visibly equal in the store.
+  The derived key is held in memory for as long as the store is; the secret is supplied by the
+  caller and never written anywhere.
 - Keys are hashed before becoming filenames, which prevents path traversal from a
   user-controlled session key.
 - No storage adapter logs values, and key logging is opt-in at `debug`.
@@ -235,8 +252,8 @@ Full threat model in [security.md](security.md).
 
 | Phase | Deliverable |
 |---|---|
-| Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, the `KV` contract |
-| v0.x | `encrypted()`, the conformance suite, MTProto file driver |
+| Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, `encrypted()`, the `KV` contract |
+| v0.x | The conformance suite, MTProto file driver |
 | Userland | `redis`, `sqlite`, `sql` — four methods against a client the application already has |
 | Post-1.0 | Official adapters, if the userland ones turn out to disagree with each other |
 

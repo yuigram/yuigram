@@ -13,6 +13,7 @@ export {
   PluginDependencyError,
   PluginError,
   SessionError,
+  StorageError,
   TelegramError,
   ValidationError,
   YuigramError,
