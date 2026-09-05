@@ -62,11 +62,32 @@ MTProto session material is the highest-value asset in the system.
 | File permissions `0600` | **On** | Costs nothing; prevents the most common local exposure |
 | Warn on wider permissions | **On** | Detects a session copied or checked out carelessly. The directory rather than the file: nothing reaches a file whose directory denies it |
 | Encryption at rest | **Off**, opt-in | A mandatory passphrase pushes users to store the key beside the file, achieving nothing. Available and documented. |
-| Exclusive lock | **On** | Two clients on one session corrupt both — fail loudly |
-| Never in `git` | Documented + `.gitignore` in every template | The realistic leak path |
+| Exclusive lock | **Not yet implemented** | Two clients on one session corrupt both — fail loudly. Outstanding: see §3.1 |
+| Never in `git` | Documented + a `.gitignore` in every template, held by the `templates-ignore-secrets` invariant | The realistic leak path. A template is copied whole, so the root ignore file protects nothing once it has been copied |
 
 When enabled, encryption is AES-256-GCM with scrypt key derivation — authenticated, so
 tampering fails cleanly instead of producing confusing protocol errors.
+
+### 3.1 The exclusive lock is not implemented
+
+The row above states a requirement, not a behaviour that ships. It is recorded here rather
+than quietly dropped, because the reason it has not been built is a decision nobody has taken
+rather than work nobody has done.
+
+`storage.md` §4 and [sessions.md](sessions.md) §3 both say the file driver takes the lock. But
+`file()` is the generic key-value driver, and framework storage is legitimately shared between
+processes — several webhook workers behind one store is a supported deployment, and an
+unconditional lock would break it. Scoping the lock to MTProto session storage instead means
+either an option on `file()` or a lock the account owns, and neither document says which.
+
+A lock also has to be released, and `KV` has no `close`. The account has a lifecycle and could
+release one, but it only owns the store on the `Account.fromSession` path — a store passed to
+the constructor stays the caller's, which this document and the implementation both say. So
+releasing it would be an ownership transfer nothing has agreed to.
+
+Resolving this means choosing between adding a lifecycle method to the central storage
+contract and moving the lock off the file driver, which contradicts the wording in two other
+documents. Both are architectural decisions, so the requirement stays open and explicit.
 
 `exportSession()` returns a string that **is** a logged-in session. The documentation says
 exactly that, in those words, at every mention. It is not a config value, it does not go in a

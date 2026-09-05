@@ -9,9 +9,9 @@
  */
 
 import process from 'node:process'
-import { publicSurfaceIsClean, runWorkspaceInvariants } from './rules.js'
+import { publicSurfaceIsClean, runWorkspaceInvariants, templatesIgnoreSecrets } from './rules.js'
 import type { InvariantResult } from './types.js'
-import { loadDeclarationFiles, loadWorkspace } from './workspace.js'
+import { loadDeclarationFiles, loadTemplates, loadWorkspace } from './workspace.js'
 
 function report(results: readonly InvariantResult[]): number {
   let failures = 0
@@ -54,6 +54,8 @@ async function main(): Promise<void> {
   } else {
     process.stdout.write('  SKIP  public-surface-is-clean (no build output; run `pnpm build`)\n')
   }
+
+  results.push(templatesIgnoreSecrets(await loadTemplates(root)))
 
   const failures = report(results)
 

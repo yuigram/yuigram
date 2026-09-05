@@ -25,3 +25,6 @@ coverage/
 *.session
 *.session-journal
 sessions/
+
+# Framework state, which is what the examples write when they are run
+state/

@@ -8,6 +8,7 @@
 import type { Dirent } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
+import type { Template } from './rules.js'
 import type { ImportKind, ImportRef, SourceFile, Workspace, WorkspacePackage } from './types.js'
 
 /** Directories never worth walking. */
@@ -151,6 +152,50 @@ export async function loadWorkspace(root: string): Promise<Workspace> {
 }
 
 /** Collect built `.d.ts` files, which is what the public-surface check inspects. */
+/**
+ * The templates a user copies, and the ignore rules each carries.
+ *
+ * `examples/` is where they live. A directory without a `tsconfig.json` is not
+ * one — the build output and the installed dependencies sit beside them.
+ */
+export async function loadTemplates(root: string): Promise<Template[]> {
+  const directory = join(root, 'examples')
+  const templates: Template[] = []
+
+  for (const entry of await readDirSafe(directory)) {
+    if (!entry.isDirectory()) continue
+
+    const here = join(directory, entry.name)
+    if (!(await exists(join(here, 'tsconfig.json')))) continue
+
+    templates.push({
+      path: `examples/${entry.name}`,
+      gitignore: await readFileSafe(join(here, '.gitignore')),
+    })
+  }
+
+  return templates
+}
+
+/** Read a file, or report that there is none. */
+async function readFileSafe(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch {
+    return undefined
+  }
+}
+
+/** Whether a path is there at all. */
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function loadDeclarationFiles(
   root: string,
 ): Promise<Array<{ path: string; text: string }>> {

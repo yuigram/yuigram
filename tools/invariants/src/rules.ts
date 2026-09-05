@@ -473,6 +473,82 @@ export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
   return { name: 'eager-surfaces', violations }
 }
 
+/**
+ * What a template must refuse to commit.
+ *
+ * `docs/security.md` §3 lists "never in git" as a control that is on by
+ * default, held by documentation and by a `.gitignore` in every template, and
+ * calls it the realistic leak path — realistic because nothing about it fails
+ * loudly. A session string is one line of text that is a logged-in account, and
+ * the way it reaches a public repository is not that somebody decided to commit
+ * it. It is that they copied a template, ran it, and committed everything the
+ * run produced.
+ *
+ * So the rule is about the templates rather than about this repository: the
+ * root ignore file protects what is checked out here, and protects nothing at
+ * all once a directory has been copied somewhere else. Each pattern below
+ * corresponds to something an example actually reads or writes.
+ */
+const TEMPLATE_IGNORES: readonly string[] = [
+  'node_modules/',
+  'dist/',
+  '.env',
+  '*.session',
+  'state/',
+]
+
+/** One template, as the checker reads it. */
+export interface Template {
+  /** Repository-relative directory, e.g. `examples/08-storage`. */
+  readonly path: string
+  /** Contents of its `.gitignore`, or undefined when it has none. */
+  readonly gitignore: string | undefined
+}
+
+/**
+ * Every template ignores what running it produces.
+ *
+ * Checked against the patterns rather than the file, so a template that needs
+ * more may say more. A template that is missing one is reported by name: the
+ * point of the control is that somebody copying it inherits the protection,
+ * and a template silently short of a rule inherits nothing.
+ */
+export function templatesIgnoreSecrets(templates: readonly Template[]): InvariantResult {
+  const violations: Violation[] = []
+
+  for (const template of templates) {
+    if (template.gitignore === undefined) {
+      violations.push({
+        file: `${template.path}/.gitignore`,
+        message: `${template.path} is a template with no '.gitignore'`,
+        rationale:
+          'A template is copied whole. Whoever copies it inherits its ignore rules and nothing else, and what they run writes credentials and session state beside the code.',
+      })
+      continue
+    }
+
+    const lines = new Set(
+      template.gitignore
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#')),
+    )
+
+    for (const pattern of TEMPLATE_IGNORES) {
+      if (lines.has(pattern)) continue
+
+      violations.push({
+        file: `${template.path}/.gitignore`,
+        message: `${template.path} does not ignore '${pattern}'`,
+        rationale:
+          'Each pattern names something an example reads or writes: dependencies, build output, credentials, a session, or the state a run leaves behind.',
+      })
+    }
+  }
+
+  return { name: 'templates-ignore-secrets', violations }
+}
+
 /** All invariants that operate purely on the workspace description. */
 export const workspaceInvariants: readonly Invariant[] = [
   noTelegramDependencies,
