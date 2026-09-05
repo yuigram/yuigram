@@ -25,7 +25,7 @@
 
 import type { StreamRequest } from '../../src/network/channel.js'
 import type { ByteStream } from '../../src/network/tcp.js'
-import type { TlScope } from '../../src/tl/index.js'
+import type { TlScope, TlValue } from '../../src/tl/index.js'
 import type { HandshakeResult } from './handshake.js'
 import { createServerKey, type ServerKey } from './keys.js'
 import { type Fault, MockServer } from './server.js'
@@ -45,6 +45,8 @@ export interface MockDatacenterOptions {
   readonly serverTime?: number
   /** Deliberate misbehaviour, applied to every connection it answers. */
   readonly faults?: ReadonlySet<Fault>
+  /** What its peers answer an API method with, where a case models one. */
+  readonly api?: (query: TlValue) => TlValue | undefined
 }
 
 /** One connection this datacenter has answered. */
@@ -120,6 +122,7 @@ export class MockDatacenter {
       ...(this.#options.scope === undefined ? {} : { scope: this.#options.scope }),
       ...(this.#options.serverTime === undefined ? {} : { serverTime: this.#options.serverTime }),
       ...(this.#options.faults === undefined ? {} : { faults: this.#options.faults }),
+      ...(this.#options.api === undefined ? {} : { api: this.#options.api }),
       // The long-lived key is what a binding is checked against, and a binding
       // arrives on a different connection from the one that established it.
       ...(this.#permanent === undefined ? {} : { permanentKey: this.#permanent.authKey }),

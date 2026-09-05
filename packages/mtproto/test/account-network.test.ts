@@ -24,8 +24,9 @@
  * cases cost seconds rather than milliseconds.
  */
 
-import { App } from '@yuigram/core'
+import { App, createLogger, type LogRecord } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
+import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { createServerKey } from './server/keys.js'
 import type { Fault } from './server/server.js'
@@ -58,6 +59,44 @@ const exchanges = (datacenter: MockDatacenter) =>
 /** Whether each socket a datacenter answered is still held open. */
 const sockets = (datacenter: MockDatacenter) =>
   datacenter.connections.map((connection) => connection.open())
+
+/**
+ * Every method a harness's datacenters were asked, by name.
+ *
+ * Read from the peers rather than from the account, so what a case sees is what
+ * actually travelled: a call the account made on its own behalf counts exactly
+ * as much as one the case made. What a session sends to keep itself running is
+ * left out — an acknowledgement is not a call anybody decided to make.
+ */
+const names = (instance: MockAccount): readonly string[] =>
+  [...instance.datacenters.values()]
+    .flatMap((datacenter) => datacenter.connections)
+    .flatMap((connection) => connection.peer.seen.map((message) => message.value._))
+    .filter((name) => !BOOKKEEPING.has(name))
+
+/** What a session sends on its own behalf, rather than because a caller asked. */
+const BOOKKEEPING: ReadonlySet<string> = new Set([
+  'msgs_ack',
+  'ping',
+  'ping_delay_disconnect',
+  'msgs_state_req',
+  'get_future_salts',
+  'http_wait',
+])
+
+/** Which methods the second reading holds that the first did not, counted. */
+function added(before: readonly string[], after: readonly string[]): string[] {
+  const remaining = [...before]
+  const extra: string[] = []
+
+  for (const name of after) {
+    const at = remaining.indexOf(name)
+    if (at === -1) extra.push(name)
+    else remaining.splice(at, 1)
+  }
+
+  return extra.sort()
+}
 
 /**
  * A call to make once a connection is already warm.
@@ -759,5 +798,182 @@ describe('a datacenter an account cannot make sense of', () => {
     // It did not quietly negotiate a new key instead: one connection, refused.
     expect(exchanges(stranded.datacenter(2))).toEqual([false])
     await stranded.account.stop()
+  })
+})
+
+describe('what an account learns from the answers it receives', () => {
+  /**
+   * A user as an answer describes one.
+   *
+   * The hash is the point: it is issued per account, cannot be worked out, and
+   * arrives only inside answers like this one.
+   */
+  const USER = {
+    _: 'user',
+    id: 4242n,
+    access_hash: 0x1234_5678n,
+    first_name: 'Ada',
+    username: 'ada',
+  }
+
+  /** A channel, to prove the other array is read as well. */
+  const CHANNEL = {
+    _: 'channel',
+    id: 777n,
+    access_hash: 0x0bad_c0den,
+    title: 'Notes',
+    photo: { _: 'chatPhotoEmpty' },
+    date: 1_700_000_000,
+  }
+
+  /**
+   * A history request, spelled in full.
+   *
+   * The generated surface asks for every parameter the schema declares as
+   * required, so this is what a caller writes. Which window it names matters to
+   * nothing here.
+   */
+  const HISTORY = {
+    peer: { _: 'inputPeerSelf' },
+    offset_id: 0,
+    offset_date: 0,
+    add_offset: 0,
+    limit: 1,
+    max_id: 0,
+    min_id: 0,
+    hash: 0n,
+  } as const
+
+  /** An answer of the shape almost every method returns: a result, and everyone it mentions. */
+  const answering = (query: TlValue): TlValue | undefined =>
+    query._ === 'messages.getHistory'
+      ? { _: 'messages.messages', messages: [], topics: [], chats: [CHANNEL], users: [USER] }
+      : undefined
+
+  it('can name a peer it has only ever seen in an answer', async () => {
+    // The failure this prevents: read a conversation, then be unable to address
+    // anybody who spoke in it, because the hash that arrived with the answer was
+    // read past and thrown away.
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    await instance.account.api.messages.getHistory(HISTORY)
+    const named = await instance.account.resolve({ kind: 'user', id: 4242n })
+
+    expect(named).toEqual({ _: 'inputPeerUser', user_id: 4242n, access_hash: 0x1234_5678n })
+    await instance.dispose()
+  })
+
+  it('reads the chats an answer describes as well as the users', async () => {
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    await instance.account.api.messages.getHistory(HISTORY)
+
+    expect(await instance.account.resolve({ kind: 'channel', id: 777n })).toEqual({
+      _: 'inputPeerChannel',
+      channel_id: 777n,
+      access_hash: 0x0bad_c0den,
+    })
+    await instance.dispose()
+  })
+
+  it('answers a name from what an answer carried, without asking Telegram', async () => {
+    // Harvesting is what makes a name cheap. A peer already described does not
+    // send the account back to `contacts.resolveUsername` for what it holds.
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    await instance.account.api.messages.getHistory(HISTORY)
+    const before = names(instance)
+    const named = await instance.account.resolve('@ada')
+
+    expect(named).toEqual({ _: 'inputPeerUser', user_id: 4242n, access_hash: 0x1234_5678n })
+    expect(added(before, names(instance))).toEqual([])
+    await instance.dispose()
+  })
+
+  it('learns from a call made through the escape hatch too', async () => {
+    // The hatch exists for methods this build has never heard of, and their
+    // answers describe peers exactly as any other answer does.
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'messages.getHistory', ...HISTORY })
+
+    expect(await instance.account.resolve({ kind: 'user', id: 4242n })).toEqual({
+      _: 'inputPeerUser',
+      user_id: 4242n,
+      access_hash: 0x1234_5678n,
+    })
+    await instance.dispose()
+  })
+
+  it('sends nothing of its own to learn', async () => {
+    // Reading what came back anyway is the whole mechanism. An account that
+    // asked a question to write a peer down would be spending a caller's
+    // allowance on bookkeeping.
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    // Warmed first. Authorizing is two exchanges and a binding, and the first
+    // call on a channel travels wrapped in the layer announcement — none of
+    // which is what this case is about.
+    await instance.account.api.call({ _: 'help.getConfig' })
+    await instance.account.api.call({ _: 'help.getConfig' })
+
+    const before = names(instance)
+    await instance.account.api.messages.getHistory(HISTORY)
+
+    // Read as a difference rather than by position: several connections carry
+    // an account's traffic, and which of them a case reads last is not the
+    // question. What was added is.
+    expect(added(before, names(instance))).toEqual(['messages.getHistory'])
+    await instance.dispose()
+  })
+
+  it('still refuses a peer no answer has described', async () => {
+    const instance = harness({ api: answering })
+    await instance.account.connect()
+
+    await instance.account.api.messages.getHistory(HISTORY)
+
+    await expect(instance.account.resolve({ kind: 'user', id: 9999n })).rejects.toThrow(
+      /has not seen user 9999/,
+    )
+    await instance.dispose()
+  })
+
+  it('does not fail a call because the peers could not be written down', async () => {
+    // The answer is the caller's and has already arrived. Losing it over a
+    // record the account can learn again from the next answer that mentions the
+    // same peer would be the worse failure.
+    const kept = new Map<string, unknown>()
+    const records: LogRecord[] = []
+    const instance = harness({
+      api: answering,
+      // Swallowed, but not silently: a peer store that will not take what
+      // arrives is a real problem, and an account that lost every hash it was
+      // given without saying so would be diagnosed from the far end.
+      log: createLogger({ sink: { write: (record) => records.push(record) } }),
+      storage: {
+        get: async (name: string) => kept.get(name),
+        set: async (name: string, value: unknown) => {
+          if (name.startsWith('peers:')) throw new Error('the store is full')
+          kept.set(name, value)
+        },
+        delete: async (name: string) => {
+          kept.delete(name)
+        },
+      },
+    })
+    await instance.account.connect()
+
+    const answer = await instance.account.api.messages.getHistory(HISTORY)
+
+    expect(answer._).toBe('messages.messages')
+    expect(records.filter((record) => record.level === 'warn').map((record) => record.message)) //
+      .toContain('could not write down the peers an answer described')
+    await instance.dispose()
   })
 })

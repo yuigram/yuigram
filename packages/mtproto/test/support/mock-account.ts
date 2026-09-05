@@ -19,6 +19,7 @@
  * any of the protocol.
  */
 
+import type { KV } from '@yuigram/core'
 import { Account, type AccountOptions } from '../../src/account.js'
 import { serverRsaKey } from '../../src/auth/keys.js'
 import { REGISTRY as API } from '../../src/generated/api/registry.js'
@@ -27,7 +28,7 @@ import { REGISTRY as MTPROTO } from '../../src/generated/mtproto/registry.js'
 import type { StreamRequest } from '../../src/network/channel.js'
 import type { DcAddress, DcConfiguration } from '../../src/network/dc.js'
 import type { ByteStream } from '../../src/network/tcp.js'
-import { TlScope } from '../../src/tl/index.js'
+import { TlScope, type TlValue } from '../../src/tl/index.js'
 import { MockDatacenter } from '../server/datacenter.js'
 import { createServerKey, type ServerKey } from '../server/keys.js'
 import type { Fault } from '../server/server.js'
@@ -97,6 +98,14 @@ export interface MockAccountOptions
   /** State to begin from, rather than nothing. */
   readonly stored?: Map<string, unknown>
   /**
+   * The store itself, for a case about one that misbehaves.
+   *
+   * A store is ordinarily built over {@link MockAccountOptions.stored}, which
+   * keeps what it is given. A case about what an account does when writing
+   * fails supplies its own instead.
+   */
+  readonly storage?: KV
+  /**
    * A session to build the account from, rather than an empty one.
    *
    * The account is made by the public factory instead of the constructor, so a
@@ -111,6 +120,14 @@ export interface MockAccountOptions
    * of its choosing — after an authorization is in hand, for instance.
    */
   readonly faults?: ReadonlySet<Fault>
+  /**
+   * What every datacenter here answers an API method with.
+   *
+   * Without one a peer answers `boolTrue`, which proves a call travelled and
+   * nothing about what the account did with the answer. A case about the second
+   * supplies the answer it wants to see handled.
+   */
+  readonly api?: (query: TlValue) => TlValue | undefined
 }
 
 /** What a case gets to drive and observe. */
@@ -139,7 +156,9 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     key: shared,
     datacenters: existing,
     stored = new Map<string, unknown>(),
+    storage,
     faults,
+    api,
     session,
     ...rest
   } = options
@@ -157,6 +176,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
           scope: SCOPE,
           serverTime: NOW_SECONDS,
           ...(faults === undefined ? {} : { faults }),
+          ...(api === undefined ? {} : { api }),
         }),
       ]),
     )
@@ -174,7 +194,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     apiHash: 'mock-api-hash',
     now: clock(),
     ...rest,
-    storage: {
+    storage: storage ?? {
       get: async (name: string) => stored.get(name),
       set: async (name: string, value: unknown) => {
         stored.set(name, value)

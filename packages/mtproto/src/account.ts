@@ -54,7 +54,7 @@ import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration } from './network/dc.js'
-import { inputPeer, resolveUsername } from './network/peers.js'
+import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { Reach } from './network/signin.js'
 import type { PeerRef } from './normalize/index.js'
@@ -675,11 +675,47 @@ export class Account<Ext = unknown> {
    *
    * The single place an account turns a query into a request. Both the escape
    * hatch and the actions a context is given go through it, so there is one
-   * answer to which datacenter a call travels to and one answer to what happens
-   * when there is no connection.
+   * answer to which datacenter a call travels to, one answer to what happens
+   * when there is no connection, and one place the peers an answer described
+   * are written down.
    */
   async #invoke(query: TlValue): Promise<TlValue> {
-    return await this.#require().pools.get().invoke(query)
+    const answer = await this.#require().pools.get().invoke(query)
+    await this.#learn(answer)
+
+    return answer
+  }
+
+  /**
+   * Write down the peers an answer described.
+   *
+   * `docs/mtproto.md` §10 asks for this of every result, not only of updates:
+   * an access hash is issued per account and cannot be worked out, and almost
+   * every answer carries `users` and `chats` describing everyone it mentions.
+   * Reading a conversation's history and then being unable to name anybody who
+   * spoke in it is the failure this prevents — the hash was in the answer, and
+   * throwing it away means asking Telegram for what has already arrived.
+   *
+   * Nothing is fetched and nothing extra is sent. This reads what came back
+   * anyway, which is what makes it free of the traffic questions the rest of
+   * this layer has to answer.
+   *
+   * A caller holding {@link Account.reach} invokes on a pool directly and is
+   * outside this. That door is for choosing a datacenter, and what a caller
+   * does with an answer it asked for by hand is theirs.
+   *
+   * A store that will not take the peers does not fail the call that carried
+   * them. The answer is the caller's and it has already arrived; losing it
+   * because something could not be written down would turn a successful call
+   * into a failure over a record the account can learn again from the next
+   * answer that mentions the same peer.
+   */
+  async #learn(answer: TlValue): Promise<void> {
+    try {
+      await harvest(this.#peers, answer)
+    } catch (error) {
+      this.#log.warn('could not write down the peers an answer described', { error })
+    }
   }
 
   #require(): Network {

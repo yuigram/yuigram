@@ -114,6 +114,22 @@ me.on('message', async (event) => {
   // already named. Reaching somebody the event did not mention still goes
   // through `me.resolve('@name')`, because that one can hit the network.
   if (event.text === 'read') await event.here.messages.readHistory({ max_id: 0 })
+
+  // An account learns who people are from the answers it receives, not only
+  // from updates. Telegram issues an access hash per account and it cannot be
+  // worked out, so almost every answer carries the users and chats it mentions
+  // — and those are kept as they arrive. That is what makes the last line here
+  // work without a lookup: this account has never met these people except in
+  // the answer it just read.
+  if (event.text === 'contacts') {
+    const answer = await me.api.contacts.getContacts({ hash: 0n })
+    const [first] = answer._ === 'contacts.contacts' ? answer.users : []
+
+    if (first?._ === 'user') {
+      const peer = await me.resolve({ kind: 'user', id: first.id })
+      console.log(`  can address ${first.id} as ${peer._}`)
+    }
+  }
 })
 
 me.catch((error) => {

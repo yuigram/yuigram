@@ -180,6 +180,15 @@ export interface MockServerOptions {
    * API tables as well.
    */
   readonly scope?: TlScope
+  /**
+   * What this peer answers an API method with.
+   *
+   * A peer models no API, so a method it is told nothing about is answered with
+   * `boolTrue` — which is enough for a case about a call reaching a datacenter
+   * and not enough for one about what a client does with what came back.
+   * Returning `undefined` leaves a method to that default.
+   */
+  readonly api?: (query: TlValue) => TlValue | undefined
 }
 
 /**
@@ -212,6 +221,7 @@ export class MockServer {
   readonly #untagged: FullFraming | undefined
   readonly #secret: Uint8Array | undefined
   readonly #faults: ReadonlySet<Fault> | undefined
+  readonly #api: ((query: TlValue) => TlValue | undefined) | undefined
   readonly #scope: TlScope
   readonly #nextMsgId: () => bigint
 
@@ -260,6 +270,7 @@ export class MockServer {
     this.#untagged = options.untagged
     this.#secret = options.secret
     this.#faults = options.faults
+    this.#api = options.api
     this.#scope = options.scope ?? HANDSHAKE_SCOPE
 
     this.#options = {
@@ -992,10 +1003,11 @@ export class MockServer {
         }
       }
 
-      default:
+      default: {
         // A peer that models no API still has to answer one, or a call made
         // through it never settles.
-        return { _: 'boolTrue' }
+        return this.#api?.(element.value) ?? { _: 'boolTrue' }
+      }
     }
   }
 
