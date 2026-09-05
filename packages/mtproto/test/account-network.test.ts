@@ -185,6 +185,117 @@ describe('an account reaching a datacenter for the first time', () => {
   })
 })
 
+describe('an account reaching a method this build does not model', () => {
+  it('carries the call and gives back what answered it', async () => {
+    // `docs/architecture.md` §7's escape hatch, over the same three connections
+    // every other call needs: this is the whole path, not a shortcut past it.
+    const instance = harness()
+    await instance.account.connect()
+
+    const answer = await instance.account.api.call({ _: 'help.getConfig' })
+
+    expect(answer['_']).toBe('boolTrue')
+    await instance.dispose()
+  })
+
+  it('sends the query the caller wrote, unchanged', async () => {
+    // The hatch exists for methods this build has never heard of, so anything
+    // added, removed or renamed on the way would defeat the point of it.
+    const instance = harness()
+    await instance.account.connect()
+
+    // The first call on a connection travels wrapped, because that is where a
+    // client states its layer and describes itself. The second does not, which
+    // is the one to read if the question is what the caller wrote.
+    await instance.account.api.call({ _: 'help.getConfig' })
+    await instance.account.api.call({ _: 'help.getAppUpdate', source: 'a-marker' })
+
+    const seen = instance
+      .datacenter(2)
+      .connections.flatMap((connection) => connection.peer.seen.map((element) => element.value))
+    const sent = seen.find((value) => value._ === 'help.getAppUpdate')
+
+    expect(sent?.['source']).toBe('a-marker')
+    await instance.dispose()
+  })
+
+  it('lets the pools choose the datacenter', async () => {
+    // The account states no opinion about where a call goes; that belongs to
+    // the pools. `reach` is the escape from the escape hatch, for the caller
+    // who genuinely must name one.
+    const instance = harness()
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getConfig' })
+
+    expect(instance.datacenter(2).connections.length).toBeGreaterThan(0)
+    expect(instance.datacenter(4).connections).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('refuses a query naming nothing the schema carries', async () => {
+    // The hatch bypasses the typed surface, not the schema. A name that cannot
+    // be serialized fails here rather than as an answer that never comes.
+    const instance = harness()
+    await instance.account.connect()
+
+    await expect(
+      instance.account.api.call({ _: 'messages.notAMethodThisSchemaHas' }),
+    ).rejects.toThrow(/is not in the api table/)
+    await instance.dispose()
+  })
+
+  it('refuses a query carrying no constructor at all', async () => {
+    const instance = harness()
+    await instance.account.connect()
+
+    await expect(instance.account.api.call({ _: '' } as unknown as { _: string })).rejects.toThrow(
+      /is not in the api table/,
+    )
+    await instance.dispose()
+  })
+
+  it('is reachable from an event, on the account it arrived on', async () => {
+    // `docs/api-design.md` §12: the same surface on every context, so a handler
+    // never has to reach back to the client it was registered on.
+    const instance = harness()
+    await instance.account.connect()
+
+    // Past the wrapper the first call on a connection carries, so what the
+    // handler sends is readable as the handler wrote it.
+    await instance.account.api.call({ _: 'help.getConfig' })
+
+    let answered: unknown
+    instance.account.onMessage(async (event) => {
+      answered = await event.api.call({ _: 'help.getAppUpdate', source: 'from-a-handler' })
+    })
+    await instance.account.deliver({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 1,
+        peer_id: { _: 'peerUser', user_id: 5n },
+        from_id: { _: 'peerUser', user_id: 5n },
+        date: 1_700_000_000,
+        message: 'hello',
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect((answered as { _: string })['_']).toBe('boolTrue')
+
+    // And it went out over this account's connection rather than being answered
+    // by something the context made up.
+    const seen = instance
+      .datacenter(2)
+      .connections.flatMap((connection) => connection.peer.seen.map((element) => element.value))
+
+    expect(seen.some((value) => value['source'] === 'from-a-handler')).toBe(true)
+    await instance.dispose()
+  })
+})
+
 describe('what an account writes down', () => {
   it('keeps the authorization where the datacenter layer keeps it', async () => {
     const instance = harness()

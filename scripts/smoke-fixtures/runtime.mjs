@@ -41,6 +41,19 @@ check('the error hierarchy is exported', () => typeof FloodError === 'function')
 check('the storage failure is exported', () => typeof StorageError === 'function')
 check('schemaInfo names the Bot API version', () => /^\d+\.\d+$/.test(schemaInfo.botApi))
 check('the MTProto client is re-exported', () => typeof Account === 'function')
+// The escape hatch `docs/architecture.md` §7 promises. Building an account
+// needs no network, so its presence is checkable without one.
+check('the MTProto escape hatch is on the client', () => {
+  const account = new Account({
+    apiId: 1,
+    apiHash: 'x',
+    keys: [],
+    storage: memory(),
+    bootstrap: { thisDc: 2, testMode: true, options: [] },
+  })
+
+  return typeof account.api.call === 'function'
+})
 check('the container both transports meet in is re-exported', () => typeof App === 'function')
 check('the container registers across clients', () => {
   const app = new App()

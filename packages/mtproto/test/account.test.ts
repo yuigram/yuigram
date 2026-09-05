@@ -334,6 +334,32 @@ describe('bringing an account up and down', () => {
   })
 })
 
+describe('reaching a method this build does not model', () => {
+  it('refuses before the account has connected', async () => {
+    // The same answer `reach` gives. A call that resolved to nothing would be
+    // discovered at the answer that never came.
+    const { account } = harness()
+
+    await expect(account.api.call({ _: 'help.getConfig' })).rejects.toThrow(/not connected/)
+  })
+
+  it('refuses again once the account has stopped', async () => {
+    const { account } = harness()
+    await account.connect()
+    await account.stop()
+
+    await expect(account.api.call({ _: 'help.getConfig' })).rejects.toThrow(/not connected/)
+  })
+
+  it('is the same surface however often it is read', () => {
+    // A handler may hold on to it. One that got a fresh object each time would
+    // still work and would quietly allocate on every access.
+    const { account } = harness()
+
+    expect(account.api).toBe(account.api)
+  })
+})
+
 describe('what an account owns and what it delegates', () => {
   it('reaches a datacenter through the pools rather than its own registry', async () => {
     // The same call twice gives the same connection, because the pools decide

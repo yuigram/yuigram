@@ -493,7 +493,7 @@ discards `code`, `description` or the raw TL error. See [architecture.md](archit
 ```ts
 // Typed, generated from the committed schema.
 await bot.api.sendMessage({ chat_id: 1, text: 'hi' })
-await user.api.messages.sendMessage({ peer, message: 'hi', randomId: rnd() })
+await user.api.messages.sendMessage({ peer, message: 'hi', randomId: rnd() })   // not yet
 
 // Untyped, for anything newer than the installed schema.
 await bot.api.call('brandNewMethod', { … })
@@ -502,6 +502,13 @@ await user.api.call({ _: 'messages.brandNewMethod', … })
 
 The same surface is on every context as `event.api`, so a handler never has to reach back to
 the client it was registered on for something the actions do not cover.
+
+**What ships today.** Three of the four: the Bot API's generated methods and its `call()`, and
+MTProto's `call()`. `user.api.messages.sendMessage(…)` needs a method emitter over the TL
+schema, which is scheduled rather than written — until it exists, a TL method is reached by
+naming it, which is what [roadmap.md](roadmap.md) principle 7 means by `user.api` being the
+answer to "method X is missing". The shape of `user.api` does not change when the namespaces
+arrive; they appear beside `call()`.
 
 Both forms exist deliberately: the typed one covers the schema, the untyped one covers the
 window between a Telegram release and Yuigram regenerating. Without the second, every

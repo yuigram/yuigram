@@ -14,6 +14,7 @@ export {
   type AccountContext,
   type AccountOptions,
 } from './account.js'
+export type { MtprotoApi } from './api.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type {
   MtprotoContext,
@@ -22,6 +23,7 @@ export type {
   PeerRef,
 } from './normalize/index.js'
 export type { PortableSession } from './session.js'
+export type { TlValue } from './tl/index.js'
 
 /** Package name, used by diagnostics and error messages. */
 export const PACKAGE_NAME = '@yuigram/mtproto'

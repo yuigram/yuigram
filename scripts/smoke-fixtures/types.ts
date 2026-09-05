@@ -17,11 +17,13 @@ import {
   App,
   Bot,
   encrypted,
+  type MtprotoApi,
   type MtprotoContext,
   memory,
   Router,
   type SessionFlavor,
   session,
+  type TlValue,
   userChatKey,
 } from 'yuigram'
 import { mockBot } from 'yuigram/testing'
@@ -102,6 +104,17 @@ export const transport: 'mtproto' = context.transport
 const vault = encrypted<Cart>(memory<string>(), 'a-secret-for-the-smoke-test')
 export const stored: Promise<Cart | undefined> = vault.get('a')
 export const persists: boolean = vault.info.persistent
+
+// The MTProto escape hatch, named. A caller writing a helper around it needs
+// both the query type and the result type to have names a consumer can reach.
+declare const account: Account
+export const raw: MtprotoApi = account.api
+export const answered: Promise<TlValue> = raw.call({ _: 'help.getConfig' })
+
+// It is on the context too, per api-design.md §12, and narrowed by transport
+// rather than added to the unified surface.
+declare const mtproto: MtprotoContext
+export const fromEvent: Promise<TlValue> = mtproto.api.call({ _: 'help.getConfig' })
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()

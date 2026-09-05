@@ -305,5 +305,6 @@ describe('an event built without an account', () => {
 
     await expect(context.reply('hello')).rejects.toThrow(/outside an account/)
     await expect(context.react('👍')).rejects.toThrow(/outside an account/)
+    await expect(context.api.call({ _: 'help.getConfig' })).rejects.toThrow(/outside an account/)
   })
 })

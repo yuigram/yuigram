@@ -83,9 +83,11 @@ export {
   Account,
   type AccountContext,
   type AccountOptions,
+  type MtprotoApi,
   type MtprotoContext,
   type MtprotoEventKind,
   type PeerRef,
+  type TlValue,
 } from '@yuigram/mtproto'
 
 /**

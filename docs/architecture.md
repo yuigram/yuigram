@@ -293,9 +293,13 @@ Two separate escape hatches, never merged (see [unified-model.md](unified-model.
 bot.api.sendMessage({ chat_id, text })              // typed Bot API
 bot.api.call('someNewMethod', { … })                // untyped, forward-compatible
 
-user.api.messages.sendMessage({ peer, message })    // typed TL
+user.api.messages.sendMessage({ peer, message })    // typed TL — not yet
 user.api.call({ _: 'messages.sendMessage', … })     // untyped, forward-compatible
 ```
+
+The typed TL surface is the one piece of this not yet built: it needs a method emitter over
+the schema, and until it exists a TL method is reached by naming it. `user.api` is otherwise
+complete, on the client and on every MTProto context.
 
 **Why both a typed and an untyped form:** the typed form covers everything in the current
 schema; the untyped form covers the window between Telegram shipping a feature and Yuigram

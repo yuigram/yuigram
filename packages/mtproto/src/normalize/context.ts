@@ -14,6 +14,7 @@
  */
 
 import { type BaseContext, type ContextActions, LifecycleError, type Logger } from '@yuigram/core'
+import { type MtprotoApi, rawApi } from '../api.js'
 import type { TlValue } from '../tl/index.js'
 import { type ActionContext, updateActions } from './actions.js'
 import type { MtprotoEventKind } from './events.js'
@@ -58,6 +59,16 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   reply(text: string): Promise<TlValue>
   /** React to the message this event carries. An empty emoji clears it. */
   react(emoji: string): Promise<TlValue>
+  /**
+   * Call a method this build does not model, on the account this arrived on.
+   *
+   * The same surface {@link Account.api} carries, per `docs/api-design.md` §12,
+   * so a handler reaching for something the actions do not cover does not have
+   * to reach back to the client it was registered on. It is here rather than on
+   * the unified context because the Bot API's escape hatch is a different type
+   * universe — see `docs/unified-model.md` §5.
+   */
+  readonly api: MtprotoApi
 }
 
 /** What building a context needs beyond the update itself. */
@@ -109,11 +120,13 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
  */
 function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
   const context = options.actions
-  if (context !== undefined) return updateActions(normalized, context)
+  if (context !== undefined) {
+    return { ...updateActions(normalized, context), api: rawApi(context.invoke) }
+  }
 
   const refuse = async (): Promise<never> => {
     throw new LifecycleError(`an event built outside an account cannot act on '${normalized.kind}'`)
   }
 
-  return { reply: refuse, react: refuse }
+  return { reply: refuse, react: refuse, api: rawApi(refuse) }
 }

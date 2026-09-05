@@ -46,6 +46,7 @@ import {
   type StopOptions,
   type UseOptions,
 } from '@yuigram/core'
+import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
 import type { Connections } from './network/connections.js'
@@ -59,6 +60,7 @@ import { decodeSession, encodeSession, type PortableSession } from './session.js
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
+import type { TlValue } from './tl/index.js'
 import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
 
@@ -158,6 +160,7 @@ export class Account<Ext = unknown> {
   readonly #dispatcher: Dispatcher<MtprotoContext & Ext>
   readonly #lifecycle: Lifecycle
   readonly #peers: PeerStore
+  readonly #api: MtprotoApi = rawApi(async (query) => await this.#invoke(query))
   readonly #state = new UpdateState()
 
   /** Everything that exists only while connected. */
@@ -313,6 +316,22 @@ export class Account<Ext = unknown> {
 
       return network.pools.get({ id: dcId })
     }
+  }
+
+  /**
+   * Call a method this build does not model.
+   *
+   * The escape hatch `docs/architecture.md` §7 gives both transports, so that a
+   * method Telegram shipped after this build was cut is reachable rather than
+   * being a reason to wait for a release. The pools decide which datacenter
+   * carries it; {@link Account.reach} is for the case where the caller must.
+   *
+   * ```ts
+   * const config = await account.api.call({ _: 'help.getConfig' })
+   * ```
+   */
+  get api(): MtprotoApi {
+    return this.#api
   }
 
   /** Where peers learned along the way are written down. */
@@ -555,7 +574,7 @@ export class Account<Ext = unknown> {
       // both — nothing is resolved until a handler actually acts.
       actions: {
         peers: this.#peers,
-        invoke: async (query) => await this.#require().pools.get().invoke(query),
+        invoke: async (query) => await this.#invoke(query),
         random: this.#options.random ?? randomBytes,
       },
     }) as MtprotoContext & Ext
@@ -574,6 +593,18 @@ export class Account<Ext = unknown> {
   /** Take whatever the connection reported, for the sequence to judge. */
   async feed(value: Parameters<Updates['feed']>[0]): Promise<void> {
     await this.#require().updates.feed(value)
+  }
+
+  /**
+   * Send one query over whichever connection the pools choose.
+   *
+   * The single place an account turns a query into a request. Both the escape
+   * hatch and the actions a context is given go through it, so there is one
+   * answer to which datacenter a call travels to and one answer to what happens
+   * when there is no connection.
+   */
+  async #invoke(query: TlValue): Promise<TlValue> {
+    return await this.#require().pools.get().invoke(query)
   }
 
   #require(): Network {
