@@ -37,8 +37,12 @@ jobs:
       - name: Lint and format
         run: pnpm lint
 
+      # Builds the packages and checks the test tree in the same step. The
+      # package projects compile `src` alone, so a type error in a test would
+      # otherwise reach no gate: the runner transpiles without checking, and
+      # its own type run only covers the `.test-d.ts` files.
       - name: Typecheck and build
-        run: pnpm build
+        run: pnpm typecheck
 
       # Runs after the build so the public-surface check has declaration files
       # to inspect rather than skipping.

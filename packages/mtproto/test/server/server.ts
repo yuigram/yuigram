@@ -27,7 +27,13 @@ import {
   decodePlaintextMessage,
   encodePlaintextMessage,
 } from '../../src/message/plaintext.js'
-import { readObject, type TlValue, TlWriter, writeObject } from '../../src/tl/index.js'
+import {
+  readObject,
+  type TlScope,
+  type TlValue,
+  TlWriter,
+  writeObject,
+} from '../../src/tl/index.js'
 import {
   AbridgedFraming,
   FrameBuffer,

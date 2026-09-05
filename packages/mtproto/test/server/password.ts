@@ -22,6 +22,7 @@
  */
 
 import { createHash, pbkdf2Sync } from 'node:crypto'
+import type { TlValue } from '../../src/tl/index.js'
 
 /** Every SRP operand is hashed at this width. */
 const WIDTH = 256
@@ -146,7 +147,7 @@ export class PasswordServer {
   }
 
   /** The answer `account.getPassword` would give. */
-  describe(): Record<string, unknown> {
+  describe(): TlValue {
     return {
       _: 'account.password',
       has_password: true,

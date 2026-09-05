@@ -19,7 +19,7 @@
  * started and stopped without a socket ever existing.
  */
 
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import * as yuigram from '../src/index.js'
 import { Account, type AnyEventContext, App, type MtprotoContext, memory } from '../src/index.js'
 import { mockBot } from '../src/testing.js'
@@ -56,6 +56,26 @@ const account = (name: string) =>
       ],
     },
   })
+
+/**
+ * Load the protocol stack before anything is timed.
+ *
+ * An account assembles its layers on the first connection, and the module that
+ * holds them is imported then rather than when the package is — that separation
+ * is what keeps a bot's bundle free of MTProto, and a benchmark measures it.
+ * Node loads that graph in about 90 ms. The test runner's module pipeline
+ * resolves and transforms each of its modules instead, which costs a couple of
+ * seconds on a busy machine, and all of it lands on whichever case connects
+ * first. That case is then timing the loader rather than the thing it asserts.
+ *
+ * So the first connection happens here, where setup cost belongs, and every
+ * case below measures an account that is already assembled.
+ */
+beforeAll(async () => {
+  const warm = account('warm')
+  await warm.connect()
+  await warm.stop()
+})
 
 describe('the MTProto surface a consumer receives', () => {
   it('exports the account client', () => {

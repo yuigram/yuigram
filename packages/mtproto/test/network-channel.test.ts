@@ -23,12 +23,12 @@ import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
 import { AuthKey } from '../src/message/auth-key.js'
 import {
   AUTH_KEY_NOT_FOUND,
-  type ByteStream,
   openChannel,
   type StreamRequest,
   TransportError,
 } from '../src/network/channel.js'
 import type { DcAddress } from '../src/network/dc.js'
+import type { ByteStream } from '../src/network/tcp.js'
 import { TlScope } from '../src/tl/index.js'
 import { FramingError, IntermediateFraming } from '../src/transport/index.js'
 import { createServerKey } from './server/keys.js'
