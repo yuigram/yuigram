@@ -203,7 +203,13 @@ export class Account<Ext = unknown> {
     directory: string,
     options: Omit<AccountOptions, 'storage'>,
   ): Account<Ext> {
-    return new Account<Ext>({ ...options, storage: file(directory) })
+    // The account's own logger, so a warning that the directory is readable
+    // beyond its owner lands where the rest of this account's records do. This
+    // is the one place the framework knows a directory holds authorization
+    // material rather than ordinary state.
+    const storage = file(directory, options.log === undefined ? {} : { log: options.log })
+
+    return new Account<Ext>({ ...options, storage })
   }
 
   /**

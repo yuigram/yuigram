@@ -12,6 +12,9 @@
  * a script, which is the seam the network layer already exposes for this.
  */
 
+import { chmod, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { App } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { Account } from '../src/account.js'
@@ -332,6 +335,55 @@ describe('bringing an account up and down', () => {
 
     await expect(account.feed(message(1))).rejects.toThrow(/not connected/)
   })
+})
+
+describe('an account whose state lives in a directory', () => {
+  // POSIX modes only. Windows derives a mode from the read-only attribute
+  // rather than from the access-control list that decides who may read a file,
+  // so a widened directory there is indistinguishable from any other and the
+  // store declines to guess. The case is skipped rather than weakened, because
+  // an assertion that holds on every platform would be one that holds whether
+  // or not the account reached its store with anywhere to warn.
+  it.skipIf(process.platform === 'win32')(
+    'is told when that directory is readable beyond its owner',
+    async () => {
+      // `docs/security.md` §3 makes the warning a default rather than an
+      // option, and this is the one place the framework knows a directory holds
+      // authorization material rather than ordinary state.
+      const directory = await mkdtemp(join(tmpdir(), 'yuigram-session-'))
+      const warnings: string[] = []
+      const log = {
+        debug() {},
+        info() {},
+        warn(message: string) {
+          warnings.push(message)
+        },
+        error() {},
+        child: () => log,
+        isEnabled: () => true,
+      }
+
+      try {
+        await chmod(directory, 0o755)
+
+        const account = Account.fromSession(directory, {
+          apiId: 1234,
+          apiHash: 'hash',
+          keys: [],
+          bootstrap: BOOTSTRAP,
+          log: log as never,
+        })
+
+        // Reading is enough: the directory is inspected the first time the
+        // store is opened, whatever opened it.
+        await account.peers.byId('user', 1n)
+
+        expect(warnings.some((message) => message.includes('beyond its owner'))).toBe(true)
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    },
+  )
 })
 
 describe('reaching a method this build does not model', () => {

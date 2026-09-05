@@ -230,7 +230,11 @@ unauthorized re-authentication.
 
 Storage is where secrets end up, so the defaults matter more than the options:
 
-- Session files are created `0600`; the driver warns on wider permissions.
+- Session files are created `0600` and their directory `0700`. The driver checks that
+  directory the first time it opens one and warns, through the logger it was given, when the
+  mode lets anyone but the owner in — the directory rather than the files, because on a POSIX
+  filesystem nothing reaches a file whose directory denies it. Where permissions carry no such
+  meaning, it says nothing rather than warning about a number that decides nothing.
 - `encrypted()` wraps any adapter with AES-256-GCM, key via scrypt — authenticated, so
   tampering surfaces as a decryption failure rather than a protocol error. Each store salts
   its own derivation and carries the salt with every value it writes, so a key derived for one

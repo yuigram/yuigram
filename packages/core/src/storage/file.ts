@@ -12,8 +12,9 @@
  */
 
 import { createHash } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { Logger } from '../log/logger.js'
 import type { DescribedKV, KVInfo, SetOptions } from './types.js'
 
 interface Envelope<V> {
@@ -28,6 +29,60 @@ interface Envelope<V> {
 export interface FileOptions {
   /** Clock source, injectable so TTL behaviour is testable without waiting. */
   readonly now?: () => number
+  /**
+   * Where a warning about the directory's permissions goes.
+   *
+   * The store says nothing without one. It is the caller's logger rather than
+   * one of this module's making, so a warning about session state lands
+   * wherever that application's records land and is redacted by whatever it
+   * redacts with.
+   */
+  readonly log?: Logger
+  /**
+   * How the store learns a path's permission bits.
+   *
+   * Injectable because the answer is not the same everywhere: a filesystem
+   * without POSIX modes reports whatever it likes, and the default declines to
+   * guess rather than warning every user on such a platform about a mode that
+   * means nothing. Returning `undefined` disables the check.
+   */
+  readonly permissions?: (path: string) => Promise<number | undefined>
+}
+
+/** Bits that let somebody other than the owner in. */
+const OTHERS = 0o077
+
+/**
+ * Whether a mode lets anyone but the owner at what is inside.
+ *
+ * The directory is what matters rather than the files in it: on a POSIX
+ * filesystem nobody reaches a file whose directory denies them, so a session
+ * left readable inside a private directory is still private, and a private file
+ * inside a readable directory is not. `docs/security.md` §3 asks for a warning
+ * when a session has been copied or checked out carelessly, and that is what
+ * carelessness looks like from here.
+ */
+export function isTooOpen(mode: number): boolean {
+  return (mode & OTHERS) !== 0
+}
+
+/**
+ * Read a path's permission bits, where they mean something.
+ *
+ * Windows reports a mode derived from the read-only attribute rather than from
+ * the access-control list that actually decides who may read the file, so the
+ * bits there would fail this check for every user while saying nothing about
+ * their exposure. Declining is the honest answer: a warning nobody can act on
+ * is one everybody learns to ignore.
+ */
+async function permissionsOf(path: string): Promise<number | undefined> {
+  if (process.platform === 'win32') return undefined
+
+  try {
+    return (await stat(path)).mode
+  } catch {
+    return undefined
+  }
 }
 
 /** Map a key to a filesystem-safe name. */
@@ -55,13 +110,37 @@ export function file<V = unknown>(directory: string, options: FileOptions = {}):
   const now = options.now ?? Date.now
   const info: KVInfo = { driver: 'file', persistent: true }
 
+  const log = options.log
+  const permissions = options.permissions ?? permissionsOf
+
   let ready: Promise<void> | undefined
   const ensureDirectory = (): Promise<void> => {
     // Owner-only: the directory holds session state, and the default mode
     // leaves it listable by every account on the machine. The files inside are
     // already 0600, so this is defence in depth rather than the only guard.
-    ready ??= mkdir(directory, { recursive: true, mode: 0o700 }).then(() => undefined)
+    //
+    // The mode is checked after, not instead: `mkdir` sets it on a directory it
+    // creates and leaves an existing one alone, so a store pointed at a
+    // directory somebody else made — or at one restored from an archive that
+    // did not carry modes — would otherwise be silently wide open.
+    ready ??= mkdir(directory, { recursive: true, mode: 0o700 })
+      .then(async () => await warnIfOpen())
+      .then(() => undefined)
+
     return ready
+  }
+
+  /** Say so, once, if the directory lets anyone but its owner in. */
+  const warnIfOpen = async (): Promise<void> => {
+    if (log === undefined) return
+
+    const mode = await permissions(directory)
+    if (mode === undefined || !isTooOpen(mode)) return
+
+    log.warn('the storage directory is readable beyond its owner', {
+      directory,
+      mode: (mode & 0o777).toString(8).padStart(3, '0'),
+    })
   }
 
   /** Read and parse an envelope, treating any unreadable file as absent. */

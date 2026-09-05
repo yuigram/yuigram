@@ -14,7 +14,7 @@ import { App } from '../src/app/app.js'
 import { ConfigError, StorageError } from '../src/errors/errors.js'
 import { namespaced, tiered } from '../src/storage/compose.js'
 import { encrypted } from '../src/storage/encrypted.js'
-import { file } from '../src/storage/file.js'
+import { file, isTooOpen } from '../src/storage/file.js'
 import { memory } from '../src/storage/memory.js'
 import type { DescribedKV, KV } from '../src/storage/types.js'
 
@@ -654,6 +654,157 @@ describe('an application over an encrypted store', () => {
 
     expect(await app.storage.get('deployed')).toBe('a-recognisable-string')
     expect(await inner.get('app:deployed')).not.toContain('a-recognisable-string')
+  })
+})
+
+/** A logger that keeps what it was told, so a case can read it back. */
+function recorder() {
+  const warnings: Array<{ message: string; fields?: Record<string, unknown> }> = []
+  const log = {
+    debug() {},
+    info() {},
+    warn(message: string, fields?: Record<string, unknown>) {
+      warnings.push(fields === undefined ? { message } : { message, fields })
+    },
+    error() {},
+    child: () => log,
+    isEnabled: () => true,
+  }
+
+  return { log, warnings }
+}
+
+describe('a store directory anyone can read', () => {
+  it('is what a mode lets anyone but the owner into', () => {
+    // The whole of the judgement, so the cases below are about wiring rather
+    // than about which bits mean what.
+    expect(isTooOpen(0o700)).toBe(false)
+    expect(isTooOpen(0o600)).toBe(false)
+    expect(isTooOpen(0o500)).toBe(false)
+    expect(isTooOpen(0o000)).toBe(false)
+
+    expect(isTooOpen(0o750)).toBe(true)
+    expect(isTooOpen(0o705)).toBe(true)
+    expect(isTooOpen(0o755)).toBe(true)
+    expect(isTooOpen(0o777)).toBe(true)
+    expect(isTooOpen(0o701)).toBe(true)
+  })
+
+  it('reads the file-type bits without mistaking them for permissions', () => {
+    // `stat` reports the type in the high bits: a directory is 0o40700, which
+    // a check on the whole number would read as open.
+    expect(isTooOpen(0o40700)).toBe(false)
+    expect(isTooOpen(0o40755)).toBe(true)
+  })
+
+  it('says so, once, when the directory lets others in', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    const { log, warnings } = recorder()
+
+    try {
+      const store = file(directory, { log, permissions: async () => 0o40755 })
+      await store.set('a', 1)
+      await store.get('a')
+      await store.set('b', 2)
+
+      expect(warnings).toHaveLength(1)
+      expect(warnings[0]?.message).toMatch(/readable beyond its owner/)
+      expect(warnings[0]?.fields).toMatchObject({ directory, mode: '755' })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('says nothing about a directory only its owner can reach', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    const { log, warnings } = recorder()
+
+    try {
+      await file(directory, { log, permissions: async () => 0o40700 }).set('a', 1)
+
+      expect(warnings).toEqual([])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('says nothing where permissions mean nothing', async () => {
+    // A filesystem without POSIX modes reports whatever it likes. Warning every
+    // user of such a platform about a number that says nothing about their
+    // exposure is how a warning stops being read.
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    const { log, warnings } = recorder()
+
+    try {
+      await file(directory, { log, permissions: async () => undefined }).set('a', 1)
+
+      expect(warnings).toEqual([])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('says nothing when nowhere was given to say it', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    let asked = 0
+
+    try {
+      const store = file(directory, {
+        permissions: async () => {
+          asked += 1
+
+          return 0o40777
+        },
+      })
+      await store.set('a', 1)
+
+      // Not merely silent: a store with no logger does not go to the
+      // filesystem for an answer it has nowhere to put.
+      expect(asked).toBe(0)
+      expect(await store.get('a')).toBe(1)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('still works when the directory cannot be inspected at all', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    const { log, warnings } = recorder()
+
+    try {
+      const store = file(directory, {
+        log,
+        permissions: async () => {
+          throw new Error('no such thing')
+        },
+      })
+
+      await expect(store.set('a', 1)).rejects.toThrow(/no such thing/)
+      expect(warnings).toEqual([])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('warns about the directory it was pointed at', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'yuigram-modes-'))
+    const { log } = recorder()
+    const inspected: string[] = []
+
+    try {
+      await file(directory, {
+        log,
+        permissions: async (path) => {
+          inspected.push(path)
+
+          return 0o40700
+        },
+      }).set('a', 1)
+
+      expect(inspected).toEqual([directory])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 })
 

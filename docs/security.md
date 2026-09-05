@@ -60,7 +60,7 @@ MTProto session material is the highest-value asset in the system.
 | Control | Default | Rationale |
 |---|---|---|
 | File permissions `0600` | **On** | Costs nothing; prevents the most common local exposure |
-| Warn on wider permissions | **On** | Detects a session copied or checked out carelessly |
+| Warn on wider permissions | **On** | Detects a session copied or checked out carelessly. The directory rather than the file: nothing reaches a file whose directory denies it |
 | Encryption at rest | **Off**, opt-in | A mandatory passphrase pushes users to store the key beside the file, achieving nothing. Available and documented. |
 | Exclusive lock | **On** | Two clients on one session corrupt both — fail loudly |
 | Never in `git` | Documented + `.gitignore` in every template | The realistic leak path |
@@ -242,4 +242,8 @@ looked at once.
 - [ ] DH validation cannot be bypassed by configuration
 - [ ] TL decoder fuzzed for bounds and allocation limits
 - [ ] Ban-risk warning present in MTProto documentation
-- [ ] Session encryption at rest (`encrypted()` ships; the permission warning does not yet)
+- [x] Session encryption at rest, and a permission warning when a session directory is too
+      open — `encrypted()` wraps any adapter; `file()` checks the directory's mode the first
+      time it opens one and warns through the caller's logger, which `Account.fromSession`
+      supplies. `storage.test.ts` holds both, and `account.test.ts` holds the wiring on
+      platforms where a mode means something
