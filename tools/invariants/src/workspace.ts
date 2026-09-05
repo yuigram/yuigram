@@ -8,7 +8,7 @@
 import type { Dirent } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import type { ImportRef, SourceFile, Workspace, WorkspacePackage } from './types.js'
+import type { ImportKind, ImportRef, SourceFile, Workspace, WorkspacePackage } from './types.js'
 
 /** Directories never worth walking. */
 const SKIP_DIRECTORIES = new Set(['node_modules', 'dist', '.git', 'coverage', '.pnpm-store'])
@@ -44,13 +44,24 @@ export function extractImports(text: string): ImportRef[] {
   while (match !== null) {
     const specifier = match[1] ?? match[2]
     if (specifier !== undefined) {
+      // The second group is the call form, so a match on it is a specifier the
+      // importing module reaches only when the surrounding code runs. A
+      // statement led by `import type` is erased instead, and reaches it never.
+      // An inline `{ type A }` is not the same thing: the statement survives
+      // and the module is still evaluated for it.
+      const kind: ImportKind =
+        match[1] === undefined
+          ? 'dynamic'
+          : /^\s*(?:import|export)\s+type\s/.test(match[0])
+            ? 'type'
+            : 'static'
       // Anchor to the specifier itself, not the match start: the pattern
       // consumes a leading whitespace character, which would otherwise report
       // the previous line. It also gives the more useful line for imports
       // whose bindings span several lines.
       const specifierOffset = match.index + match[0].lastIndexOf(specifier)
       const line = scannable.slice(0, specifierOffset).split('\n').length
-      refs.push({ specifier, line })
+      refs.push({ specifier, line, kind })
     }
     match = pattern.exec(scannable)
   }

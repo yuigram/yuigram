@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { type Benchmark, judge, passed, describe as report } from '../src/budget.js'
+import { type Benchmark, judge, median, passed, describe as report } from '../src/budget.js'
 
 /** A benchmark that reports whatever a case tells it to. */
 const benchmark = (budget: number | undefined, value: number): [Benchmark, number] => [
@@ -86,6 +86,41 @@ describe('judging a whole run', () => {
     // A suite that found no benchmarks has proved nothing, and a green build
     // from an empty run is the failure that hides every other one.
     expect(passed([])).toBe(false)
+  })
+})
+
+describe('reducing several samples to one', () => {
+  it('reports the middle of an odd number of samples', () => {
+    expect(median([80, 74, 300, 76, 78])).toBe(78)
+  })
+
+  it('reports the lower middle of an even number', () => {
+    // Either middle is defensible; picking one and saying so is what stops the
+    // figure moving when a run happens to have an extra sample in it.
+    expect(median([70, 80, 90, 100])).toBe(80)
+  })
+
+  it('is unmoved by a single slow run', () => {
+    // The reason a median is used at all. A machine that descheduled one
+    // process must not fail a build, and a mean would let it.
+    expect(median([70, 71, 72, 73, 5000])).toBe(72)
+  })
+
+  it('does not disturb the samples it was given', () => {
+    const samples = [90, 70, 80]
+    median(samples)
+
+    expect(samples).toEqual([90, 70, 80])
+  })
+
+  it('reports one sample as itself', () => {
+    expect(median([42])).toBe(42)
+  })
+
+  it('reports nothing measurable when there are no samples', () => {
+    // Not zero: a benchmark that measured nothing is within every budget, and
+    // that is the one answer it must not give.
+    expect(Number.isNaN(median([]))).toBe(true)
   })
 })
 

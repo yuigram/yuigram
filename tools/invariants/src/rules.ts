@@ -9,7 +9,7 @@
  * one both accepts a conforming workspace and rejects a violating one.
  */
 
-import type { Invariant, InvariantResult, Violation, Workspace } from './types.js'
+import type { Invariant, InvariantResult, SourceFile, Violation, Workspace } from './types.js'
 import { stripComments } from './workspace.js'
 
 /**
@@ -348,12 +348,138 @@ export const moduleBoundaries: Invariant = (workspace): InvariantResult => {
   return { name: 'module-boundaries', violations }
 }
 
+/**
+ * What an entry point costs merely to load.
+ *
+ * Importing a module evaluates everything it statically imports, transitively,
+ * whether or not the program goes on to use any of it. `docs/performance.md` §2
+ * budgets a cold `import 'yuigram'` at under 100 ms and asks for the TL codec
+ * tables — some 2,300 combinators — to be resolved on first use rather than
+ * built eagerly. A single static edge from an entry point into a table puts all
+ * of them back into every program's startup, including the ones that only ever
+ * run a bot.
+ *
+ * The benchmark measures the consequence; this states the rule. A measurement
+ * says a number moved, and leaves the next person to work out which import did
+ * it.
+ *
+ * Only static edges are followed. A module reached through `import(...)` is
+ * loaded when the code that needs it runs, and one reached by `import type` is
+ * not loaded at all — which is the whole point of writing either.
+ */
+interface EagerSurface {
+  /** Entry module, repository-relative. */
+  readonly entry: string
+  /** Prefixes its static closure must not reach. */
+  readonly excluded: readonly string[]
+  /** Why the weight is kept out, shown when it appears. */
+  readonly rationale: string
+}
+
+export const EAGER_SURFACES: readonly EagerSurface[] = [
+  {
+    entry: 'packages/mtproto/src/index.ts',
+    excluded: [
+      'packages/mtproto/src/generated/api/tables/',
+      'packages/mtproto/src/generated/core/tables/',
+      'packages/mtproto/src/generated/mtproto/tables/',
+    ],
+    rationale:
+      'The codec tables are resolved when an account connects, not when the package is imported. A static edge to one of them is paid by every program that loads the framework, including bot-only programs that never speak MTProto.',
+  },
+]
+
+/**
+ * The source file a relative specifier names, or null when it names none.
+ *
+ * A specifier carries the extension of the built file rather than the source
+ * one. `nodenext` resolution requires the extension, so every relative import
+ * in the repository ends in `.js` and none names a bare directory — rewriting
+ * the extension is the whole of the mapping.
+ */
+function sourceAt(target: string, sources: ReadonlyMap<string, SourceFile>): SourceFile | null {
+  return sources.get(target.replace(/\.js$/, '.ts')) ?? null
+}
+
+/** One edge out of the permitted set, as the walk found it. */
+interface Crossing {
+  readonly file: string
+  readonly line: number
+  readonly specifier: string
+  /** The excluded prefix it resolved into. */
+  readonly crossed: string
+}
+
+/**
+ * Walk what loading `entry` would load, reporting the edges that leave the set.
+ *
+ * A module that crosses is reported and not descended into. Everything under it
+ * crosses too, and the edge that reached it is the one thing to fix.
+ */
+function crossings(
+  entry: SourceFile,
+  sources: ReadonlyMap<string, SourceFile>,
+  excluded: readonly string[],
+): Crossing[] {
+  const found: Crossing[] = []
+  const seen = new Set<string>([entry.path])
+  const pending: SourceFile[] = [entry]
+
+  for (let source = pending.pop(); source !== undefined; source = pending.pop()) {
+    for (const ref of source.imports) {
+      if (ref.kind !== 'static') continue
+
+      const target = resolveRelative(source.path, ref.specifier)
+      if (target === null) continue
+
+      const crossed = excluded.find((prefix) => target.startsWith(prefix))
+      if (crossed !== undefined) {
+        found.push({ file: source.path, line: ref.line, specifier: ref.specifier, crossed })
+        continue
+      }
+
+      const next = sourceAt(target, sources)
+      if (next === null || seen.has(next.path)) continue
+
+      seen.add(next.path)
+      pending.push(next)
+    }
+  }
+
+  return found
+}
+
+export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+  const sources = new Map<string, SourceFile>()
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) sources.set(source.path, source)
+  }
+
+  for (const surface of EAGER_SURFACES) {
+    const entry = sources.get(surface.entry)
+    if (entry === undefined) continue
+
+    for (const crossing of crossings(entry, sources, surface.excluded)) {
+      violations.push({
+        file: crossing.file,
+        line: crossing.line,
+        message: `'${crossing.specifier}' is reachable from ${surface.entry} without running anything, and resolves into ${crossing.crossed}`,
+        rationale: surface.rationale,
+      })
+    }
+  }
+
+  return { name: 'eager-surfaces', violations }
+}
+
 /** All invariants that operate purely on the workspace description. */
 export const workspaceInvariants: readonly Invariant[] = [
   noTelegramDependencies,
   layerBoundaries,
   declaredImports,
   moduleBoundaries,
+  eagerSurfaces,
 ]
 
 /** Run every workspace invariant and collect the results. */

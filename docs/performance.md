@@ -37,13 +37,17 @@ Effort belongs in these five places and nowhere else.
 | `Bot.fromToken(token)` | < 1 ms | Nothing but validation |
 | `bot.poll()` | < 500 ms | One `getMe`, one `setMyCommands` if configured |
 | `Account.fromSession(...)` | < 1 ms | No I/O in the factory |
-| `user.connect()` — resumed session | < 2 s | Load session, connect, handshake with existing key |
+| `user.connect()` — resumed session | < 2 s | Load the protocol stack, the session, connect, handshake with existing key |
 | `user.signIn()` — fresh sign-in | network-bound | Full DH handshake plus interactive steps |
 
 Decisions that protect this:
 
 - **Lazy TL codec tables.** Building a 2,300-entry dispatch table eagerly costs startup time
-  for a client that will use twenty constructors. Resolve on first use.
+  for a client that will use twenty constructors. Resolve on first use: an account loads the
+  tables, and the protocol layers that read them, at the moment it connects. A program that
+  only runs a bot therefore never evaluates them, and one that does connect pays the cost
+  once per process rather than once per client. The `eager-surfaces` invariant keeps a static
+  edge from putting them back, and `startup/import` measures what is left.
 - **No I/O in constructors.** A constructor that opens a file cannot be used in a
   dependency-injection container or a test without side effects.
 - **Subpath exports.** Webhook adapters, testing helpers and storage drivers are not in the

@@ -48,12 +48,28 @@ export interface SourceFile {
   readonly imports: readonly ImportRef[]
 }
 
+/**
+ * How a specifier is reached.
+ *
+ * The distinction decides what loading the importing module loads with it,
+ * which is what rules about the cost of an entry point turn on.
+ */
+export type ImportKind =
+  /** `import ... from` or `export ... from`: loaded whenever the importer is. */
+  | 'static'
+  /** `import(...)` or `require(...)`: loaded when the surrounding code runs. */
+  | 'dynamic'
+  /** `import type` or `export type`: erased, so nothing is loaded at all. */
+  | 'type'
+
 /** A single module specifier with its source location. */
 export interface ImportRef {
   /** The specifier exactly as written, e.g. `node:crypto` or `@yuigram/core`. */
   readonly specifier: string
   /** 1-indexed line the specifier appears on. */
   readonly line: number
+  /** How the importing module reaches it. */
+  readonly kind: ImportKind
 }
 
 /** Everything the invariants need to know about the repository. */

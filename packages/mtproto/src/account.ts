@@ -48,13 +48,10 @@ import {
 } from '@yuigram/core'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
-import { REGISTRY as API } from './generated/api/registry.js'
-import { REGISTRY as CORE } from './generated/core/registry.js'
-import { REGISTRY as MTPROTO } from './generated/mtproto/registry.js'
-import { type Connections, openConnections } from './network/connections.js'
-import { type Datacenters, openDatacenters } from './network/datacenters.js'
+import type { Connections } from './network/connections.js'
+import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration } from './network/dc.js'
-import { openPools, type Pools } from './network/pools.js'
+import type { Pools } from './network/pools.js'
 import type { Reach } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
 import type { ClientInfo } from './session/connection.js'
@@ -62,8 +59,7 @@ import { decodeSession, encodeSession, type PortableSession } from './session.js
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
-import { TlScope } from './tl/index.js'
-import { openUpdates, type Updates } from './updates/manager.js'
+import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
 
 /** What the server is told about this client when nothing else is said. */
@@ -121,7 +117,7 @@ export interface AccountOptions {
    * does against Telegram, which is what makes a test of an account a test of
    * the account rather than of something standing in for one.
    */
-  readonly open?: Parameters<typeof openDatacenters>[0]['open']
+  readonly open?: DatacentersOptions['open']
   /**
    * Assemble a channel.
    *
@@ -129,7 +125,7 @@ export interface AccountOptions {
    * along with the socket, so it suits a case about what an account does with a
    * channel rather than about how one comes to exist.
    */
-  readonly openChannel?: Parameters<typeof openDatacenters>[0]['openChannel']
+  readonly openChannel?: DatacentersOptions['openChannel']
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
   readonly now?: () => number
   /** Randomness for nonces, session identifiers and padding. */
@@ -412,8 +408,25 @@ export class Account<Ext = unknown> {
    * updates manager is handed a way to reach a datacenter and somewhere to put
    * what it decides is this account's to see, which is the only wiring between
    * the protocol and the events a caller registered for.
+   *
+   * The stack is loaded here rather than imported at the top of this file, so
+   * that a program which never connects an account never evaluates the codec
+   * tables or the layers that read them; `stack.ts` says why. It is loaded once
+   * per process and is already resolved for every account after the first, so a
+   * second connection pays nothing for it.
    */
   async #open(): Promise<void> {
+    const {
+      API,
+      CORE,
+      MTPROTO,
+      openConnections,
+      openDatacenters,
+      openPools,
+      openUpdates,
+      TlScope,
+    } = await import('./stack.js')
+
     const scope = new TlScope('api', [CORE, MTPROTO, API])
     const storage = this.#options.storage
 

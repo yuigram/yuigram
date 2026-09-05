@@ -23,8 +23,9 @@
 
 import { type Benchmark, describe, judge, passed, type Verdict } from './budget.js'
 import { DISPATCH } from './cases/dispatch.js'
+import { STARTUP } from './cases/startup.js'
 
-const BENCHMARKS: readonly Benchmark[] = [...DISPATCH]
+const BENCHMARKS: readonly Benchmark[] = [...STARTUP, ...DISPATCH]
 
 /**
  * What §8 asks for and this does not measure yet.
@@ -33,9 +34,6 @@ const BENCHMARKS: readonly Benchmark[] = [...DISPATCH]
  * missing benchmark was forgotten or deferred.
  */
 const NOT_YET: readonly string[] = [
-  'startup/import — measures ~140 ms against the 100 ms budget in performance.md §2,',
-  '  most of it the MTProto tables the entry point loads eagerly. Gating it belongs',
-  '  with the change that brings it back under, not with the suite that found it.',
   'context/lazy, tl/serialize, crypto/aes-ige — measurable, but no budget is set',
   'types/check, types/autocomplete — need a fixture project and an editor harness',
 ]

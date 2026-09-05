@@ -113,6 +113,30 @@ describe('extractImports', () => {
     expect(refs.map((r) => r.specifier)).toEqual(['real-pkg'])
   })
 
+  it('separates what is loaded eagerly, on demand, and never', () => {
+    // What an entry point costs to load depends entirely on this distinction,
+    // so a rule about it is only as good as the classification underneath.
+    const refs = extractImports(
+      [
+        `import { a } from './eager.js'`,
+        `import type { B } from './erased.js'`,
+        `export type { C } from './also-erased.js'`,
+        `const d = await import('./on-demand.js')`,
+        `import { type E, f } from './still-eager.js'`,
+      ].join('\n'),
+    )
+
+    expect(refs.map((r) => [r.specifier, r.kind])).toEqual([
+      ['./eager.js', 'static'],
+      ['./erased.js', 'type'],
+      ['./also-erased.js', 'type'],
+      ['./on-demand.js', 'dynamic'],
+      // An inline type specifier does not erase the statement, so the module is
+      // still evaluated for it.
+      ['./still-eager.js', 'static'],
+    ])
+  })
+
   it('keeps line numbers accurate after stripping comments', () => {
     const refs = extractImports(
       [`/* leading`, `   block`, `   comment */`, `import { a } from 'pkg'`].join('\n'),

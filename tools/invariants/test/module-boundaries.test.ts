@@ -26,7 +26,7 @@ function workspaceWith(path: string, specifier: string): Workspace {
         dir: 'packages/mtproto',
         runtimeDependencies: [],
         devDependencies: [],
-        sources: [{ path, text: '', imports: [{ specifier, line: 1 }] }],
+        sources: [{ path, text: '', imports: [{ specifier, line: 1, kind: 'static' }] }],
       },
     ],
   }

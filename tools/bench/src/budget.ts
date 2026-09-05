@@ -72,6 +72,21 @@ export function judge(benchmark: Benchmark, measurement: Measurement): Verdict {
   }
 }
 
+/**
+ * The middle of several samples.
+ *
+ * What a benchmark reports when it ran more than once. A mean would carry every
+ * descheduled run into the figure a build is judged on, and the slow ones are
+ * unbounded while the fast ones are not, so the average of a quiet machine and a
+ * busy one is neither. The middle value is what the machine does most of the
+ * time, which is what a budget is about.
+ */
+export function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b)
+
+  return sorted[(sorted.length - 1) >> 1] ?? Number.NaN
+}
+
 /** Whether a whole run passed. Empty runs do not pass: nothing was measured. */
 export function passed(verdicts: readonly Verdict[]): boolean {
   return verdicts.length > 0 && verdicts.every((verdict) => verdict.within)
