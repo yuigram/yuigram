@@ -9,6 +9,7 @@
  */
 
 import type { TlCombinator, TlSchema } from '../ir.js'
+import { emitMethods } from './methods.js'
 import { type EmittedFile, header, hexId } from './render.js'
 import { emitTables } from './tables.js'
 import { emitTypes } from './types.js'
@@ -73,6 +74,11 @@ export function emitAll(input: EmitInput): readonly EmittedFile[] {
     ...emitTypes(api, apiSource, 'api'),
     ...emitTables(api, apiSource, 'api'),
     ...emitRegistry(api, apiSource, 'api', 'ApiId'),
+    // Only the API table gets a callable surface. The service schema's methods
+    // — `ping`, `get_future_salts`, the acknowledgements — are the session
+    // layer's own traffic, addressed by the code that owns the connection
+    // rather than by anyone holding a client.
+    ...emitMethods(api, apiSource, 'api'),
 
     emitSchemaInfo(input.layer, apiSource),
   ]

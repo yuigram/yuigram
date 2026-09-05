@@ -54,6 +54,18 @@ check('the MTProto escape hatch is on the client', () => {
 
   return typeof account.api.call === 'function'
 })
+// The generated half: a namespace and a method the committed schema declares.
+check('the MTProto method surface is on the client', () => {
+  const account = new Account({
+    apiId: 1,
+    apiHash: 'x',
+    keys: [],
+    storage: memory(),
+    bootstrap: { thisDc: 2, testMode: true, options: [] },
+  })
+
+  return typeof account.api.messages.sendMessage === 'function'
+})
 check('the container both transports meet in is re-exported', () => typeof App === 'function')
 check('the container registers across clients', () => {
   const app = new App()

@@ -493,7 +493,7 @@ discards `code`, `description` or the raw TL error. See [architecture.md](archit
 ```ts
 // Typed, generated from the committed schema.
 await bot.api.sendMessage({ chat_id: 1, text: 'hi' })
-await user.api.messages.sendMessage({ peer, message: 'hi', randomId: rnd() })   // not yet
+await user.api.messages.sendMessage({ peer, message: 'hi', random_id: rnd() })
 
 // Untyped, for anything newer than the installed schema.
 await bot.api.call('brandNewMethod', { … })
@@ -503,12 +503,20 @@ await user.api.call({ _: 'messages.brandNewMethod', … })
 The same surface is on every context as `event.api`, so a handler never has to reach back to
 the client it was registered on for something the actions do not cover.
 
-**What ships today.** Three of the four: the Bot API's generated methods and its `call()`, and
-MTProto's `call()`. `user.api.messages.sendMessage(…)` needs a method emitter over the TL
-schema, which is scheduled rather than written — until it exists, a TL method is reached by
-naming it, which is what [roadmap.md](roadmap.md) principle 7 means by `user.api` being the
-answer to "method X is missing". The shape of `user.api` does not change when the namespaces
-arrive; they appear beside `call()`.
+All four ship. The MTProto surface is 757 signatures generated from the committed TL schema,
+grouped by the namespace TL declares each method in, with the parameter type being the
+method's own request without its constructor and the result being the boxed type it returns.
+There is no code per method: dispatch is one proxy that turns a property path into the TL name
+it spells, so a method Telegram adds works as soon as the schema regenerates.
+
+Field names are the schema's, unchanged: TL declares `random_id`, so that is what the type
+carries. Renaming them would put a translation layer between a caller and the wire, and the
+first method it did not know about would be the one that needed it.
+
+`call()` is not deprecated by any of that, and will not be. It is what
+[roadmap.md](roadmap.md) principle 7 means by `user.api` being the answer to "method X is
+missing" — a method newer than the installed schema has no signature, and naming it is the
+only way through.
 
 Both forms exist deliberately: the typed one covers the schema, the untyped one covers the
 window between a Telegram release and Yuigram regenerating. Without the second, every

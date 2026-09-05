@@ -2,10 +2,47 @@
 // TL types for users
 // Source: Telegram TL layer 223, schemas/tl/api.223.tl
 
+import type * as root_b$ from './root/b.js'
 import type * as root_c$ from './root/c.js'
 import type * as root_d$ from './root/d.js'
+import type * as root_i$ from './root/i.js'
+import type * as root_s$ from './root/s.js'
 import type * as root_u$ from './root/u.js'
 import type { TlObject } from '../../../tl/object.js'
+
+/** `users.getFullUser#b60f5918` */
+export interface GetFullUser {
+  readonly _: 'users.getFullUser'
+  readonly id: root_i$.TypeInputUser
+}
+
+/** `users.getRequirementsToContact#d89a83a3` */
+export interface GetRequirementsToContact {
+  readonly _: 'users.getRequirementsToContact'
+  readonly id: readonly root_i$.TypeInputUser[]
+}
+
+/** `users.getSavedMusic#788d7fe3` */
+export interface GetSavedMusic {
+  readonly _: 'users.getSavedMusic'
+  readonly id: root_i$.TypeInputUser
+  readonly offset: number
+  readonly limit: number
+  readonly hash: bigint
+}
+
+/** `users.getSavedMusicByID#7573a4e9` */
+export interface GetSavedMusicByID {
+  readonly _: 'users.getSavedMusicByID'
+  readonly id: root_i$.TypeInputUser
+  readonly documents: readonly root_i$.TypeInputDocument[]
+}
+
+/** `users.getUsers#0d91a548` */
+export interface GetUsers {
+  readonly _: 'users.getUsers'
+  readonly id: readonly root_i$.TypeInputUser[]
+}
 
 /** `users.savedMusic#34a2f297` */
 export interface SavedMusic {
@@ -18,6 +55,20 @@ export interface SavedMusic {
 export interface SavedMusicNotModified {
   readonly _: 'users.savedMusicNotModified'
   readonly count: number
+}
+
+/** `users.setSecureValueErrors#90c894b5` */
+export interface SetSecureValueErrors {
+  readonly _: 'users.setSecureValueErrors'
+  readonly id: root_i$.TypeInputUser
+  readonly errors: readonly root_s$.TypeSecureValueError[]
+}
+
+/** `users.suggestBirthday#fc533372` */
+export interface SuggestBirthday {
+  readonly _: 'users.suggestBirthday'
+  readonly id: root_i$.TypeInputUser
+  readonly birthday: root_b$.TypeBirthday
 }
 
 /** Any `users.SavedMusic`. */

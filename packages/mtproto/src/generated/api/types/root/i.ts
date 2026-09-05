@@ -24,6 +24,21 @@ export interface ImportedContact {
   readonly client_id: bigint
 }
 
+/** `initConnection#c1cd5ea9` */
+export interface InitConnection {
+  readonly _: 'initConnection'
+  readonly api_id: number
+  readonly device_model: string
+  readonly system_version: string
+  readonly app_version: string
+  readonly system_lang_code: string
+  readonly lang_pack: string
+  readonly lang_code: string
+  readonly proxy?: TypeInputClientProxy
+  readonly params?: root_j$.TypeJSONValue
+  readonly query: TlObject
+}
+
 /** `inlineBotSwitchPM#3c20629f` */
 export interface InlineBotSwitchPM {
   readonly _: 'inlineBotSwitchPM'
@@ -1830,6 +1845,77 @@ export interface Invoice {
   readonly suggested_tip_amounts?: readonly bigint[]
   readonly terms_url?: string
   readonly subscription_period?: number
+}
+
+/** `invokeAfterMsg#cb9f372d` */
+export interface InvokeAfterMsg {
+  readonly _: 'invokeAfterMsg'
+  readonly msg_id: bigint
+  readonly query: TlObject
+}
+
+/** `invokeAfterMsgs#3dc4b4f0` */
+export interface InvokeAfterMsgs {
+  readonly _: 'invokeAfterMsgs'
+  readonly msg_ids: readonly bigint[]
+  readonly query: TlObject
+}
+
+/** `invokeWithApnsSecret#0dae54f8` */
+export interface InvokeWithApnsSecret {
+  readonly _: 'invokeWithApnsSecret'
+  readonly nonce: string
+  readonly secret: string
+  readonly query: TlObject
+}
+
+/** `invokeWithBusinessConnection#dd289f8e` */
+export interface InvokeWithBusinessConnection {
+  readonly _: 'invokeWithBusinessConnection'
+  readonly connection_id: string
+  readonly query: TlObject
+}
+
+/** `invokeWithGooglePlayIntegrity#1df92984` */
+export interface InvokeWithGooglePlayIntegrity {
+  readonly _: 'invokeWithGooglePlayIntegrity'
+  readonly nonce: string
+  readonly token: string
+  readonly query: TlObject
+}
+
+/** `invokeWithLayer#da9b0d0d` */
+export interface InvokeWithLayer {
+  readonly _: 'invokeWithLayer'
+  readonly layer: number
+  readonly query: TlObject
+}
+
+/** `invokeWithMessagesRange#365275f2` */
+export interface InvokeWithMessagesRange {
+  readonly _: 'invokeWithMessagesRange'
+  readonly range: root_m$.TypeMessageRange
+  readonly query: TlObject
+}
+
+/** `invokeWithReCaptcha#adbb0f94` */
+export interface InvokeWithReCaptcha {
+  readonly _: 'invokeWithReCaptcha'
+  readonly token: string
+  readonly query: TlObject
+}
+
+/** `invokeWithTakeout#aca9fd2e` */
+export interface InvokeWithTakeout {
+  readonly _: 'invokeWithTakeout'
+  readonly takeout_id: bigint
+  readonly query: TlObject
+}
+
+/** `invokeWithoutUpdates#bf9459b7` */
+export interface InvokeWithoutUpdates {
+  readonly _: 'invokeWithoutUpdates'
+  readonly query: TlObject
 }
 
 /** Any `ImportedContact`. */

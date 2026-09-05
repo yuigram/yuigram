@@ -3,6 +3,7 @@
 // Source: Telegram TL layer 223, schemas/tl/api.223.tl
 
 import type * as root_c$ from './root/c.js'
+import type * as root_i$ from './root/i.js'
 import type * as root_p$ from './root/p.js'
 import type * as root_s$ from './root/s.js'
 import type * as root_u$ from './root/u.js'
@@ -33,6 +34,61 @@ export interface BroadcastStats {
   readonly story_interactions_graph: root_s$.TypeStatsGraph
   readonly story_reactions_by_emotion_graph: root_s$.TypeStatsGraph
   readonly recent_posts_interactions: readonly root_p$.TypePostInteractionCounters[]
+}
+
+/** `stats.getBroadcastStats#ab42441a` */
+export interface GetBroadcastStats {
+  readonly _: 'stats.getBroadcastStats'
+  readonly dark?: true
+  readonly channel: root_i$.TypeInputChannel
+}
+
+/** `stats.getMegagroupStats#dcdf8607` */
+export interface GetMegagroupStats {
+  readonly _: 'stats.getMegagroupStats'
+  readonly dark?: true
+  readonly channel: root_i$.TypeInputChannel
+}
+
+/** `stats.getMessagePublicForwards#5f150144` */
+export interface GetMessagePublicForwards {
+  readonly _: 'stats.getMessagePublicForwards'
+  readonly channel: root_i$.TypeInputChannel
+  readonly msg_id: number
+  readonly offset: string
+  readonly limit: number
+}
+
+/** `stats.getMessageStats#b6e0a3f5` */
+export interface GetMessageStats {
+  readonly _: 'stats.getMessageStats'
+  readonly dark?: true
+  readonly channel: root_i$.TypeInputChannel
+  readonly msg_id: number
+}
+
+/** `stats.getStoryPublicForwards#a6437ef6` */
+export interface GetStoryPublicForwards {
+  readonly _: 'stats.getStoryPublicForwards'
+  readonly peer: root_i$.TypeInputPeer
+  readonly id: number
+  readonly offset: string
+  readonly limit: number
+}
+
+/** `stats.getStoryStats#374fef40` */
+export interface GetStoryStats {
+  readonly _: 'stats.getStoryStats'
+  readonly dark?: true
+  readonly peer: root_i$.TypeInputPeer
+  readonly id: number
+}
+
+/** `stats.loadAsyncGraph#621d5fa0` */
+export interface LoadAsyncGraph {
+  readonly _: 'stats.loadAsyncGraph'
+  readonly token: string
+  readonly x?: bigint
 }
 
 /** `stats.megagroupStats#ef7ff916` */

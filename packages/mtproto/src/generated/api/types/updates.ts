@@ -5,6 +5,7 @@
 import type * as root_c$ from './root/c.js'
 import type * as root_d$ from './root/d.js'
 import type * as root_e$ from './root/e.js'
+import type * as root_i$ from './root/i.js'
 import type * as root_m$ from './root/m.js'
 import type * as root_u$ from './root/u.js'
 import type { TlObject } from '../../../tl/object.js'
@@ -73,6 +74,32 @@ export interface DifferenceSlice {
 export interface DifferenceTooLong {
   readonly _: 'updates.differenceTooLong'
   readonly pts: number
+}
+
+/** `updates.getChannelDifference#03173d78` */
+export interface GetChannelDifference {
+  readonly _: 'updates.getChannelDifference'
+  readonly force?: true
+  readonly channel: root_i$.TypeInputChannel
+  readonly filter: root_c$.TypeChannelMessagesFilter
+  readonly pts: number
+  readonly limit: number
+}
+
+/** `updates.getDifference#19c2f763` */
+export interface GetDifference {
+  readonly _: 'updates.getDifference'
+  readonly pts: number
+  readonly pts_limit?: number
+  readonly pts_total_limit?: number
+  readonly date: number
+  readonly qts: number
+  readonly qts_limit?: number
+}
+
+/** `updates.getState#edd4882a` */
+export interface GetState {
+  readonly _: 'updates.getState'
 }
 
 /** `updates.state#a56c2a3e` */

@@ -11,6 +11,39 @@ export interface EligibleToJoin {
   readonly monthly_sent_sms: number
 }
 
+/** `smsjobs.finishJob#4f1ebf24` */
+export interface FinishJob {
+  readonly _: 'smsjobs.finishJob'
+  readonly job_id: string
+  readonly error?: string
+}
+
+/** `smsjobs.getSmsJob#778d902f` */
+export interface GetSmsJob {
+  readonly _: 'smsjobs.getSmsJob'
+  readonly job_id: string
+}
+
+/** `smsjobs.getStatus#10a698e8` */
+export interface GetStatus {
+  readonly _: 'smsjobs.getStatus'
+}
+
+/** `smsjobs.isEligibleToJoin#0edc39d0` */
+export interface IsEligibleToJoin {
+  readonly _: 'smsjobs.isEligibleToJoin'
+}
+
+/** `smsjobs.join#a74ece2d` */
+export interface Join {
+  readonly _: 'smsjobs.join'
+}
+
+/** `smsjobs.leave#9898ad73` */
+export interface Leave {
+  readonly _: 'smsjobs.leave'
+}
+
 /** `smsjobs.status#2aee9191` */
 export interface Status {
   readonly _: 'smsjobs.status'
@@ -31,3 +64,9 @@ export type TypeEligibilityToJoin =
 /** Any `smsjobs.Status`. */
 export type TypeStatus =
   | Status
+
+/** `smsjobs.updateSettings#093fa0bf` */
+export interface UpdateSettings {
+  readonly _: 'smsjobs.updateSettings'
+  readonly allow_international?: true
+}

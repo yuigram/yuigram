@@ -111,6 +111,14 @@ declare const account: Account
 export const raw: MtprotoApi = account.api
 export const answered: Promise<TlValue> = raw.call({ _: 'help.getConfig' })
 
+// And the generated half, whose argument and result types have to survive the
+// published declarations: a build that widened either would still compile here
+// without these annotations.
+export const resolved: Promise<{ readonly _: string }> = raw.contacts.resolveUsername({
+  username: 'telegram',
+})
+export const checked: Promise<boolean> = raw.account.checkUsername({ username: 'taken' })
+
 // It is on the context too, per api-design.md §12, and narrowed by transport
 // rather than added to the unified surface.
 declare const mtproto: MtprotoContext

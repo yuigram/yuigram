@@ -4,6 +4,7 @@
 
 import type * as root_c$ from './root/c.js'
 import type * as root_d$ from './root/d.js'
+import type * as root_i$ from './root/i.js'
 import type * as root_j$ from './root/j.js'
 import type * as root_m$ from './root/m.js'
 import type * as root_p$ from './root/p.js'
@@ -11,6 +12,12 @@ import type * as root_r$ from './root/r.js'
 import type * as root_t$ from './root/t.js'
 import type * as root_u$ from './root/u.js'
 import type { TlObject } from '../../../tl/object.js'
+
+/** `help.acceptTermsOfService#ee72f79a` */
+export interface AcceptTermsOfService {
+  readonly _: 'help.acceptTermsOfService'
+  readonly id: root_d$.TypeDataJSON
+}
 
 /** `help.appConfig#dd18782e` */
 export interface AppConfig {
@@ -78,6 +85,133 @@ export interface DeepLinkInfo {
 /** `help.deepLinkInfoEmpty#66afa166` */
 export interface DeepLinkInfoEmpty {
   readonly _: 'help.deepLinkInfoEmpty'
+}
+
+/** `help.dismissSuggestion#f50dbaa1` */
+export interface DismissSuggestion {
+  readonly _: 'help.dismissSuggestion'
+  readonly peer: root_i$.TypeInputPeer
+  readonly suggestion: string
+}
+
+/** `help.editUserInfo#66b91b70` */
+export interface EditUserInfo {
+  readonly _: 'help.editUserInfo'
+  readonly user_id: root_i$.TypeInputUser
+  readonly message: string
+  readonly entities: readonly root_m$.TypeMessageEntity[]
+}
+
+/** `help.getAppConfig#61e3f854` */
+export interface GetAppConfig {
+  readonly _: 'help.getAppConfig'
+  readonly hash: number
+}
+
+/** `help.getAppUpdate#522d5a7d` */
+export interface GetAppUpdate {
+  readonly _: 'help.getAppUpdate'
+  readonly source: string
+}
+
+/** `help.getCdnConfig#52029342` */
+export interface GetCdnConfig {
+  readonly _: 'help.getCdnConfig'
+}
+
+/** `help.getConfig#c4f9186b` */
+export interface GetConfig {
+  readonly _: 'help.getConfig'
+}
+
+/** `help.getCountriesList#735787a8` */
+export interface GetCountriesList {
+  readonly _: 'help.getCountriesList'
+  readonly lang_code: string
+  readonly hash: number
+}
+
+/** `help.getDeepLinkInfo#3fedc75f` */
+export interface GetDeepLinkInfo {
+  readonly _: 'help.getDeepLinkInfo'
+  readonly path: string
+}
+
+/** `help.getInviteText#4d392343` */
+export interface GetInviteText {
+  readonly _: 'help.getInviteText'
+}
+
+/** `help.getNearestDc#1fb33026` */
+export interface GetNearestDc {
+  readonly _: 'help.getNearestDc'
+}
+
+/** `help.getPassportConfig#c661ad08` */
+export interface GetPassportConfig {
+  readonly _: 'help.getPassportConfig'
+  readonly hash: number
+}
+
+/** `help.getPeerColors#da80f42f` */
+export interface GetPeerColors {
+  readonly _: 'help.getPeerColors'
+  readonly hash: number
+}
+
+/** `help.getPeerProfileColors#abcfa9fd` */
+export interface GetPeerProfileColors {
+  readonly _: 'help.getPeerProfileColors'
+  readonly hash: number
+}
+
+/** `help.getPremiumPromo#b81b93d4` */
+export interface GetPremiumPromo {
+  readonly _: 'help.getPremiumPromo'
+}
+
+/** `help.getPromoData#c0977421` */
+export interface GetPromoData {
+  readonly _: 'help.getPromoData'
+}
+
+/** `help.getRecentMeUrls#3dc0f114` */
+export interface GetRecentMeUrls {
+  readonly _: 'help.getRecentMeUrls'
+  readonly referer: string
+}
+
+/** `help.getSupport#9cdf08cd` */
+export interface GetSupport {
+  readonly _: 'help.getSupport'
+}
+
+/** `help.getSupportName#d360e72c` */
+export interface GetSupportName {
+  readonly _: 'help.getSupportName'
+}
+
+/** `help.getTermsOfServiceUpdate#2ca51fd1` */
+export interface GetTermsOfServiceUpdate {
+  readonly _: 'help.getTermsOfServiceUpdate'
+}
+
+/** `help.getTimezonesList#49b30240` */
+export interface GetTimezonesList {
+  readonly _: 'help.getTimezonesList'
+  readonly hash: number
+}
+
+/** `help.getUserInfo#038a08d3` */
+export interface GetUserInfo {
+  readonly _: 'help.getUserInfo'
+  readonly user_id: root_i$.TypeInputUser
+}
+
+/** `help.hidePromoData#1e251c95` */
+export interface HidePromoData {
+  readonly _: 'help.hidePromoData'
+  readonly peer: root_i$.TypeInputPeer
 }
 
 /** `help.inviteText#18cb9f78` */
@@ -178,6 +312,19 @@ export interface RecentMeUrls {
   readonly urls: readonly root_r$.TypeRecentMeUrl[]
   readonly chats: readonly root_c$.TypeChat[]
   readonly users: readonly root_u$.TypeUser[]
+}
+
+/** `help.saveAppLog#6f02f748` */
+export interface SaveAppLog {
+  readonly _: 'help.saveAppLog'
+  readonly events: readonly root_i$.TypeInputAppEvent[]
+}
+
+/** `help.setBotUpdatesStatus#ec22cfcd` */
+export interface SetBotUpdatesStatus {
+  readonly _: 'help.setBotUpdatesStatus'
+  readonly pending_updates_count: number
+  readonly message: string
 }
 
 /** `help.support#17c6b5f6` */

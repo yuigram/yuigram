@@ -40,6 +40,11 @@ export interface ClientDHInnerData {
   readonly g_b: Uint8Array
 }
 
+/** `destroy_auth_key#d1435160` */
+export interface DestroyAuthKey {
+  readonly _: 'destroy_auth_key'
+}
+
 /** `destroy_auth_key_fail#ea109b13` */
 export interface DestroyAuthKeyFail {
   readonly _: 'destroy_auth_key_fail'
@@ -53,6 +58,12 @@ export interface DestroyAuthKeyNone {
 /** `destroy_auth_key_ok#f660e1d4` */
 export interface DestroyAuthKeyOk {
   readonly _: 'destroy_auth_key_ok'
+}
+
+/** `destroy_session#e7512126` */
+export interface DestroySession {
+  readonly _: 'destroy_session'
+  readonly session_id: bigint
 }
 
 /** `destroy_session_none#62d350c9` */
@@ -105,6 +116,12 @@ export interface FutureSalts {
   readonly req_msg_id: bigint
   readonly now: number
   readonly salts: readonly FutureSalt[]
+}
+
+/** `get_future_salts#b921bd04` */
+export interface GetFutureSalts {
+  readonly _: 'get_future_salts'
+  readonly num: number
 }
 
 /** `gzip_packed#3072cfa1` */
@@ -224,11 +241,41 @@ export interface PQInnerDataTempDc {
   readonly expires_in: number
 }
 
+/** `ping#7abe77ec` */
+export interface Ping {
+  readonly _: 'ping'
+  readonly ping_id: bigint
+}
+
+/** `ping_delay_disconnect#f3427b8c` */
+export interface PingDelayDisconnect {
+  readonly _: 'ping_delay_disconnect'
+  readonly ping_id: bigint
+  readonly disconnect_delay: number
+}
+
 /** `pong#347773c5` */
 export interface Pong {
   readonly _: 'pong'
   readonly msg_id: bigint
   readonly ping_id: bigint
+}
+
+/** `req_DH_params#d712e4be` */
+export interface ReqDHParams {
+  readonly _: 'req_DH_params'
+  readonly nonce: Uint8Array
+  readonly server_nonce: Uint8Array
+  readonly p: Uint8Array
+  readonly q: Uint8Array
+  readonly public_key_fingerprint: bigint
+  readonly encrypted_data: Uint8Array
+}
+
+/** `req_pq_multi#be7e8ef1` */
+export interface ReqPqMulti {
+  readonly _: 'req_pq_multi'
+  readonly nonce: Uint8Array
 }
 
 /** `resPQ#05162463` */
@@ -256,6 +303,12 @@ export interface RpcAnswerDroppedRunning {
 /** `rpc_answer_unknown#5e2ad36e` */
 export interface RpcAnswerUnknown {
   readonly _: 'rpc_answer_unknown'
+}
+
+/** `rpc_drop_answer#58e4a740` */
+export interface RpcDropAnswer {
+  readonly _: 'rpc_drop_answer'
+  readonly req_msg_id: bigint
 }
 
 /** `rpc_error#2144ca19` */
@@ -289,6 +342,14 @@ export interface ServerDHParamsOk {
   readonly nonce: Uint8Array
   readonly server_nonce: Uint8Array
   readonly encrypted_answer: Uint8Array
+}
+
+/** `set_client_DH_params#f5045f1f` */
+export interface SetClientDHParams {
+  readonly _: 'set_client_DH_params'
+  readonly nonce: Uint8Array
+  readonly server_nonce: Uint8Array
+  readonly encrypted_data: Uint8Array
 }
 
 /** Any `BadMsgNotification`. */

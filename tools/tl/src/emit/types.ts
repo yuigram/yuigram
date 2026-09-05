@@ -56,7 +56,7 @@ interface Declaration {
 }
 
 /** Turns a reference into either a local name or an imported one. */
-type Resolver = (module: string, tsName: string) => string
+export type Resolver = (module: string, tsName: string) => string
 
 /** Emit the type modules for one table. */
 export function emitTypes(
@@ -104,6 +104,8 @@ function key(module: string, tsName: string): string {
 function plan(schema: TlSchema): Map<string | null, readonly Declaration[]> {
   const constructorsBy = new Map<string | null, TlCombinator[]>()
   const unionsBy = new Map<string | null, Map<string, TlCombinator[]>>()
+
+  group(schema.methods, constructorsBy)
 
   for (const combinator of schema.constructors) {
     const list = constructorsBy.get(combinator.namespace) ?? []
@@ -167,6 +169,26 @@ function plan(schema: TlSchema): Map<string | null, readonly Declaration[]> {
   }
 
   return planned
+}
+
+/**
+ * Collect combinators by the namespace they are declared in.
+ *
+ * Used for methods as well as constructors: a method's request is an interface
+ * like any other combinator's — an identifier, fields in wire order, and a
+ * caller that has to build one. It is not a member of the union its result
+ * names, because a method constructs a request rather than the type it returns,
+ * so only the interface is planned for it.
+ */
+function group(
+  combinators: readonly TlCombinator[],
+  into: Map<string | null, TlCombinator[]>,
+): void {
+  for (const combinator of combinators) {
+    const list = into.get(combinator.namespace) ?? []
+    list.push(combinator)
+    into.set(combinator.namespace, list)
+  }
 }
 
 /** Namespaces sort with the root first, then alphabetically. */
@@ -344,7 +366,7 @@ function renderUnion(
 }
 
 /** Render a TL type as a TypeScript type expression. */
-function renderType(type: TlType, resolve: Resolver): string {
+export function renderType(type: TlType, resolve: Resolver): string {
   switch (type.kind) {
     case 'primitive':
       return renderPrimitive(type.name)

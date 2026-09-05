@@ -255,6 +255,33 @@ describe('an account reaching a method this build does not model', () => {
     await instance.dispose()
   })
 
+  it('carries a generated method over the same path', async () => {
+    // The typed surface is 757 signatures over one invoke, not a second way to
+    // reach a datacenter. What proves it is the wire: a method addressed
+    // through the surface has to arrive serialized as the schema declares it.
+    const instance = harness()
+    await instance.account.connect()
+
+    // Past the wrapper the first call on a connection carries.
+    await instance.account.api.help.getConfig()
+    await instance.account.api.help.getAppUpdate({ source: 'a-typed-marker' })
+
+    const seen = instance
+      .datacenter(2)
+      .connections.flatMap((connection) => connection.peer.seen.map((element) => element.value))
+    const sent = seen.find((value) => value._ === 'help.getAppUpdate')
+
+    expect(sent?.['source']).toBe('a-typed-marker')
+    await instance.dispose()
+  })
+
+  it('refuses a generated method before the account has connected', async () => {
+    const instance = harness()
+
+    await expect(instance.account.api.help.getConfig()).rejects.toThrow(/not connected/)
+    await instance.dispose()
+  })
+
   it('is reachable from an event, on the account it arrived on', async () => {
     // `docs/api-design.md` §12: the same surface on every context, so a handler
     // never has to reach back to the client it was registered on.
