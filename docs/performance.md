@@ -189,6 +189,28 @@ into the graph. That is a packaging constraint — `sideEffects: false`, no top-
 cross-imports between subsystems, `Account` reachable only through its own module — and it is
 far cheaper to establish at the start than to retrofit.
 
+### Measured
+
+`pnpm bench` bundles two programs written against the built package — one that runs only a
+bot, one that also runs an account — minifies and compresses each, and fails the build on a
+breach.
+
+| Measurement | Result | Budget |
+|---|---|---|
+| Bot-only application | **~19 KB** min+gzip | 150 KB |
+| Full application | **~109 KB** min+gzip | 500 KB |
+| MTProto in a bot-only bundle | **0 bytes** | 0 |
+
+The third row is not redundant. The whole framework compresses to less than the bot-only
+allowance, so a bot bundle that dragged all of MTProto in would still be inside its budget:
+the size cannot hold the exclusion, and the exclusion is what the first row's note actually
+requires. It is measured from the bundler's own per-input accounting rather than by searching
+the output, which minification is free to rename.
+
+The serverless figure is not measured. It is a property of a platform rather than of this
+package, and the mechanism it names — a small eager surface, with the webhook path avoiding
+MTProto — is what `startup/import` and the `eager-surfaces` invariant already hold.
+
 ---
 
 ## 8. Benchmarks

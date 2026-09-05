@@ -22,10 +22,11 @@
  */
 
 import { type Benchmark, describe, judge, passed, type Verdict } from './budget.js'
+import { BUNDLE } from './cases/bundle.js'
 import { DISPATCH } from './cases/dispatch.js'
 import { STARTUP } from './cases/startup.js'
 
-const BENCHMARKS: readonly Benchmark[] = [...STARTUP, ...DISPATCH]
+const BENCHMARKS: readonly Benchmark[] = [...STARTUP, ...BUNDLE, ...DISPATCH]
 
 /**
  * What §8 asks for and this does not measure yet.
@@ -36,6 +37,9 @@ const BENCHMARKS: readonly Benchmark[] = [...STARTUP, ...DISPATCH]
 const NOT_YET: readonly string[] = [
   'context/lazy, tl/serialize, crypto/aes-ige — measurable, but no budget is set',
   'types/check, types/autocomplete — need a fixture project and an editor harness',
+  'performance.md §7 also budgets a serverless cold start. It is a property of a',
+  '  platform rather than of this package, and the mechanism it names — a small eager',
+  '  surface — is what startup/import and the eager-surfaces invariant already hold.',
 ]
 
 async function main(): Promise<void> {
