@@ -54,6 +54,27 @@ check('the MTProto escape hatch is on the client', () => {
 
   return typeof account.api.call === 'function'
 })
+// Naming a peer: the operation that turns what an account knows into something
+// a call can carry. Answered from the store, so it needs no network.
+const namer = new Account({
+  apiId: 1,
+  apiHash: 'x',
+  keys: [],
+  storage: memory(),
+  bootstrap: { thisDc: 2, testMode: true, options: [] },
+})
+await namer.peers.save({ kind: 'user', id: 7n, accessHash: 99n, min: false, usernames: ['someone'] })
+const named = await namer.resolve('@someone')
+let refusedUnknown = false
+try {
+  await namer.resolve({ kind: 'user', id: 404n })
+} catch {
+  refusedUnknown = true
+}
+
+check('a known peer is named for a call', () => named?._ === 'inputPeerUser' && named?.user_id === 7n)
+check('a peer the account never saw is refused', () => refusedUnknown)
+
 // The generated half: a namespace and a method the committed schema declares.
 check('the MTProto method surface is on the client', () => {
   const account = new Account({

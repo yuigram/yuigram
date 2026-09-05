@@ -119,6 +119,21 @@ export const resolved: Promise<{ readonly _: string }> = raw.contacts.resolveUse
 })
 export const checked: Promise<boolean> = raw.account.checkUsername({ username: 'taken' })
 
+// Resolution takes a name or the reference an event carries, and gives back
+// something the generated surface accepts as a peer.
+declare const named: Account
+
+// Named the way a consumer would have to, since the generated union is not a
+// separate export: a resolved peer is whatever `resolve` gives back.
+type Resolved = Awaited<ReturnType<Account['resolve']>>
+
+export const byName: Promise<Resolved> = named.resolve('@someone')
+export const byReference: Promise<Resolved> = named.resolve({ kind: 'user', id: 1n })
+
+// The point of the whole thing: what resolution produces is what the generated
+// surface accepts, with no cast in between.
+export const addressed = byName.then(async (peer) => named.api.messages.getPeerSettings({ peer }))
+
 // It is on the context too, per api-design.md §12, and narrowed by transport
 // rather than added to the unified surface.
 declare const mtproto: MtprotoContext

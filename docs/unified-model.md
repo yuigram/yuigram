@@ -124,8 +124,23 @@ type BotPeer = number | `@${string}`
 
 // Account: a peer is a resolved handle, or something resolvable that may fail.
 type UserPeer = Peer | number | `@${string}`
-await user.resolve('@someone')   // may hit the network, may throw PeerNotFound
+await user.resolve('@someone')   // may hit the network, may throw PeerError
 ```
+
+`Account.resolve` takes a name or the reference an event already carries — its `chat` or its
+`sender` — and gives back the reference a call names a peer with, so what it produces is what
+the generated method surface accepts:
+
+```ts
+const peer = await user.resolve('@someone')
+await user.api.messages.sendMessage({ peer, message: 'hi', random_id: rnd() })
+```
+
+A name already harvested is answered from the peer store, which is why resolving somebody the
+account has heard from costs nothing and works with no connection. Telegram is asked only when
+nothing usable is known, and its answer is harvested whole. A peer the account has only seen in
+passing is refused rather than named: its hash means something only where it arrived, and a
+reference built from it is a request Telegram rejects as a problem with the call.
 
 Context-bound operations — `message.reply()`, `message.edit()`, `message.delete()` — are safe on both
 clients, because the peer came from the incoming update and is therefore already known. This

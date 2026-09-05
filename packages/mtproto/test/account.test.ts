@@ -337,6 +337,103 @@ describe('bringing an account up and down', () => {
   })
 })
 
+describe('naming a peer a call can carry', () => {
+  /** Put a peer in the store the way harvesting would. */
+  async function known(
+    account: Account,
+    record: {
+      kind: 'user' | 'chat' | 'channel'
+      id: bigint
+      accessHash?: bigint
+      min?: boolean
+      usernames?: readonly string[]
+    },
+  ) {
+    await account.peers.save({
+      kind: record.kind,
+      id: record.id,
+      min: record.min ?? false,
+      usernames: record.usernames ?? [],
+      ...(record.accessHash === undefined ? {} : { accessHash: record.accessHash }),
+    })
+  }
+
+  it('names a peer it has seen, from the reference an event carries', async () => {
+    const { account } = harness()
+    await known(account, { kind: 'user', id: 7n, accessHash: 99n })
+
+    expect(await account.resolve({ kind: 'user', id: 7n })).toEqual({
+      _: 'inputPeerUser',
+      user_id: 7n,
+      access_hash: 99n,
+    })
+  })
+
+  it('names a basic group by its identifier alone', async () => {
+    // A basic group has no hash, and asking for one would refuse a peer that is
+    // perfectly reachable.
+    const { account } = harness()
+    await known(account, { kind: 'chat', id: 12n })
+
+    expect(await account.resolve({ kind: 'chat', id: 12n })).toEqual({
+      _: 'inputPeerChat',
+      chat_id: 12n,
+    })
+  })
+
+  it('refuses a reference to somebody it has never seen', async () => {
+    // The hash is per-account and cannot be derived, so there is nothing to
+    // fall back on and nothing to fabricate.
+    const { account } = harness()
+
+    await expect(account.resolve({ kind: 'channel', id: 5n })).rejects.toThrow(
+      /has not seen channel 5/,
+    )
+  })
+
+  it('refuses a peer it only saw in passing', async () => {
+    // Its hash means something only where it arrived. Naming it on its own
+    // produces a request Telegram refuses as a problem with the call.
+    const { account } = harness()
+    await known(account, { kind: 'user', id: 8n, accessHash: 1n, min: true })
+
+    await expect(account.resolve({ kind: 'user', id: 8n })).rejects.toThrow(/seen in passing/)
+  })
+
+  it('answers a name it has already harvested without a connection', async () => {
+    // Resolution reaches Telegram only when nothing usable is known. A name
+    // already harvested costs nothing, which is what makes it safe to call on
+    // every message.
+    const { account } = harness()
+    await known(account, { kind: 'user', id: 9n, accessHash: 42n, usernames: ['someone'] })
+
+    expect(await account.resolve('@someone')).toEqual({
+      _: 'inputPeerUser',
+      user_id: 9n,
+      access_hash: 42n,
+    })
+  })
+
+  it('answers a harvested name however it was written', async () => {
+    const { account } = harness()
+    await known(account, { kind: 'channel', id: 3n, accessHash: 4n, usernames: ['durov'] })
+
+    expect(await account.resolve('DUROV')).toEqual({
+      _: 'inputPeerChannel',
+      channel_id: 3n,
+      access_hash: 4n,
+    })
+  })
+
+  it('reaches for the network only when the name is not already known', async () => {
+    // Disconnected, so the attempt to ask names the lifecycle rather than the
+    // peer: nothing is wrong with the name, there is simply nowhere to ask.
+    const { account } = harness()
+
+    await expect(account.resolve('@nobody-has-seen-this')).rejects.toThrow(/not connected/)
+  })
+})
+
 describe('an account whose state lives in a directory', () => {
   // POSIX modes only. Windows derives a mode from the read-only attribute
   // rather than from the access-control list that decides who may read a file,

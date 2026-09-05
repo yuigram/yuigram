@@ -42,6 +42,7 @@ import {
   type Logger,
   type Middleware,
   namespaced,
+  PeerError,
   SessionError,
   type StopOptions,
   type UseOptions,
@@ -49,11 +50,14 @@ import {
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
+import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration } from './network/dc.js'
+import { inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { Reach } from './network/signin.js'
+import type { PeerRef } from './normalize/index.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
@@ -134,6 +138,20 @@ export interface AccountOptions {
   readonly random?: (length: number) => Uint8Array
   /** Run something later, and return the way to cancel it. */
   readonly schedule?: (run: () => void, delayMs: number) => () => void
+}
+
+/**
+ * State the type the reference builder guarantees.
+ *
+ * It produces one of `inputPeerUser`, `inputPeerChannel` or `inputPeerChat` and
+ * refuses everything else, all three of which are members of the union the
+ * generated surface accepts. Its own return type is the untyped one because it
+ * sits below the generated types and does not depend on them; saying so here is
+ * what lets a resolved peer be passed straight to a method without a cast at
+ * every call site.
+ */
+function named(reference: TlValue): TypeInputPeer {
+  return reference as TypeInputPeer
 }
 
 /** What an account is once it has connected. */
@@ -343,6 +361,57 @@ export class Account<Ext = unknown> {
   /** Where peers learned along the way are written down. */
   get peers(): PeerStore {
     return this.#peers
+  }
+
+  /**
+   * Turn a name or a reference into something a call can carry.
+   *
+   * MTProto names a peer by an identifier and a hash that is per-account and
+   * cannot be derived, so an account that has never met somebody cannot address
+   * them. `docs/unified-model.md` §3 makes that difference explicit rather than
+   * hiding it behind a signature that works on a bot and fails unpredictably
+   * here: resolution is a thing a caller does, and it can fail.
+   *
+   * ```ts
+   * const peer = await account.resolve('@someone')
+   * await account.api.messages.sendMessage({ peer, message: 'hi', random_id })
+   * ```
+   *
+   * A name is answered from what has already been harvested where possible, and
+   * asked of Telegram only when nothing usable is known — so resolving a peer
+   * this account has already seen costs nothing and works while disconnected.
+   * The answer is harvested whole before the peer asked for is picked out of it,
+   * because a name usually resolves to a peer whose answer names others.
+   *
+   * A reference — what an event carries as its chat or its sender — is answered
+   * from the store alone.
+   *
+   * Raises `PeerError` when a name resolves to nothing this account can reach,
+   * when a reference names a peer it has never seen, and when the peer is one it
+   * only saw in passing: such a peer carries a hash that means something only
+   * where it arrived, and naming it on its own is a request Telegram refuses as
+   * a problem with the call rather than with the peer.
+   */
+  async resolve(peer: string | PeerRef): Promise<TypeInputPeer> {
+    if (typeof peer !== 'string') {
+      const known = await this.#peers.byId(peer.kind, peer.id)
+      if (known === undefined) {
+        throw new PeerError(`this account has not seen ${peer.kind} ${peer.id}`)
+      }
+
+      return named(inputPeer(known))
+    }
+
+    // Built here rather than passed in, so a name already harvested is answered
+    // without a connection: nothing reaches the network until something asks it
+    // to.
+    const record = await resolveUsername({
+      store: this.#peers,
+      peer: { invoke: async (query) => await this.#invoke(query) },
+      username: peer,
+    })
+
+    return named(inputPeer(record))
   }
 
   // ---------------------------------------------------------------------
