@@ -1,10 +1,10 @@
 /**
  * One deadline for the whole shutdown.
  *
- * The audit finding: `stop({ timeout })` drained tracked work under the
- * timeout, then ran the stop hook — which waited for handlers of its own,
- * without a bound. Two clocks, and the second one had no alarm. A process
- * manager that sends SIGTERM and waits saw a bot that never exited.
+ * Draining tracked work under the timeout and then running the stop hook would
+ * give shutdown two clocks, and the second would have no alarm: a hook that
+ * waits for handlers of its own is unbounded. A process manager that sends
+ * SIGTERM and waits would see a bot that never exits.
  *
  * These pin the contract rather than the sequence: the call returns within its
  * deadline whatever the hook does, says honestly whether everything finished,
