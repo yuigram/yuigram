@@ -81,6 +81,21 @@ me.on('message', async (event) => {
 
   console.log(`${event.chat?.kind ?? 'somewhere'}: ${event.text}`)
 
+  // The payload is the schema's own `Message`, so reading it is narrowing a
+  // union rather than walking an untyped object. What each variant carries is
+  // Telegram's own optionality: an ordinary message has text, a service message
+  // has an action instead, and an empty one is a hole where a message used to
+  // be.
+  if (event.message?._ === 'message' && event.message.media !== undefined) {
+    console.log(`  …with ${event.message.media._}`)
+  }
+
+  // Seconds, as Telegram sends them. A handler that wants a `Date` builds one,
+  // which is cheaper than every handler paying for one it did not ask for.
+  if (event.date !== undefined) {
+    console.log(`  sent ${new Date(event.date * 1000).toISOString()}`)
+  }
+
   // Safe because the peer came from the update — an account already holds a
   // reference to somebody it just heard from. Answering a peer it has never met
   // is a different problem, and it fails saying so rather than silently.

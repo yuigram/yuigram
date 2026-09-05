@@ -21,6 +21,7 @@ import {
   PeerError,
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from '../api.js'
+import type { TypeMessage } from '../generated/api/types/index.js'
 import { type BoundApi, boundApi, noPeer } from '../here.js'
 import { inputPeer } from '../network/peers.js'
 import type { TlValue } from '../tl/index.js'
@@ -45,13 +46,13 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   /** Who caused it, where the update says. */
   readonly sender: PeerRef | undefined
   /** The message, for the kinds that carry a whole one. */
-  readonly message: TlValue | undefined
+  readonly message: TypeMessage | undefined
   /** The messages a deletion names. */
   readonly messageIds: readonly number[] | undefined
   /** Message text, where there is any. */
   readonly text: string | undefined
   /** When it happened, where the update says. */
-  readonly date: Date | undefined
+  readonly date: number | undefined
   /** The untouched update, for everything this does not model. */
   readonly raw: TlValue
   /** The client this update arrived on. */

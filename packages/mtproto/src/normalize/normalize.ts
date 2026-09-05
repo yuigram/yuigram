@@ -26,6 +26,7 @@
  * quietly discards part of it is worse than one that admits it does not know.
  */
 
+import type { TypeMessage } from '../generated/api/types/index.js'
 import type { PeerKind } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import {
@@ -57,13 +58,13 @@ export interface NormalizedUpdate {
    */
   readonly sender: PeerRef | undefined
   /** The message, for the kinds that carry a whole one. */
-  readonly message: TlValue | undefined
+  readonly message: TypeMessage | undefined
   /** The messages a deletion names. */
   readonly messageIds: readonly number[] | undefined
   /** Message text, where the update carries a message with any. */
   readonly text: string | undefined
   /** When it happened, where the update says. Absent rather than invented. */
-  readonly date: Date | undefined
+  readonly date: number | undefined
   /** The untouched update. */
   readonly raw: TlValue
 }
@@ -107,18 +108,29 @@ function kindOf(update: TlValue): MtprotoEventKind {
 
 /** Read an update whose payload is a whole message. */
 function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
-  const message = asValue(update['message'])
+  // The update's own field, which the schema declares as a boxed `Message`.
+  // Narrowed once here rather than by every handler that reads it: what the
+  // decoder produced is what the table said the constructor carries, and
+  // `events.md` §5 asks for the payload's own fields with the payload's own
+  // optionality rather than a shape the framework guessed at.
+  const message = asValue(update['message']) as TypeMessage | undefined
 
   return {
     kind,
-    chat: message === undefined ? undefined : peerOf(message['peer_id']),
+    chat: peerOf(message?.peer_id),
     // Outgoing messages carry no author: the account itself sent them, and the
     // account is not something an update needs to name.
-    sender: message === undefined ? undefined : peerOf(message['from_id']),
+    sender:
+      message === undefined || message._ === 'messageEmpty' ? undefined : peerOf(message.from_id),
     message,
     messageIds: undefined,
-    text: message === undefined ? undefined : readString(message['message']),
-    date: message === undefined ? undefined : readDate(message['date']),
+    // Only an ordinary message carries text. A service message describes
+    // something that happened and an empty one is a hole where a message the
+    // account cannot see used to be, and inventing an empty string for either
+    // would make a handler testing for text believe there was some.
+    text: message?._ === 'message' ? readString(message.message) : undefined,
+    date:
+      message === undefined || message._ === 'messageEmpty' ? undefined : readDate(message.date),
     raw: update,
   }
 }
@@ -257,7 +269,15 @@ function readIntVector(value: unknown): readonly number[] | undefined {
   return numbers.length === value.length ? numbers : undefined
 }
 
-/** Read a Telegram timestamp, which counts seconds rather than milliseconds. */
-function readDate(value: unknown): Date | undefined {
-  return typeof value === 'number' && Number.isInteger(value) ? new Date(value * 1000) : undefined
+/**
+ * Read a Telegram timestamp, in the units Telegram sends.
+ *
+ * Seconds, and left that way. `docs/events.md` §5 settles it: a conversion the
+ * framework performs on every update, for every handler, is a cost paid by
+ * everyone for the benefit of a few, and the value belongs to the payload
+ * rather than to the framework's idea of what a time is. A handler that wants a
+ * `Date` builds one.
+ */
+function readDate(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) ? value : undefined
 }

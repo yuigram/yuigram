@@ -88,6 +88,37 @@ describe('what a method returns', () => {
   })
 })
 
+describe('what an event says its payload is', () => {
+  it('types the message from the schema rather than as an opaque value', () => {
+    expectTypeOf(event.message).toEqualTypeOf<types.TypeMessage | undefined>()
+  })
+
+  it('narrows to the ordinary message, with its own fields', () => {
+    if (event.message?._ === 'message') {
+      expectTypeOf(event.message.message).toEqualTypeOf<string>()
+      expectTypeOf(event.message.date).toEqualTypeOf<number>()
+      expectTypeOf(event.message.from_id).toEqualTypeOf<types.TypePeer | undefined>()
+    }
+  })
+
+  it('does not offer text on a service message', () => {
+    if (event.message?._ === 'messageService') {
+      // @ts-expect-error a service message carries an action, not text
+      event.message.message
+    }
+  })
+
+  it('reports the timestamp in the units Telegram sends', () => {
+    // Not a `Date`: the value belongs to the payload, and a handler that wants
+    // one builds it.
+    expectTypeOf(event.date).toEqualTypeOf<number | undefined>()
+  })
+
+  it('leaves the untouched update reachable beside it', () => {
+    expectTypeOf(event.raw).toEqualTypeOf<TlValue>()
+  })
+})
+
 describe('the surface bound to an event', () => {
   it('takes the same parameters without the peer', () => {
     // The whole ergonomic difference, stated as a type: what the update already

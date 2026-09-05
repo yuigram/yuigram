@@ -307,7 +307,7 @@ describe('a message that arrives without a container', () => {
     expect(event.chat).toEqual({ kind: 'user', id: 11n })
     expect(event.sender).toEqual({ kind: 'user', id: 11n })
     expect(event.text).toBe('hi')
-    expect(event.date).toEqual(new Date(1_700_000_000_000))
+    expect(event.date).toBe(1_700_000_000)
   })
 
   it('names nobody as the author when the account sent it', () => {
@@ -378,7 +378,7 @@ describe('what an event carries besides its kind', () => {
       pts_count: 1,
     })
 
-    expect(event.date).toEqual(new Date(1_600_000_000_000))
+    expect(event.date).toBe(1_600_000_000)
   })
 
   it('leaves the date absent rather than inventing one', () => {
@@ -506,5 +506,148 @@ describe('the context an event arrives as', () => {
     expect(context.sender).toEqual({ kind: 'user', id: 42n })
     expect(context.text).toBe('hello')
     expect(context.messageIds).toBeUndefined()
+  })
+})
+
+describe('the payload an event carries', () => {
+  it('carries the message the schema declares, not an opaque value', () => {
+    // `docs/events.md` §5: the payload's own fields, with the payload's own
+    // optionality. Reading one should not mean walking an untyped object.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 9,
+        peer_id: { _: 'peerUser', user_id: 4n },
+        from_id: { _: 'peerUser', user_id: 4n },
+        date: 1_700_000_000,
+        message: 'hello',
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect(event.message?._).toBe('message')
+    if (event.message?._ !== 'message') throw new Error('expected an ordinary message')
+
+    expect(event.message.id).toBe(9)
+    expect(event.message.message).toBe('hello')
+    expect(event.message.date).toBe(1_700_000_000)
+  })
+
+  it('gives a service message no text rather than an empty one', () => {
+    // A service message describes something that happened. A handler testing
+    // for text must not be told there was some.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: {
+        _: 'messageService',
+        id: 10,
+        peer_id: { _: 'peerChat', chat_id: 3n },
+        from_id: { _: 'peerUser', user_id: 4n },
+        date: 1_700_000_100,
+        action: { _: 'messageActionChatJoinedByLink', inviter_id: 5n },
+      },
+      pts: 2,
+      pts_count: 1,
+    })
+
+    expect(event.message?._).toBe('messageService')
+    expect(event.text).toBeUndefined()
+    expect(event.date).toBe(1_700_000_100)
+    expect(event.chat).toEqual({ kind: 'chat', id: 3n })
+    expect(event.sender).toEqual({ kind: 'user', id: 4n })
+  })
+
+  it('reads an empty message without inventing what it does not carry', () => {
+    // `messageEmpty` is a hole where a message the account cannot see used to
+    // be. It has an identifier and nothing else worth reporting.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: { _: 'messageEmpty', id: 11 },
+      pts: 3,
+      pts_count: 1,
+    })
+
+    expect(event.message?._).toBe('messageEmpty')
+    expect(event.text).toBeUndefined()
+    expect(event.date).toBeUndefined()
+    expect(event.sender).toBeUndefined()
+  })
+
+  it('reports the timestamp in the units Telegram sends', () => {
+    // Converting on every update, for every handler, is a cost paid by
+    // everyone for the benefit of a few. A handler that wants a `Date` builds
+    // one from this.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 12,
+        peer_id: { _: 'peerUser', user_id: 4n },
+        date: 1_700_000_200,
+        message: 'x',
+      },
+      pts: 4,
+      pts_count: 1,
+    })
+
+    expect(event.date).toBe(1_700_000_200)
+    expect(new Date((event.date ?? 0) * 1000).getTime()).toBe(1_700_000_200_000)
+  })
+
+  it('takes text from the constructor rather than from a field that is present', () => {
+    // Which message this is decides what it carries. A value naming itself a
+    // service message does not become one with text because a field of that
+    // name is on it, and reading the field instead would say it had some.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: {
+        _: 'messageService',
+        id: 13,
+        peer_id: peerChat(3n),
+        from_id: peerUser(4n),
+        date: 1_700_000_300,
+        action: { _: 'messageActionContactSignUp' },
+        message: 'not text',
+      },
+      pts: 5,
+      pts_count: 1,
+    })
+
+    expect(event.text).toBeUndefined()
+  })
+
+  it('attributes nothing to an empty message, whatever the value carries', () => {
+    // `messageEmpty` declares neither an author nor a time. Reading those off
+    // the value rather than off the variants that have them would give a hole
+    // a sender and a date, and a handler no way to tell it from a message.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: { _: 'messageEmpty', id: 14, from_id: peerUser(4n), date: 1_700_000_400 },
+      pts: 6,
+      pts_count: 1,
+    })
+
+    expect(event.sender).toBeUndefined()
+    expect(event.date).toBeUndefined()
+  })
+
+  it('reports no timestamp for something that is not a whole number of seconds', () => {
+    // Telegram counts seconds and sends them as an `int`. Anything else is not
+    // a timestamp, and passing it through would be multiplied into a date by
+    // the first handler that wanted one.
+    const event = normalizeUpdate({
+      _: 'updateShortMessage',
+      id: 15,
+      user_id: 4n,
+      message: 'hello',
+      date: 1_700_000_500.5,
+      pts: 7,
+      pts_count: 1,
+    })
+
+    expect(event.text).toBe('hello')
+    expect(event.date).toBeUndefined()
   })
 })
