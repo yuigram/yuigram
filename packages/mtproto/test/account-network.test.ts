@@ -323,6 +323,131 @@ describe('an account reaching a method this build does not model', () => {
   })
 })
 
+describe('a method addressed to the peer an event arrived from', () => {
+  /** An update naming a peer, and that peer already written down. */
+  // A message in a group, so the conversation and the sender are different
+  // peers. A surface that bound the wrong one would be invisible against a
+  // private chat, where they are the same.
+  const arriving = {
+    _: 'updateNewMessage',
+    message: {
+      _: 'message',
+      id: 1,
+      peer_id: { _: 'peerChat', chat_id: 12n },
+      from_id: { _: 'peerUser', user_id: 5n },
+      date: 1_700_000_000,
+      message: 'hello',
+    },
+    pts: 1,
+    pts_count: 1,
+  }
+
+  async function ready() {
+    const instance = harness()
+    await instance.account.connect()
+    // Both, so a surface binding the sender would still find something and the
+    // difference shows in which reference travels rather than in a failure.
+    await instance.account.peers.save({
+      kind: 'chat',
+      id: 12n,
+      min: false,
+      usernames: [],
+    })
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 5n,
+      accessHash: 77n,
+      min: false,
+      usernames: [],
+    })
+
+    // Past the wrapper the first call on a connection carries, so what the
+    // handler sends is readable as the handler wrote it.
+    await instance.account.api.help.getConfig()
+
+    return instance
+  }
+
+  /** Everything this account's datacenter was sent. */
+  function seen(instance: MockAccount) {
+    return instance
+      .datacenter(2)
+      .connections.flatMap((connection) => connection.peer.seen.map((element) => element.value))
+  }
+
+  it('carries the peer the update named, over the same connection', async () => {
+    // The ergonomic point: the caller names no peer and the right one travels.
+    const instance = await ready()
+
+    let answered: unknown
+    instance.account.onMessage(async (event) => {
+      answered = await event.here.messages.getPeerSettings()
+    })
+    await instance.account.deliver(arriving)
+
+    const sent = seen(instance).find((value) => value._ === 'messages.getPeerSettings')
+
+    expect(sent?.['peer']).toEqual({ _: 'inputPeerChat', chat_id: 12n })
+    expect((answered as { _: string })['_']).toBe('boolTrue')
+    await instance.dispose()
+  })
+
+  it('keeps the parameters the caller supplied beside it', async () => {
+    const instance = await ready()
+
+    instance.account.onMessage(async (event) => {
+      await event.here.messages.getHistory({
+        offset_id: 0,
+        offset_date: 0,
+        add_offset: 0,
+        limit: 10,
+        max_id: 0,
+        min_id: 0,
+        hash: 0n,
+      })
+    })
+    await instance.account.deliver(arriving)
+
+    const sent = seen(instance).find((value) => value._ === 'messages.getHistory')
+
+    expect(sent?.['limit']).toBe(10)
+    expect(sent?.['peer']).toEqual({ _: 'inputPeerChat', chat_id: 12n })
+    await instance.dispose()
+  })
+
+  it('cannot be redirected to another conversation', async () => {
+    // The peer is written after whatever the caller passed, so a value that
+    // reached a handler from elsewhere cannot send the call somewhere the
+    // update did not name.
+    const instance = await ready()
+
+    instance.account.onMessage(async (event) => {
+      await event.here.messages.getPeerSettings({ peer: { _: 'inputPeerSelf' } } as never)
+    })
+    await instance.account.deliver(arriving)
+
+    const sent = seen(instance).find((value) => value._ === 'messages.getPeerSettings')
+
+    expect(sent?.['peer']).toEqual({ _: 'inputPeerChat', chat_id: 12n })
+    await instance.dispose()
+  })
+
+  it('reaches no network to find the peer', async () => {
+    // The reference comes from what was written down when the update arrived.
+    // A bound call costs the call, which is what makes it safe in a handler
+    // that runs on every message.
+    const instance = await ready()
+
+    instance.account.onMessage(async (event) => {
+      await event.here.messages.getPeerSettings()
+    })
+    await instance.account.deliver(arriving)
+
+    expect(seen(instance).filter((value) => value._ === 'contacts.resolveUsername')).toEqual([])
+    await instance.dispose()
+  })
+})
+
 describe('what an account writes down', () => {
   it('keeps the authorization where the datacenter layer keeps it', async () => {
     const instance = harness()

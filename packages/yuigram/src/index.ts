@@ -83,6 +83,7 @@ export {
   Account,
   type AccountContext,
   type AccountOptions,
+  type BoundApi,
   type MtprotoApi,
   type MtprotoContext,
   type MtprotoEventKind,

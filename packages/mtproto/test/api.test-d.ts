@@ -14,10 +14,12 @@ import { describe, expectTypeOf, it } from 'vitest'
 import type { Account } from '../src/account.js'
 import type { MtprotoApi } from '../src/api.js'
 import type * as types from '../src/generated/api/types/index.js'
+import type { MtprotoContext } from '../src/normalize/index.js'
 import type { TlValue } from '../src/tl/index.js'
 
 declare const account: Account
 declare const api: MtprotoApi
+declare const event: MtprotoContext
 
 describe('the surface an account exposes', () => {
   it('is the generated one', () => {
@@ -83,6 +85,42 @@ describe('what a method returns', () => {
   it('is not `unknown`, which is what a generator that gave up would emit', () => {
     expectTypeOf(api.help.getConfig).returns.resolves.not.toBeUnknown()
     expectTypeOf(api.messages.sendMessage).returns.resolves.not.toBeUnknown()
+  })
+})
+
+describe('the surface bound to an event', () => {
+  it('takes the same parameters without the peer', () => {
+    // The whole ergonomic difference, stated as a type: what the update already
+    // supplied is not asked for again.
+    expectTypeOf(event.here.messages.getHistory)
+      .parameter(0)
+      .toEqualTypeOf<Omit<types.messages.GetHistory, '_' | 'peer'> & { peer?: never }>()
+  })
+
+  it('takes nothing when the peer was the only parameter', () => {
+    expectTypeOf(event.here.messages.getPeerSettings).toBeCallableWith()
+  })
+
+  it('returns what the schema says, as the unbound surface does', () => {
+    expectTypeOf(
+      event.here.messages.getPeerSettings,
+    ).returns.resolves.toEqualTypeOf<types.messages.TypePeerSettings>()
+  })
+
+  it('refuses a peer, because the update already named one', () => {
+    // @ts-expect-error the peer is the update's, not the caller's
+    event.here.messages.getPeerSettings({ peer: { _: 'inputPeerSelf' } })
+  })
+
+  it('does not carry a method the schema addresses some other way', () => {
+    // `help.getConfig` names no peer, so it is absent rather than present and
+    // certain to fail.
+    // @ts-expect-error no peer-addressed method of that name
+    event.here.help.getConfig()
+  })
+
+  it('leaves the unbound surface reachable beside it', () => {
+    expectTypeOf(event.api.call).toBeFunction()
   })
 })
 

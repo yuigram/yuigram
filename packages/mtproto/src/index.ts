@@ -16,6 +16,7 @@ export {
 } from './account.js'
 export type { MtprotoApi } from './api.js'
 export { TL_LAYER } from './generated/schema-info.js'
+export type { BoundApi } from './here.js'
 export type {
   MtprotoContext,
   MtprotoEventKind,

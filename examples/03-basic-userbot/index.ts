@@ -85,6 +85,20 @@ me.on('message', async (event) => {
   // reference to somebody it just heard from. Answering a peer it has never met
   // is a different problem, and it fails saying so rather than silently.
   if (event.text === 'ping') await event.reply('pong')
+
+  // Anything beyond replying is a Telegram method, and `here` is the schema's
+  // own surface with one difference: the conversation this event arrived in is
+  // already filled in, so it is not asked for and cannot be changed.
+  //
+  // Without it the same call is written by hand:
+  //
+  //   const peer = await me.resolve(event.chat)
+  //   await me.api.messages.readHistory({ peer, max_id: 0 })
+  //
+  // which is the same request, plus the step of naming a peer the update
+  // already named. Reaching somebody the event did not mention still goes
+  // through `me.resolve('@name')`, because that one can hit the network.
+  if (event.text === 'read') await event.here.messages.readHistory({ max_id: 0 })
 })
 
 me.catch((error) => {

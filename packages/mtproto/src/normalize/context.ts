@@ -13,8 +13,16 @@
  * surprise.
  */
 
-import { type BaseContext, type ContextActions, LifecycleError, type Logger } from '@yuigram/core'
+import {
+  type BaseContext,
+  type ContextActions,
+  LifecycleError,
+  type Logger,
+  PeerError,
+} from '@yuigram/core'
 import { type MtprotoApi, rawApi } from '../api.js'
+import { type BoundApi, boundApi, noPeer } from '../here.js'
+import { inputPeer } from '../network/peers.js'
 import type { TlValue } from '../tl/index.js'
 import { type ActionContext, updateActions } from './actions.js'
 import type { MtprotoEventKind } from './events.js'
@@ -69,6 +77,24 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * universe — see `docs/unified-model.md` §5.
    */
   readonly api: MtprotoApi
+  /**
+   * The methods addressed to the peer this event arrived from.
+   *
+   * `docs/api-decisions.md` Decision 11: a context holds what the update
+   * carried, and anything needing a peer to be resolved belongs to the client.
+   * So the peer is supplied from the update and cannot be overridden, and a
+   * method the schema does not address by peer is not on this surface at all.
+   *
+   * ```ts
+   * const history = await event.here.messages.getHistory({ limit: 10 })
+   * ```
+   *
+   * The reference comes from what the account wrote down when the update
+   * arrived, so nothing here reaches the network to find a peer. An event that
+   * names none, or one whose peer was only seen in passing, is refused with the
+   * reason.
+   */
+  readonly here: BoundApi
 }
 
 /** What building a context needs beyond the update itself. */
@@ -121,12 +147,36 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
 function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
   const context = options.actions
   if (context !== undefined) {
-    return { ...updateActions(normalized, context), api: rawApi(context.invoke) }
+    return {
+      ...updateActions(normalized, context),
+      api: rawApi(context.invoke),
+      here: boundApi({
+        invoke: context.invoke,
+        peer: async () => {
+          const chat = normalized.chat
+          if (chat === undefined) throw noPeer(normalized.kind)
+
+          const known = await context.peers.byId(chat.kind, chat.id)
+          if (known === undefined) {
+            throw new PeerError(
+              `the ${chat.kind} this '${normalized.kind}' arrived in was never written down`,
+            )
+          }
+
+          return inputPeer(known) as never
+        },
+      }),
+    }
   }
 
   const refuse = async (): Promise<never> => {
     throw new LifecycleError(`an event built outside an account cannot act on '${normalized.kind}'`)
   }
 
-  return { reply: refuse, react: refuse, api: rawApi(refuse) }
+  return {
+    reply: refuse,
+    react: refuse,
+    api: rawApi(refuse),
+    here: boundApi({ invoke: refuse, peer: refuse }),
+  }
 }

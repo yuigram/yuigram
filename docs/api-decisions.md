@@ -363,7 +363,11 @@ the client's own method surface, so there is one source of truth as in mtcute. W
 does — and what having two transports requires — is state the rule as something a generator
 enforces rather than a convention a maintainer follows.
 
-**Status: Decided**, and implemented for the Bot API subsystem.
+**Status: Decided**, and implemented for both subsystems. On MTProto the context surface is
+`event.here`, nested because TL names its methods inside namespaces, and it carries exactly the
+methods the schema addresses by `peer`. The peer comes from what the account wrote down when the
+update arrived, so a bound call reaches no network to find one; naming anybody else stays on
+`Account.resolve`.
 
 ---
 
@@ -392,7 +396,12 @@ and different resolvers, not a different design.
 is less readable than an emitted signature. Accepted: the parameter documentation still comes
 through from the generated `XParams` interface, which is where a developer actually reads it.
 
-**Status: Decided**, and implemented.
+**Status: Decided**, and implemented for both subsystems. The MTProto surface takes the same
+approach a step further: there is no emitted table at all, because the classification the Bot
+API's table encodes — which parameters the context supplies — is already visible in the
+generated method signatures. A method that names a `peer` is bound; one that does not is absent
+from the surface rather than present and certain to fail. One mapping over the generated
+methods, and nothing generated per method.
 
 ---
 

@@ -434,6 +434,68 @@ describe('naming a peer a call can carry', () => {
   })
 })
 
+describe('calling a method against the peer an event arrived from', () => {
+  it('refuses when the peer was never written down', async () => {
+    // A context binds what the update carried. If the account never wrote the
+    // peer down there is no hash to name it with, and nothing to invent.
+    const { account } = harness()
+    await account.connect()
+
+    let failure: unknown
+    account.onMessage(async (event) => {
+      failure = await event.here.messages.getPeerSettings().catch((error: unknown) => error)
+    })
+    await account.deliver(message(5))
+
+    expect((failure as Error).message).toMatch(/never written down/)
+  })
+
+  it('refuses an event that names no peer at all', async () => {
+    const { account } = harness()
+    await account.connect()
+
+    let failure: unknown
+    account.on('mtproto:raw', async (event) => {
+      failure = await event.here.messages.getPeerSettings().catch((error: unknown) => error)
+    })
+    await account.deliver({ _: 'updateDcOptions', dc_options: [] })
+
+    expect((failure as Error).message).toMatch(/names no peer to address/)
+  })
+
+  it('survives being inspected rather than becoming a method name', async () => {
+    // A proxy answering every property with something callable makes itself
+    // look like a promise, and awaiting one anywhere would start a call.
+    const { account, asked } = harness()
+    await account.connect()
+
+    let observed: { thenable: unknown; serialized: string; named: string } | undefined
+    account.onMessage(async (event) => {
+      observed = {
+        thenable: await Promise.resolve(event.here),
+        serialized: JSON.stringify(event.here),
+        named: String(event.here.messages),
+      }
+    })
+    await account.deliver(message(7))
+
+    expect(observed?.thenable).toBe(observed?.thenable)
+    expect(observed?.serialized).toBe('{}')
+    expect(observed?.named).toContain('function')
+    expect(asked).toEqual([])
+  })
+
+  it('says so rather than pretending, on an event built outside an account', async () => {
+    const { mtprotoContext } = await import('../src/normalize/context.js')
+    const context = mtprotoContext(message(6), {
+      client: { name: 'nobody' },
+      log: { debug() {}, info() {}, warn() {}, error() {}, child: () => context.log } as never,
+    })
+
+    await expect(context.here.messages.getPeerSettings()).rejects.toThrow(/outside an account/)
+  })
+})
+
 describe('an account whose state lives in a directory', () => {
   // POSIX modes only. Windows derives a mode from the read-only attribute
   // rather than from the access-control list that decides who may read a file,
