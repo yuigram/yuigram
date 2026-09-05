@@ -1,9 +1,9 @@
 // GENERATED FILE — do not edit.
 // Per-event context field shapes
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { UpdateEventKind } from './events.js'
-import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
+import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
 
 /**
  * Fields carried by `BotSubscriptionUpdated`, projected onto the context for
@@ -793,11 +793,15 @@ export interface MessageEventFields {
    */
   readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
   /**
-   * Service message: chat added to a Community
+   * Service message: chat or bot added to a Community
    */
   readonly community_chat_added?: CommunityChatAdded | undefined
   /**
-   * Service message: chat removed from a Community
+   * Service message: chat was joined by a user from a Community
+   */
+  readonly community_chat_joined?: CommunityChatJoined | undefined
+  /**
+   * Service message: chat or bot removed from a Community
    */
   readonly community_chat_removed?: CommunityChatRemoved | undefined
   /**
@@ -906,6 +910,28 @@ export interface MessageEventFields {
    * as ordinary url buttons.
    */
   readonly reply_markup?: InlineKeyboardMarkup | undefined
+}
+
+/**
+ * Fields carried by `MessageGenerationStopped`, projected onto the context for
+ * the `stopped_message_generation` event: `stopped_message_generation`.
+ */
+export interface MessageGenerationStoppedEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: MessageGenerationStopped
+
+  /**
+   * Chat in which the message is generated
+   */
+  readonly chat: Chat
+  /**
+   * Unique identifier of the message thread in which the message is generated
+   */
+  readonly message_thread_id?: number | undefined
+  /**
+   * Unique identifier of the message draft which was stopped
+   */
+  readonly draft_id: number
 }
 
 /**
@@ -1220,6 +1246,7 @@ export interface EventFieldsByKind {
   'pre_checkout_query': PreCheckoutQueryEventFields
   'purchased_paid_media': PaidMediaPurchasedEventFields
   'shipping_query': ShippingQueryEventFields
+  'stopped_message_generation': MessageGenerationStoppedEventFields
   'subscription': BotSubscriptionUpdatedEventFields
 }
 
@@ -1253,5 +1280,6 @@ export const PAYLOAD_ALIASES = {
   'pre_checkout_query': 'preCheckoutQuery',
   'purchased_paid_media': 'purchase',
   'shipping_query': 'shippingQuery',
+  'stopped_message_generation': 'payload',
   'subscription': 'subscription',
 } as const satisfies Readonly<Record<UpdateEventKind, string>>

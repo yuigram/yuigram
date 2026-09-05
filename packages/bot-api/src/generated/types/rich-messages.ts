@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Rich messages
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
-import type { Animation, Audio, InputMediaAnimation, InputMediaAudio, InputMediaPhoto, InputMediaVideo, InputMediaVoiceNote, Location, PhotoSize, User, Video, Voice } from './available-types.js'
+import type { Animation, Audio, CopyTextButton, DisabledButton, Document, InputMediaAnimation, InputMediaAudio, InputMediaDocument, InputMediaPhoto, InputMediaVideo, InputMediaVoiceNote, Location, LoginUrl, PhotoSize, SwitchInlineQueryChosenChat, User, Video, Voice, WebAppInfo } from './available-types.js'
 
 /**
  * Rich formatted message.
@@ -49,7 +49,7 @@ export interface InputRichMessage {
 
   /**
    * List of media that are specified in the markdown or html fields using
-   * tg://photo?id=, tg://video?id=, and tg://audio?id= links
+   * tg://photo?id=, tg://video?id=, tg://document?id=, and tg://audio?id= links
    */
   readonly media?: InputRichMessageMedia[] | undefined
 
@@ -73,9 +73,9 @@ export interface InputRichMessage {
  */
 export interface InputRichMessageMedia {
   /**
-   * Unique identifier of the media used in a tg://photo?id=, tg://video?id=, or
-   * tg://audio?id= link. 1-64 characters, only A-Z, a-z, 0-9, _ and - are
-   * allowed.
+   * Unique identifier of the media used in a tg://photo?id=, tg://video?id=,
+   * tg://document?id=, or tg://audio?id= link. 1-64 characters, only A-Z, a-z,
+   * 0-9, _ and - are allowed.
    */
   readonly id: string
 
@@ -83,7 +83,95 @@ export interface InputRichMessageMedia {
    * The media to be sent. Everything except the media itself and its properties
    * is ignored.
    */
-  readonly media: InputMediaAnimation | InputMediaAudio | InputMediaPhoto | InputMediaVideo | InputMediaVoiceNote
+  readonly media: InputMediaAnimation | InputMediaAudio | InputMediaDocument | InputMediaPhoto | InputMediaVideo | InputMediaVoiceNote
+}
+
+/**
+ * This object represents a button in a RichMessage. Exactly one of the fields
+ * other than text and style must be used to specify the type of the button.
+ *
+ * @see https://corefork.telegram.org/bots/api#richmessagebutton
+ */
+export interface RichMessageButton {
+  /**
+   * Text of the button. May contain only plain text, RichTextCustomEmoji and
+   * RichTextDateTime entities.
+   */
+  readonly text: RichText
+
+  /**
+   * Style of the button. Must be one of “danger”, “success”, “primary”, or
+   * “link” (the button is shown as a regular link without borders). Apps may use
+   * theme-specific colors for the button background and text based on the style.
+   * The style “link” is allowed only for callback buttons.
+   */
+  readonly style?: string | undefined
+
+  /**
+   * HTTP or tg:// URL to be opened when the button is pressed. Links
+   * tg://user?id=<user_id> can be used to mention a user by their identifier
+   * without using a username, if this is allowed by their privacy settings.
+   */
+  readonly url?: string | undefined
+
+  /**
+   * Data to be sent in a callback query to the bot when the button is pressed,
+   * 1-64 bytes
+   */
+  readonly callback_data?: string | undefined
+
+  /**
+   * Description of the Web App that will be launched when the user presses the
+   * button. The Web App will be able to send an arbitrary message on behalf of
+   * the user using the method answerWebAppQuery. Available only in private chats
+   * between a user and the bot. Not supported for messages sent on behalf of a
+   * business account.
+   */
+  readonly web_app?: WebAppInfo | undefined
+
+  /**
+   * An HTTPS URL used to automatically authorize the user. Can be used as a
+   * replacement for the Telegram Login Widget. Not supported for ephemeral
+   * messages.
+   */
+  readonly login_url?: LoginUrl | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats, open that chat and insert the bot's username and the specified inline
+   * query in the input field. May be empty, in which case just the bot's
+   * username will be inserted. Not supported for messages sent in channel direct
+   * messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query?: string | undefined
+
+  /**
+   * If set, pressing the button will insert the bot's username and the specified
+   * inline query in the current chat's input field. May be empty, in which case
+   * only the bot's username will be inserted. Not supported in channels and for
+   * messages sent in channel direct messages chats and on behalf of a business
+   * account.
+   */
+  readonly switch_inline_query_current_chat?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats of the specified type, open that chat and insert the bot's username
+   * and the specified inline query in the input field. Not supported for
+   * messages sent in channel direct messages chats and on behalf of a business
+   * account.
+   */
+  readonly switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat | undefined
+
+  /**
+   * A button that copies the specified text to the clipboard
+   */
+  readonly copy_text?: CopyTextButton | undefined
+
+  /**
+   * If set, then the button is disabled and does nothing
+   */
+  readonly disabled?: DisabledButton | undefined
 }
 
 /**
@@ -98,6 +186,7 @@ export type RichText =
   | RichTextBankCardNumber
   | RichTextBold
   | RichTextBotCommand
+  | RichTextButton
   | RichTextCashtag
   | RichTextCode
   | RichTextCustomEmoji
@@ -539,6 +628,23 @@ export interface RichTextBotCommand {
 }
 
 /**
+ * A button.
+ *
+ * @see https://corefork.telegram.org/bots/api#richtextbutton
+ */
+export interface RichTextButton {
+  /**
+   * Type of the rich text, always “button”
+   */
+  readonly type: string
+
+  /**
+   * The button
+   */
+  readonly button: RichMessageButton
+}
+
+/**
  * An anchor.
  *
  * @see https://corefork.telegram.org/bots/api#richtextanchor
@@ -728,9 +834,12 @@ export type RichBlock =
   | RichBlockAnimation
   | RichBlockAudio
   | RichBlockBlockQuotation
+  | RichBlockButtons
   | RichBlockCollage
   | RichBlockDetails
   | RichBlockDivider
+  | RichBlockDocument
+  | RichBlockExpandableBlockQuotation
   | RichBlockFooter
   | RichBlockList
   | RichBlockMap
@@ -915,6 +1024,29 @@ export interface RichBlockBlockQuotation {
 }
 
 /**
+ * A block quotation, corresponding to the HTML tag <blockquote> with custom
+ * attribute "expandable".
+ *
+ * @see https://corefork.telegram.org/bots/api#richblockexpandableblockquotation
+ */
+export interface RichBlockExpandableBlockQuotation {
+  /**
+   * Type of the block, always “expandable_blockquote”
+   */
+  readonly type: string
+
+  /**
+   * Content of the block
+   */
+  readonly text: RichText
+
+  /**
+   * Credit of the block
+   */
+  readonly credit?: RichText | undefined
+}
+
+/**
  * A quotation with centered text, loosely corresponding to the HTML tag
  * <aside>.
  *
@@ -1008,6 +1140,11 @@ export interface RichBlockTable {
   readonly is_striped?: true | undefined
 
   /**
+   * True, if table cells have smaller indents
+   */
+  readonly is_compact?: true | undefined
+
+  /**
    * Caption of the table
    */
   readonly caption?: RichText | undefined
@@ -1058,7 +1195,7 @@ export interface RichBlockMap {
   readonly location: Location
 
   /**
-   * Map zoom level; 13-20
+   * Map zoom level
    */
   readonly zoom: number
 
@@ -1076,6 +1213,30 @@ export interface RichBlockMap {
    * Caption of the block
    */
   readonly caption?: RichBlockCaption | undefined
+}
+
+/**
+ * A block containing a list of buttons that are shown in one row,
+ * corresponding to the custom HTML tag <tg-button-row>.
+ *
+ * @see https://corefork.telegram.org/bots/api#richblockbuttons
+ */
+export interface RichBlockButtons {
+  /**
+   * Type of the block, always “buttons”
+   */
+  readonly type: string
+
+  /**
+   * The buttons
+   */
+  readonly buttons: RichMessageButton[]
+
+  /**
+   * Horizontal alignment of the buttons. Currently, must be one of “left”,
+   * “center”, or “right”.
+   */
+  readonly align?: string | undefined
 }
 
 /**
@@ -1120,6 +1281,29 @@ export interface RichBlockAudio {
    * The audio
    */
   readonly audio: Audio
+
+  /**
+   * Caption of the block
+   */
+  readonly caption?: RichBlockCaption | undefined
+}
+
+/**
+ * A block with a general file, corresponding to the custom HTML tag
+ * <tg-document>.
+ *
+ * @see https://corefork.telegram.org/bots/api#richblockdocument
+ */
+export interface RichBlockDocument {
+  /**
+   * Type of the block, always “document”
+   */
+  readonly type: string
+
+  /**
+   * The document
+   */
+  readonly document: Document
 
   /**
    * Caption of the block
@@ -1269,9 +1453,12 @@ export type InputRichBlock =
   | InputRichBlockAnimation
   | InputRichBlockAudio
   | InputRichBlockBlockQuotation
+  | InputRichBlockButtons
   | InputRichBlockCollage
   | InputRichBlockDetails
   | InputRichBlockDivider
+  | InputRichBlockDocument
+  | InputRichBlockExpandableBlockQuotation
   | InputRichBlockFooter
   | InputRichBlockList
   | InputRichBlockMap
@@ -1456,6 +1643,29 @@ export interface InputRichBlockBlockQuotation {
 }
 
 /**
+ * A block quotation, corresponding to the HTML tag <blockquote> with custom
+ * attribute "expandable".
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichblockexpandableblockquotation
+ */
+export interface InputRichBlockExpandableBlockQuotation {
+  /**
+   * Type of the block, always “expandable_blockquote”
+   */
+  readonly type: string
+
+  /**
+   * Content of the block
+   */
+  readonly text: RichText
+
+  /**
+   * Credit of the block
+   */
+  readonly credit?: RichText | undefined
+}
+
+/**
  * A quotation with centered text, loosely corresponding to the HTML tag
  * <aside>.
  *
@@ -1549,6 +1759,11 @@ export interface InputRichBlockTable {
   readonly is_striped?: true | undefined
 
   /**
+   * Pass True if table cells must have smaller indents
+   */
+  readonly is_compact?: true | undefined
+
+  /**
    * Caption of the table
    */
   readonly caption?: RichText | undefined
@@ -1603,22 +1818,46 @@ export interface InputRichBlockMap {
   /**
    * Map zoom level; 0-24
    */
-  readonly zoom: number
+  readonly zoom?: number | undefined
 
   /**
    * Map width; 0-10000
    */
-  readonly width: number
+  readonly width?: number | undefined
 
   /**
    * Map height; 0-10000
    */
-  readonly height: number
+  readonly height?: number | undefined
 
   /**
    * Caption of the block
    */
   readonly caption?: RichBlockCaption | undefined
+}
+
+/**
+ * A block containing a list of buttons that are shown in one row,
+ * corresponding to the custom HTML tag <tg-button-row>.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichblockbuttons
+ */
+export interface InputRichBlockButtons {
+  /**
+   * Type of the block, always “buttons”
+   */
+  readonly type: string
+
+  /**
+   * List of 1-8 buttons to send
+   */
+  readonly buttons: RichMessageButton[]
+
+  /**
+   * Horizontal alignment of the buttons. Currently, must be one of “left”,
+   * “center”, or “right”.
+   */
+  readonly align?: string | undefined
 }
 
 /**
@@ -1658,6 +1897,29 @@ export interface InputRichBlockAudio {
    * The audio. Caption is ignored.
    */
   readonly audio: InputMediaAudio
+
+  /**
+   * Caption of the block
+   */
+  readonly caption?: RichBlockCaption | undefined
+}
+
+/**
+ * A block with a general file, corresponding to the custom HTML tag
+ * <tg-document>.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichblockdocument
+ */
+export interface InputRichBlockDocument {
+  /**
+   * Type of the block, always “document”
+   */
+  readonly type: string
+
+  /**
+   * The document. Caption is ignored.
+   */
+  readonly document: InputMediaDocument
 
   /**
    * Caption of the block

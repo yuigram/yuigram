@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Payments
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { Chat, Gift, PaidMedia, User } from './available-types.js'
 
