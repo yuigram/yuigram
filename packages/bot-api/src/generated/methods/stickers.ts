@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Stickers
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
-import type { ForceReply, InlineKeyboardMarkup, InputSticker, MaskPosition, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
+import type { EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, InputSticker, MaskPosition, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
 import type { InputFile } from '../../input-file.js'
 
 /**
@@ -37,18 +37,10 @@ export interface SendStickerParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Sticker to send. Pass a file_id as String to send a file that exists on the
