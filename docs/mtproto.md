@@ -1,5 +1,20 @@
 # MTProto Subsystem
 
+> **Using a user account through MTProto can get that account banned permanently.**
+>
+> Telegram monitors unofficial client usage, and
+> [states](https://core.telegram.org/api/obtaining_api_id) that accounts used for flooding,
+> spamming or faking counters will be banned. The ban applies to the Telegram account, not to
+> the application: what is lost is somebody's messages, groups and contacts, and it is not
+> appealable in any dependable way.
+>
+> This is not a disclaimer. It is the reason the subsystem is shaped the way it is — flood
+> handling that backs off rather than retries, examples that rate-limit, and no convenience
+> API for mass invites, mass forwards or contact harvesting. See
+> [security.md](security.md) §7.
+>
+> **Develop against a secondary account.** Not the one that matters.
+
 Yuigram implements MTProto itself. This document is the implementation specification for that
 subsystem — derived from Telegram's own protocol documentation, not from any existing client.
 

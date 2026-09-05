@@ -215,7 +215,9 @@ Security defaults are the ones that actually take effect, so they are chosen con
 ## 10. Pre-release checklist
 
 Checked before each release. An item is ticked only when a test holds it, not when it was
-looked at once.
+looked at once. Where an item is a property of the code rather than of a single path — that no
+option disables a check, say — the evidence names both the tests that hold the behaviour and
+the surface that was read to establish there is no way round it.
 
 ### Bot API — closed for 0.1.0
 
@@ -236,12 +238,33 @@ looked at once.
       for the day that changes
 - [x] `SECURITY.md` with a disclosure address and response commitment
 
-### MTProto — open until the subsystem exists
+### MTProto — closed for the subsystem as built
 
-- [ ] Crypto primitives validated against known-answer vectors
-- [ ] DH validation cannot be bypassed by configuration
-- [ ] TL decoder fuzzed for bounds and allocation limits
-- [ ] Ban-risk warning present in MTProto documentation
+- [x] Crypto primitives validated against known-answer vectors — AES-CTR against NIST SP
+      800-38A F.5.5 (`crypto-ctr.test.ts`). The rest of the schedule has no published vectors
+      to use, so each is checked against an independent reference rather than against itself:
+      IGE drives the recurrence off the platform's raw AES-ECB, RSA is decrypted back by
+      `node:crypto` with padding disabled, the key derivations are recomputed by direct
+      slicing over `node:crypto` hashes, and SRP is answered by the other side of the protocol
+      implemented from its published definition. 148 cases across nine suites
+- [x] DH validation cannot be bypassed by configuration — `handshake.ts` validates the
+      modulus, the generator and the server's public value before storing any of them, and
+      re-checks the client's own public value and the shared secret. No option gates it:
+      neither `HandshakeOptions` nor `DatacentersOptions` carries a switch, and the seams that
+      exist replace the byte stream or the whole channel rather than disabling a check. The
+      safe-prime memo caches refusals as well as acceptances, so it cannot be primed to skip
+      one. Held end to end by `auth-handshake.test.ts`, which runs the real exchange against a
+      peer injecting an unsafe modulus, a degenerate public value and an oversized modulus,
+      and by the nineteen single-condition cases in `crypto-primes.test.ts`
+- [x] TL decoder fuzzed for bounds and allocation limits — `tl-fuzz.test.ts` holds the
+      property the session layer relies on: for any bytes, decoding produces a value or raises
+      `TlReadError`, and nothing else escapes. Seeded, so a failure is reproducible; driven
+      with uniform noise, with bodies behind a real constructor identifier, with hostile
+      length and count fields written over every four-byte window, and with corrupted and
+      truncated valid encodings. Both tables, including the one the plaintext handshake
+      channel decodes with before any key exists
+- [x] Ban-risk warning present in MTProto documentation — [mtproto.md](mtproto.md) opens with
+      it, as §7 obligation 1 requires
 - [x] Session encryption at rest, and a permission warning when a session directory is too
       open — `encrypted()` wraps any adapter; `file()` checks the directory's mode the first
       time it opens one and warns through the caller's logger, which `Account.fromSession`
