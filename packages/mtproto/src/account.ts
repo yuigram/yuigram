@@ -51,6 +51,7 @@ import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
+import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
@@ -381,7 +382,7 @@ export class Account<Ext = unknown> {
    * needs a connection anyway, so loading it here costs the call nothing.
    */
   async download(request: DownloadRequest): Promise<Uint8Array> {
-    const reach = this.#transfers()
+    const reach = this.#transfers('download')
     const { download } = await import('./files/download.js')
 
     return await download({ ...request, reach })
@@ -400,10 +401,54 @@ export class Account<Ext = unknown> {
   async downloadTo(
     request: DownloadRequest & { readonly write: DownloadSink },
   ): Promise<DownloadOutcome> {
-    const reach = this.#transfers()
+    const reach = this.#transfers('download')
     const { downloadTo } = await import('./files/download.js')
 
     return await downloadTo({ ...request, reach })
+  }
+
+  /**
+   * Send a file, and hand back what names it.
+   *
+   * The bytes come from a source the caller owns: something that can hand over
+   * a run of them, and that says its length when it has one. A source that
+   * reports a length is read at whatever offsets its parts sit at, so they go
+   * out together; one that does not is read in order. `api-decisions.md`
+   * Decision 13 settles that shape and what it leaves to the caller.
+   *
+   * ```ts
+   * const { file } = await account.upload({
+   *   source: { size: bytes.length, read: async (at, n) => bytes.subarray(at, at + n) },
+   *   name: 'report.pdf',
+   * })
+   *
+   * await account.api.messages.sendMedia({
+   *   peer,
+   *   media: { _: 'inputMediaUploadedDocument', file, mime_type: 'application/pdf', attributes: [] },
+   *   message: '',
+   *   random_id: id,
+   * })
+   * ```
+   *
+   * Unlike a download, nothing names a datacenter: a file being sent has no
+   * location yet, so it goes to the one this account belongs to. `name` is a
+   * hint Telegram records against the file and never a path — nothing here
+   * reads a filesystem, and a caller that wants to send something on disk opens
+   * it themselves.
+   *
+   * Loaded on demand, for the reason a download is.
+   */
+  async upload(request: UploadRequest): Promise<UploadedFile> {
+    const reach = this.#transfers('upload')
+    const dcId = this.#require().datacenters.directory.thisDc
+    const { upload } = await import('./files/upload.js')
+
+    return await upload({
+      ...request,
+      dcId,
+      reach,
+      ...(this.#options.random === undefined ? {} : { random: this.#options.random }),
+    })
   }
 
   /**
@@ -420,10 +465,10 @@ export class Account<Ext = unknown> {
    * account is stopped fails saying the account is not connected instead of
    * going on against connections nothing owns any more.
    */
-  #transfers(): (dcId: number) => Callable {
+  #transfers(purpose: 'download' | 'upload'): (dcId: number) => Callable {
     this.#require()
 
-    return (dcId: number) => this.#require().pools.get({ id: dcId, purpose: 'download' })
+    return (dcId: number) => this.#require().pools.get({ id: dcId, purpose })
   }
 
   /**

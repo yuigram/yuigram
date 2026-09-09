@@ -93,6 +93,9 @@ export {
   type MtprotoEventKind,
   type PeerRef,
   type TlValue,
+  type UploadedFile,
+  type UploadRequest,
+  type UploadSource,
 } from '@yuigram/mtproto'
 
 /**

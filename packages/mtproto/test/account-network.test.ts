@@ -24,7 +24,7 @@
  * cases cost seconds rather than milliseconds.
  */
 
-import { App, createLogger, type LogRecord } from '@yuigram/core'
+import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
@@ -48,6 +48,23 @@ vi.setConfig({ testTimeout: 60_000 })
  * they exist to run.
  */
 const KEY = createServerKey()
+
+/**
+ * Every method name one message carried.
+ *
+ * The first call on a connection travels wrapped, because that is where a
+ * client states its layer and describes itself, so what a connection carried is
+ * the names inside the wrappers as well as the outer one.
+ */
+function named(value: TlValue): string[] {
+  const inner = value['query']
+  const nested =
+    typeof inner === 'object' && inner !== null && typeof (inner as TlValue)._ === 'string'
+      ? named(inner as TlValue)
+      : []
+
+  return [value._, ...nested]
+}
 
 /** A harness on the shared key, so no case pays for a new one. */
 const harness = (options: Parameters<typeof mockAccount>[0] = {}) =>
@@ -1009,23 +1026,6 @@ describe('a file an account fetches', () => {
     }
   }
 
-  /**
-   * Every method name one message carried.
-   *
-   * The first call on a connection travels wrapped, because that is where a
-   * client states its layer and describes itself, so what a connection carried
-   * is the names inside the wrappers as well as the outer one.
-   */
-  const named = (value: TlValue): string[] => {
-    const inner = value['query']
-    const nested =
-      typeof inner === 'object' && inner !== null && typeof (inner as TlValue)._ === 'string'
-        ? named(inner as TlValue)
-        : []
-
-    return [value._, ...nested]
-  }
-
   /** An account whose datacenters serve files, and nothing else differently. */
   function serving(files: ReadonlyMap<number, FileServer>) {
     return harness({
@@ -1227,6 +1227,248 @@ describe('a file an account fetches', () => {
     await expect(
       instance.account.download({ location: home.location, dcId: 2, size: SIZE }),
     ).rejects.toThrow(/FILE_REFERENCE_EXPIRED/)
+    await instance.dispose()
+  })
+})
+
+/**
+ * Sending a file, through the account rather than through the transfer.
+ *
+ * `files-upload.test.ts` already judges the transfer itself: part numbering,
+ * the two forms a reference takes, short reads, retries, the path a length
+ * nobody knows takes. What is left to prove here is the wiring — that the
+ * account supplies its own datacenter, that parts travel on the connections
+ * kept for them, and that a source is the caller's and is read once per part.
+ */
+describe('a file an account sends', () => {
+  const PART = 512 * 1024
+
+  /** The content a synthetic source produces, so a case can compare against it. */
+  const byteAt = (at: number) => (at * 7 + 3) & 0xff
+  const expected = (size: number) => Uint8Array.from({ length: size }, (_, index) => byteAt(index))
+
+  /** A source of a stated length that never holds the whole file. */
+  const synthetic = (size: number, reads?: number[]) => ({
+    size,
+    read: async (offset: number, length: number) => {
+      reads?.push(offset)
+
+      return Uint8Array.from({ length: Math.max(0, Math.min(length, size - offset)) }, (_, index) =>
+        byteAt(offset + index),
+      )
+    },
+  })
+
+  /** An account whose datacenters keep what is sent to them. */
+  function receiving(files: ReadonlyMap<number, FileServer>) {
+    return harness({
+      api: (query, dcId) =>
+        query._.startsWith('upload.') ? files.get(dcId)?.invoke(query) : undefined,
+    })
+  }
+
+  it('sends the bytes the source hands over', async () => {
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    const size = PART * 2 + 1000
+    const sent = await instance.account.upload({ source: synthetic(size), name: 'report.pdf' })
+
+    // Judged by what the datacenter assembled rather than by what the client
+    // believes it sent: a part under the wrong number produces a file of the
+    // right length and the wrong content.
+    expect(home.assembled(sent.fileId)).toEqual(expected(size))
+    expect(sent.size).toBe(size)
+    expect(sent.parts).toBe(3)
+    expect(sent.file._).toBe('inputFile')
+    expect(sent.file['name']).toBe('report.pdf')
+    await instance.dispose()
+  })
+
+  it('reads each part once, and only the parts it needs', async () => {
+    // The source belongs to the caller and may be expensive or one-shot, so a
+    // part read twice is a cost the caller never agreed to.
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    const reads: number[] = []
+    const size = PART * 3
+    await instance.account.upload({ source: synthetic(size, reads) })
+
+    expect(reads).toHaveLength(3)
+    expect(new Set(reads).size).toBe(3)
+    expect([...reads].sort((a, b) => a - b)).toEqual([0, PART, PART * 2])
+    await instance.dispose()
+  })
+
+  it('sends a source that does not know its length in order', async () => {
+    // Without a length there is no way to say where the file ends except by
+    // reaching it, so the parts cannot go out together and the protocol keeps a
+    // separate form for the reference.
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    const size = PART + 200
+    const reads: number[] = []
+    const sent = await instance.account.upload({
+      source: {
+        read: async (offset: number, length: number) => {
+          reads.push(offset)
+
+          return Uint8Array.from(
+            { length: Math.max(0, Math.min(length, size - offset)) },
+            (_, index) => byteAt(offset + index),
+          )
+        },
+      },
+    })
+
+    expect(sent.file._).toBe('inputFileBig')
+    expect(home.assembled(sent.fileId)).toEqual(expected(size))
+    expect(reads).toEqual([0, PART])
+    await instance.dispose()
+  })
+
+  it('sends to the datacenter the account belongs to', async () => {
+    // A file being sent has no location yet, so there is nothing to name a
+    // datacenter with. It goes where the account lives.
+    const home = new FileServer(2)
+    const other = new FileServer(4)
+    const instance = receiving(
+      new Map([
+        [2, home],
+        [4, other],
+      ]),
+    )
+    await instance.account.connect()
+
+    await instance.account.upload({ source: synthetic(PART) })
+
+    expect(home.asked.length).toBeGreaterThan(0)
+    expect(other.asked).toHaveLength(0)
+    expect(instance.datacenter(4).connections).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('keeps parts off the connection ordinary calls travel on', async () => {
+    // The same reason a download is kept off it: parts go out several at a
+    // time, and an interactive call behind them waits for all of them.
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getConfig' })
+    await instance.account.upload({ source: synthetic(PART * 3) })
+
+    const seen = instance
+      .datacenter(2)
+      .connections.map((connection) =>
+        connection.peer.seen.flatMap((element) => named(element.value)),
+      )
+    const ordinary = seen.filter((names) => names.includes('help.getConfig'))
+    const carrying = seen.filter((names) => names.includes('upload.saveFilePart'))
+
+    expect(ordinary.length).toBeGreaterThan(0)
+    expect(carrying.length).toBeGreaterThan(1)
+    for (const names of ordinary) expect(names).not.toContain('upload.saveFilePart')
+    await instance.dispose()
+  })
+
+  it('refuses while the account is not connected', async () => {
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+
+    await expect(instance.account.upload({ source: synthetic(PART) })).rejects.toThrow(
+      /is not connected/,
+    )
+
+    expect(home.asked).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('stops an upload that outlives the account it belongs to', async () => {
+    // Connections are asked for per part, so an account stopped halfway through
+    // fails the next one rather than going on against connections nothing owns.
+    const home = new FileServer(2)
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    let reads = 0
+    const size = PART * 4
+    await expect(
+      instance.account.upload({
+        concurrency: 1,
+        source: {
+          size,
+          read: async (offset: number, length: number) => {
+            reads += 1
+            if (reads === 2) await instance.account.stop()
+
+            return Uint8Array.from({ length: Math.min(length, size - offset) }, (_, index) =>
+              byteAt(offset + index),
+            )
+          },
+        },
+      }),
+    ).rejects.toThrow(/is not connected/)
+    await instance.dispose()
+  })
+
+  it('does not share connections with a transfer going the other way', async () => {
+    // Sending and fetching are separate allowances, eight connections each, so
+    // a large upload and a large download do not compete for the same ones.
+    const home = new FileServer(2)
+    const stored = home.add(0x0f11_e002n, { size: 2 * PART, dcId: 2 })
+    const instance = receiving(new Map([[2, home]]))
+    await instance.account.connect()
+
+    await instance.account.upload({ source: synthetic(PART * 2) })
+    await instance.account.download({
+      dcId: 2,
+      size: 2 * PART,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: stored.fileId,
+        access_hash: 5n,
+        file_reference: stored.reference,
+        thumb_size: '',
+      },
+    })
+
+    const seen = instance
+      .datacenter(2)
+      .connections.map((connection) =>
+        connection.peer.seen.flatMap((element) => named(element.value)),
+      )
+
+    for (const carried of seen) {
+      const sending = carried.includes('upload.saveFilePart')
+      const fetching = carried.includes('upload.getFile')
+
+      expect(sending && fetching).toBe(false)
+    }
+    expect(seen.some((carried) => carried.includes('upload.saveFilePart'))).toBe(true)
+    expect(seen.some((carried) => carried.includes('upload.getFile'))).toBe(true)
+    await instance.dispose()
+  })
+
+  it('carries a refusal from the datacenter rather than a reference', async () => {
+    // A reference says the upload succeeded. One handed back after a part was
+    // refused would name a file the datacenter cannot assemble.
+    const instance = harness({
+      api: (query) => {
+        if (query._ !== 'upload.saveFilePart') return undefined
+        throw new TelegramError('FILE_PART_INVALID (400)')
+      },
+    })
+    await instance.account.connect()
+
+    await expect(instance.account.upload({ source: synthetic(PART) })).rejects.toThrow(
+      /FILE_PART_INVALID/,
+    )
     await instance.dispose()
   })
 })

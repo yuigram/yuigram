@@ -84,6 +84,20 @@ export interface UploadOptions {
   readonly random?: (length: number) => Uint8Array
 }
 
+/**
+ * An upload as a client asks for one.
+ *
+ * Named rather than subtracted, because two of the options this leaves out are
+ * machinery a case supplies and nothing else should: the identifier the parts
+ * accumulate under, and where it is drawn from. Part sizing is left out as
+ * well — `mtproto-plan.md` §3.9 keeps it internal — and reaching a datacenter
+ * belongs to whatever holds the connections.
+ */
+export type UploadRequest = Pick<
+  UploadOptions,
+  'source' | 'name' | 'concurrency' | 'attempts' | 'signal'
+>
+
 /** A file the datacenter can now be told to use. */
 export interface UploadedFile {
   /** The reference a call carries to name the file that was just sent. */
