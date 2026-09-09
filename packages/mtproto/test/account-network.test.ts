@@ -28,6 +28,7 @@ import { App, createLogger, type LogRecord } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
+import { contentOf, FileServer } from './server/files.js'
 import { createServerKey } from './server/keys.js'
 import type { Fault } from './server/server.js'
 import { type MockAccount, mockAccount } from './support/mock-account.js'
@@ -974,6 +975,258 @@ describe('what an account learns from the answers it receives', () => {
     expect(answer._).toBe('messages.messages')
     expect(records.filter((record) => record.level === 'warn').map((record) => record.message)) //
       .toContain('could not write down the peers an answer described')
+    await instance.dispose()
+  })
+})
+
+/**
+ * Fetching a file, through the account rather than through the transfer.
+ *
+ * `files-download.test.ts` already judges the transfer itself against the bytes
+ * a datacenter holds: range planning, boundaries, ordering, short answers. What
+ * is left to prove here is the wiring — that an account reaches the datacenter
+ * the file names, that it does so on connections ordinary calls are not using,
+ * and that it refuses before it has any.
+ */
+describe('a file an account fetches', () => {
+  const FILE = 0x0f11_e001n
+  const SIZE = 3 * 1024 * 1024
+
+  /** A datacenter holding the file, and the location that names it. */
+  function stored(dcId: number) {
+    const server = new FileServer(dcId)
+    const { reference } = server.add(FILE, { size: SIZE, dcId })
+
+    return {
+      server,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: FILE,
+        access_hash: 5n,
+        file_reference: reference,
+        thumb_size: '',
+      } as TlValue,
+    }
+  }
+
+  /**
+   * Every method name one message carried.
+   *
+   * The first call on a connection travels wrapped, because that is where a
+   * client states its layer and describes itself, so what a connection carried
+   * is the names inside the wrappers as well as the outer one.
+   */
+  const named = (value: TlValue): string[] => {
+    const inner = value['query']
+    const nested =
+      typeof inner === 'object' && inner !== null && typeof (inner as TlValue)._ === 'string'
+        ? named(inner as TlValue)
+        : []
+
+    return [value._, ...nested]
+  }
+
+  /** An account whose datacenters serve files, and nothing else differently. */
+  function serving(files: ReadonlyMap<number, FileServer>) {
+    return harness({
+      api: (query, dcId) =>
+        query._.startsWith('upload.') ? files.get(dcId)?.invoke(query) : undefined,
+    })
+  }
+
+  it('hands back the bytes the datacenter holds', async () => {
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+
+    const bytes = await instance.account.download({
+      location: home.location,
+      dcId: 2,
+      size: SIZE,
+    })
+
+    // Byte for byte against what the datacenter generated, because a range plan
+    // that is a kilobyte out still returns something of the right length.
+    expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
+    await instance.dispose()
+  })
+
+  it('hands each range over in file order', async () => {
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+
+    const offsets: number[] = []
+    const pieces: Uint8Array[] = []
+    const outcome = await instance.account.downloadTo({
+      location: home.location,
+      dcId: 2,
+      size: SIZE,
+      write: (chunk, offset) => {
+        offsets.push(offset)
+        pieces.push(chunk)
+      },
+    })
+
+    // A consumer appending to a stream keeps nothing of its own, which is only
+    // true while the offsets arrive ascending and leave no hole between them.
+    expect(outcome.size).toBe(SIZE)
+    expect(offsets).toEqual([...offsets].sort((a, b) => a - b))
+    let at = 0
+    for (const [index, offset] of offsets.entries()) {
+      expect(offset).toBe(at)
+      at += pieces[index]?.length ?? 0
+    }
+    expect(at).toBe(SIZE)
+    await instance.dispose()
+  })
+
+  it('fetches from the datacenter the file names, not the one the account is on', async () => {
+    // A file lives where it lives. An account that asked its own datacenter for
+    // one held elsewhere would be told to go there, which costs a round trip
+    // for something the location said in the first place.
+    const elsewhere = stored(4)
+    const instance = serving(new Map([[4, elsewhere.server]]))
+    await instance.account.connect()
+
+    const bytes = await instance.account.download({
+      location: elsewhere.location,
+      dcId: 4,
+      size: SIZE,
+    })
+
+    expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
+    expect(elsewhere.server.asked.length).toBeGreaterThan(0)
+    expect(instance.datacenter(4).connections.length).toBeGreaterThan(0)
+    await instance.dispose()
+  })
+
+  it('keeps a transfer off the connection ordinary calls travel on', async () => {
+    // A file moves in ranges asked for several at a time. Sharing the
+    // connection the update stream and every RPC use would put an interactive
+    // call behind a megabyte of somebody's video, which is the whole reason the
+    // pools keep a separate set for transfers.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getConfig' })
+    await instance.account.download({ location: home.location, dcId: 2, size: SIZE })
+
+    const seen = instance
+      .datacenter(2)
+      .connections.map((connection) =>
+        connection.peer.seen.flatMap((element) => named(element.value)),
+      )
+    const ordinary = seen.filter((names) => names.includes('help.getConfig'))
+    const transfers = seen.filter((names) => names.includes('upload.getFile'))
+
+    expect(ordinary.length).toBeGreaterThan(0)
+    expect(transfers.length).toBeGreaterThan(0)
+    for (const names of ordinary) expect(names).not.toContain('upload.getFile')
+    await instance.dispose()
+  })
+
+  it('refuses while the account is not connected', async () => {
+    // Before anything is asked of a datacenter, so a caller finds out where the
+    // mistake is rather than at an answer that never comes.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+
+    await expect(
+      instance.account.download({ location: home.location, dcId: 2, size: SIZE }),
+    ).rejects.toThrow(/is not connected/)
+    await expect(
+      instance.account.downloadTo({
+        location: home.location,
+        dcId: 2,
+        size: SIZE,
+        write: () => {},
+      }),
+    ).rejects.toThrow(/is not connected/)
+
+    expect(home.server.asked).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('asks for several ranges at once when the length is known', async () => {
+    // Knowing the length is what allows ranges to be asked for at the same
+    // time, and the transfer pool is sized for that. A transfer that took the
+    // small allowance, or that was not told the length, would move a file at a
+    // fraction of the rate for no stated reason.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+
+    await instance.account.download({
+      location: home.location,
+      dcId: 2,
+      size: SIZE,
+      concurrency: 4,
+    })
+
+    const carrying = instance
+      .datacenter(2)
+      .connections.filter((connection) =>
+        connection.peer.seen.some((element) => named(element.value).includes('upload.getFile')),
+      )
+
+    expect(carrying.length).toBeGreaterThan(2)
+    await instance.dispose()
+  })
+
+  it('says the account is not connected before it says the request is wrong', async () => {
+    // Two things are wrong at once here: the account is down and the range size
+    // is not one the protocol allows. The account's own state is the more
+    // fundamental of them, and it is what `reach` reports first as well, so a
+    // caller is not sent to check a range while nothing could have travelled
+    // anyway.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+
+    await expect(
+      instance.account.download({ location: home.location, dcId: 2, size: SIZE, limit: 3 }),
+    ).rejects.toThrow(/is not connected/)
+    await instance.dispose()
+  })
+
+  it('stops a transfer that outlives the account it belongs to', async () => {
+    // A transfer holds no connections of its own: it asks for one per range, so
+    // an account stopped halfway through fails the next range rather than going
+    // on against connections nothing owns any more.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+
+    let chunks = 0
+    await expect(
+      instance.account.downloadTo({
+        location: home.location,
+        dcId: 2,
+        size: SIZE,
+        concurrency: 1,
+        write: async () => {
+          chunks += 1
+          if (chunks === 1) await instance.account.stop()
+        },
+      }),
+    ).rejects.toThrow(/is not connected/)
+
+    expect(chunks).toBe(1)
+    await instance.dispose()
+  })
+
+  it('carries a refusal from the datacenter rather than a short file', async () => {
+    // A location the datacenter will not serve has to fail. Handing back the
+    // bytes that did arrive would produce a file that is quietly wrong.
+    const home = stored(2)
+    const instance = serving(new Map([[2, home.server]]))
+    await instance.account.connect()
+    home.server.expire(FILE)
+
+    await expect(
+      instance.account.download({ location: home.location, dcId: 2, size: SIZE }),
+    ).rejects.toThrow(/FILE_REFERENCE_EXPIRED/)
     await instance.dispose()
   })
 })

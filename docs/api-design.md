@@ -552,6 +552,28 @@ A resolved download URL **contains the bot token**, because Telegram's file endp
 it. `getFileUrl` returns a credential, and it is documented as one — do not log it, and do
 not hand it to a third party.
 
+An account fetches files itself rather than through a URL, because MTProto has no HTTP in it:
+
+```ts
+const bytes = await account.download({ location, dcId, size })
+
+await account.downloadTo({ location, dcId, size, write: (chunk, offset) => sink(chunk, offset) })
+```
+
+`location` is the `InputFileLocation` naming the file, read off whatever mentioned it — a
+document or a photo on a message says which datacenter holds it and carries the reference
+that names it. Ranges are asked for several at a time when the length is known, on connections
+kept apart from the one ordinary calls travel on, so a large transfer does not put an
+interactive call behind it. `downloadTo` receives each range in file order, so a consumer
+appending to a stream keeps nothing on the side.
+
+Where the bytes go is always the caller's decision. A filename that arrived from Telegram is
+attacker-chosen — [security.md](security.md) §6 — so nothing here turns one into a path.
+
+Uploading, delivery nodes and automatic reference refresh are not on the client yet. The
+transfer layer implements all three; what is missing is the connection routing a delivery node
+needs and, for uploads, the source model. `account.api.upload.*` reaches the methods meanwhile.
+
 ---
 
 ## 13.1 Keyboards

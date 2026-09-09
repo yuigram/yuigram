@@ -88,6 +88,30 @@ me.on('message', async (event) => {
   // be.
   if (event.message?._ === 'message' && event.message.media !== undefined) {
     console.log(`  …with ${event.message.media._}`)
+
+    // A file is fetched from the datacenter that holds it, in ranges asked for
+    // several at a time, on connections kept apart from the one ordinary calls
+    // travel on. What names the file comes from the message that mentioned it:
+    // the reference is issued per account and is what a datacenter checks.
+    const { media } = event.message
+    if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
+      const { document } = media
+      const bytes = await me.download({
+        dcId: document.dc_id,
+        size: Number(document.size),
+        location: {
+          _: 'inputDocumentFileLocation',
+          id: document.id,
+          access_hash: document.access_hash,
+          file_reference: document.file_reference,
+          thumb_size: '',
+        },
+      })
+
+      // Never a name Telegram supplied: a filename arrives from whoever sent
+      // the file. Where the bytes go is this program's decision.
+      console.log(`  …${bytes.length} bytes fetched from datacenter ${document.dc_id}`)
+    }
   }
 
   // Seconds, as Telegram sends them. A handler that wants a `Date` builds one,

@@ -20,6 +20,7 @@
 
 import { createCipheriv, createHash, getDiffieHellman } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
+import { TelegramError } from '@yuigram/core'
 import { bytesToBigIntBE } from '../../src/crypto/bytes.js'
 import { authKeyId } from '../../src/crypto/kdf.js'
 import {
@@ -1006,7 +1007,7 @@ export class MockServer {
       default: {
         // A peer that models no API still has to answer one, or a call made
         // through it never settles.
-        return this.#api?.(element.value) ?? { _: 'boolTrue' }
+        return this.#modelled(element.value) ?? { _: 'boolTrue' }
       }
     }
   }
@@ -1057,6 +1058,31 @@ export class MockServer {
     this.#bindings.push(binding)
 
     return { _: 'boolTrue' }
+  }
+
+  /**
+   * Ask the case what this method answers with.
+   *
+   * A model that refuses does so by throwing, because that is how a refusal
+   * reads where it is written. On the wire a refusal is an answer like any
+   * other, so it is turned into one here: a peer that let the exception escape
+   * would drop the connection instead, which is a different failure from the
+   * one the case is about.
+   */
+  #modelled(query: TlValue): TlValue | undefined {
+    try {
+      return this.#api?.(query)
+    } catch (error) {
+      if (!(error instanceof TelegramError)) throw error
+
+      const stated = /^(.*?)\s*\((\d+)\)$/.exec(error.message)
+
+      return {
+        _: 'rpc_error',
+        error_code: stated?.[2] === undefined ? 400 : Number(stated[2]),
+        error_message: stated?.[1] ?? error.message,
+      }
+    }
   }
 
   #decrypt(data: Uint8Array): Uint8Array {

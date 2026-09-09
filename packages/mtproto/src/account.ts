@@ -50,10 +50,12 @@ import {
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
+import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration } from './network/dc.js'
+import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { Reach } from './network/signin.js'
@@ -340,6 +342,88 @@ export class Account<Ext = unknown> {
 
       return network.pools.get({ id: dcId })
     }
+  }
+
+  /**
+   * Fetch a file and hand it back whole.
+   *
+   * What names the file comes from whatever mentioned it — a document or a
+   * photo on a message says which datacenter holds it and carries the reference
+   * that names it — so this takes that location rather than deriving one, and a
+   * caller reads it off the payload the event carried.
+   *
+   * ```ts
+   * const media = event.message?._ === 'message' ? event.message.media : undefined
+   * if (media?._ === 'messageMediaDocument' && media.document?._ === 'document') {
+   *   const bytes = await account.download({
+   *     dcId: media.document.dc_id,
+   *     size: Number(media.document.size),
+   *     location: {
+   *       _: 'inputDocumentFileLocation',
+   *       id: media.document.id,
+   *       access_hash: media.document.access_hash,
+   *       file_reference: media.document.file_reference,
+   *       thumb_size: '',
+   *     },
+   *   })
+   * }
+   * ```
+   *
+   * For files small enough to hold. Anything larger belongs in
+   * {@link Account.downloadTo}, which hands each range over as it arrives
+   * instead of keeping the whole file in memory.
+   *
+   * The transfer layer is loaded here rather than imported at the top of this
+   * file, for the reason the stack is: it reaches the session layer and the
+   * cipher a delivery node needs, and a program that never fetches a file
+   * should not evaluate either. Importing it eagerly costs a third of the
+   * startup budget, which `pnpm bench` reports. A download is asynchronous and
+   * needs a connection anyway, so loading it here costs the call nothing.
+   */
+  async download(request: DownloadRequest): Promise<Uint8Array> {
+    const reach = this.#transfers()
+    const { download } = await import('./files/download.js')
+
+    return await download({ ...request, reach })
+  }
+
+  /**
+   * Fetch a file, handing each range to a sink in the order it belongs in.
+   *
+   * The destination is the caller's, always. A filename that arrived from
+   * Telegram is attacker-chosen — `docs/security.md` §6 — so nothing here turns
+   * one into a path, and a caller writing to disk decides where.
+   *
+   * The sink is called with the offset each run of bytes starts at and in file
+   * order, so appending to a stream needs nothing kept on the side.
+   */
+  async downloadTo(
+    request: DownloadRequest & { readonly write: DownloadSink },
+  ): Promise<DownloadOutcome> {
+    const reach = this.#transfers()
+    const { downloadTo } = await import('./files/download.js')
+
+    return await downloadTo({ ...request, reach })
+  }
+
+  /**
+   * How a transfer reaches a datacenter.
+   *
+   * Not {@link Account.reach}, which asks for the connection that carries
+   * ordinary calls. A file moves in ranges asked for several at a time, and a
+   * transfer sharing the connection the update stream and every RPC use would
+   * put an interactive call behind a megabyte of somebody's video. The pools
+   * already keep a separate set for this and already know it belongs at the
+   * media address, so choosing it is all this does.
+   *
+   * Resolved per range rather than once, so a transfer running while the
+   * account is stopped fails saying the account is not connected instead of
+   * going on against connections nothing owns any more.
+   */
+  #transfers(): (dcId: number) => Callable {
+    this.#require()
+
+    return (dcId: number) => this.#require().pools.get({ id: dcId, purpose: 'download' })
   }
 
   /**

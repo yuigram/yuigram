@@ -45,8 +45,14 @@ export interface MockDatacenterOptions {
   readonly serverTime?: number
   /** Deliberate misbehaviour, applied to every connection it answers. */
   readonly faults?: ReadonlySet<Fault>
-  /** What its peers answer an API method with, where a case models one. */
-  readonly api?: (query: TlValue) => TlValue | undefined
+  /**
+   * What its peers answer an API method with, where a case models one.
+   *
+   * Told which datacenter is being asked, so one function can stand for
+   * several of them — a file held at one datacenter and asked for at another
+   * is the case that needs it.
+   */
+  readonly api?: (query: TlValue, dcId: number) => TlValue | undefined
 }
 
 /** One connection this datacenter has answered. */
@@ -116,13 +122,14 @@ export class MockDatacenter {
    */
   connect(request: StreamRequest): ByteStream {
     this.#collect()
+    const { api } = this.#options
 
     const peer = new MockServer({
       key: this.key,
       ...(this.#options.scope === undefined ? {} : { scope: this.#options.scope }),
       ...(this.#options.serverTime === undefined ? {} : { serverTime: this.#options.serverTime }),
       ...(this.#options.faults === undefined ? {} : { faults: this.#options.faults }),
-      ...(this.#options.api === undefined ? {} : { api: this.#options.api }),
+      ...(api === undefined ? {} : { api: (query: TlValue) => api(query, this.id) }),
       // The long-lived key is what a binding is checked against, and a binding
       // arrives on a different connection from the one that established it.
       ...(this.#permanent === undefined ? {} : { permanentKey: this.#permanent.authKey }),

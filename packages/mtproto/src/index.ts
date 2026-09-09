@@ -15,6 +15,12 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
+export type {
+  DownloadOutcome,
+  DownloadRequest,
+  DownloadSink,
+} from './files/download.js'
+export type { DownloadMode } from './files/geometry.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
 export type {

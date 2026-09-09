@@ -100,6 +100,17 @@ export interface DownloadOptions {
   readonly signal?: AbortSignal
 }
 
+/**
+ * A download as a client asks for one.
+ *
+ * The same request, without the three things a caller is in no position to
+ * supply: reaching a datacenter belongs to whatever holds the connections, and
+ * delivery nodes and reference refreshing both need a layer above this to have
+ * something the client does not yet own. Everything else is the caller's to
+ * choose, so it passes straight through.
+ */
+export type DownloadRequest = Omit<DownloadOptions, 'reach' | 'cdn' | 'references'>
+
 /** What a download came to. */
 export interface DownloadOutcome {
   /** How many bytes were handed over. */

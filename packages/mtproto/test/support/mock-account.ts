@@ -127,7 +127,7 @@ export interface MockAccountOptions
    * nothing about what the account did with the answer. A case about the second
    * supplies the answer it wants to see handled.
    */
-  readonly api?: (query: TlValue) => TlValue | undefined
+  readonly api?: (query: TlValue, dcId: number) => TlValue | undefined
 }
 
 /** What a case gets to drive and observe. */
