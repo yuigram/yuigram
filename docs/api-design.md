@@ -570,9 +570,36 @@ appending to a stream keeps nothing on the side.
 Where the bytes go is always the caller's decision. A filename that arrived from Telegram is
 attacker-chosen — [security.md](security.md) §6 — so nothing here turns one into a path.
 
-Uploading, delivery nodes and automatic reference refresh are not on the client yet. The
-transfer layer implements all three; what is missing is the connection routing a delivery node
-needs and, for uploads, the source model. `account.api.upload.*` reaches the methods meanwhile.
+Sending one goes the other way:
+
+```ts
+const { file } = await account.upload({ source, name: 'report.pdf' })
+```
+
+A source is anything that can hand over a run of bytes, and says its length when it has one:
+
+```ts
+interface UploadSource {
+  readonly size?: number
+  read(offset: number, length: number): Promise<Uint8Array>
+}
+```
+
+A source that reports a size may be read at any offset, which is what lets parts go out
+together; one that does not is read in order, and takes the path Telegram reserves for a
+length nobody knows yet. [api-decisions.md](api-decisions.md) Decision 13 settles why this is
+one interface rather than a union of the things bytes can arrive in, and what the two lines
+look like for bytes already in memory. The source stays the caller's — nothing retains it, and
+it holds no reference to the account.
+
+The result carries the reference that names the file, which is what a method taking an
+`InputFile` wants. Uploads go to the account's own datacenter; unlike a download, there is no
+location naming one. `name` is a hint Telegram records, never a path, and nothing here reads a
+filesystem.
+
+Delivery nodes and automatic reference refresh are not on the client yet. The transfer layer
+implements both; what is missing is the connection routing a delivery node needs and an owner
+for the origins a refresh refetches. `account.api.upload.*` reaches the methods meanwhile.
 
 ---
 
