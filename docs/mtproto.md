@@ -361,11 +361,38 @@ to prevent — and nothing later would notice. That refusal is Yuigram's, not th
 Per DC, indexed, with expiry stored; the authorization store already holds temporary keys
 against their expiry.
 
-**Not yet implemented:** re-negotiation before expiry, the `initConnection` that must follow a
-successful binding, the restriction limiting an unbound temporary key to
-`auth.bindTempAuthKey`, `help.getConfig` and `help.getNearestDc`, and the
-`ENCRYPTED_MESSAGE_INVALID` recovery path. Each needs the layer that sends API calls and owns
-key rotation, which does not exist yet.
+Three of the obligations around a binding are met by how the exchange is arranged rather than
+by anything that watches for them:
+
+- **`initConnection` follows a successful binding.** A connection states its layer and
+  describes itself by wrapping calls until one is answered, and the answer to the binding
+  itself deliberately does not count — so the first call after a key is vouched for is still
+  wrapped.
+- **An unbound temporary key is never used for anything else.** The binding travels on a
+  channel opened for it and closed after it, and the key is stored only once the datacenter
+  has agreed. No caller can reach a key that nothing has vouched for, so the restriction
+  limiting one to `auth.bindTempAuthKey`, `help.getConfig` and `help.getNearestDc` cannot be
+  broken.
+- **A refused binding leaves nothing behind.** Nothing is stored until the agreement arrives,
+  so `ENCRYPTED_MESSAGE_INVALID` — or any other refusal — fails the attempt and the next one
+  exchanges afresh. There is no half-bound key to recover from.
+
+**A key is not handed out in the last minute of its life.** Expiry is judged when a key is
+asked for, and judging it against the moment alone would hand out one with a second left: the
+connection opened with it would be refused mid-call, discard the key, and pay for two fresh
+exchanges to replace something that was about to be replaced anyway. So a key is treated as
+expired once less than a request's own deadline remains — a minute, the longest a single call
+is prepared to wait. A key that cannot outlive one call is of no use to the connection it
+would be handed to.
+
+That is a policy rather than a protocol rule, in the same sense as the salt reserve below: the
+protocol says when a key expires, not when to stop using it.
+
+**Not yet implemented:** renewing a key that expires while a connection is *open*. The margin
+above covers the moment a connection is opened, which is where a key is chosen; a connection
+already running holds its key until the datacenter refuses it, and recovering is what
+discarding and re-authorizing already does. Renewing underneath a live connection needs the
+schedule to own a duty that outlives any one request, which is a decision §6 has not made.
 
 ### 5.4 Sign-in flows
 
