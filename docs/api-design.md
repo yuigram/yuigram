@@ -134,7 +134,7 @@ app.onMessage(async (message) => {
 
 // Client-scoped handler — fully typed, no discriminant needed.
 bot.onCallbackQuery((query) => query.answer('ok'))
-alice.onMessage((message) => message.client.api.messages.readHistory({ … }))
+alice.onMessage((message) => message.here.messages.readHistory({ max_id: 0 }))
 
 await app.start()          // starts all clients, resolves when all are running
 await app.stop()           // drains in-flight handlers, then disconnects
@@ -310,8 +310,8 @@ family of near-identical names.
 Actions exist on the context because the update already addressed something: the chat and the
 message id arrived with it. Addressing a peer that did *not* arrive in an update is a client
 operation, since it needs resolution the context cannot do — and that boundary is what keeps
-the same shape working when MTProto arrives, where resolving a peer needs an access hash the
-client owns.
+the same shape working for MTProto, where resolving a peer needs an access hash the client
+owns.
 
 Escalating to transport-specific capability is explicit:
 
@@ -320,13 +320,15 @@ app.onMessage(async (message) => {
   await message.reply('works on both')
 
   if (message.transport === 'mtproto') {
-    await message.client.api.messages.readHistory({ peer: message.chat.input, maxId: 0 })
+    await message.here.messages.readHistory({ max_id: 0 })
   }
 })
 ```
 
-`transport` is a literal union, so the branch narrows the context to the one the check
-proved. Nothing outside the branch offers a member that only one transport has.
+`here` is the MTProto form of the second layer above: the generated surface with the peer the
+update arrived from already filled in, so a method that addresses that conversation is called
+without naming it. `transport` is a literal union, so the branch narrows the context to the one
+the check proved. Nothing outside the branch offers a member that only one transport has.
 
 ---
 
