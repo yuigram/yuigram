@@ -306,6 +306,7 @@ describe('an event built without an account', () => {
     await expect(context.reply('hello')).rejects.toThrow(/outside an account/)
     await expect(context.react('👍')).rejects.toThrow(/outside an account/)
     await expect(context.edit('corrected')).rejects.toThrow(/outside an account/)
+    await expect(context.delete()).rejects.toThrow(/outside an account/)
     await expect(context.api.call({ _: 'help.getConfig' })).rejects.toThrow(/outside an account/)
   })
 })
@@ -410,6 +411,149 @@ describe('editing the message an update carries', () => {
       refusal = await event.edit('corrected').catch((error: unknown) => error)
     })
     await account.deliver(update(42))
+
+    expect((refusal as Error).message).toMatch(/is not known to this account/)
+    expect(asked).toHaveLength(before)
+    await account.stop()
+  })
+})
+
+describe('deleting the message an update carries', () => {
+  it('deletes it for everyone, outside a channel', async () => {
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save(PEER)
+
+    account.on('message', async (event) => {
+      await event.delete()
+    })
+    await account.deliver(update(42))
+
+    const sent = asked.at(-1)
+    expect(sent?.['_']).toBe('messages.deleteMessages')
+    expect(sent?.['id']).toEqual([42])
+    expect(sent?.['revoke']).toBe(true)
+    await account.stop()
+  })
+
+  it('names the channel rather than the peer, inside one', async () => {
+    // A channel keeps its messages under the channel rather than in this
+    // account's own numbering, so the ordinary method would name a message
+    // somewhere else entirely.
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save({
+      kind: 'channel',
+      id: 55n,
+      accessHash: 13n,
+      min: false,
+      usernames: [],
+    })
+
+    account.on('message', async (event) => {
+      await event.delete()
+    })
+    await account.deliver({
+      _: 'updateNewChannelMessage',
+      message: {
+        _: 'message',
+        id: 9,
+        peer_id: { _: 'peerChannel', channel_id: 55n },
+        message: 'a post',
+        date: 1_700_000_000,
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    const sent = asked.at(-1)
+    expect(sent?.['_']).toBe('channels.deleteMessages')
+    expect(sent?.['channel']).toEqual({ _: 'inputChannel', channel_id: 55n, access_hash: 13n })
+    expect(sent?.['id']).toEqual([9])
+    // The channel method carries no such choice, and none is invented for it.
+    expect(sent?.['revoke']).toBeUndefined()
+    await account.stop()
+  })
+
+  it('refuses an event that carries no message to delete', async () => {
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save(PEER)
+    const before = asked.length
+    let refusal: unknown
+
+    account.on('mtproto:typing', async (event) => {
+      refusal = await event.delete().catch((error: unknown) => error)
+    })
+    await account.deliver({
+      _: 'updateUserTyping',
+      user_id: 5n,
+      action: { _: 'sendMessageTypingAction' },
+    })
+
+    expect((refusal as Error).message).toMatch(/carries no message to delete/)
+    expect(asked).toHaveLength(before)
+    await account.stop()
+  })
+
+  it('refuses a channel this account has only seen in passing', async () => {
+    // A reduced peer's hash means something only where it arrived. Naming a
+    // channel with one produces a request Telegram rejects as a problem with
+    // the call rather than with the channel.
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save({
+      kind: 'channel',
+      id: 55n,
+      accessHash: 13n,
+      min: true,
+      usernames: [],
+    })
+    const before = asked.length
+    let refusal: unknown
+
+    account.on('message', async (event) => {
+      refusal = await event.delete().catch((error: unknown) => error)
+    })
+    await account.deliver({
+      _: 'updateNewChannelMessage',
+      message: {
+        _: 'message',
+        id: 9,
+        peer_id: { _: 'peerChannel', channel_id: 55n },
+        message: 'a post',
+        date: 1_700_000_000,
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect((refusal as Error).message).toMatch(/only seen in passing/)
+    expect(asked).toHaveLength(before)
+    await account.stop()
+  })
+
+  it('refuses a channel this account has never written down', async () => {
+    const { account, asked } = harness()
+    await account.connect()
+    const before = asked.length
+    let refusal: unknown
+
+    account.on('message', async (event) => {
+      refusal = await event.delete().catch((error: unknown) => error)
+    })
+    await account.deliver({
+      _: 'updateNewChannelMessage',
+      message: {
+        _: 'message',
+        id: 9,
+        peer_id: { _: 'peerChannel', channel_id: 55n },
+        message: 'a post',
+        date: 1_700_000_000,
+      },
+      pts: 1,
+      pts_count: 1,
+    })
 
     expect((refusal as Error).message).toMatch(/is not known to this account/)
     expect(asked).toHaveLength(before)

@@ -363,18 +363,29 @@ without naming it. `transport` is a literal union, so the branch narrows the con
 the check proved. Nothing outside the branch offers a member that only one transport has.
 
 An MTProto context carries the curated actions whose peer and message the update already
-supplied — `reply`, `react` and `edit`:
+supplied — `reply`, `react`, `edit` and `delete`:
 
 ```ts
 await event.edit('corrected')
+await event.delete()
 ```
 
-`edit` replaces the text of the message the event carried, in the conversation it arrived in,
-so it names neither. Whether that message may be edited at all — whose it is, and how long ago
-it was sent — is Telegram's to decide, and it refuses rather than being guessed at here.
-Deleting and forwarding are not among them: deleting is two methods with different meanings
-depending on whether the conversation is a channel, and forwarding names a destination the
-update did not carry, which is a client operation.
+Neither names the message or the conversation, because the update carried both. Whether the
+message may be edited or deleted at all — whose it is, and how long ago it was sent — is
+Telegram's to decide, and it refuses rather than being guessed at here.
+
+`delete` removes the message for everyone. Which method that takes is decided by the
+conversation: a channel keeps its messages under the channel rather than in the account's own
+numbering, so the ordinary method would name a message somewhere else entirely. The channel
+method offers no other meaning, and the Bot API's `delete` has none either, so the curated
+action has no options. Removing a message from this account's own view alone is a different
+operation and lives where the rarer half of a pair belongs —
+`account.api.messages.deleteMessages`.
+
+`forward` is deliberately not among them. It names a destination the update did not carry, and
+a destination has to be resolved before it can be addressed — which §6 above puts on the client
+rather than on the context. As a client method it would carry no more than
+`account.api.messages.forwardMessages` already does, so it is absent rather than duplicated.
 
 ---
 

@@ -15,7 +15,7 @@
 
 import { PeerError, ValidationError } from '@yuigram/core'
 import { inputPeer } from '../network/peers.js'
-import type { PeerStore } from '../storage/peers.js'
+import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { NormalizedUpdate } from './normalize.js'
 
@@ -34,6 +34,7 @@ export interface UpdateActions {
   reply(text: string): Promise<TlValue>
   react(emoji: string): Promise<TlValue>
   edit(text: string): Promise<TlValue>
+  delete(): Promise<TlValue>
 }
 
 /**
@@ -67,6 +68,33 @@ async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise
   }
 
   return inputPeer(record)
+}
+
+/**
+ * Name a channel, which is not the same as naming a peer.
+ *
+ * The channel methods take a reference of their own, carrying the same
+ * identifier and hash an `inputPeerChannel` would but under a different
+ * constructor. A peer that was only seen in passing is refused here for the
+ * reason it is refused everywhere: its hash means something only where it
+ * arrived, and a reference built from it is one Telegram rejects as a problem
+ * with the call rather than with the peer.
+ */
+async function channelOf(
+  chat: { readonly kind: PeerKind; readonly id: bigint },
+  context: ActionContext,
+): Promise<TlValue> {
+  const record = await context.peers.byId(chat.kind, chat.id)
+  if (record === undefined) {
+    throw new PeerError(`${chat.kind} ${chat.id} is not known to this account`)
+  }
+  if (record.min || record.accessHash === undefined) {
+    throw new PeerError(
+      `channel ${chat.id} was only seen in passing and cannot be named on its own`,
+    )
+  }
+
+  return { _: 'inputChannel', channel_id: record.id, access_hash: record.accessHash }
 }
 
 /** The identifier of the message an update carries, where it carries one. */
@@ -117,6 +145,36 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
         peer,
         id,
         message: text,
+      })
+    },
+
+    async delete(): Promise<TlValue> {
+      const id = messageIdOf(update, 'delete')
+      const chat = update.chat
+      if (chat === undefined) {
+        throw new PeerError(`a '${update.kind}' event names no conversation to delete from`)
+      }
+
+      // Two methods, and which applies is decided by what sort of conversation
+      // the update arrived in. A channel keeps its messages under the channel
+      // rather than in the account's own numbering, so the ordinary method
+      // would name a message somewhere else entirely.
+      if (chat.kind === 'channel') {
+        return await context.invoke({
+          _: 'channels.deleteMessages',
+          channel: await channelOf(chat, context),
+          id: [id],
+        })
+      }
+
+      // Gone for everyone, which is the only thing the channel method does and
+      // the only thing the other transport's `delete` means. Removing a message
+      // from this account's own view alone is a different operation, and
+      // `account.api.messages.deleteMessages` is where it lives.
+      return await context.invoke({
+        _: 'messages.deleteMessages',
+        revoke: true,
+        id: [id],
       })
     },
 

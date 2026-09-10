@@ -78,6 +78,18 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    */
   edit(text: string): Promise<TlValue>
   /**
+   * Delete the message this event carries, for everyone.
+   *
+   * Which method that takes is decided by the conversation the event arrived
+   * in, because a channel keeps its messages under the channel rather than in
+   * this account's own numbering. Both mean the same thing to a reader: the
+   * message is gone.
+   *
+   * Removing a message from this account's own view alone is a different
+   * operation, and `account.api.messages.deleteMessages` is where it lives.
+   */
+  delete(): Promise<TlValue>
+  /**
    * Call a method this build does not model, on the account this arrived on.
    *
    * The same surface {@link Account.api} carries, per `docs/api-design.md` §12,
@@ -188,6 +200,7 @@ function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
     reply: refuse,
     react: refuse,
     edit: refuse,
+    delete: refuse,
     api: rawApi(refuse),
     here: boundApi({ invoke: refuse, peer: refuse }),
   }
