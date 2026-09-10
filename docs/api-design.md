@@ -98,17 +98,11 @@ user.onMessage((message) => console.log(message.text))
 
 await user.connect()
 
-const phone = prompt('Phone: ')
-const sent = await user.sendCode(phone)
-const state = await user.signInWithCode({
-  phone,
-  phoneCodeHash: sent.kind === 'code-sent' ? sent.phoneCodeHash : '',
-  code: prompt('Code: '),
+await user.signIn({
+  phone: () => prompt('Phone: '),
+  code: () => prompt('Code: '),
+  password: () => prompt('2FA password: '),
 })
-
-if (state.kind === 'password-required') {
-  await user.signInWithPassword(prompt('2FA password: '))
-}
 ```
 
 `connect()` establishes the MTProto connection; the sign-in steps prove which account it
@@ -126,18 +120,25 @@ Every step goes to the datacenter the account belongs to, and follows Telegram i
 account lives at another — recording where it went, so the next call does not return to the one
 it was just told to leave.
 
-A single `signIn()` that took callbacks and drove the whole flow would read better than the
-steps above, and is not here yet for one reason: it has to know whether the account is already
-signed in before it starts, and nothing local can answer that soundly — a stored flag survives
-a session being revoked elsewhere, and an authorization discarded and re-obtained is a new one
-that nobody has proved anything to.
+`signIn()` above is those steps driven from prompts, and it reaches a callback only where the
+account genuinely needs one: a password is asked for only where the account has one, and an
+account resumed from a session it was already signed in with reaches none of them.
 
-[mtproto.md](mtproto.md) §8 settles half of it: the signal is Telegram's own refusal, which
-"says the key exists but no account is signed in against it", and answering that is a sign-in
-concern. What it does not settle is how the refusal is elicited. Nothing this client does on
-its own behalf makes an authorized call — connecting reaches no network — so the convenience
-would have to make one purely to ask, and choosing which one, on every sign-in including the
-fresh ones where it is guaranteed to fail, is the decision it is waiting on.
+Knowing that last part cannot be done locally. A stored flag outlives a session revoked from
+another device, and an authorization discarded and re-obtained is a new one nobody has proved
+anything to — so `signIn()` asks Telegram before it asks a person for anything.
+[mtproto.md](mtproto.md) §8 names the signal: a refusal that "says the key exists but no
+account is signed in against it".
+
+It asks with `updates.getState`, which takes no arguments and changes nothing, and whose answer
+is the four counters [mtproto.md](mtproto.md) §9.1 calls the client's own state — so the client
+has a reason to care about the answer beyond the question being asked here. Only that one
+refusal means nobody is signed in. Anything else is a different problem and is raised, because
+a client that read a flood wait as "not signed in" would ask a signed-in person for their phone
+number.
+
+The steps remain public, because a flow driven by something other than a prompt — a queue, a
+web form, a device that displays a token — needs them.
 
 ---
 

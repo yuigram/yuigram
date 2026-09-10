@@ -45,6 +45,7 @@ import {
   PeerError,
   SessionError,
   type StopOptions,
+  TelegramError,
   type UseOptions,
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from './api.js'
@@ -71,7 +72,6 @@ import type { TlValue } from './tl/index.js'
 import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
 
-/** What the server is told about this client when nothing else is said. */
 /**
  * Redirections one call will follow.
  *
@@ -81,6 +81,7 @@ import { UpdateState } from './updates/state.js'
  */
 const MAX_MIGRATIONS = 5
 
+/** What the server is told about this client when nothing else is said. */
 const DEVICE: Omit<ClientInfo, 'apiId'> = {
   deviceModel: 'Yuigram',
   systemVersion: process.version,
@@ -626,6 +627,91 @@ export class Account<Ext = unknown> {
     return await this.#step(
       async (step, base) => await step.requestLoginToken({ ...base, ...options }),
     )
+  }
+
+  /**
+   * Sign in, asking only for what is actually needed.
+   *
+   * The steps above in one call, for the common case of driving them from a
+   * prompt. An account resumed from a session it was already signed in with
+   * reaches none of the callbacks: this asks Telegram first, because nothing
+   * local answers that soundly — a stored flag outlives a session revoked from
+   * another device, and an authorization discarded and re-obtained is a new one
+   * nobody has proved anything to. `docs/mtproto.md` §8 names the signal: a
+   * refusal about the account's authorization says the key exists and no
+   * account is signed in against it.
+   *
+   * ```ts
+   * await account.signIn({
+   *   phone: () => ask('Phone: '),
+   *   code: () => ask('Code: '),
+   *   password: () => ask('Two-factor password: '),
+   * })
+   * ```
+   *
+   * A password is asked for only where the account has one. An account with no
+   * password never reaches that callback, and one that has a password but was
+   * given no callback is refused saying so rather than left half signed in.
+   */
+  async signIn(prompts: {
+    phone: () => string | Promise<string>
+    code: () => string | Promise<string>
+    password?: () => string | Promise<string>
+  }): Promise<void> {
+    if (await this.#alreadySignedIn()) return
+
+    const phone = await prompts.phone()
+    const sent = await this.sendCode(phone)
+    if (sent.kind !== 'code-sent') {
+      throw new SessionError(`sending a code to ${phone} answered '${sent.kind}'`)
+    }
+
+    const state = await this.signInWithCode({
+      phone,
+      phoneCodeHash: sent.phoneCodeHash,
+      code: await prompts.code(),
+    })
+
+    if (state.kind === 'authorized') return
+    if (state.kind !== 'password-required') {
+      // Registering a new account is a separate sequence and is not
+      // implemented, so an answer that asks for one is reported rather than
+      // treated as a sign-in that half worked.
+      throw new SessionError(`signing in answered '${state.kind}'`)
+    }
+
+    if (prompts.password === undefined) {
+      throw new SessionError('this account is protected by a password, and none was offered')
+    }
+
+    await this.signInWithPassword(await prompts.password())
+  }
+
+  /**
+   * Whether an account is already signed in against these keys.
+   *
+   * Asked rather than remembered. `updates.getState` is what this asks with: it
+   * takes no arguments, changes nothing, and answers with the four counters
+   * `docs/mtproto.md` §9.1 calls the client's own state — so a client has
+   * reason to care about the answer beyond the question being asked here.
+   *
+   * Only the refusal that names an unregistered key means nobody is signed in.
+   * Everything else is a different problem and is raised: a client that treated
+   * a flood wait or an unreachable datacenter as "not signed in" would ask a
+   * signed-in person for their phone number.
+   */
+  async #alreadySignedIn(): Promise<boolean> {
+    try {
+      await this.#invoke({ _: 'updates.getState' })
+
+      return true
+    } catch (error) {
+      if (error instanceof TelegramError && error.message.startsWith('AUTH_KEY_UNREGISTERED (')) {
+        return false
+      }
+
+      throw error
+    }
   }
 
   /**

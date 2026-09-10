@@ -1894,3 +1894,200 @@ describe('a call redirected to another datacenter', () => {
     await instance.dispose()
   })
 })
+
+/**
+ * Signing in from prompts, which is the flow above driven by one call.
+ *
+ * What the steps do is settled by the group above. What is left here is the
+ * part the convenience adds: asking Telegram whether anybody is signed in
+ * before asking a person for anything, and reaching each callback only where
+ * the account genuinely needs it.
+ */
+describe('signing in from prompts', () => {
+  const PHONE = '+70000000000'
+
+  const SENT: TlValue = {
+    _: 'auth.sentCode',
+    type: { _: 'auth.sentCodeTypeApp', length: 5 },
+    phone_code_hash: 'hash-of-the-code',
+    timeout: 60,
+  }
+
+  const AUTHORIZED: TlValue = {
+    _: 'auth.authorization',
+    user: { _: 'user', id: 7n, access_hash: 11n },
+  }
+
+  const STATE: TlValue = {
+    _: 'updates.state',
+    pts: 42,
+    qts: 0,
+    date: 1_700_000_000,
+    seq: 7,
+    unread_count: 0,
+  }
+
+  /** An account whose datacenters answer sign-in and the authorization probe. */
+  function driving(replies: (query: TlValue) => TlValue | undefined) {
+    const asked: string[] = []
+
+    return {
+      asked,
+      instance: harness({
+        api: (query) => {
+          const mine =
+            query._.startsWith('auth.') ||
+            query._ === 'updates.getState' ||
+            query._ === 'account.getPassword'
+          if (!mine) return undefined
+          asked.push(query._)
+
+          return replies(query)
+        },
+      }),
+    }
+  }
+
+  /** Callbacks that record whether they were reached. */
+  function prompts() {
+    const reached: string[] = []
+
+    return {
+      reached,
+      calls: {
+        phone: () => {
+          reached.push('phone')
+
+          return PHONE
+        },
+        code: () => {
+          reached.push('code')
+
+          return '12345'
+        },
+        password: () => {
+          reached.push('password')
+
+          return 'correct horse'
+        },
+      },
+    }
+  }
+
+  it('asks Telegram before asking anybody for anything', async () => {
+    // An account resumed from a session it was already signed in with reaches
+    // none of the callbacks, and nothing local could have told it that.
+    const { instance, asked } = driving((query) =>
+      query._ === 'updates.getState' ? STATE : undefined,
+    )
+    await instance.account.connect()
+    const { reached, calls } = prompts()
+
+    await instance.account.signIn(calls)
+
+    expect(asked).toEqual(['updates.getState'])
+    expect(reached).toEqual([])
+    await instance.dispose()
+  })
+
+  it('drives the whole flow when nobody is signed in', async () => {
+    const { instance, asked } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')
+      if (query._ === 'auth.sendCode') return SENT
+      if (query._ === 'auth.signIn') return AUTHORIZED
+
+      return undefined
+    })
+    await instance.account.connect()
+    const { reached, calls } = prompts()
+
+    await instance.account.signIn(calls)
+
+    expect(asked).toEqual(['updates.getState', 'auth.sendCode', 'auth.signIn'])
+    expect(reached).toEqual(['phone', 'code'])
+    await instance.dispose()
+  })
+
+  it('asks for a password only where the account has one', async () => {
+    const { instance } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')
+      if (query._ === 'auth.sendCode') return SENT
+      if (query._ === 'auth.signIn') throw new TelegramError('SESSION_PASSWORD_NEEDED (401)')
+      if (query._ === 'account.getPassword') throw new TelegramError('PASSWORD_HASH_INVALID (400)')
+
+      return undefined
+    })
+    await instance.account.connect()
+    const { reached, calls } = prompts()
+
+    await expect(instance.account.signIn(calls)).rejects.toThrow(/PASSWORD_HASH_INVALID/)
+
+    // Reached because the account asked for it, and only then.
+    expect(reached).toEqual(['phone', 'code', 'password'])
+    await instance.dispose()
+  })
+
+  it('says so rather than half signing in when no password was offered', async () => {
+    const { instance } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')
+      if (query._ === 'auth.sendCode') return SENT
+      if (query._ === 'auth.signIn') throw new TelegramError('SESSION_PASSWORD_NEEDED (401)')
+
+      return undefined
+    })
+    await instance.account.connect()
+    const { calls } = prompts()
+
+    await expect(instance.account.signIn({ phone: calls.phone, code: calls.code })).rejects.toThrow(
+      /protected by a password/,
+    )
+    await instance.dispose()
+  })
+
+  it('raises anything that is not a refusal about the authorization', async () => {
+    // The distinction that matters: a flood wait or an unreachable datacenter
+    // is a different problem, and treating one as "not signed in" would ask a
+    // signed-in person for their phone number.
+    const { instance } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('FLOOD_WAIT_30 (420)')
+
+      return undefined
+    })
+    await instance.account.connect()
+    const { reached, calls } = prompts()
+
+    await expect(instance.account.signIn(calls)).rejects.toThrow(/FLOOD_WAIT_30/)
+    expect(reached).toEqual([])
+    await instance.dispose()
+  })
+
+  it('reports an answer it cannot carry on from', async () => {
+    // A number with no account behind it needs registering, which is a separate
+    // sequence and is not implemented. Saying so beats looking signed in.
+    const { instance } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')
+      if (query._ === 'auth.sendCode') return SENT
+      if (query._ === 'auth.signIn') {
+        return { _: 'auth.authorizationSignUpRequired' }
+      }
+
+      return undefined
+    })
+    await instance.account.connect()
+    const { calls } = prompts()
+
+    await expect(instance.account.signIn(calls)).rejects.toThrow(/registration-required/)
+    await instance.dispose()
+  })
+
+  it('refuses while the account is not connected', async () => {
+    const { instance, asked } = driving(() => undefined)
+    const { reached, calls } = prompts()
+
+    await expect(instance.account.signIn(calls)).rejects.toThrow(/is not connected/)
+
+    expect(asked).toHaveLength(0)
+    expect(reached).toEqual([])
+    await instance.dispose()
+  })
+})
