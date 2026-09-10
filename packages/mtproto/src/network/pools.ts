@@ -53,6 +53,11 @@ export type PoolPurpose = 'main' | 'upload' | 'download' | 'download-small'
  * about what has happened. The transfer purposes take several so that parts
  * move at once. Small media takes fewer than bulk: a thumbnail is worth a
  * connection but not eight of them.
+ *
+ * Nothing asks for the small allowance yet, and what is missing is not a size
+ * to compare against. A thumbnail is a photo size, and which of a photo's sizes
+ * to fetch is the choice `docs/mtproto.md` §11 does not make — so the purpose
+ * waits on that decision rather than on a threshold.
  */
 export const POOL_LIMITS: Readonly<Record<PoolPurpose, number>> = {
   main: 1,
