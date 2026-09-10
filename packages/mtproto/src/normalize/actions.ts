@@ -1,7 +1,7 @@
 /**
  * What a handler can do with an update it just received.
  *
- * Two operations, and both address the peer the update came from. That is what
+ * Every operation here addresses the peer the update came from. That is what
  * makes them safe: an account cannot name a peer it has never met — every
  * reference needs an access hash that is per-account and cannot be derived — but
  * a peer that just spoke is one it has already written down. Addressing somebody
@@ -29,10 +29,11 @@ export interface ActionContext {
   random(length: number): Uint8Array
 }
 
-/** The two operations, bound to one update. */
+/** The operations an update can be acted on with, bound to one update. */
 export interface UpdateActions {
   reply(text: string): Promise<TlValue>
   react(emoji: string): Promise<TlValue>
+  edit(text: string): Promise<TlValue>
 }
 
 /**
@@ -100,6 +101,22 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
         message: text,
         random_id: randomId(context.random),
         reply_to: { _: 'inputReplyToMessage', reply_to_msg_id: replyTo },
+      })
+    },
+
+    async edit(text: string): Promise<TlValue> {
+      // The same two things every operation here needs, read the same way: the
+      // message the update carried, and the conversation it arrived in. What is
+      // editable is Telegram's business — somebody else's message, or one past
+      // the window, is refused there rather than guessed at here.
+      const id = messageIdOf(update, 'edit')
+      const peer = await peerOf(update, context)
+
+      return await context.invoke({
+        _: 'messages.editMessage',
+        peer,
+        id,
+        message: text,
       })
     },
 

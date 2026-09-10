@@ -355,6 +355,20 @@ update arrived from already filled in, so a method that addresses that conversat
 without naming it. `transport` is a literal union, so the branch narrows the context to the one
 the check proved. Nothing outside the branch offers a member that only one transport has.
 
+An MTProto context carries the curated actions whose peer and message the update already
+supplied — `reply`, `react` and `edit`:
+
+```ts
+await event.edit('corrected')
+```
+
+`edit` replaces the text of the message the event carried, in the conversation it arrived in,
+so it names neither. Whether that message may be edited at all — whose it is, and how long ago
+it was sent — is Telegram's to decide, and it refuses rather than being guessed at here.
+Deleting and forwarding are not among them: deleting is two methods with different meanings
+depending on whether the conversation is a channel, and forwarding names a destination the
+update did not carry, which is a client operation.
+
 ---
 
 ## 7. Middleware

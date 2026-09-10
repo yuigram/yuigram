@@ -38,7 +38,7 @@ Effort belongs in these five places and nowhere else.
 | `bot.poll()` | < 500 ms | One `getMe`, one `setMyCommands` if configured |
 | `Account.fromSession(...)` | < 1 ms | No I/O in the factory |
 | `user.connect()` — resumed session | < 2 s | Load the protocol stack, the session, connect, handshake with existing key |
-| `user.signIn()` — fresh sign-in | network-bound | Full DH handshake plus interactive steps |
+| `user.sendCode(...)` and the steps after it | network-bound | Full DH handshake plus a round trip per step |
 
 Decisions that protect this:
 

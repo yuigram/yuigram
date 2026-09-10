@@ -305,6 +305,114 @@ describe('an event built without an account', () => {
 
     await expect(context.reply('hello')).rejects.toThrow(/outside an account/)
     await expect(context.react('👍')).rejects.toThrow(/outside an account/)
+    await expect(context.edit('corrected')).rejects.toThrow(/outside an account/)
     await expect(context.api.call({ _: 'help.getConfig' })).rejects.toThrow(/outside an account/)
+  })
+})
+
+describe('editing the message an update carries', () => {
+  it('replaces the text of that message, in the conversation it arrived in', async () => {
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save(PEER)
+
+    account.on('message', async (event) => {
+      await event.edit('corrected')
+    })
+    await account.deliver(update(42))
+
+    const sent = asked.at(-1)
+    expect(sent?.['_']).toBe('messages.editMessage')
+    expect(sent?.['message']).toBe('corrected')
+    expect(sent?.['id']).toBe(42)
+    expect(sent?.['peer']).toEqual({ _: 'inputPeerUser', user_id: 5n, access_hash: 9n })
+    await account.stop()
+  })
+
+  it('carries no identifier of its own', async () => {
+    // An edit names the message it changes, so there is nothing to deduplicate:
+    // the same edit twice leaves the same text. A random identifier here would
+    // be a field the method does not carry.
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save(PEER)
+
+    account.on('message', async (event) => {
+      await event.edit('corrected')
+    })
+    await account.deliver(update(42))
+
+    expect(asked.at(-1)?.['random_id']).toBeUndefined()
+    expect(asked.at(-1)?.['reply_to']).toBeUndefined()
+    await account.stop()
+  })
+
+  it('edits the conversation rather than whoever spoke in it', async () => {
+    // The message lives in the conversation. Addressing the sender would edit
+    // nothing there, and in a group it would name a different peer entirely.
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save({ kind: 'chat', id: 77n, min: false, usernames: [] })
+    await account.peers.save(PEER)
+
+    account.on('message', async (event) => {
+      await event.edit('corrected')
+    })
+    await account.deliver({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 3,
+        peer_id: { _: 'peerChat', chat_id: 77n },
+        from_id: { _: 'peerUser', user_id: 5n },
+        message: 'hello all',
+        date: 1_700_000_000,
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect(asked.at(-1)?.['peer']).toEqual({ _: 'inputPeerChat', chat_id: 77n })
+    expect(asked.at(-1)?.['id']).toBe(3)
+    await account.stop()
+  })
+
+  it('refuses an event that carries no message to edit', async () => {
+    const { account, asked } = harness()
+    await account.connect()
+    await account.peers.save(PEER)
+    const before = asked.length
+    let refusal: unknown
+
+    account.on('mtproto:typing', async (event) => {
+      refusal = await event.edit('corrected').catch((error: unknown) => error)
+    })
+    await account.deliver({
+      _: 'updateUserTyping',
+      user_id: 5n,
+      action: { _: 'sendMessageTypingAction' },
+    })
+
+    expect((refusal as Error).message).toMatch(/carries no message to edit/)
+    expect(asked).toHaveLength(before)
+    await account.stop()
+  })
+
+  it('refuses a peer this account has never written down', async () => {
+    // Nothing is invented: a reference needs an access hash issued to this
+    // account, and one that was never harvested cannot be made up.
+    const { account, asked } = harness()
+    await account.connect()
+    const before = asked.length
+    let refusal: unknown
+
+    account.on('message', async (event) => {
+      refusal = await event.edit('corrected').catch((error: unknown) => error)
+    })
+    await account.deliver(update(42))
+
+    expect((refusal as Error).message).toMatch(/is not known to this account/)
+    expect(asked).toHaveLength(before)
+    await account.stop()
   })
 })

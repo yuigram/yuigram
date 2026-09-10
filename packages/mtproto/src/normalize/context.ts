@@ -69,6 +69,15 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   /** React to the message this event carries. An empty emoji clears it. */
   react(emoji: string): Promise<TlValue>
   /**
+   * Replace the text of the message this event carries.
+   *
+   * The same message and the same conversation {@link MtprotoContext.reply}
+   * answers, so it needs neither named. Whether the message may be edited at
+   * all — whose it is, and how long ago it was sent — is Telegram's to decide,
+   * and it refuses rather than being guessed at here.
+   */
+  edit(text: string): Promise<TlValue>
+  /**
    * Call a method this build does not model, on the account this arrived on.
    *
    * The same surface {@link Account.api} carries, per `docs/api-design.md` §12,
@@ -139,7 +148,8 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
 }
 
 /**
- * The two operations, or two that say why they cannot run.
+ * The operations an event can be acted on with, or ones that say why they
+ * cannot run.
  *
  * A context is a shape a handler is given, so the members exist either way —
  * one that dropped them where an account was not supplied would fail with a
@@ -177,6 +187,7 @@ function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
   return {
     reply: refuse,
     react: refuse,
+    edit: refuse,
     api: rawApi(refuse),
     here: boundApi({ invoke: refuse, peer: refuse }),
   }
