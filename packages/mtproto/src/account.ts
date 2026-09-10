@@ -59,7 +59,7 @@ import type { DcConfiguration } from './network/dc.js'
 import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
-import type { Reach } from './network/signin.js'
+import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import type { PeerRef } from './normalize/index.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
 import type { ClientInfo } from './session/connection.js'
@@ -541,6 +541,116 @@ export class Account<Ext = unknown> {
     })
 
     return named(inputPeer(record))
+  }
+
+  // ---------------------------------------------------------------------
+  // Signing in
+  // ---------------------------------------------------------------------
+
+  /**
+   * Ask Telegram to send a login code to a number.
+   *
+   * The first step of the phone flow. What comes back names the code that was
+   * sent, which the next step is refused without, and says how long to wait
+   * before asking for another where the server said.
+   *
+   * Signing in is separate from connecting because the two fail differently: a
+   * network that cannot be reached and a number Telegram will not accept are
+   * not the same problem, and an account resumed from a session it was already
+   * signed in with needs none of this.
+   */
+  async sendCode(phone: string): Promise<SignInState> {
+    return await this.#step(async (step, options) => await step.sendCode({ ...options, phone }))
+  }
+
+  /**
+   * Prove the code that was sent.
+   *
+   * Named for the half of the proof it carries, beside
+   * {@link Account.signInWithPassword}, which carries the other. `phoneCodeHash`
+   * is the one from {@link Account.sendCode}: it names the code, and Telegram
+   * refuses a code offered without it.
+   *
+   * An account protected by a password is not signed in by this — the answer
+   * says a password is wanted, and the password step finishes it.
+   */
+  async signInWithCode(request: {
+    readonly phone: string
+    readonly phoneCodeHash: string
+    readonly code: string
+  }): Promise<SignInState> {
+    return await this.#step(async (step, options) => await step.signIn({ ...options, ...request }))
+  }
+
+  /** Finish a sign-in that the code alone could not, by proving the password. */
+  async signInWithPassword(password: string | Uint8Array): Promise<SignInState> {
+    return await this.#step(
+      async (step, options) => await step.signInWithPassword({ ...options, password }),
+    )
+  }
+
+  /** Sign in as a bot, which proves itself with its token in one call. */
+  async signInAsBot(token: string): Promise<SignInState> {
+    return await this.#step(async (step, options) => await step.signInAsBot({ ...options, token }))
+  }
+
+  /**
+   * Ask for a token another device can approve.
+   *
+   * The second half of the flow is the other device's. What comes back is
+   * either a token to display and its expiry, or — once it has been approved —
+   * the signed-in account. A caller asks again to find out which, because
+   * waiting for an approval that may never come is a decision about time, and
+   * this layer keeps none.
+   */
+  async requestLoginToken(
+    options: { readonly exceptIds?: readonly bigint[] } = {},
+  ): Promise<LoginTokenState> {
+    return await this.#step(
+      async (step, base) => await step.requestLoginToken({ ...base, ...options }),
+    )
+  }
+
+  /**
+   * Run one sign-in step, and go where it says the account belongs.
+   *
+   * Each step follows a datacenter that redirects it and reports where it
+   * ended, because an account lives at one datacenter and the one a client
+   * reaches first is not always it. Recording that is what stops the next call
+   * going back to the datacenter this one was just told to leave:
+   * `docs/mtproto.md` §8 makes which datacenter an account belongs to a
+   * property of the configuration, so adopting a configuration is how it is
+   * said.
+   *
+   * The steps are loaded when one is taken, for the reason a transfer is: they
+   * reach the password exchange and the session layer, and a program resuming a
+   * session it is already signed in with should evaluate neither.
+   */
+  async #step<T extends { readonly dcId: number }>(
+    run: (step: typeof import('./network/signin.js'), options: SignInOptions) => Promise<T>,
+  ): Promise<T> {
+    const network = this.#require()
+    const module = await import('./network/signin.js')
+
+    const state = await run(module, {
+      reach: this.reach,
+      dcId: network.datacenters.directory.thisDc,
+      apiId: this.#options.apiId,
+      apiHash: this.#options.apiHash,
+    })
+
+    await this.#belongTo(state.dcId)
+
+    return state
+  }
+
+  /** Record which datacenter this account belongs to, when it has changed. */
+  async #belongTo(dcId: number): Promise<void> {
+    const { datacenters } = this.#require()
+    const configuration = datacenters.directory.toConfiguration()
+    if (configuration.thisDc === dcId) return
+
+    await datacenters.adopt({ ...configuration, thisDc: dcId })
   }
 
   // ---------------------------------------------------------------------

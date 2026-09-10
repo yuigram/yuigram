@@ -98,18 +98,40 @@ user.onMessage((message) => console.log(message.text))
 
 await user.connect()
 
-await user.signIn({
-  phone: () => prompt('Phone: '),
-  code:  () => prompt('Code: '),
-  password: () => prompt('2FA password: ')
+const phone = prompt('Phone: ')
+const sent = await user.sendCode(phone)
+const state = await user.signInWithCode({
+  phone,
+  phoneCodeHash: sent.kind === 'code-sent' ? sent.phoneCodeHash : '',
+  code: prompt('Code: '),
 })
+
+if (state.kind === 'password-required') {
+  await user.signInWithPassword(prompt('2FA password: '))
+}
 ```
 
-`connect()` establishes the MTProto connection; `signIn()` performs authorization, and a
-session resumed from disk is already authorized, so its callbacks are never reached. They are
-separate verbs because they are separate things that fail differently — a network that is
-unreachable and a code that was mistyped are not the same problem. The interactive steps are
-callbacks rather than values, so nothing prompts unless it is actually needed.
+`connect()` establishes the MTProto connection; the sign-in steps prove which account it
+belongs to. They are separate verbs because they are separate things that fail differently — a
+network that is unreachable and a code that was mistyped are not the same problem.
+
+Each step says how far it got rather than throwing at a fork in the flow, so a password is
+asked for only when the account has one, and a number that has no account yet is reported
+rather than mistaken for a failure. A bot proves itself in one call with `signInAsBot(token)`,
+and a second device with `requestLoginToken()`, which hands back a token to display and is
+asked again until it has been approved. An account resumed from a session it was already
+signed in with needs none of them.
+
+Every step goes to the datacenter the account belongs to, and follows Telegram if it says the
+account lives at another — recording where it went, so the next call does not return to the one
+it was just told to leave.
+
+A single `signIn()` that took callbacks and drove the whole flow would read better than the
+steps above, and is not here yet for one reason: it has to know whether the account is already
+signed in before it starts, and nothing local can answer that soundly — a stored flag survives
+a session being revoked elsewhere, and an authorization discarded and re-obtained is a new one
+that nobody has proved anything to. Deciding how that question is asked is what the convenience
+is waiting on.
 
 ---
 

@@ -1578,3 +1578,173 @@ describe('a temporary key near the end of its life', () => {
     await instance.account.stop()
   })
 })
+
+/**
+ * Signing an account in, through the account rather than through the steps.
+ *
+ * `network-signin.test.ts` already judges the steps themselves: what each call
+ * carries, what each answer means, and which redirections are followed. What is
+ * left to prove here is the wiring — that the account supplies the datacenter
+ * it belongs to and the application it is registered as, and that it goes where
+ * a redirected sign-in says the account lives, because the next call would
+ * otherwise return to the datacenter this one was just told to leave.
+ */
+describe('an account signing in', () => {
+  const PHONE = '+70000000000'
+
+  const AUTHORIZED: TlValue = {
+    _: 'auth.authorization',
+    user: { _: 'user', id: 7n, access_hash: 11n },
+  }
+
+  const SENT: TlValue = {
+    _: 'auth.sentCode',
+    type: { _: 'auth.sentCodeTypeApp', length: 5 },
+    phone_code_hash: 'hash-of-the-code',
+    timeout: 60,
+  }
+
+  /** What each datacenter answers, and every sign-in query it was asked. */
+  function answering(
+    replies: (query: TlValue, dcId: number) => TlValue | undefined,
+    asked: Array<{ query: TlValue; dcId: number }> = [],
+  ) {
+    return {
+      asked,
+      instance: harness({
+        api: (query, dcId) => {
+          if (!query._.startsWith('auth.') && query._ !== 'account.getPassword') return undefined
+          asked.push({ query, dcId })
+
+          return replies(query, dcId)
+        },
+      }),
+    }
+  }
+
+  /** The datacenter the account's stored configuration says it belongs to. */
+  const belongsTo = (instance: MockAccount) =>
+    (instance.stored.get('dcs:datacenters') as { thisDc?: number } | undefined)?.thisDc
+
+  it('asks the datacenter it belongs to, as the application it is registered as', async () => {
+    const { instance, asked } = answering((query) =>
+      query._ === 'auth.sendCode' ? SENT : undefined,
+    )
+    await instance.account.connect()
+
+    const state = await instance.account.sendCode(PHONE)
+
+    expect(state).toEqual({
+      kind: 'code-sent',
+      dcId: 2,
+      phoneCodeHash: 'hash-of-the-code',
+      timeout: 60,
+    })
+
+    // The account fills in what a caller has no business repeating: which
+    // datacenter it is talking to, and which application it is.
+    const sent = asked.find((entry) => entry.query._ === 'auth.sendCode')
+    expect(sent?.dcId).toBe(2)
+    expect(sent?.query['phone_number']).toBe(PHONE)
+    expect(sent?.query['api_id']).toBe(10_000)
+    expect(sent?.query['api_hash']).toBe('mock-api-hash')
+    await instance.dispose()
+  })
+
+  it('signs in as a bot in one call', async () => {
+    const { instance, asked } = answering((query) =>
+      query._ === 'auth.importBotAuthorization' ? AUTHORIZED : undefined,
+    )
+    await instance.account.connect()
+
+    const state = await instance.account.signInAsBot('123:token')
+
+    expect(state.kind).toBe('authorized')
+    expect(asked.at(-1)?.query['bot_auth_token']).toBe('123:token')
+    await instance.dispose()
+  })
+
+  it('hands back a token for another device to approve', async () => {
+    const { instance } = answering((query) =>
+      query._ === 'auth.exportLoginToken'
+        ? { _: 'auth.loginToken', token: Uint8Array.of(1, 2, 3), expires: 1_700_000_600 }
+        : undefined,
+    )
+    await instance.account.connect()
+
+    const state = await instance.account.requestLoginToken()
+
+    expect(state).toEqual({
+      kind: 'pending',
+      dcId: 2,
+      token: Uint8Array.of(1, 2, 3),
+      expires: 1_700_000_600,
+    })
+    await instance.dispose()
+  })
+
+  it('goes to the datacenter a redirected sign-in says the account lives at', async () => {
+    // An account lives at one datacenter and the one a client reaches first is
+    // not always it. Without recording where it went, the next call returns to
+    // the datacenter this one was just told to leave.
+    const { instance, asked } = answering((query, dcId) => {
+      if (query._ !== 'auth.sendCode') return undefined
+      if (dcId === 2) throw new TelegramError('PHONE_MIGRATE_4 (303)')
+
+      return SENT
+    })
+    await instance.account.connect()
+
+    const state = await instance.account.sendCode(PHONE)
+
+    expect(state.dcId).toBe(4)
+    expect(asked.map((entry) => entry.dcId)).toEqual([2, 4])
+    expect(belongsTo(instance)).toBe(4)
+    await instance.dispose()
+  })
+
+  it('leaves the configuration alone when the sign-in stayed put', async () => {
+    // The control. A configuration rewritten on every step would look the same
+    // from the outside as one rewritten only when it changed.
+    const { instance } = answering((query) => (query._ === 'auth.sendCode' ? SENT : undefined))
+    await instance.account.connect()
+    const before = instance.stored.get('dcs:datacenters')
+
+    await instance.account.sendCode(PHONE)
+
+    expect(instance.stored.get('dcs:datacenters')).toBe(before)
+    await instance.dispose()
+  })
+
+  it('refuses every step while the account is not connected', async () => {
+    const { instance, asked } = answering(() => undefined)
+
+    await expect(instance.account.sendCode(PHONE)).rejects.toThrow(/is not connected/)
+    await expect(instance.account.signInAsBot('123:token')).rejects.toThrow(/is not connected/)
+    await expect(instance.account.requestLoginToken()).rejects.toThrow(/is not connected/)
+    await expect(
+      instance.account.signInWithCode({ phone: PHONE, phoneCodeHash: 'h', code: '1' }),
+    ).rejects.toThrow(/is not connected/)
+    await expect(instance.account.signInWithPassword('p')).rejects.toThrow(/is not connected/)
+
+    expect(asked).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('reports that a password is wanted rather than claiming it signed in', async () => {
+    const { instance } = answering((query) => {
+      if (query._ !== 'auth.signIn') return undefined
+      throw new TelegramError('SESSION_PASSWORD_NEEDED (401)')
+    })
+    await instance.account.connect()
+
+    const state = await instance.account.signInWithCode({
+      phone: PHONE,
+      phoneCodeHash: 'hash-of-the-code',
+      code: '12345',
+    })
+
+    expect(state).toEqual({ kind: 'password-required', dcId: 2 })
+    await instance.dispose()
+  })
+})
