@@ -26,7 +26,7 @@
  */
 
 import { createInterface } from 'node:readline/promises'
-import { Account, memory } from 'yuigram'
+import { Account, documentFile, memory } from 'yuigram'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
@@ -118,17 +118,7 @@ me.on('message', async (event) => {
     const { media } = event.message
     if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
       const { document } = media
-      const bytes = await me.download({
-        dcId: document.dc_id,
-        size: Number(document.size),
-        location: {
-          _: 'inputDocumentFileLocation',
-          id: document.id,
-          access_hash: document.access_hash,
-          file_reference: document.file_reference,
-          thumb_size: '',
-        },
-      })
+      const bytes = await me.download(documentFile(document))
 
       // Never a name Telegram supplied: a filename arrives from whoever sent
       // the file. Where the bytes go is this program's decision.

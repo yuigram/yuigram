@@ -88,6 +88,7 @@ export {
   type DownloadOutcome,
   type DownloadRequest,
   type DownloadSink,
+  documentFile,
   type LoginTokenState,
   type MtprotoApi,
   type MtprotoContext,

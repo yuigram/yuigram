@@ -1731,6 +1731,26 @@ This must be **automatic and invisible**. A user who has to catch a reference er
 manually refetch a message has been handed a protocol detail that the framework exists to
 absorb.
 
+### Naming the file a message carried
+
+A message carries what a file is addressed by rather than the file: an identifier, a hash, and
+the reference issued alongside whatever the media arrived in. Assembling those into a location
+is mechanical for a **document**, and `documentFile` does it — every field is copied, nothing is
+chosen, and the reference travels as it arrived.
+
+**A photo is not one file.** It is the same picture at several sizes, each named by a `type`,
+and a location has to name one of them. Which one a framework should reach for is not something
+the protocol decides: the largest is what most callers mean and the most expensive, a stripped
+size is not a fetchable file at all, and a progressive size carries a vector of lengths rather
+than one. Choosing between them is a product decision this document does not make, so photos
+have no equivalent of `documentFile` and are absent rather than guessed at. The same choice
+applies to a document's own thumbnails, which are photo sizes.
+
+**Refreshing an expired reference stays out for the same reason it always has.** The two tables
+above are keyed by origin, and a location built from a document knows the document but not the
+message that carried it — so nothing at this layer can refetch the origin. Whatever still holds
+that message is the only thing that can, and no layer holds one.
+
 ---
 
 ## 12. Build order
