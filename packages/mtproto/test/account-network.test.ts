@@ -1748,3 +1748,149 @@ describe('an account signing in', () => {
     await instance.dispose()
   })
 })
+
+/**
+ * An ordinary call told the account belongs somewhere else.
+ *
+ * Nothing else ever tells this account it moved: the published configuration is
+ * never re-fetched, so a redirection is the only way it finds out. Two of the
+ * four are answerable here, and the cases below are about which, what happens
+ * before the call is repeated, and what is written down afterwards.
+ */
+describe('a call redirected to another datacenter', () => {
+  /** The datacenter the account's stored configuration says it belongs to. */
+  const homeOf = (instance: MockAccount) =>
+    (instance.stored.get('dcs:datacenters') as { thisDc?: number } | undefined)?.thisDc
+
+  /**
+   * An account whose home datacenter redirects one method once.
+   *
+   * The probe is answered normally everywhere else, so what a case reads is the
+   * redirection rather than a datacenter that refuses everything.
+   */
+  /** What a datacenter answers the two halves of an introduction with. */
+  const introduction = (query: TlValue): TlValue | undefined => {
+    if (query._ === 'auth.exportAuthorization') {
+      return { _: 'auth.exportedAuthorization', id: 7n, bytes: Uint8Array.of(1, 2, 3, 4) }
+    }
+    if (query._ === 'auth.importAuthorization') {
+      return { _: 'auth.authorization', user: { _: 'user', id: 7n, access_hash: 11n } }
+    }
+
+    return undefined
+  }
+
+  function redirecting(error: string, method = 'help.getAppUpdate') {
+    const asked: Array<{ name: string; dcId: number }> = []
+    const instance = harness({
+      api: (query, dcId) => {
+        asked.push({ name: query._, dcId })
+        const introduced = introduction(query)
+        if (introduced !== undefined) return introduced
+        if (query._ !== method) return undefined
+        if (dcId === 2) throw new TelegramError(error)
+
+        return { _: 'boolFalse' }
+      },
+    })
+
+    return { instance, asked }
+  }
+
+  const probe = { _: 'help.getAppUpdate', source: 'probe' }
+
+  it('introduces the account before repeating the call, and records where it moved', async () => {
+    // An account that has moved leaves the datacenter it moved to knowing
+    // nothing about it, so the credential goes first. Recording the move is
+    // what stops the next call returning to the datacenter it just left.
+    const { instance, asked } = redirecting('USER_MIGRATE_4 (303)')
+    await instance.account.connect()
+
+    const answer = await instance.account.api.call(probe)
+
+    expect(answer._).toBe('boolFalse')
+
+    // Which end each half of the introduction was made at is the whole of it:
+    // the datacenter holding the account issues the credential, and the one it
+    // is being introduced to accepts it. Reversed, the credential names the
+    // wrong datacenter and is refused.
+    expect(asked.filter((entry) => entry.name === 'auth.exportAuthorization')).toEqual([
+      { name: 'auth.exportAuthorization', dcId: 2 },
+    ])
+    expect(asked.filter((entry) => entry.name === 'auth.importAuthorization')).toEqual([
+      { name: 'auth.importAuthorization', dcId: 4 },
+    ])
+    expect(homeOf(instance)).toBe(4)
+    await instance.dispose()
+  })
+
+  it('follows a network suggestion without introducing anything or moving house', async () => {
+    // A network that suggests another datacenter says nothing about where the
+    // account lives, so there is nothing to introduce and nothing to record.
+    const { instance, asked } = redirecting('NETWORK_MIGRATE_4 (303)')
+    await instance.account.connect()
+    const before = instance.stored.get('dcs:datacenters')
+
+    const answer = await instance.account.api.call(probe)
+
+    expect(answer._).toBe('boolFalse')
+    expect(asked.filter((entry) => entry.name === 'auth.exportAuthorization')).toHaveLength(0)
+    expect(instance.stored.get('dcs:datacenters')).toBe(before)
+    await instance.dispose()
+  })
+
+  it('raises a phone redirection rather than following it', async () => {
+    // It means signing in again where it points, which is the sign-in steps'
+    // business and not something a call can do on the caller's behalf.
+    const { instance } = redirecting('PHONE_MIGRATE_4 (303)')
+    await instance.account.connect()
+
+    await expect(instance.account.api.call(probe)).rejects.toThrow(/PHONE_MIGRATE_4/)
+    await instance.dispose()
+  })
+
+  it('raises a file redirection rather than following it', async () => {
+    // A transfer follows its own, and routing a whole call to the datacenter
+    // that holds one file is not what the redirection asked for.
+    const { instance } = redirecting('FILE_MIGRATE_4 (303)')
+    await instance.account.connect()
+
+    await expect(instance.account.api.call(probe)).rejects.toThrow(/FILE_MIGRATE_4/)
+    await instance.dispose()
+  })
+
+  it('gives up on datacenters that point at each other', async () => {
+    // Two datacenters each saying the account is at the other describe a loop
+    // no number of attempts resolves.
+    const instance = harness({
+      api: (query, dcId) => {
+        const introduced = introduction(query)
+        if (introduced !== undefined) return introduced
+        if (query._ !== 'help.getAppUpdate') return undefined
+        throw new TelegramError(`USER_MIGRATE_${dcId === 2 ? 4 : 2} (303)`)
+      },
+    })
+    await instance.account.connect()
+
+    await expect(instance.account.api.call(probe)).rejects.toThrow(/redirected in a loop/)
+    await instance.dispose()
+  })
+
+  it('leaves an ordinary refusal alone', async () => {
+    // The control. A call that fails for its own reasons must not be repeated
+    // anywhere, or a refusal would be tried against every datacenter in turn.
+    const asked: number[] = []
+    const instance = harness({
+      api: (query, dcId) => {
+        if (query._ !== 'help.getAppUpdate') return undefined
+        asked.push(dcId)
+        throw new TelegramError('SOMETHING_ELSE (400)')
+      },
+    })
+    await instance.account.connect()
+
+    await expect(instance.account.api.call(probe)).rejects.toThrow(/SOMETHING_ELSE/)
+    expect(asked).toEqual([2])
+    await instance.dispose()
+  })
+})

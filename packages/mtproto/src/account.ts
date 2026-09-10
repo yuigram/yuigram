@@ -72,6 +72,15 @@ import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
 
 /** What the server is told about this client when nothing else is said. */
+/**
+ * Redirections one call will follow.
+ *
+ * A client cannot legitimately be sent to more datacenters than there are, so a
+ * chain longer than this is datacenters pointing at each other and no number of
+ * further attempts resolves it.
+ */
+const MAX_MIGRATIONS = 5
+
 const DEVICE: Omit<ClientInfo, 'apiId'> = {
   deviceModel: 'Yuigram',
   systemVersion: process.version,
@@ -919,10 +928,69 @@ export class Account<Ext = unknown> {
    * are written down.
    */
   async #invoke(query: TlValue): Promise<TlValue> {
-    const answer = await this.#require().pools.get().invoke(query)
+    const answer = await this.#following(query)
     await this.#learn(answer)
 
     return answer
+  }
+
+  /**
+   * Make a call, going where a datacenter says the account is.
+   *
+   * A datacenter that redirects is not refusing the call so much as addressing
+   * it: `docs/mtproto.md` §8 gives two of the four redirections an answer an
+   * ordinary call can act on. An account that has moved leaves the datacenter
+   * it moved to knowing nothing about it, so it is introduced there before the
+   * call is worth repeating, and where it now lives is written down — nothing
+   * else ever tells this account it moved, because the published configuration
+   * is never re-fetched. A network that merely suggests another datacenter says
+   * nothing about where the account lives, so that one is followed without
+   * being recorded.
+   *
+   * The other two belong elsewhere and are raised rather than followed. A phone
+   * redirection means signing in again at the datacenter it names, which is the
+   * sign-in steps' business; a file redirection is a transfer's, and a transfer
+   * already follows its own.
+   *
+   * Bounded by the number of datacenters there are to visit: a client cannot
+   * legitimately be sent to more of them than exist, so anything past that is
+   * datacenters pointing at each other rather than an account being found.
+   */
+  async #following(query: TlValue): Promise<TlValue> {
+    let dcId = this.#require().datacenters.directory.thisDc
+    const seen: number[] = [dcId]
+
+    for (let redirection = 0; redirection <= MAX_MIGRATIONS; redirection += 1) {
+      const here = this.#require().pools.get({ id: dcId })
+
+      try {
+        return await here.invoke(query)
+      } catch (error) {
+        // Loaded here rather than at the top of this file: recognising a
+        // redirection needs the session layer's error type and answering one
+        // needs the transfer, and neither belongs in the graph a program
+        // evaluates just by importing the package. A call that is not
+        // redirected never reaches this.
+        const { MigrationError } = await import('./session/dispatcher.js')
+        if (!(error instanceof MigrationError)) throw error
+        if (error.kind !== 'user' && error.kind !== 'network') throw error
+
+        if (error.kind === 'user') {
+          const { transferAuthorization } = await import('./network/migration.js')
+          await transferAuthorization({
+            from: here,
+            to: this.#require().pools.get({ id: error.dcId }),
+            dcId: error.dcId,
+          })
+          await this.#belongTo(error.dcId)
+        }
+
+        dcId = error.dcId
+        seen.push(dcId)
+      }
+    }
+
+    throw new SessionError(`the datacenters redirected in a loop: ${seen.join(' → ')}`)
   }
 
   /**
