@@ -1583,13 +1583,37 @@ else                                   -> GAP: recover
 8. `CHANNEL_PRIVATE` means the channel is gone — stop trying, and invalidate only when an
    `updateChannel` arrives for it.
 
-### 9.4 Deduplication
+### 9.4 What survives a restart
+
+The position, and nothing else. `pts`, `qts`, `seq`, `date` and the per-channel `pts` are
+written down; no update, message or peer is. Those arrive again from the difference the
+position is used to ask for, which is what makes the position worth keeping and the rest not.
+
+**Once per batch.** What arrives together is judged together, so the moment a batch has been
+absorbed is the moment there is nothing half-applied to write. It is also the cheapest boundary
+that is still correct: any position written *after* the updates it counts is safe to resume
+from — one that is behind asks for a difference and is told what it missed, which is §9.3 —
+and the only thing a coarser cadence changes is how much of that a restart has to ask for. The
+cost is the one an account already accepts elsewhere: every answer it receives writes down the
+peers that answer described.
+
+**A position that cannot be read is refused, not ignored.** Absent means "start from wherever
+Telegram is now", and answering that for a position that is merely damaged skips everything in
+between without saying so. Every counter is checked on the way out — whole, and not negative,
+because each counts upwards from zero — and the channel map is bounded before it is built,
+since a file that can be replaced is attacker-controlled.
+
+**A store that will not take it does not fail the stream.** The updates have already been
+judged and handed on; losing the place costs a catch-up on the next start rather than
+correctness now.
+
+### 9.5 Deduplication
 
 Updates already observed as RPC results must not be dispatched twice. A bounded
 **no-dispatch index** of recently-applied message identities is consulted before emitting,
 because `getDifference` legitimately returns messages already seen through the normal stream.
 
-### 9.5 Testing
+### 9.6 Testing
 
 This subsystem cannot be validated against the live network — the interesting cases are
 precisely the ones that occur rarely and unpredictably. It is therefore built against a

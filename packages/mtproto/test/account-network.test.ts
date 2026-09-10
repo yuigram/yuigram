@@ -2091,3 +2091,124 @@ describe('signing in from prompts', () => {
     await instance.dispose()
   })
 })
+
+describe('where an account resumes the update stream', () => {
+  /** An update that advances the common box by one. */
+  const message = (pts: number): TlValue => ({
+    _: 'updateNewMessage',
+    message: {
+      _: 'message',
+      id: pts,
+      peer_id: { _: 'peerUser', user_id: 5n },
+      from_id: { _: 'peerUser', user_id: 5n },
+      message: 'hello',
+      date: 1_700_000_000,
+    },
+    pts,
+    pts_count: 1,
+  })
+
+  /** The position the account has written down, if it has written one. */
+  const written = (instance: MockAccount) =>
+    instance.stored.get('updates:state') as { pts?: number; seq?: number } | undefined
+
+  it('writes down how far it has got once a batch is absorbed', async () => {
+    const instance = harness()
+    await instance.account.connect()
+
+    await instance.account.feed(message(2))
+
+    expect(written(instance)?.pts).toBe(2)
+    await instance.dispose()
+  })
+
+  it('resumes from the position rather than from nothing', async () => {
+    // The whole point. A restarted account that began again from nothing would
+    // ask for a difference from a position far behind, be told the box is too
+    // far gone to describe, and lose everything it was down for.
+    const first = harness()
+    await first.account.connect()
+    await first.account.feed(message(2))
+    await first.account.stop()
+
+    const second = harness({ datacenters: first.datacenters, stored: first.stored })
+    await second.account.connect()
+
+    // The next update in the sequence is the one after the position it resumed
+    // from, so it applies rather than opening a gap.
+    const seen: number[] = []
+    second.account.on('message', (event) => {
+      seen.push(Number(event.raw['pts']))
+    })
+    await second.account.feed(message(3))
+
+    expect(seen).toEqual([3])
+    expect(written(second)?.pts).toBe(3)
+    await second.dispose()
+  })
+
+  it('keeps nothing but the position', async () => {
+    // Not the updates, not the messages, not the peers they mentioned: those
+    // arrive again from the difference the position is used to ask for.
+    const instance = harness()
+    await instance.account.connect()
+
+    await instance.account.feed(message(2))
+
+    expect(Object.keys(written(instance) ?? {}).toSorted()).toEqual([
+      'channels',
+      'date',
+      'pts',
+      'qts',
+      'seq',
+    ])
+    await instance.dispose()
+  })
+
+  it('does not fail the stream when the store will not take the position', async () => {
+    // The updates have already been judged and handed on. Losing the place
+    // costs a catch-up on the next start, not correctness now.
+    const records: LogRecord[] = []
+    const kept = new Map<string, unknown>()
+    const instance = harness({
+      log: createLogger({ sink: { write: (record) => records.push(record) } }),
+      storage: {
+        get: async (name: string) => kept.get(name),
+        set: async (name: string, value: unknown) => {
+          if (name.startsWith('updates:')) throw new Error('the store is full')
+          kept.set(name, value)
+        },
+        delete: async (name: string) => {
+          kept.delete(name)
+        },
+      },
+    })
+    await instance.account.connect()
+
+    const seen: number[] = []
+    instance.account.on('message', (event) => {
+      seen.push(Number(event.raw['pts']))
+    })
+    await instance.account.feed(message(2))
+
+    expect(seen).toEqual([2])
+    expect(records.filter((record) => record.level === 'warn').map((record) => record.message)) //
+      .toContain('could not write down how far through the stream this account has got')
+    await instance.dispose()
+  })
+
+  it('refuses a stored position that cannot be read rather than starting again', async () => {
+    // Absent means "start from wherever Telegram is now". A damaged position
+    // answered that way skips everything between and says nothing about it.
+    const first = harness()
+    await first.account.connect()
+    await first.account.feed(message(2))
+    await first.account.stop()
+    first.stored.set('updates:state', { pts: -1, qts: 1, seq: 0, date: 0, channels: {} })
+
+    const second = harness({ datacenters: first.datacenters, stored: first.stored })
+
+    await expect(second.account.connect()).rejects.toThrow(/no usable 'pts'/)
+    await second.dispose()
+  })
+})

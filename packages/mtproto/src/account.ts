@@ -68,6 +68,7 @@ import { decodeSession, encodeSession, type PortableSession } from './session.js
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
+import { type UpdateStore, updateStore } from './storage/updates.js'
 import type { TlValue } from './tl/index.js'
 import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
@@ -100,17 +101,15 @@ export interface AccountOptions {
   /**
    * Where everything that must survive a restart is kept.
    *
-   * One store, divided here. Authorizations, the datacenter list and peers each
-   * live under their own prefix, so there is one place a caller points at and
-   * one owner for each kind of state inside it.
+   * One store, divided here. Authorizations, the datacenter list, peers and the
+   * place this account has reached in the update stream each live under their
+   * own prefix, so there is one place a caller points at and one owner for each
+   * kind of state inside it.
    *
-   * The update sequence is not among them. It is held for as long as the
-   * process runs and starts from nothing on the next one, so a restart catches
-   * up by asking Telegram rather than by resuming where it stopped.
-   * {@link UpdateState} carries both a snapshot and a way to be built from one;
-   * what is missing is when a snapshot should be written. The answers differ
-   * enough to matter: writing on every update is a write against a store that
-   * puts one file on disk per key.
+   * The place in the stream is written once per batch the account absorbs,
+   * which is what makes a restart resume rather than start again. What is
+   * stored is a position and nothing else: the updates themselves arrive again
+   * from the difference the position is used to ask for.
    */
   readonly storage: KV<unknown>
   /**
@@ -200,7 +199,8 @@ export class Account<Ext = unknown> {
   readonly #lifecycle: Lifecycle
   readonly #peers: PeerStore
   readonly #api: MtprotoApi = rawApi(async (query) => await this.#invoke(query))
-  readonly #state = new UpdateState()
+  #state = new UpdateState()
+  #updates: UpdateStore | undefined
 
   /** Everything that exists only while connected. */
   #network: Network | undefined
@@ -871,6 +871,14 @@ export class Account<Ext = unknown> {
       datacenterStore(namespaced(storage, 'dcs:')),
     )
 
+    // Where the stream was left off, if this account has run before. Built here
+    // rather than in the constructor because reading it is asynchronous and
+    // because an account that never connects has no place in the stream to
+    // resume from.
+    this.#updates = updateStore(namespaced(storage, 'updates:'))
+    const resumed = await this.#updates.load()
+    this.#state = new UpdateState(resumed ?? {})
+
     const datacenters = await openDatacenters({
       scope,
       client: { apiId: this.#options.apiId, ...DEVICE, ...this.#options.device },
@@ -1010,6 +1018,36 @@ export class Account<Ext = unknown> {
   /** Take whatever the connection reported, for the sequence to judge. */
   async feed(value: Parameters<Updates['feed']>[0]): Promise<void> {
     await this.#require().updates.feed(value)
+    await this.#remember()
+  }
+
+  /**
+   * Write down how far through the stream this account has got.
+   *
+   * Once per batch rather than once per update: what arrived together is judged
+   * together, and when `feed` returns there is nothing half-applied to write.
+   * The cost is the one this account already accepts elsewhere — every answer
+   * it receives writes the peers it described — so a write per batch absorbed
+   * is the same order of cost under the same owner.
+   *
+   * Any position written after the updates it counts is safe to resume from.
+   * One that is behind asks for a difference and is told what it missed, which
+   * is the machinery `docs/mtproto.md` §9.3 already describes; the only thing
+   * that varies is how much of it a restart has to ask for.
+   *
+   * A store that will not take the position does not fail the stream. The
+   * updates have already been judged and handed on, and losing the place costs
+   * a catch-up rather than a correctness — the same trade the peer harvest
+   * makes for the same reason.
+   */
+  async #remember(): Promise<void> {
+    try {
+      await this.#updates?.save(this.#state.snapshot())
+    } catch (error) {
+      this.#log.warn('could not write down how far through the stream this account has got', {
+        error,
+      })
+    }
   }
 
   /**
