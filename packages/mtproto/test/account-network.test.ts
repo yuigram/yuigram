@@ -31,7 +31,7 @@ import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer } from './server/files.js'
 import { createServerKey } from './server/keys.js'
 import type { Fault } from './server/server.js'
-import { type MockAccount, mockAccount } from './support/mock-account.js'
+import { type MockAccount, mockAccount, NOW_SECONDS } from './support/mock-account.js'
 
 /**
  * Longer than the default, because these cases run the exchange rather than
@@ -1470,5 +1470,111 @@ describe('a file an account sends', () => {
       /FILE_PART_INVALID/,
     )
     await instance.dispose()
+  })
+})
+
+/**
+ * Which temporary key an account is willing to open a connection with.
+ *
+ * A key is chosen when a connection needs one, and the only thing that decides
+ * is how much life it has left. A key handed out with a second to go produces a
+ * connection that is refused part-way through a call, discards the key, and
+ * pays for two fresh exchanges to replace something that was about to be
+ * replaced anyway — so the cases here are about the boundary rather than about
+ * the exchange, which the group above already covers.
+ */
+describe('a temporary key near the end of its life', () => {
+  /** Authorize once, so there is a stored key to judge. */
+  async function authorized() {
+    const first = harness({ name: 'first' })
+    await reach(first)
+    await first.account.stop()
+
+    return first
+  }
+
+  /** Rewrite how much life the stored temporary key has left. */
+  function expiring(instance: MockAccount, secondsLeft: number) {
+    const at = 'auth:dc2:temp0'
+    const record = instance.stored.get(at) as { key: string; expires: number }
+
+    instance.stored.set(at, { ...record, expires: NOW_SECONDS + secondsLeft })
+
+    return record
+  }
+
+  /** Whether a second account negotiated and vouched for a key of its own. */
+  async function resumeOver(instance: MockAccount) {
+    const spent = instance.datacenter(2).connections.length
+    const second = harness({
+      name: 'second',
+      datacenters: instance.datacenters,
+      stored: instance.stored,
+    })
+    await second.account.connect()
+    await second.account.reach(2).invoke({ _: 'ping', ping_id: 5n })
+
+    const opened = instance.datacenter(2).connections.slice(spent)
+    await second.account.stop()
+
+    return {
+      exchanged: opened.filter((connection) => connection.peer.result !== undefined).length,
+      bound: opened.flatMap((connection) => connection.peer.bindings).length,
+    }
+  }
+
+  it('is replaced rather than used', async () => {
+    // Half a minute left is less than a single call is prepared to wait, so the
+    // key cannot see out the call it would be handed to.
+    const instance = await authorized()
+    expiring(instance, 30)
+
+    const { exchanged, bound } = await resumeOver(instance)
+
+    expect(exchanged).toBe(1)
+    expect(bound).toBe(1)
+    await instance.account.stop()
+  })
+
+  it('is used while it still has a call in it', async () => {
+    // The control. An hour is comfortably more than the margin, so the stored
+    // key is reused and nothing is negotiated — otherwise the case above would
+    // pass for an account that re-authorizes on every start.
+    const instance = await authorized()
+    expiring(instance, 3600)
+
+    const { exchanged, bound } = await resumeOver(instance)
+
+    expect(exchanged).toBe(0)
+    expect(bound).toBe(0)
+    await instance.account.stop()
+  })
+
+  it('keeps the key it was already given rather than storing a different one', async () => {
+    // Replacing a key that is nearly finished must leave a usable one behind,
+    // not an empty slot: the next start would otherwise authorize again.
+    const instance = await authorized()
+    const before = expiring(instance, 30)
+
+    await resumeOver(instance)
+
+    const after = instance.stored.get('auth:dc2:temp0') as { key: string; expires: number }
+    expect(after.key).not.toBe(before.key)
+    expect(after.expires).toBeGreaterThan(NOW_SECONDS + 60)
+    await instance.account.stop()
+  })
+
+  it('does not touch the long-lived key it is vouched for by', async () => {
+    // The margin replaces the key that encrypts traffic. Losing the root
+    // credential would mean signing in again, which is a different order of
+    // cost entirely.
+    const instance = await authorized()
+    const permanent = instance.stored.get('auth:dc2:key')
+    expiring(instance, 30)
+
+    await resumeOver(instance)
+
+    expect(instance.stored.get('auth:dc2:key')).toEqual(permanent)
+    await instance.account.stop()
   })
 })

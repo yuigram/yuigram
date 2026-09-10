@@ -67,6 +67,23 @@ const TEMPORARY_INDEX = 0
  */
 const TEMPORARY_LIFETIME = 24 * 60 * 60
 
+/**
+ * Life a temporary key must have left to be worth handing out.
+ *
+ * Expiry is judged when a key is asked for rather than on a timer, because a
+ * stored key outlives the process that wrote it. Judging it against the moment
+ * alone would hand out one with a second left: the connection opened with it
+ * would be refused part-way through a call, discard the key, and pay for two
+ * fresh exchanges to replace something that was about to be replaced anyway.
+ *
+ * A minute, because that is the longest a single call is prepared to wait for
+ * its answer. A key that cannot outlive one call is of no use to the connection
+ * it would be handed to. `docs/mtproto.md` §5.3 records this as a policy rather
+ * than a protocol rule: the protocol says when a key expires, not when to stop
+ * using it.
+ */
+const TEMPORARY_MARGIN = 60
+
 /** How the layer is built. */
 export interface DatacentersOptions {
   /** The tables every connection encodes and decodes with. */
@@ -342,7 +359,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     if (running !== undefined) return running
 
     const attempt = authorize(id, async () => {
-      const stored = await loadTemporary(options.authorization, id, seconds())
+      const stored = await loadTemporary(options.authorization, id, seconds() + TEMPORARY_MARGIN)
       if (stored !== undefined) return stored
 
       // The long-lived key first, because it is what vouches for the other. It
@@ -476,9 +493,9 @@ function abandonable<T>(work: Promise<T>, signal: AbortSignal | undefined): Prom
 async function loadTemporary(
   store: AuthorizationStore,
   id: number,
-  now: number,
+  stillValidAt: number,
 ): Promise<KnownAuthorization | undefined> {
-  const stored = await store.temporaryKey(id, TEMPORARY_INDEX, now)
+  const stored = await store.temporaryKey(id, TEMPORARY_INDEX, stillValidAt)
   if (stored === undefined) return undefined
 
   return {

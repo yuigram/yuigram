@@ -44,7 +44,7 @@ const SCOPE = new TlScope('account', [CORE, MTPROTO, API])
  * the wall clock against a peer fixed in the past is refused rather than
  * answered, which a case would see as a call that never returns.
  */
-const NOW_SECONDS = 1_700_000_000
+export const NOW_SECONDS = 1_700_000_000
 
 /**
  * A clock starting there and running at the rate of a real one.
