@@ -286,6 +286,16 @@ the surface that was read to establish there is no way round it.
       channel decodes with before any key exists
 - [x] Ban-risk warning present in MTProto documentation — [mtproto.md](mtproto.md) opens with
       it, as §7 obligation 1 requires
+- [x] No secret reachable via `JSON.stringify` of any public object, or by walking one —
+      `secret-exposure.test.ts` covers the account, the surfaces it hands out and the context a
+      handler is given, with a control proving the search finds a secret that is really there.
+      It also records what the technique cannot see: a credential a closure captured, which is
+      why the closures an account hands out are given the account rather than its secret
+- [x] Hostile input cannot pollute prototypes or reach a handler as though it were real —
+      `normalize.test.ts` drives a chosen `__proto__` and `constructor.prototype` through the
+      seam, a message whose every field is the wrong type, and a constructor this build does
+      not know. Nothing copies keys off an update, every field is read through a guard, and an
+      unknown constructor is carried as raw rather than dispatched as a message
 - [x] Session encryption at rest, and a permission warning when a session directory is too
       open — `encrypted()` wraps any adapter; `file()` checks the directory's mode the first
       time it opens one and warns through the caller's logger, which `Account.fromSession`

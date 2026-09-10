@@ -509,6 +509,60 @@ describe('the context an event arrives as', () => {
   })
 })
 
+/**
+ * Updates are attacker-controlled, and `security.md` §6 says so of both
+ * transports. The decoder is fuzzed elsewhere; these are about the layer above
+ * it, where a value that decoded cleanly is still whatever somebody chose to
+ * send — and where `Account.deliver` lets a caller hand one over directly.
+ */
+describe('a hostile update', () => {
+  it('cannot pollute a prototype through the keys it carries', () => {
+    // Nothing here copies keys off an update. Every field is read by name, so
+    // there is no assignment for a chosen key to land in.
+    const hostile = JSON.parse(
+      '{"_":"updateNewMessage","__proto__":{"polluted":"yes"},"message":{"_":"message","id":1,"constructor":{"prototype":{"polluted":"yes"}}}}',
+    ) as TlValue
+
+    normalizeUpdate(hostile)
+
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
+    expect(Object.prototype).not.toHaveProperty('polluted')
+  })
+
+  it('reports nothing it cannot read rather than passing it on', () => {
+    // Every field of a message can be the wrong type, and each is read through
+    // a guard that answers with nothing rather than with what it was given. A
+    // handler testing for text must not be handed an object.
+    const event = normalizeUpdate({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 'not-a-number',
+        peer_id: 42,
+        from_id: 'nobody',
+        date: 'soon',
+        message: { nested: true },
+      },
+    } as unknown as TlValue)
+
+    expect(event.kind).toBe('message')
+    expect(event.chat).toBeUndefined()
+    expect(event.sender).toBeUndefined()
+    expect(event.text).toBeUndefined()
+    expect(event.date).toBeUndefined()
+  })
+
+  it('does not become a message because it says it is one', () => {
+    // The kind comes from the constructor, and one this build does not know is
+    // carried as raw rather than dispatched to handlers waiting for a message.
+    const event = normalizeUpdate({ _: 'updateInventedByAnAttacker', message: 'text' })
+
+    expect(event.kind).toBe(RAW_KIND)
+    expect(event.text).toBeUndefined()
+    expect(event.message).toBeUndefined()
+  })
+})
+
 describe('the payload an event carries', () => {
   it('carries the message the schema declares, not an opaque value', () => {
     // `docs/events.md` §5: the payload's own fields, with the payload's own
