@@ -2212,3 +2212,155 @@ describe('where an account resumes the update stream', () => {
     await second.dispose()
   })
 })
+
+/**
+ * Fetching the document an event carried, and surviving a reference that has
+ * expired underneath it.
+ *
+ * A file reference expires on the datacenter's own schedule and nothing
+ * announces it, so the interesting case is the quiet one: a request that is
+ * well formed, refused for a reason that says nothing about the file, and put
+ * right by asking for the message again. The cases here drive that against a
+ * datacenter that actually refuses the stale reference.
+ */
+describe('a document an event carried', () => {
+  const FILE = 0x0d0c_0001n
+  const SIZE = 3 * 1024
+
+  /** The message an update carries, naming a document with this reference. */
+  const messageWith = (reference: Uint8Array): TlValue => ({
+    _: 'message',
+    id: 77,
+    peer_id: { _: 'peerUser', user_id: 5n },
+    from_id: { _: 'peerUser', user_id: 5n },
+    message: 'here',
+    date: 1_700_000_000,
+    media: {
+      _: 'messageMediaDocument',
+      document: {
+        _: 'document',
+        id: FILE,
+        access_hash: 5n,
+        file_reference: reference,
+        date: 1_700_000_000,
+        mime_type: 'application/pdf',
+        size: BigInt(SIZE),
+        dc_id: 2,
+        attributes: [],
+      },
+    },
+  })
+
+  const update = (reference: Uint8Array): TlValue => ({
+    _: 'updateNewMessage',
+    message: messageWith(reference),
+    pts: 1,
+    pts_count: 1,
+  })
+
+  /** An account whose datacenter serves the file and answers message refetches. */
+  function serving(options: { refetch?: () => Uint8Array } = {}) {
+    const files = new FileServer(2)
+    const stored = files.add(FILE, { size: SIZE, dcId: 2 })
+    const asked: string[] = []
+
+    const instance = harness({
+      api: (query) => {
+        if (query._.startsWith('upload.')) {
+          asked.push(query._)
+
+          return files.invoke(query)
+        }
+        if (query._ === 'messages.getMessages' || query._ === 'channels.getMessages') {
+          asked.push(query._)
+          const reference = options.refetch?.()
+
+          return {
+            _: 'messages.messages',
+            messages: reference === undefined ? [] : [messageWith(reference)],
+            chats: [],
+            users: [],
+          }
+        }
+
+        return undefined
+      },
+    })
+
+    return { instance, files, stored, asked }
+  }
+
+  it('fetches it, byte for byte', async () => {
+    const { instance, stored } = serving()
+    await instance.account.connect()
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 5n,
+      accessHash: 9n,
+      min: false,
+      usernames: [],
+    })
+
+    let bytes: Uint8Array | undefined
+    instance.account.on('message', async (event) => {
+      bytes = await event.download()
+    })
+    await instance.account.deliver(update(stored.reference))
+
+    expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
+    await instance.dispose()
+  })
+
+  it('refuses an event whose message carries no media', async () => {
+    const { instance } = serving()
+    await instance.account.connect()
+
+    let outcome: unknown
+    instance.account.on('message', async (event) => {
+      outcome = await event.download().catch((error: unknown) => error)
+    })
+    await instance.account.deliver({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 78,
+        peer_id: { _: 'peerUser', user_id: 5n },
+        message: 'no media here',
+        date: 1_700_000_000,
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect((outcome as Error).message).toMatch(/carries no media to fetch/)
+    await instance.dispose()
+  })
+
+  it('refuses a photo rather than choosing a size for the caller', async () => {
+    // A photo is the same picture at several sizes and a location has to name
+    // one. Which is a decision this framework does not make.
+    const { instance } = serving()
+    await instance.account.connect()
+
+    let outcome: unknown
+    instance.account.on('message', async (event) => {
+      outcome = await event.download().catch((error: unknown) => error)
+    })
+    await instance.account.deliver({
+      _: 'updateNewMessage',
+      message: {
+        _: 'message',
+        id: 79,
+        peer_id: { _: 'peerUser', user_id: 5n },
+        message: '',
+        date: 1_700_000_000,
+        media: { _: 'messageMediaPhoto', photo: { _: 'photoEmpty', id: 1n } },
+      },
+      pts: 1,
+      pts_count: 1,
+    })
+
+    expect((outcome as Error).message).toMatch(/is not a document/)
+    await instance.dispose()
+  })
+})

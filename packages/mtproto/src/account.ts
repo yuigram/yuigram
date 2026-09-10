@@ -1001,6 +1001,15 @@ export class Account<Ext = unknown> {
         peers: this.#peers,
         invoke: async (query) => await this.#invoke(query),
         random: this.#options.random ?? randomBytes,
+        // Reaching a datacenter for a transfer is this account's to arrange.
+        // What the reference is refreshed from is not, so the location comes
+        // from the layer that still holds the message it arrived in.
+        fetch: async (request, references) => {
+          const reach = this.#transfers('download')
+          const { download } = await import('./files/download.js')
+
+          return await download({ ...request, reach, references })
+        },
       },
     }) as MtprotoContext & Ext
 

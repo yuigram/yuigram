@@ -14,6 +14,10 @@
  */
 
 import { PeerError, ValidationError } from '@yuigram/core'
+import type { DownloadRequest } from '../files/download.js'
+import { documentFile } from '../files/media.js'
+import type { ManagedLocation } from '../files/references.js'
+import type { Document } from '../generated/api/types/index.js'
 import { inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
@@ -27,6 +31,15 @@ export interface ActionContext {
   invoke(query: TlValue): Promise<TlValue>
   /** Randomness for the identifier a send is deduplicated by. */
   random(length: number): Uint8Array
+  /**
+   * Fetch a file, on the connections kept for transfers.
+   *
+   * Supplied by the account because reaching a datacenter for a transfer is the
+   * account's to arrange, and taking a managed location because refreshing a
+   * refused reference is not: only something holding the message the reference
+   * came from can do that, and that is this layer.
+   */
+  fetch(request: DownloadRequest, references: ManagedLocation): Promise<Uint8Array>
 }
 
 /** The operations an update can be acted on with, bound to one update. */
@@ -35,6 +48,7 @@ export interface UpdateActions {
   react(emoji: string): Promise<TlValue>
   edit(text: string): Promise<TlValue>
   delete(): Promise<TlValue>
+  download(): Promise<Uint8Array>
 }
 
 /**
@@ -68,6 +82,104 @@ async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise
   }
 
   return inputPeer(record)
+}
+
+/**
+ * The document the update's own message carried.
+ *
+ * A photo is not one file but the same picture at several sizes, and which one
+ * to fetch is a choice `docs/mtproto.md` §11 does not make — so it is refused
+ * here by name rather than answered with a guess.
+ */
+function documentOf(update: NormalizedUpdate): Document {
+  const media = update.message?._ === 'message' ? update.message.media : undefined
+  if (media === undefined) {
+    throw new ValidationError(`a '${update.kind}' event carries no media to fetch`)
+  }
+  if (media._ !== 'messageMediaDocument' || media.document?._ !== 'document') {
+    throw new ValidationError(`a '${media._}' is not a document, and this fetches documents alone`)
+  }
+
+  return media.document
+}
+
+/**
+ * A location that can produce itself again after a refusal.
+ *
+ * A file reference expires on the datacenter's own schedule and nothing
+ * announces it, so the request that carried a stale one is refused for a reason
+ * that has nothing to do with the file. The way back is the message the
+ * reference arrived in: refetched, it carries a current one.
+ *
+ * This layer is the only one that can do it. The transfer knows the document
+ * and not where it came from, and `docs/mtproto.md` §11 keeps the origin tables
+ * keyed by the message — which is what an update carries and nothing below it
+ * does.
+ */
+function managed(
+  update: NormalizedUpdate,
+  context: ActionContext,
+  document: Document,
+): ManagedLocation {
+  let reference = document.file_reference
+
+  return {
+    current: () => ({ ...documentFile(document).location, file_reference: reference }),
+
+    async refresh(used: Uint8Array) {
+      // A caller that lost a race is not made to wait for a refetch it does not
+      // need: the reference it was refused is already the old one.
+      if (!sameBytes(used, reference)) return
+
+      reference = await refetch(update, context, document.id)
+    },
+  }
+}
+
+/**
+ * Ask for the message again, and read the reference it carries now.
+ *
+ * Once, and only for the message this update is about. A message that no longer
+ * carries the document is reported rather than retried, because there is
+ * nothing left to ask for.
+ */
+async function refetch(
+  update: NormalizedUpdate,
+  context: ActionContext,
+  id: bigint,
+): Promise<Uint8Array> {
+  const msgId = messageIdOf(update, 'refresh the reference of')
+  const chat = update.chat
+  if (chat === undefined) {
+    throw new PeerError(`a '${update.kind}' event names no conversation to ask again`)
+  }
+
+  const wanted = [{ _: 'inputMessageID', id: msgId }]
+  const answer =
+    chat.kind === 'channel'
+      ? await context.invoke({
+          _: 'channels.getMessages',
+          channel: await channelOf(chat, context),
+          id: wanted,
+        })
+      : await context.invoke({ _: 'messages.getMessages', id: wanted })
+
+  const messages = answer['messages']
+  const found = Array.isArray(messages) ? messages : []
+  for (const entry of found) {
+    const media = (entry as TlValue)['media'] as TlValue | undefined
+    const document = media?.['document'] as TlValue | undefined
+    if (document?.['id'] === id && document['file_reference'] instanceof Uint8Array) {
+      return document['file_reference']
+    }
+  }
+
+  throw new ValidationError(`message ${msgId} no longer carries the document that was asked for`)
+}
+
+/** Whether two references are the same bytes. */
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.length === right.length && left.every((byte, at) => byte === right[at])
 }
 
 /**
@@ -176,6 +288,12 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
         revoke: true,
         id: [id],
       })
+    },
+
+    async download(): Promise<Uint8Array> {
+      const document = documentOf(update)
+
+      return await context.fetch(documentFile(document), managed(update, context, document))
     },
 
     async react(emoji: string): Promise<TlValue> {

@@ -90,6 +90,19 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    */
   delete(): Promise<TlValue>
   /**
+   * Fetch the document this event's message carried.
+   *
+   * The reference a message carries expires on the datacenter's own schedule
+   * and nothing announces it. A refused one is answered by asking for the
+   * message again and fetching with the reference it carries now — once, and
+   * invisibly, which is what `docs/mtproto.md` §11 asks for.
+   *
+   * Documents alone. A photo is the same picture at several sizes and which one
+   * to fetch is a choice this framework does not make, so it is refused by name
+   * rather than answered with a guess.
+   */
+  download(): Promise<Uint8Array>
+  /**
    * Call a method this build does not model, on the account this arrived on.
    *
    * The same surface {@link Account.api} carries, per `docs/api-design.md` §12,
@@ -201,6 +214,7 @@ function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
     react: refuse,
     edit: refuse,
     delete: refuse,
+    download: refuse,
     api: rawApi(refuse),
     here: boundApi({ invoke: refuse, peer: refuse }),
   }

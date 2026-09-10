@@ -1746,10 +1746,21 @@ than one. Choosing between them is a product decision this document does not mak
 have no equivalent of `documentFile` and are absent rather than guessed at. The same choice
 applies to a document's own thumbnails, which are photo sizes.
 
-**Refreshing an expired reference stays out for the same reason it always has.** The two tables
-above are keyed by origin, and a location built from a document knows the document but not the
-message that carried it — so nothing at this layer can refetch the origin. Whatever still holds
-that message is the only thing that can, and no layer holds one.
+**Refreshing an expired reference belongs to whatever still holds the message.** The tables
+above are keyed by origin, and a location built from a document knows the document and not
+where it came from — so nothing at the transfer layer can refetch one. An *update* does hold
+it: the conversation and the message identifier arrive together, which is exactly the origin a
+refetch needs.
+
+So the event owns it. `event.download()` fetches the document its own message carried, and
+answers a refused reference by asking for that message again and fetching with the reference it
+carries now — once, and invisibly. Which method asks is the same split deleting uses: a channel
+keeps its messages under the channel. Only the document being fetched is read out of the
+answer, because an answer may describe several messages and each carries its own; and a caller
+whose reference was already replaced is not made to wait for a refetch it does not need.
+
+A message that no longer carries the document is reported rather than retried. There is nothing
+left to ask for, and the alternative is a loop.
 
 ---
 

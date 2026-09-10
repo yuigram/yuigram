@@ -382,6 +382,13 @@ action has no options. Removing a message from this account's own view alone is 
 operation and lives where the rarer half of a pair belongs —
 `account.api.messages.deleteMessages`.
 
+`download` fetches the document the event's message carried, and is where an expired file
+reference is put right: the reference travels with the media, expires on the datacenter's own
+schedule, and a refused one is answered by asking for the message again rather than by handing
+the caller a protocol detail. Documents alone, for the reason the media section of
+[mtproto.md](mtproto.md) §11 gives — a photo is the same picture at several sizes, and choosing
+between them is not a decision this framework makes.
+
 `forward` is deliberately not among them. It names a destination the update did not carry, and
 a destination has to be resolved before it can be addressed — which §6 above puts on the client
 rather than on the context. As a client method it would carry no more than
