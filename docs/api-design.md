@@ -130,8 +130,14 @@ A single `signIn()` that took callbacks and drove the whole flow would read bett
 steps above, and is not here yet for one reason: it has to know whether the account is already
 signed in before it starts, and nothing local can answer that soundly — a stored flag survives
 a session being revoked elsewhere, and an authorization discarded and re-obtained is a new one
-that nobody has proved anything to. Deciding how that question is asked is what the convenience
-is waiting on.
+that nobody has proved anything to.
+
+[mtproto.md](mtproto.md) §8 settles half of it: the signal is Telegram's own refusal, which
+"says the key exists but no account is signed in against it", and answering that is a sign-in
+concern. What it does not settle is how the refusal is elicited. Nothing this client does on
+its own behalf makes an authorized call — connecting reaches no network — so the convenience
+would have to make one purely to ask, and choosing which one, on every sign-in including the
+fresh ones where it is guaranteed to fail, is the decision it is waiting on.
 
 ---
 

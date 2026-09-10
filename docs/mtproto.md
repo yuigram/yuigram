@@ -1468,7 +1468,19 @@ first address is supplied by the application: published addresses change, and a 
 in here would be one more thing to be stale.
 
 **Not implemented here:** `help.getConfig` itself, which needs a connection to issue; migration;
-and connection pooling.
+and connection pooling. The last two are implemented in the layers that own them — a redirection
+is followed by whatever knows why the call was being made, and the pools decide which connection
+carries what. Issuing `help.getConfig` is implemented nowhere.
+
+That leaves one hole with a visible edge. A first run is given a single address, and an account
+told it belongs at a datacenter that address's configuration does not list cannot reach it: the
+call fails saying no address is known, which is honest and is as far as it goes. Closing it means
+deciding *when* the list is fetched, and the obvious moment is ruled out — connecting assembles
+the layers and reaches no network, which is a property with a test behind it. Fetching on the
+first call would make an ordinary call quietly issue a second one, and fetching only when an
+address turns out to be missing puts a round trip inside a failure path. The three differ in
+when the network is touched, which is exactly what this layer is careful about, so none is
+chosen here.
 
 ### Migration
 

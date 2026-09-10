@@ -99,9 +99,17 @@ export interface AccountOptions {
   /**
    * Where everything that must survive a restart is kept.
    *
-   * One store, divided here. Authorizations, the datacenter list, peers and the
-   * update sequence each live under their own prefix, so there is one place a
-   * caller points at and one owner for each kind of state inside it.
+   * One store, divided here. Authorizations, the datacenter list and peers each
+   * live under their own prefix, so there is one place a caller points at and
+   * one owner for each kind of state inside it.
+   *
+   * The update sequence is not among them. It is held for as long as the
+   * process runs and starts from nothing on the next one, so a restart catches
+   * up by asking Telegram rather than by resuming where it stopped.
+   * {@link UpdateState} carries both a snapshot and a way to be built from one;
+   * what is missing is when a snapshot should be written. The answers differ
+   * enough to matter: writing on every update is a write against a store that
+   * puts one file on disk per key.
    */
   readonly storage: KV<unknown>
   /**
