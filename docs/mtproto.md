@@ -741,7 +741,8 @@ bits for the state, the fourth for whether it had already been acknowledged:
 
 The correspondence is positional, so a byte naming no defined state is refused rather than
 skipped: one unreadable byte leaves every byte after it meaning something other than what it
-says. Deciding *when* to ask is scheduling, and belongs with the timers that are not yet built.
+says. Deciding *when* to ask is scheduling, and belongs with the schedule below rather than
+with the reading of the answer.
 
 #### Composing what goes out
 
@@ -813,7 +814,7 @@ How many salts must lie ahead before the supply counts as sufficient is a **poli
 protocol rule: the protocol says when a salt expires, not when to ask for the next. The default
 keeps two, the smallest number that tolerates one lost answer without falling back on being
 corrected by the server. Deciding *when* to send the request is scheduling, and belongs with the
-clock that is not yet built.
+schedule described next, which holds it as a duty of its own.
 
 #### When the connection acts
 

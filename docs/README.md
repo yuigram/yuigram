@@ -15,15 +15,24 @@ it describes running code, and the behaviour is pinned by tests.
 reasoning behind that surface. They quote the `0.1.0` API they argue against, so they read
 against that release rather than against the current code.
 
-**MTProto is not implemented.** Neither is the `App` container that holds several clients, nor
-anything that depends on it. [api-design.md](api-design.md) is labelled the *proposed* API and
-shows the whole target, including parts that do not exist yet — `Account` and `App` among them.
-[naming.md](naming.md) records naming decisions for that target, not an inventory of what ships.
+The **MTProto subsystem is built from the protocol upwards**, and everything below the
+high-level surface ships: the cryptography, the TL codec, transport framing, the authorization
+handshake with its temporary-key binding, the session layer, datacenters and migration, the
+connection pools, the updates manager, and the peer store that makes an access hash something
+the account can produce again. Above them, `Account` connects, signs in, dispatches typed
+events, and reaches Telegram three ways — the generated method surface, the bound surface for
+the peer an update arrived from, and the untyped hatch for anything newer than the schema. It
+sends and fetches files. `App` holds several clients of either kind together.
 
-The rule when reading: anything involving a bot and only a bot exists today; anything involving
-a user account or several clients is design. The [roadmap](roadmap.md) says when each part
-arrives, and nothing described anywhere here is a stub — unimplemented means absent, not
-hollow.
+What is still design is the surface *above* that: entities, dialogs and history, sending media
+through an account, and addressing a peer seen only in passing. [api-design.md](api-design.md)
+shows those alongside what ships and says which is which; [mtproto.md](mtproto.md) §5.3 and §11
+record what remains inside the protocol layers themselves.
+
+The rule when reading: the protocol subsystems and the clients on top of them exist today; the
+ergonomic layer over MTProto is being built demand-first. The [roadmap](roadmap.md) says when
+each part arrives, and nothing described anywhere here is a stub — unimplemented means absent,
+not hollow.
 
 ## The premise
 

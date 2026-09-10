@@ -192,9 +192,9 @@ directly, but nothing in the documentation asks them to.
 | Scope | `@yuigram/*` |
 | GitHub org | `yuigram` |
 | Domain | `yuigram.dev` preferred; `.js.org` is a free fallback |
-| Primary classes | `App`, `Bot`, `Account`, `Router` — of which only `Bot` ships today |
-| Filter namespace | `f` — used constantly, and the brevity is earned. Not yet implemented; `filter`, `and`, `or` and `not` are what ship today |
-| Media namespace | `media` — not yet implemented |
+| Primary classes | `App`, `Bot`, `Account`, `Router` — all of which ship |
+| Filter namespace | `f` — used constantly, and the brevity is earned. Ships alongside `filter`, `and`, `or` and `not` |
+| Media namespace | `media` — ships for the Bot API; an account takes an upload source instead, for the reason in [api-decisions.md](api-decisions.md) Decision 13 |
 | Error prefix | None — `FloodError`, `BotApiError`, not `YuiFloodError` |
 | Internal type prefix | None |
 

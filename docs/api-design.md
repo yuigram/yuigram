@@ -12,9 +12,12 @@ teaches the API).
 The Bot API half of what follows is implemented: `Bot.fromToken`, the `on…` registrations,
 per-event contexts, the bound method families, `Router`, the `f` filters, keyboards, the
 `media` sources, formatting, API hooks, middleware, sessions, storage, errors, files and the
-testing harness. `Account` and `App` are design — the shapes the rest is being built towards,
-and the reason the implemented half looks the way it does. [roadmap.md](roadmap.md) says when
-each arrives; the rule for reading is in [README.md](README.md).
+testing harness. So are `Account` and `App`: an account connects, signs in, dispatches typed
+events, calls methods through the generated surface or the bound one, and transfers files, and
+an application holds several clients of either kind. What remains design is the ergonomic layer
+above MTProto — entities, dialogs, and sending media through an account — and each example
+below says so where it applies. [roadmap.md](roadmap.md) says when each arrives; the rule for
+reading is in [README.md](README.md).
 
 ---
 
