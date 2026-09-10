@@ -405,6 +405,19 @@ schedule to own a duty that outlives any one request, which is a decision §6 ha
 
 `PHONE_MIGRATE_X` and `NETWORK_MIGRATE_X` during sign-in redirect to another DC (§8).
 
+**Signing out is not among them, and the missing part is not the call.** `auth.logOut` takes no
+arguments and is reachable through the typed surface already. What a client method would add is
+what happens to the state left behind, and that is a decision about somebody else's store: the
+authorization keys are dead the moment the call returns, the update position belongs to an
+account that is no longer signed in here, and every access hash was issued to that account and
+is worth nothing to the next one. Clearing all three is defensible, and so is clearing only the
+keys — an application that holds several accounts in one store has a view on which.
+
+The precedent nearby says the account clears "what would conflict with the session it was asked
+to import, and nothing else", which is narrower than any of the options and does not settle
+between them. So the call stays on the typed surface until that is decided, rather than a
+client method quietly deleting more of a caller's store than it was asked to.
+
 #### Proving a password
 
 The password never leaves the client. The server publishes a group, two salts and its own
