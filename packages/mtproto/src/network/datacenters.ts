@@ -349,6 +349,19 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     if (running !== undefined) return running
 
     const attempt = authorize(id, async () => {
+      // A delivery node gets a key of its own and nothing else. It is not
+      // operated by Telegram, it accepts none of the methods a temporary key
+      // exists to protect, and vouching for one there would mean presenting
+      // this client's long-lived key to a machine that has no business seeing
+      // it. What is negotiated with a node is good for fetching ranges from
+      // that node and for nothing at all beyond it — `docs/security.md` §5.
+      if (address.cdn) {
+        const key = await permanentFor(id, address)
+        const salt = await options.authorization.salt(id)
+
+        return { key, salt: salt ?? 0n }
+      }
+
       const stored = await loadTemporary(options.authorization, id, seconds() + KEY_MARGIN_SECONDS)
       if (stored !== undefined) return stored
 

@@ -103,13 +103,14 @@ export interface DownloadOptions {
 /**
  * A download as a client asks for one.
  *
- * The same request, without the three things a caller is in no position to
+ * The same request, without the two things a caller is in no position to
  * supply: reaching a datacenter belongs to whatever holds the connections, and
- * delivery nodes and reference refreshing both need a layer above this to have
- * something the client does not yet own. Everything else is the caller's to
- * choose, so it passes straight through.
+ * refreshing a refused reference needs the layer that still holds the message
+ * it arrived in. Everything else is the caller's to choose, so it passes
+ * straight through — `cdn` included, because whether to fetch from a machine
+ * Telegram does not operate is the caller's decision and nobody else's.
  */
-export type DownloadRequest = Omit<DownloadOptions, 'reach' | 'cdn' | 'references'>
+export type DownloadRequest = Omit<DownloadOptions, 'reach' | 'references'>
 
 /** What a download came to. */
 export interface DownloadOutcome {

@@ -722,13 +722,19 @@ that produces an offset Telegram accepts and answers from somewhere else —
 [mtproto.md](mtproto.md) §9.7. Iterating is not here: how many pages, how fast, and what to do
 with them are the caller's.
 
-A delivery node is not somewhere an account goes. A datacenter offers one only to a client that
-says it can accept one, and nothing on `Account` says so: the option is not on the type its
-callers pass, and it is stated as off wherever a transfer starts, so a request carrying one
-anyway cannot decide it. The transfer layer implements the node path in full — the decryption
-and the per-block verification that makes those bytes worth anything — and what is still
-missing before an account could use it is a connection to a datacenter it holds no
-authorization at. [security.md](security.md) §5 records why that boundary is where it is.
+A datacenter may hand a download to a delivery node — a machine Telegram does not operate. That
+is a decision about trust rather than speed, so it is the caller's and off by default:
+
+```ts
+await account.download({ location, dcId, size, cdn: true })
+```
+
+Without it a datacenter that would rather redirect still serves the file. With it the node is
+reached on connections of its own, holding an authorization negotiated with that node and
+vouched for by nothing; it is asked for byte ranges and nothing else; what comes back is
+decrypted and checked against the hashes published for it before a byte reaches the caller; and
+`account.reach()` refuses to be pointed at a node at all. [security.md](security.md) §5 records
+each of those rules and why it is this client's to enforce rather than the node's.
 
 ---
 

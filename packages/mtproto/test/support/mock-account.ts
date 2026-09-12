@@ -60,20 +60,34 @@ function clock(): () => number {
   return () => NOW_SECONDS * 1000 + (Date.now() - started)
 }
 
+/** One datacenter a harness stands up. */
+export interface MockEndpoint {
+  readonly id: number
+  readonly host: string
+  /**
+   * Publish this one as a delivery node.
+   *
+   * The flag is the only thing that distinguishes a machine Telegram operates
+   * from one it does not, so a case about that boundary sets it here rather
+   * than standing up a different kind of server.
+   */
+  readonly cdn?: boolean
+}
+
 /** The datacenters a harness stands up unless a case asks for others. */
-const ENDPOINTS: ReadonlyArray<{ id: number; host: string }> = [
+const ENDPOINTS: readonly MockEndpoint[] = [
   { id: 2, host: '127.0.0.2' },
   { id: 4, host: '127.0.0.4' },
 ]
 
 /** A datacenter's address, as the client names it. Nothing routes to it. */
-const address = (datacenter: MockDatacenter): DcAddress => ({
+const address = (datacenter: MockDatacenter, cdn = false): DcAddress => ({
   id: datacenter.id,
   host: datacenter.host,
   port: datacenter.port,
   ipv6: false,
   mediaOnly: false,
-  cdn: false,
+  cdn,
   secret: undefined,
   tcpoOnly: false,
   thisPortOnly: false,
@@ -84,7 +98,7 @@ const address = (datacenter: MockDatacenter): DcAddress => ({
 export interface MockAccountOptions
   extends Partial<Omit<AccountOptions, 'keys' | 'bootstrap' | 'open' | 'storage'>> {
   /** The datacenters to stand up. Two, at 2 and 4, unless a case says otherwise. */
-  readonly endpoints?: ReadonlyArray<{ id: number; host: string }>
+  readonly endpoints?: readonly MockEndpoint[]
   /** The key pair every datacenter offers. Generated when omitted. */
   readonly key?: ServerKey
   /**
@@ -191,11 +205,13 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     )
 
   const places = [...datacenters.values()]
+  const nodes = new Set(endpoints.filter((entry) => entry.cdn === true).map((entry) => entry.id))
   const discovered: DcConfiguration = {
-    // Where a client that has been told nothing else begins.
-    thisDc: places[0]?.id ?? 2,
+    // Where a client that has been told nothing else begins. A delivery node is
+    // never that: it holds no account and answers nothing an account asks.
+    thisDc: places.find((place) => !nodes.has(place.id))?.id ?? 2,
     testMode: true,
-    options: places.map(address),
+    options: places.map((place) => address(place, nodes.has(place.id))),
   }
   const bootstrap = given ?? discovered
 

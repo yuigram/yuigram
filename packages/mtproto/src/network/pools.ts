@@ -12,6 +12,8 @@
  *                 ├─ upload          up to 8         parts going out
  *                 ├─ download        up to 8         parts coming in
  *                 └─ download-small  up to 2         thumbnails
+ *
+ *   node 102      └─ cdn             up to 2         ranges from a cache
  * ```
  *
  * Each connection in a pool is a connection in its own right — its own channel,
@@ -43,7 +45,7 @@ import type { DcPurpose } from './dc.js'
  * go to a datacenter's media address and must not share a connection, so the
  * purpose a pool is keyed by is finer than the purpose an address is chosen by.
  */
-export type PoolPurpose = 'main' | 'upload' | 'download' | 'download-small'
+export type PoolPurpose = 'main' | 'upload' | 'download' | 'download-small' | 'cdn'
 
 /**
  * How many connections each purpose may hold.
@@ -59,12 +61,19 @@ export type PoolPurpose = 'main' | 'upload' | 'download' | 'download-small'
  * is a single request and can never occupy more than one connection however
  * many it is allowed. `Account` routes those here; everything else, including
  * a file whose length nobody stated, goes to the bulk allowance.
+ *
+ * A delivery node takes the smaller allowance too, for a different reason. It
+ * is not Telegram: its connections hold an authorization of their own that is
+ * good for nothing but fetching ranges, and there is no traffic behind them to
+ * starve — so the number is what a single transfer can use rather than a share
+ * of anything.
  */
 export const POOL_LIMITS: Readonly<Record<PoolPurpose, number>> = {
   main: 1,
   upload: 8,
   download: 8,
   'download-small': 2,
+  cdn: 2,
 }
 
 /** Which address a purpose is reached at. */
@@ -73,6 +82,7 @@ const ADDRESSES: Readonly<Record<PoolPurpose, DcPurpose>> = {
   upload: 'media',
   download: 'media',
   'download-small': 'media',
+  cdn: 'cdn',
 }
 
 /** Which connection is wanted. */
@@ -224,4 +234,5 @@ const ORDER: Readonly<Record<PoolPurpose, number>> = {
   upload: 1,
   download: 2,
   'download-small': 3,
+  cdn: 4,
 }

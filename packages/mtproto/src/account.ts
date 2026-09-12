@@ -41,12 +41,14 @@ import {
   LifecycleError,
   type Logger,
   type Middleware,
+  NetworkError,
   namespaced,
   PeerError,
   SessionError,
   type StopOptions,
   TelegramError,
   type UseOptions,
+  ValidationError,
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
@@ -189,6 +191,38 @@ interface Network {
  * lifecycle, and a way to be surrounded — without that contract knowing what
  * MTProto is.
  */
+/**
+ * The methods a delivery node may be asked.
+ *
+ * A node holds file ranges and an authorization negotiated with it alone. It is
+ * not Telegram, and nothing about this account has any business travelling
+ * there — so what may be sent is a list rather than a convention, checked here
+ * instead of relying on the node to refuse what it should never have been
+ * offered.
+ */
+const DELIVERY_METHODS: ReadonlySet<string> = new Set([
+  'upload.getCdnFile',
+  'upload.getCdnFileHashes',
+])
+
+/**
+ * A connection to a delivery node, which will carry nothing else.
+ *
+ * The refusal is this client's rather than the node's. A guarantee that depends
+ * on the far end declining is not one — `docs/security.md` §5.
+ */
+function delivery(connection: Callable): Callable {
+  return {
+    invoke: async (query: TlValue) => {
+      if (!DELIVERY_METHODS.has(query._)) {
+        throw new ValidationError(`a delivery node may not be asked '${query._}'`)
+      }
+
+      return await connection.invoke(query)
+    },
+  }
+}
+
 export class Account<Ext = unknown> {
   /** What this client is called. */
   readonly name: string
@@ -357,9 +391,18 @@ export class Account<Ext = unknown> {
    */
   get reach(): Reach {
     return (dcId: number) => {
-      const network = this.#require()
+      const { datacenters, pools } = this.#require()
 
-      return network.pools.get({ id: dcId })
+      // A delivery node is not a datacenter an account has anything to say to.
+      // It holds no authorization of this account's, it answers none of the
+      // methods that would need one, and the escape hatch pointing at one would
+      // be a call waiting for an address that serves ordinary traffic there —
+      // which is a thing the list says does not exist.
+      if (datacenters.directory.candidates({ id: dcId, purpose: 'cdn' }).length > 0) {
+        throw new NetworkError(`datacenter ${dcId} is a delivery node and answers no calls`)
+      }
+
+      return pools.get({ id: dcId })
     }
   }
 
@@ -403,10 +446,7 @@ export class Account<Ext = unknown> {
     const reach = this.#transfers(await this.#allowance(request))
     const { download } = await import('./files/download.js')
 
-    // Stated rather than left out. A delivery node is a machine Telegram does
-    // not operate, and reaching one is a decision `docs/security.md` §7 does
-    // not leave to whatever a request object happened to carry.
-    return await download({ ...request, reach, cdn: false })
+    return await download({ ...request, reach })
   }
 
   /**
@@ -425,7 +465,7 @@ export class Account<Ext = unknown> {
     const reach = this.#transfers(await this.#allowance(request))
     const { downloadTo } = await import('./files/download.js')
 
-    return await downloadTo({ ...request, reach, cdn: false })
+    return await downloadTo({ ...request, reach })
   }
 
   /**
@@ -510,7 +550,27 @@ export class Account<Ext = unknown> {
   #transfers(purpose: 'download' | 'download-small' | 'upload'): (dcId: number) => Callable {
     this.#require()
 
-    return (dcId: number) => this.#require().pools.get({ id: dcId, purpose })
+    return (dcId: number) => {
+      const { datacenters, pools } = this.#require()
+      const directory = datacenters.directory
+
+      // A node is recognised by the address list rather than by whatever
+      // redirected to it. A redirection is a claim somebody else made; the flag
+      // is Telegram's own statement about which machines it does not operate.
+      if (directory.candidates({ id: dcId, purpose: 'cdn' }).length > 0) {
+        return delivery(pools.get({ id: dcId, purpose: 'cdn' }))
+      }
+
+      if (directory.candidates({ id: dcId, purpose: 'media' }).length > 0) {
+        return pools.get({ id: dcId, purpose })
+      }
+
+      // Said here rather than discovered later. A transfer told to go somewhere
+      // the list does not describe has nothing to try: the connection layer
+      // would keep attempting an address it does not have, and a caller would
+      // wait for an answer that was never going to come.
+      throw new NetworkError(`no address is known for datacenter ${dcId}`)
+    }
   }
 
   /**
@@ -1127,7 +1187,7 @@ export class Account<Ext = unknown> {
           const reach = this.#transfers(await this.#allowance(request))
           const { download } = await import('./files/download.js')
 
-          return await download({ ...request, reach, references, cdn: false })
+          return await download({ ...request, reach, references })
         },
       },
     }) as MtprotoContext & Ext

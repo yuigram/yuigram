@@ -1481,30 +1481,49 @@ describe('how much of a file there is decides which connections carry it', () =>
 })
 
 /**
- * A delivery node is not somewhere an account goes.
+ * Fetching from a machine Telegram does not operate.
  *
- * A datacenter offers one only to a client that says it can accept one, and an
- * account never says so. The transfer layer implements the node path in full —
- * `files-cdn.test.ts` judges the decryption and the verification — but reaching
- * a machine Telegram does not operate is a decision about authorization, and
- * `docs/security.md` §7 does not leave it to whatever a request carried.
+ * A datacenter may answer a request for a file by naming a delivery node. The
+ * node holds the file encrypted, knows nothing about the account, and is not
+ * run by Telegram — so going there is a decision about trust rather than about
+ * speed, and `docs/security.md` §5 makes it the caller's and nobody else's.
  *
- * These cases prove the offer is never made, which is the only place the
- * boundary can be held without relying on what the node then does.
+ * `files-cdn.test.ts` judges what happens to the bytes: the counter-mode
+ * decryption and the per-block verification that makes them worth anything.
+ * What is left to prove here is the boundary around it — that the offer is not
+ * made unless it was asked for, that a node is recognised by the address list
+ * rather than by whoever claimed to be one, and that nothing but a range
+ * request ever travels there.
  */
-describe('a delivery node an account is never offered', () => {
+describe('a delivery node', () => {
   const FILE = 0x0cd0_0001n
   const SIZE = 512 * 1024
 
-  /** A datacenter that would hand the transfer to a node, if it were allowed to. */
-  function willing() {
-    const server = new FileServer(2)
+  /** The datacenter the node stands behind, and the number it is published as. */
+  const HOME = 2
+  const NODE = 102
+
+  /**
+   * An account whose datacenter would rather redirect than serve.
+   *
+   * The node is a datacenter of its own in the address list, flagged as one, so
+   * everything from the handshake upwards runs against it for real.
+   */
+  function willing(options: { readonly published?: boolean } = {}) {
+    const published = options.published ?? true
+    const server = new FileServer(HOME)
     server.faults = { viaCdn: true }
-    const { reference } = server.add(FILE, { size: SIZE, dcId: 2 })
+    const { reference } = server.add(FILE, { size: SIZE, dcId: HOME })
 
     const instance = harness({
-      api: (query, dcId) =>
-        query._.startsWith('upload.') && dcId === 2 ? server.invoke(query) : undefined,
+      endpoints: [
+        { id: HOME, host: '127.0.0.2' },
+        ...(published ? [{ id: NODE, host: '127.0.0.102', cdn: true }] : []),
+      ],
+      // The same store answers under both numbers: a node serving ranges of a
+      // file the datacenter holds is the arrangement being modelled, and a
+      // second store would only have to be kept in step with the first.
+      api: (query) => (query._.startsWith('upload.') ? server.invoke(query) : undefined),
     })
 
     return {
@@ -1538,57 +1557,143 @@ describe('a delivery node an account is never offered', () => {
       .flatMap((connection) => connection.peer.seen)
       .some((element) => saidNodeWouldDo(element.value))
 
-  it('never says it would accept one', async () => {
+  it('is not offered unless the caller asked for one', async () => {
+    // The default. A datacenter that would rather redirect still serves the
+    // file to a client that has not said it can be redirected, so holding the
+    // boundary costs nothing.
     const { instance, location } = willing()
     await instance.account.connect()
 
-    await instance.account.download({ location, dcId: 2, size: SIZE })
+    const bytes = await instance.account.download({ location, dcId: HOME, size: SIZE })
 
     expect(offered(instance)).toBe(false)
-    await instance.dispose()
-  })
-
-  it('is served by the datacenter itself, byte for byte', async () => {
-    // The boundary costs nothing here: a datacenter that would rather redirect
-    // still serves the file when the client has not said it can be redirected.
-    const { instance, location } = willing()
-    await instance.account.connect()
-
-    const bytes = await instance.account.download({ location, dcId: 2, size: SIZE })
-
     expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
     await instance.dispose()
   })
 
-  it('does not say so because a caller asked it to', async () => {
-    // The option is not on the type an account takes, and a request that
-    // carried one anyway would otherwise pass straight through.
+  it('is offered when the caller asks, and serves the file', async () => {
     const { instance, location } = willing()
     await instance.account.connect()
 
-    // Cast once, because the option is deliberately not on the type. What is
-    // being checked is what happens when one arrives anyway.
-    await instance.account.download({ location, dcId: 2, size: SIZE, cdn: true } as Parameters<
-      typeof instance.account.download
-    >[0])
+    const bytes = await instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true })
 
-    expect(offered(instance)).toBe(false)
+    expect(offered(instance)).toBe(true)
+    // Byte for byte against what the datacenter holds, because a range that
+    // decrypts to something of the right length is not the right content.
+    expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
     await instance.dispose()
   })
 
-  it('does not say so on a streamed fetch either, asked for or not', async () => {
+  it('is reached on connections of its own, never the account s', async () => {
+    // A node is a datacenter this account holds nothing at. Sharing a
+    // connection with one it does hold something at is the whole thing being
+    // avoided.
     const { instance, location } = willing()
     await instance.account.connect()
 
-    await instance.account.downloadTo({
-      location,
-      dcId: 2,
-      size: SIZE,
-      write: () => {},
-      cdn: true,
-    } as Parameters<typeof instance.account.downloadTo>[0])
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+    await instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true })
 
-    expect(offered(instance)).toBe(false)
+    expect(instance.datacenter(NODE).connections.length).toBeGreaterThan(0)
+    await instance.dispose()
+  })
+
+  it('is asked for ranges and nothing else', async () => {
+    // The list is this client's rather than the node's. A guarantee that
+    // depends on the far end declining what it should never have been offered
+    // is not a guarantee.
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    await instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true })
+
+    const asked = instance
+      .datacenter(NODE)
+      .connections.flatMap((connection) => connection.peer.seen)
+      .flatMap((element) => named(element.value))
+      .filter((name) => !name.startsWith('invoke') && !name.startsWith('initConnection'))
+    expect(asked.length).toBeGreaterThan(0)
+    for (const name of asked) {
+      expect(['upload.getCdnFile', 'upload.getCdnFileHashes', 'msgs_ack', 'ping']).toContain(name)
+    }
+    await instance.dispose()
+  })
+
+  it('is not asked for a file, whatever a location claims', async () => {
+    // A location says which datacenter holds the file, and that is somebody
+    // else's claim too. One naming a node would otherwise have a transfer ask
+    // for an ordinary range there — a method a node does not serve, and one
+    // this client has no business sending to a machine it holds nothing at.
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    await expect(instance.account.download({ location, dcId: NODE, size: SIZE })).rejects.toThrow(
+      /a delivery node may not be asked 'upload.getFile'/,
+    )
+    await instance.dispose()
+  })
+
+  it('is not somewhere the escape hatch can be pointed', async () => {
+    // A node holds no authorization of this account's and answers none of the
+    // methods that would need one. Reaching one for an ordinary call is a wait
+    // for an address the list says does not exist, so it is refused instead.
+    const { instance } = willing()
+    await instance.account.connect()
+
+    expect(() => instance.account.reach(NODE)).toThrow(/is a delivery node/)
+    await instance.dispose()
+  })
+
+  it('is not reached at all when the address list does not describe one', async () => {
+    // A redirection is a claim somebody else made. The flag is Telegram's own
+    // statement about which machines it does not operate, and a redirection to
+    // a datacenter the list says nothing about is nowhere to go.
+    const { instance, location } = willing({ published: false })
+    await instance.account.connect()
+
+    await expect(
+      instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true }),
+    ).rejects.toThrow(/no address is known for datacenter 102/)
+    await instance.dispose()
+  })
+
+  it('is authorized with a key of its own, vouched for by nothing', async () => {
+    // What is negotiated with a node is good for fetching ranges from that node
+    // and for nothing beyond it. No temporary key is obtained there, because
+    // vouching for one means presenting the long-lived key this account
+    // authorizes with to a machine that has no business seeing it.
+    const { instance, location } = willing()
+    await instance.account.connect()
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+    const home = instance.stored.get(`auth:dc${HOME}:key`)
+
+    await instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true })
+
+    const held = [...instance.stored.keys()].filter((key) => key.startsWith(`auth:dc${NODE}:`))
+    expect(held).toContain(`auth:dc${NODE}:key`)
+    expect(held).not.toContain(`auth:dc${NODE}:temp0`)
+    // And the account's own authorization is exactly where it was.
+    expect(instance.stored.get(`auth:dc${HOME}:key`)).toEqual(home)
+    expect(instance.stored.get(`auth:dc${NODE}:key`)).not.toEqual(home)
+    await instance.dispose()
+  })
+
+  it('holds no authorization belonging to this account', async () => {
+    // A key negotiated with a node is good for fetching ranges from that node
+    // and for nothing beyond it. Nothing vouches for it, and the long-lived key
+    // this account authorizes with never travels there.
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    await instance.account.download({ location, dcId: HOME, size: SIZE, cdn: true })
+
+    const asked = instance
+      .datacenter(NODE)
+      .connections.flatMap((connection) => connection.peer.seen)
+      .flatMap((element) => named(element.value))
+    expect(asked).not.toContain('auth.bindTempAuthKey')
+    expect(asked).not.toContain('auth.importAuthorization')
+    expect(asked).not.toContain('auth.exportAuthorization')
     await instance.dispose()
   })
 })

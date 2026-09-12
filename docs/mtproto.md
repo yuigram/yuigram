@@ -1576,10 +1576,15 @@ file transfer simultaneously without one starving the other:
 | upload | up to 8 | Parallel upload parts |
 | download | up to 8 | Parallel download parts |
 | download-small | up to 2 | Transfers that are a single request |
+| cdn | up to 2 | Ranges from a delivery node, at an address flagged as one |
 
 File-transfer connections use **separate `session_id` values over the same auth key**, as the
 documentation recommends: they carry no updates and need no re-authorization, and they keep
 bulk transfer from interfering with the update stream.
+
+The delivery-node pool is the exception to "the same auth key". A node holds an authorization
+negotiated with that node, vouched for by nothing and good for nothing but fetching ranges from
+it — §11 and [security.md](security.md) §5.
 
 ---
 
@@ -1836,6 +1841,18 @@ handed over range by range, and one an event fetches for itself.
 encryption_iv, file_hashes }`. Fetch from the CDN DC, decrypt with AES-CTR, and **verify the
 SHA-256 hashes** — CDN nodes are not operated by Telegram, so hash verification is a
 correctness and integrity requirement, not an optimization.
+
+The redirection is offered only to a request carrying `cdn_supported`, which is set when the
+caller asked for it and at no other time. `download({ …, cdn: true })` is the opt-in;
+[security.md](security.md) §5 records the four rules that hold the boundary around it, and why
+each of them is the client's to enforce rather than the node's.
+
+A node is reached through a pool of its own, at an address the list flags as one, holding an
+authorization negotiated with that node and vouched for by nothing. It never carries a method
+outside the two a node serves, and `Account.reach` refuses to be pointed at one at all. A
+redirection to a datacenter the list does not describe as a node is refused rather than
+attempted — there is nowhere to go, and a client that tried would wait on an address it does not
+have.
 
 ### File references
 

@@ -133,16 +133,27 @@ node holds the file encrypted and is told nothing about the account asking for i
 that goes there is fetching bytes from somewhere outside Telegram, and that is a decision about
 trust rather than about speed.
 
-It is offered only to a client that says it can accept one, and **an account never says so**.
-The transfer layer implements the node path in full — the counter-mode decryption and the
-per-block SHA-256 verification that makes the bytes worth anything — and nothing on `Account`
-turns it on. The flag is not on the type an account's callers pass, and it is stated as off at
-every point a transfer is started, so a request object carrying one anyway cannot decide this.
+It is offered only to a client that says it can accept one, and **an account does not say so
+unless the caller asked**. `download({ …, cdn: true })` is the whole of the opt-in; without it a
+datacenter that would rather redirect still serves the file, so the default costs nothing.
 
-What is left before an account could go there is a connection to a datacenter it holds no
-authorization at, which is a separate piece of the datacenter layer rather than a missing
-option. Until that exists, holding the boundary costs nothing: a datacenter that would rather
-redirect still serves the file to a client that has not said it can be redirected.
+Four rules hold the boundary, and each is this client's rather than the node's — a guarantee
+that depends on the far end declining what it should never have been offered is not one:
+
+| Rule | Why |
+|---|---|
+| A node is recognised by the **address list**, never by the redirection | A redirection is a claim somebody else made. The `cdn` flag is Telegram's own statement about which machines it does not operate |
+| A node gets **its own authorization and nothing else** | No temporary key is vouched for there, and the long-lived key this account authorizes with never travels to one |
+| A node may be asked `upload.getCdnFile` and `upload.getCdnFileHashes` — **nothing else** | Checked against a list before anything is sent |
+| `account.reach()` **refuses** a node outright | The escape hatch exists for a method that must go to a particular datacenter, and a node answers none of them |
+
+A redirection naming a datacenter the address list does not describe as a node is refused rather
+than attempted: there is nowhere to go, and a client that tried would wait on an address it does
+not have.
+
+What does reach a node is the Diffie-Hellman handshake, the description every MTProto connection
+opens with, and requests for byte ranges. What comes back is checked against the hashes published
+for it before a single byte is handed to the caller — `mtproto.md` §11.
 
 ---
 
