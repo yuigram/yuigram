@@ -212,6 +212,19 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
       delete: async (name: string) => {
         stored.delete(name)
       },
+      // The optional half of the store interface, which every store this
+      // project ships implements. A harness without it would test an account
+      // against a store less capable than any it will meet.
+      clear: async (prefix?: string) => {
+        for (const name of [...stored.keys()]) {
+          if (prefix === undefined || name.startsWith(prefix)) stored.delete(name)
+        }
+      },
+      keys: async function* (prefix?: string) {
+        for (const name of [...stored.keys()]) {
+          if (prefix === undefined || name.startsWith(prefix)) yield name
+        }
+      },
     },
     // The public half of the key the datacenters offer. A client selects a
     // server key by fingerprint, so this is what lets the exchange happen at

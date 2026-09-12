@@ -2341,6 +2341,169 @@ describe('signing in from prompts', () => {
   })
 })
 
+/**
+ * Signing out, and what is left behind when it is done.
+ *
+ * The call is the easy half. The half worth proving is the store: an
+ * authorization the server has revoked is dead everywhere, and a client that
+ * kept one would start again against a key nothing accepts — while a position
+ * and a set of access hashes belong to the account that earned them and mean
+ * nothing to whoever signs in next.
+ */
+describe('an account signing out', () => {
+  /** An account that has connected, learned a peer, and read some of the stream. */
+  async function livedIn() {
+    const asked: string[] = []
+    const instance = harness({
+      api: (query) => {
+        asked.push(query._)
+
+        return undefined
+      },
+    })
+
+    await instance.account.connect()
+    // A call, because an authorization is negotiated when a datacenter is first
+    // reached rather than when the account is built.
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 5n,
+      accessHash: 9n,
+      min: false,
+      usernames: ['someone'],
+    })
+    await instance.account.feed({
+      _: 'updateShort',
+      update: { _: 'updateUserTyping', user_id: 5n, action: { _: 'sendMessageTypingAction' } },
+      date: NOW_SECONDS,
+    })
+
+    return { instance, asked }
+  }
+
+  /** Every key the store holds, so a case can say what survived. */
+  const held = (instance: MockAccount) => [...instance.stored.keys()].sort()
+
+  it('asks Telegram before it touches anything', async () => {
+    const { instance, asked } = await livedIn()
+
+    await instance.account.logOut()
+
+    expect(asked).toContain('auth.logOut')
+    await instance.dispose()
+  })
+
+  it('keeps everything when the server refuses', async () => {
+    // An authorization that survives a failed sign-out is still an
+    // authorization. A store cleared anyway would leave an account signed in
+    // somewhere it can no longer reach.
+    const instance = harness({
+      api: (query) => {
+        if (query._ !== 'auth.logOut') return undefined
+
+        throw new TelegramError('FRESH_RESET_AUTHORISATION_FORBIDDEN (406)')
+      },
+    })
+    await instance.account.connect()
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+    const before = held(instance)
+
+    await expect(instance.account.logOut()).rejects.toThrow(/FRESH_RESET/)
+
+    expect(held(instance)).toEqual(before)
+    await instance.dispose()
+  })
+
+  it('forgets the authorization, so nothing starts again against a dead key', async () => {
+    const { instance } = await livedIn()
+    expect(held(instance).some((key) => key.startsWith('auth:'))).toBe(true)
+
+    await instance.account.logOut()
+
+    expect(held(instance).filter((key) => key.startsWith('auth:'))).toEqual([])
+    await instance.dispose()
+  })
+
+  it('forgets the place in the stream, which belonged to that account', async () => {
+    const { instance } = await livedIn()
+    expect(held(instance)).toContain('updates:state')
+
+    await instance.account.logOut()
+
+    expect(held(instance).filter((key) => key.startsWith('updates:'))).toEqual([])
+    await instance.dispose()
+  })
+
+  it('forgets the peers, whose hashes were issued to that account', async () => {
+    const { instance } = await livedIn()
+    expect(held(instance).some((key) => key.startsWith('peers:'))).toBe(true)
+
+    await instance.account.logOut()
+
+    expect(held(instance).filter((key) => key.startsWith('peers:'))).toEqual([])
+    await instance.dispose()
+  })
+
+  it('keeps the published address list, which describes Telegram rather than the account', async () => {
+    // Nothing in it was issued to anybody, and it is what the next sign-in
+    // needs before it can reach anything at all. Written here rather than
+    // waited for: a datacenter that never publishes a configuration leaves the
+    // bootstrap in force, and the case is about what signing out removes.
+    const { instance } = await livedIn()
+    instance.stored.set('dcs:datacenters', { thisDc: 2 })
+
+    await instance.account.logOut()
+
+    expect(held(instance)).toContain('dcs:datacenters')
+    await instance.dispose()
+  })
+
+  it('takes the network down with it', async () => {
+    const { instance } = await livedIn()
+
+    await instance.account.logOut()
+
+    expect(instance.account.connected).toBe(false)
+    await instance.dispose()
+  })
+
+  it('refuses while the account is not connected', async () => {
+    // The call needs the authorization it is about to revoke.
+    const instance = harness()
+
+    await expect(instance.account.logOut()).rejects.toThrow(/is not connected/)
+    await instance.dispose()
+  })
+
+  it('says so rather than pretending when the store cannot remove in bulk', async () => {
+    // Bulk removal is optional in the store interface. What is left behind
+    // belongs to an account that has signed out, and somebody has to know.
+    const records: LogRecord[] = []
+    const kept = new Map<string, unknown>()
+    const instance = harness({
+      log: createLogger({ sink: { write: (record) => records.push(record) } }),
+      storage: {
+        get: async (name: string) => kept.get(name),
+        set: async (name: string, value: unknown) => {
+          kept.set(name, value)
+        },
+        delete: async (name: string) => {
+          kept.delete(name)
+        },
+      },
+    })
+    await instance.account.connect()
+
+    await instance.account.logOut()
+
+    expect(records.map((record) => record.message)).toContain(
+      'this store cannot remove what the account signed out of',
+    )
+    await instance.dispose()
+  })
+})
+
 describe('where an account resumes the update stream', () => {
   /** An update that advances the common box by one. */
   const message = (pts: number): TlValue => ({

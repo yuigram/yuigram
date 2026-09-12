@@ -405,18 +405,32 @@ schedule to own a duty that outlives any one request, which is a decision §6 ha
 
 `PHONE_MIGRATE_X` and `NETWORK_MIGRATE_X` during sign-in redirect to another DC (§8).
 
-**Signing out is not among them, and the missing part is not the call.** `auth.logOut` takes no
-arguments and is reachable through the typed surface already. What a client method would add is
-what happens to the state left behind, and that is a decision about somebody else's store: the
-authorization keys are dead the moment the call returns, the update position belongs to an
-account that is no longer signed in here, and every access hash was issued to that account and
-is worth nothing to the next one. Clearing all three is defensible, and so is clearing only the
-keys — an application that holds several accounts in one store has a view on which.
+**Signing out is a call and a clearing.** `auth.logOut` takes no arguments and has always been
+reachable through the typed surface; what `account.logOut()` adds is the half that is not a
+call. Three kinds of state were true only because the account was signed in, and all three go:
 
-The precedent nearby says the account clears "what would conflict with the session it was asked
-to import, and nothing else", which is narrower than any of the options and does not settle
-between them. So the call stays on the typed surface until that is decided, rather than a
-client method quietly deleting more of a caller's store than it was asked to.
+| State | Why it goes |
+|---|---|
+| Authorization keys | Revoked by the server. A client keeping one starts again against a key nothing accepts |
+| Update position | The stream belongs to the account that read it; resuming it means reading somebody else's notes |
+| Peers | An access hash is issued to one account and is refused for any other |
+
+The published address list stays. It describes Telegram rather than the account, nothing in it
+was issued to anybody, and it is what the next sign-in needs before it can reach anything.
+
+An account is given its own store — two sharing one would collide on every prefix above — so
+there is no case where clearing this account's areas removes another account's state. That is
+what settles the question the store interface otherwise leaves open.
+
+The call goes first. An authorization that survives a failed sign-out is still an authorization,
+and a store cleared before the server agreed would leave an account signed in somewhere it can
+no longer reach.
+
+Bulk removal is optional in the store interface. Every store this project ships offers it; one a
+caller wrote may not, and that is reported rather than left to look as though the data went.
+Telegram may also answer with a token that would let the device skip some checks at a later
+sign-in; nothing keeps it, because where it would live and for how long are decisions about the
+store that has just been cleared, and `account.api.auth.logOut()` hands the answer back whole.
 
 #### Proving a password
 

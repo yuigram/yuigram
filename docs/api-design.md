@@ -140,6 +140,18 @@ number.
 The steps remain public, because a flow driven by something other than a prompt — a queue, a
 web form, a device that displays a token — needs them.
 
+Signing out is `account.logOut()`, and it is a call and a clearing:
+
+```ts
+await account.logOut()
+```
+
+Telegram revokes the authorization, and what was true only because the account was signed in
+goes with it — the keys, the place in the update stream, and the peers, whose access hashes
+were issued to that account and mean nothing to another. The published address list stays: it
+describes Telegram rather than the account. The call goes first, so a refused sign-out leaves
+the store as it was. [mtproto.md](mtproto.md) §5.4 records why each of those is not a choice.
+
 ---
 
 ## 3. Multiple clients: the `App`

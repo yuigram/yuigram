@@ -56,7 +56,7 @@ import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
-import type { DcConfiguration } from './network/dc.js'
+import type { DcConfiguration, DcDirectory } from './network/dc.js'
 import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
@@ -706,6 +706,101 @@ export class Account<Ext = unknown> {
     }
 
     await this.signInWithPassword(await prompts.password())
+  }
+
+  /**
+   * Sign out, and forget what only made sense while signed in.
+   *
+   * The call itself takes no arguments and has always been reachable through
+   * the typed surface. What this adds is the half that is not a call: an
+   * authorization revoked by the server is dead everywhere, and a store still
+   * holding it describes an account that no longer exists.
+   *
+   * ```ts
+   * await account.logOut()
+   * ```
+   *
+   * Three kinds of state were true only because this account was signed in, and
+   * all three go: the authorization at every datacenter this account could
+   * reach, the place it had got to in the update stream, and the peers it had
+   * learned. An access hash is issued to one account and means nothing to
+   * another, and a position belongs to the stream of the account that read it —
+   * so whoever signs in next would be reading somebody else's notes.
+   *
+   * The published address list stays. It describes Telegram rather than this
+   * account, it is what the next sign-in needs before it can reach anything,
+   * and nothing in it was issued to anybody.
+   *
+   * The call goes first. An authorization that survives a failed sign-out is
+   * still an authorization, and a store cleared before the server agreed would
+   * leave an account that is signed in somewhere it can no longer reach.
+   *
+   * Telegram may answer with a token that would let this device skip some
+   * checks at a later sign-in. Nothing here keeps it: where it would live and
+   * for how long are decisions about the store this has just finished clearing,
+   * and `account.api.auth.logOut()` hands the answer back whole for a caller
+   * that wants one.
+   */
+  async logOut(): Promise<void> {
+    const network = this.#require()
+
+    // Through the ordinary path, so a datacenter that redirects is followed
+    // rather than reported: signing out of the datacenter this account does not
+    // belong to would leave the one it does still signed in.
+    await this.#invoke({ _: 'auth.logOut' })
+
+    const datacenters = [...this.#reachable(network.datacenters.directory)]
+    const authorization = authorizationStore(namespaced(this.#options.storage, 'auth:'))
+
+    // Stopped before anything is removed, so nothing reaches for a key that is
+    // about to be gone, and the network is down whether or not the store
+    // co-operates.
+    await this.stop()
+
+    for (const dcId of datacenters) await authorization.forget(dcId)
+    await this.#forgetArea('updates:')
+    await this.#forgetArea('peers:')
+  }
+
+  /**
+   * Every datacenter this account could hold an authorization at.
+   *
+   * Read from the same places the datacenter layer reads addresses from: a
+   * configuration the server published if there is one, and the supplied
+   * addresses otherwise. A published list names more datacenters than a
+   * bootstrap does, so taking the bootstrap alone would leave keys behind at
+   * exactly the datacenters this account had reached.
+   */
+  #reachable(directory: DcDirectory): Set<number> {
+    return new Set<number>([
+      directory.thisDc,
+      ...directory.identifiers(),
+      ...this.#options.bootstrap.options.map((address) => address.id),
+    ])
+  }
+
+  /**
+   * Remove one of the areas this account divides its store into.
+   *
+   * Bulk removal is optional in the store interface — every store this project
+   * ships offers it, and one a caller wrote may not. Asked of the store itself
+   * rather than of the area: a namespaced view always offers the method and
+   * quietly does nothing when what it wraps cannot, which is the one answer
+   * nobody can act on.
+   *
+   * A store that cannot is reported rather than left to look as though the data
+   * went. What stays behind belongs to an account that has signed out, and
+   * somebody has to know it is still there.
+   */
+  async #forgetArea(prefix: string): Promise<void> {
+    const storage = this.#options.storage
+    if (storage.clear === undefined) {
+      this.#log.warn('this store cannot remove what the account signed out of', { area: prefix })
+
+      return
+    }
+
+    await namespaced(storage, prefix).clear?.()
   }
 
   /**
