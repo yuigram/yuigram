@@ -1,5 +1,5 @@
 /**
- * Naming the file a message carried, so it can be fetched.
+ * Naming a file, so it can be fetched or sent.
  *
  * A message does not carry a file; it carries what a file is addressed by. The
  * identifier and the hash say which file, and beside them travels a *file
@@ -21,11 +21,24 @@
  * so the protocol itself says which are candidates. Among those, the largest is
  * taken — the answer this project already gives the same question on the Bot
  * API side, where a photo's size list is accepted and the largest is chosen.
+ *
+ * The same three fields address a file in the other direction. A message that
+ * already carries one can carry it again without the bytes moving, and a file
+ * this account has just sent is named by what the upload handed back — so the
+ * descriptors that go into a send live here too, beside the locations that come
+ * out of a receive.
  */
 
 import { ValidationError } from '@yuigram/core'
-import type { TypeDocument, TypePhoto, TypePhotoSize } from '../generated/api/types/index.js'
+import type {
+  TypeDocument,
+  TypeDocumentAttribute,
+  TypeInputMedia,
+  TypePhoto,
+  TypePhotoSize,
+} from '../generated/api/types/index.js'
 import type { DownloadRequest } from './download.js'
+import type { UploadedFile } from './upload.js'
 
 /**
  * What a transfer needs to fetch a document a message carried.
@@ -162,3 +175,162 @@ function largest(sizes: readonly TypePhotoSize[]): Fetchable | undefined {
 }
 
 const rank = (size: Fetchable) => (size.bytes > 0 ? size.bytes : size.area)
+
+/**
+ * Name a document a message already carries, so it can be sent somewhere else.
+ *
+ * The bytes do not move. A document is addressed by the same three fields
+ * whether it is being fetched or sent, so a message that arrived carrying one
+ * carries everything needed to send it again — and re-uploading a file this
+ * account can already name would move megabytes to arrive at the identifier it
+ * was holding.
+ *
+ * ```ts
+ * await account.api.messages.sendMedia({
+ *   peer,
+ *   media: documentMedia(media.document),
+ *   message: '',
+ *   random_id: id,
+ * })
+ * ```
+ *
+ * The reference is the one the message carried and expires on the datacenter's
+ * own schedule, exactly as it does for a fetch. A send refused for a stale one
+ * is put right the same way: by asking for the message again.
+ *
+ * Nothing optional is set. A spoiler, a self-destruct timer and a video cover
+ * are choices about the send rather than about the document, so a caller that
+ * wants one spreads this and adds it.
+ */
+export function documentMedia(document: TypeDocument): TypeInputMedia {
+  if (document._ !== 'document') {
+    throw new ValidationError('an empty document names no file to send')
+  }
+
+  return {
+    _: 'inputMediaDocument',
+    id: {
+      _: 'inputDocument',
+      id: document.id,
+      access_hash: document.access_hash,
+      file_reference: document.file_reference,
+    },
+  }
+}
+
+/**
+ * Name a photo a message already carries, so it can be sent somewhere else.
+ *
+ * Unlike a fetch, this chooses no size. A photo is one object with several
+ * renderings of itself, and sending it sends the object — which is why the
+ * reference here carries no size type and why nothing has to be picked.
+ */
+export function photoMedia(photo: TypePhoto): TypeInputMedia {
+  if (photo._ !== 'photo') {
+    throw new ValidationError('an empty photo names no file to send')
+  }
+
+  return {
+    _: 'inputMediaPhoto',
+    id: {
+      _: 'inputPhoto',
+      id: photo.id,
+      access_hash: photo.access_hash,
+      file_reference: photo.file_reference,
+    },
+  }
+}
+
+/**
+ * Send bytes this account has just uploaded, as a photo.
+ *
+ * Everything needed is in the upload result. A photo is the one uploaded form
+ * that describes itself: the datacenter decodes the image, produces the sizes
+ * and records the dimensions, so there is nothing for a client to state and
+ * nothing it could state that would be believed.
+ *
+ * ```ts
+ * const uploaded = await account.upload({ source })
+ * await account.api.messages.sendMedia({
+ *   peer,
+ *   media: uploadedPhoto(uploaded),
+ *   message: 'a caption',
+ *   random_id: id,
+ * })
+ * ```
+ *
+ * What the bytes actually are is the datacenter's judgement. Something it
+ * cannot decode as an image is refused there, which is the only place that can
+ * tell.
+ */
+export function uploadedPhoto(file: UploadedFile): TypeInputMedia {
+  return { _: 'inputMediaUploadedPhoto', file: file.file }
+}
+
+/** What a document needs beyond the bytes, and nothing can work out for it. */
+export interface UploadedDocumentOptions {
+  /**
+   * What the bytes are.
+   *
+   * Required, because the protocol requires it and nothing here can discover
+   * it: guessing from a filename would be inventing a fact about the content,
+   * and reading the content would be a decoder this project does not have.
+   */
+  readonly mimeType: string
+  /**
+   * What to call it, recorded as a filename attribute.
+   *
+   * A label Telegram stores and shows, not a path. Nothing here touches a
+   * filesystem, and a name that arrived from elsewhere is attacker-chosen —
+   * `docs/security.md` §6.
+   */
+  readonly name?: string
+  /**
+   * What else describes it: duration, dimensions, a waveform, a sticker set.
+   *
+   * Passed through as given. These are facts about the content, and reading
+   * them out of the bytes means decoding the format — so a caller that knows
+   * them states them, and one that does not sends a plain file.
+   */
+  readonly attributes?: readonly TypeDocumentAttribute[]
+}
+
+/**
+ * Send bytes this account has just uploaded, as a document.
+ *
+ * A document is the general form: anything Telegram does not interpret for
+ * itself. That generality is the cost — a photo needs nothing beyond the file,
+ * and a document needs at least to say what it is.
+ *
+ * ```ts
+ * const uploaded = await account.upload({ source, name: 'report.pdf' })
+ * await account.api.messages.sendMedia({
+ *   peer,
+ *   media: uploadedDocument(uploaded, { mimeType: 'application/pdf', name: 'report.pdf' }),
+ *   message: '',
+ *   random_id: id,
+ * })
+ * ```
+ *
+ * The name is stated here as well as at the upload because they are recorded in
+ * different places: the upload's name travels with the parts, and the one a
+ * recipient sees is a document attribute. Nothing copies one to the other,
+ * because a caller sending the same bytes under a different name is doing
+ * something reasonable.
+ */
+export function uploadedDocument(
+  file: UploadedFile,
+  options: UploadedDocumentOptions,
+): TypeInputMedia {
+  const named: TypeDocumentAttribute[] =
+    options.name === undefined ? [] : [{ _: 'documentAttributeFilename', file_name: options.name }]
+
+  return {
+    _: 'inputMediaUploadedDocument',
+    file: file.file,
+    mime_type: options.mimeType,
+    // The caller's own attributes last, so one naming the file itself wins
+    // over the convenience above rather than being silently outranked by it.
+    attributes: [...named, ...(options.attributes ?? [])],
+  }
+}

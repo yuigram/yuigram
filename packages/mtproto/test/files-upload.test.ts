@@ -131,7 +131,7 @@ describe('a file small enough to go the ordinary way', () => {
 
     // The datacenter checks what it was told against what arrived, so a
     // checksum over anything but the file is worse than none.
-    expect((sent.file as TlValue)['md5_checksum']).toBe(
+    expect(sent.file._ === 'inputFile' ? sent.file.md5_checksum : undefined).toBe(
       [...md5(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join(''),
     )
   })
@@ -223,7 +223,10 @@ describe('a file large enough to go the other way', () => {
     })
 
     expect(sent.file._).toBe('inputFileBig')
-    expect((sent.file as TlValue)['md5_checksum']).toBeUndefined()
+    // The big path cannot carry one: the whole file is never in one place to
+    // be hashed, and a reference with a field for it would invite a caller to
+    // believe the datacenter checked something.
+    expect('md5_checksum' in sent.file).toBe(false)
   })
 })
 

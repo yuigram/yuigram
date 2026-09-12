@@ -1788,6 +1788,40 @@ whose reference was already replaced is not made to wait for a refetch it does n
 A message that no longer carries the document is reported rather than retried. There is nothing
 left to ask for, and the alternative is a loop.
 
+### Naming a file to send
+
+The same three fields address a file in the other direction, so the mapping is the one above
+run backwards. `documentMedia` and `photoMedia` turn what a message carried into the media a
+send takes, and the bytes never move: a file this account can already name does not have to be
+uploaded to be sent again.
+
+For bytes that were uploaded, what names them is the upload result. What has to be stated
+beside it depends on what is being sent:
+
+| Media | What names the bytes | What else is required | Where it comes from |
+|---|---|---|---|
+| Photo, uploaded | `inputMediaUploadedPhoto` | nothing | — |
+| Document, uploaded | `inputMediaUploadedDocument` | content type | the caller |
+| Video, audio, voice, animation | as a document | content type, and duration/dimensions/waveform | the caller |
+| Photo already on Telegram | `inputMediaPhoto` | nothing | the message it arrived in |
+| Document already on Telegram | `inputMediaDocument` | nothing | the message it arrived in |
+
+The photo row is the only uploaded one that needs nothing: the datacenter decodes the image,
+produces the sizes and records the dimensions, so there is nothing a client could usefully
+state. Every other uploaded row needs at least a content type, which is a fact about the bytes
+that nothing on this side can discover — guessing from a filename invents it, and reading the
+bytes means a decoder. The rows below it need more of the same kind, so they are attributes the
+caller supplies and this passes through unchanged.
+
+Nothing optional is set on any of them. A spoiler, a self-destruct timer, a video cover and a
+thumbnail are choices about the send rather than facts about the file.
+
+**Where it goes is not part of naming it.** A send needs a peer, and a peer named out of the
+blue needs an access hash that has to be resolved — [api-decisions.md](api-decisions.md)
+Decision 11 puts that on the client rather than on anything bound to an update. So these
+produce the `media` argument and nothing else; `messages.sendMedia` carries the caption in
+`message` and the message being answered in `reply_to`, both of which the caller already has.
+
 ---
 
 ## 12. Build order

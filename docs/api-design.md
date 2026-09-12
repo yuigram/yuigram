@@ -663,9 +663,36 @@ The result carries the reference that names the file, which is what a method tak
 location naming one. `name` is a hint Telegram records, never a path, and nothing here reads a
 filesystem.
 
-Delivery nodes and automatic reference refresh are not on the client yet. The transfer layer
-implements both; what is missing is the connection routing a delivery node needs and an owner
-for the origins a refresh refetches. `account.api.upload.*` reaches the methods meanwhile.
+Turning a file into the media a message carries is four functions, and they are the same
+mapping in both directions:
+
+```ts
+import { documentMedia, photoMedia, uploadedDocument, uploadedPhoto } from 'yuigram'
+
+// Bytes this account has just sent.
+const uploaded = await account.upload({ source, name: 'report.pdf' })
+uploadedPhoto(uploaded)
+uploadedDocument(uploaded, { mimeType: 'application/pdf', name: 'report.pdf' })
+
+// A file that is already on Telegram, sent again without the bytes moving.
+documentMedia(media.document)
+photoMedia(media.photo)
+```
+
+A photo needs nothing beyond the file: the datacenter decodes the image and produces the sizes
+itself. A document needs a content type, and it is required rather than guessed — deriving one
+from a filename would be inventing a fact about the content, and reading the content means a
+decoder this project does not have. Anything else a document could say about itself — a
+duration, dimensions, a waveform — is the same problem, so those are attributes a caller
+states and this passes through.
+
+Where the media goes is a separate question with a separate answer. The peer is the caller's,
+through `account.resolve` or one an update carried, and the call is
+`account.api.messages.sendMedia` — `message` is the caption, `reply_to` the message being
+answered. See [mtproto.md](mtproto.md) §11 for what each form of media requires.
+
+Delivery nodes are not on the client yet: what is missing is the connection routing a delivery
+node needs. `account.api.upload.*` reaches the methods meanwhile.
 
 ---
 

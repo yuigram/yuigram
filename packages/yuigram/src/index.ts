@@ -89,17 +89,22 @@ export {
   type DownloadRequest,
   type DownloadSink,
   documentFile,
+  documentMedia,
   type LoginTokenState,
   type MtprotoApi,
   type MtprotoContext,
   type MtprotoEventKind,
   type PeerRef,
   photoFile,
+  photoMedia,
   type SignInState,
   type TlValue,
+  type UploadedDocumentOptions,
   type UploadedFile,
   type UploadRequest,
   type UploadSource,
+  uploadedDocument,
+  uploadedPhoto,
 } from '@yuigram/mtproto'
 
 /**

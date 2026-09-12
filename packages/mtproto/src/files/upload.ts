@@ -29,9 +29,9 @@
 import { CancelledError, ValidationError } from '@yuigram/core'
 import { md5 } from '../crypto/hash.js'
 import { randomBytes } from '../crypto/random.js'
+import type { InputFile, InputFileBig } from '../generated/api/types/index.js'
 import type { Callable } from '../network/migration.js'
 import { MigrationError } from '../session/dispatcher.js'
-import type { TlValue } from '../tl/index.js'
 import { partAt, planUpload } from './geometry.js'
 
 /** Attempts made on one part before the upload gives up on it. */
@@ -100,8 +100,13 @@ export type UploadRequest = Pick<
 
 /** A file the datacenter can now be told to use. */
 export interface UploadedFile {
-  /** The reference a call carries to name the file that was just sent. */
-  readonly file: TlValue
+  /**
+   * The reference a call carries to name the file that was just sent.
+   *
+   * Which of the two it is says which way the parts went, and the checksum
+   * only one of them carries is why that is worth being able to tell.
+   */
+  readonly file: InputFile | InputFileBig
   readonly fileId: bigint
   readonly parts: number
   readonly size: number
