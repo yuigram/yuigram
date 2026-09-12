@@ -1778,22 +1778,21 @@ A name is resolved through Telegram only when nothing usable was harvested for i
 is harvested whole before the peer asked for is picked out — a name usually resolves to a peer
 whose answer names others, and discarding them means asking again for what has already arrived.
 
-**Naming a reduced peer is built and unused, and what is missing is not the builder.**
-`inputPeerFromMessage` assembles the reference a reduced peer is named by, and it needs the peer
-whose message mentioned this one and which message that was. The record says a peer is reduced
-and not where it was seen, so nothing can supply those two from the table alone.
+**Naming a reduced peer needs a context, and the context is the caller's.**
+`inputPeerFromMessage` assembles the reference, and it needs the peer whose message mentioned
+this one and which message that was. It is public, because a caller holding an update holds
+both: the conversation and the message identifier arrive together, which is exactly what the
+reference names.
 
-Recording them is derivable in one place only. A message's own sender is a peer that message
-mentions by construction, so an update carrying a message settles the context exactly; anywhere
-else the attribution is a search through whatever fields of whatever messages an answer happened
-to describe, and a wrong guess is a reference Telegram refuses.
+The record cannot supply them. It says a peer is reduced and not where it was seen, and
+recording that would mean attributing a peer to a message out of whatever fields of whatever
+messages an answer happened to describe. A message's own sender is unambiguous — a message
+mentions its sender by construction — but nothing else is, and a wrong attribution is a
+reference Telegram refuses with an error about the call.
 
-Nothing would read it. Every operation bound to an update addresses the conversation the update
-arrived in, and that conversation is described in full by the update that arrived from it — so
-a reduced peer is never the target. Addressing one means addressing a peer other than the one an
-event carried, which [api-decisions.md](api-decisions.md) Decision 11 puts on the client, and
-the client's `resolve` takes a peer rather than a peer and a place it was seen. The builder
-stays ready for the operation that needs it rather than an origin table being kept for nobody.
+So the mechanism is reachable and the choice is not made here. `resolve` still refuses a reduced
+peer: it takes a peer, and naming one takes a peer *and* a place it was seen, which is a
+different question with a different answer — [api-decisions.md](api-decisions.md) Decision 11.
 
 ---
 

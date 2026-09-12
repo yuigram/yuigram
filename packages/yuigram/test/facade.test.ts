@@ -92,6 +92,21 @@ describe('the entry point', () => {
     expect(typeof yuigram.session).toBe('function')
   })
 
+  it('offers the MTProto helpers that turn what arrived into what a call carries', () => {
+    // Each of these reads a protocol shape a caller would otherwise have to
+    // assemble by hand at every call site, which is where a field gets left
+    // out and the request is refused for a reason that names something else.
+    expect(typeof yuigram.documentFile).toBe('function')
+    expect(typeof yuigram.photoFile).toBe('function')
+    expect(typeof yuigram.documentMedia).toBe('function')
+    expect(typeof yuigram.photoMedia).toBe('function')
+    expect(typeof yuigram.uploadedDocument).toBe('function')
+    expect(typeof yuigram.uploadedPhoto).toBe('function')
+    expect(typeof yuigram.sentMessage).toBe('function')
+    expect(typeof yuigram.nextDialogs).toBe('function')
+    expect(typeof yuigram.inputPeerFromMessage).toBe('function')
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)

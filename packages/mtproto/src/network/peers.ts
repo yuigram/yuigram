@@ -141,6 +141,24 @@ export function inputPeer(record: PeerRecord): TlValue {
  * The context is the peer whose message mentioned this one, and the message
  * that did. Telegram checks that the peer really was mentioned there, which is
  * why a context that did not mention it is not a reference that can be made up.
+ *
+ * ```ts
+ * // A sender seen inside a channel's message, which is where reduced peers
+ * // mostly come from.
+ * const record = await account.peers.byId(event.sender.kind, event.sender.id)
+ * const peer = inputPeerFromMessage({
+ *   record,
+ *   context: await account.resolve(event.chat),
+ *   messageId: event.message.id,
+ * })
+ * ```
+ *
+ * **The context is the caller's.** A record says a peer is reduced and not
+ * where it was seen, so nothing here can supply one; an update holds both, and
+ * whoever held the update is the only thing that still does. Storing the origin
+ * against the record would mean attributing a peer to a message out of whatever
+ * an answer happened to describe, and a wrong attribution is a reference
+ * Telegram refuses — `docs/mtproto.md` §10.
  */
 export function inputPeerFromMessage(options: {
   readonly record: PeerRecord

@@ -33,6 +33,7 @@ export {
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
+export { inputPeerFromMessage } from './network/peers.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export type {
   DialogsOffset,
@@ -44,6 +45,7 @@ export type {
 } from './normalize/index.js'
 export { nextDialogs, sentMessage } from './normalize/index.js'
 export type { PortableSession } from './session.js'
+export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type { TlValue } from './tl/index.js'
 
 /** Package name, used by diagnostics and error messages. */
