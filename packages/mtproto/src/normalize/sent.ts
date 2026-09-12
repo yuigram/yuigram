@@ -24,7 +24,7 @@
  */
 
 import type { TypeMessage } from '../generated/api/types/index.js'
-import type { TlValue } from '../tl/index.js'
+import type { TlObject, TlValue } from '../tl/index.js'
 
 /** What a send came to. */
 export interface SentMessage {
@@ -72,7 +72,13 @@ const CARRIES_MESSAGE: ReadonlySet<string> = new Set([
  * as saying nothing, because the send itself has already succeeded by the time
  * there is an answer to read.
  */
-export function sentMessage(answer: TlValue, randomId: bigint): SentMessage {
+export function sentMessage(source: TlObject, randomId: bigint): SentMessage {
+  // Taken as the constructor alone and read as fields from here. Both public
+  // surfaces produce one: a typed method hands back the shape the schema names,
+  // and `call` hands back the shape the decoder produced — the same value,
+  // described to the type system twice.
+  const answer = source as TlValue
+
   if (answer._ === 'updateShortSentMessage') {
     const id = answer['id']
 

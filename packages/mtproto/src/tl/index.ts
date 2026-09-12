@@ -7,6 +7,7 @@
  * per channel.
  */
 
+export type { TlObject } from './object.js'
 export {
   BOOL_FALSE_ID,
   BOOL_TRUE_ID,

@@ -17,6 +17,7 @@ import { PeerError, ValidationError } from '@yuigram/core'
 import type { DownloadRequest } from '../files/download.js'
 import { documentFile, photoFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'
+import type { TypeInputChannel, TypeInputPeer } from '../generated/api/types/index.js'
 import { inputChannel, inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
@@ -73,7 +74,7 @@ function randomId(random: (length: number) => Uint8Array): bigint {
  * Telegram rejects, and the failure would describe the call rather than the
  * peer.
  */
-async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise<TlValue> {
+async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise<TypeInputPeer> {
   const chat = update.chat
   if (chat === undefined) {
     throw new PeerError(`a '${update.kind}' event names no conversation to address`)
@@ -215,7 +216,7 @@ function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
 async function channelOf(
   chat: { readonly kind: PeerKind; readonly id: bigint },
   context: ActionContext,
-): Promise<TlValue> {
+): Promise<TypeInputChannel> {
   const record = await context.peers.byId(chat.kind, chat.id)
   if (record === undefined) {
     throw new PeerError(`${chat.kind} ${chat.id} is not known to this account`)

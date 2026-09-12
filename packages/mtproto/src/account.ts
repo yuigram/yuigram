@@ -162,20 +162,6 @@ export interface AccountOptions {
   readonly schedule?: (run: () => void, delayMs: number) => () => void
 }
 
-/**
- * State the type the reference builder guarantees.
- *
- * It produces one of `inputPeerUser`, `inputPeerChannel` or `inputPeerChat` and
- * refuses everything else, all three of which are members of the union the
- * generated surface accepts. Its own return type is the untyped one because it
- * sits below the generated types and does not depend on them; saying so here is
- * what lets a resolved peer be passed straight to a method without a cast at
- * every call site.
- */
-function named(reference: TlValue): TypeInputPeer {
-  return reference as TypeInputPeer
-}
-
 /** What an account is once it has connected. */
 interface Network {
   readonly datacenters: Datacenters
@@ -630,7 +616,7 @@ export class Account<Ext = unknown> {
         throw new PeerError(`this account has not seen ${peer.kind} ${peer.id}`)
       }
 
-      return named(inputPeer(known))
+      return inputPeer(known)
     }
 
     // Built here rather than passed in, so a name already harvested is answered
@@ -642,7 +628,7 @@ export class Account<Ext = unknown> {
       username: peer,
     })
 
-    return named(inputPeer(record))
+    return inputPeer(record)
   }
 
   // ---------------------------------------------------------------------

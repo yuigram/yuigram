@@ -100,7 +100,9 @@ describe('where a page of dialogs is continued from', () => {
   })
 
   it('says nothing follows an answer that describes no page', () => {
-    expect(nextDialogs({ _: 'messages.dialogsNotModified', count: 40 })).toBeUndefined()
+    const answer: TlValue = { _: 'messages.dialogsNotModified', count: 40 }
+
+    expect(nextDialogs(answer)).toBeUndefined()
   })
 
   it('says nothing follows an empty page', () => {

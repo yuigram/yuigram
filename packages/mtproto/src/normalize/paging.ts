@@ -30,7 +30,7 @@
  */
 
 import { readPeerReference } from '../network/peers.js'
-import type { TlValue } from '../tl/index.js'
+import type { TlObject, TlValue } from '../tl/index.js'
 import type { PeerRef } from './normalize.js'
 
 /** Where the next page of dialogs begins. */
@@ -74,7 +74,11 @@ export interface DialogsOffset {
  * the one before it. An offset that repeats a dialog costs a caller a duplicate
  * it can see; one that skips past it loses a conversation silently.
  */
-export function nextDialogs(answer: TlValue): DialogsOffset | undefined {
+export function nextDialogs(source: TlObject): DialogsOffset | undefined {
+  // As with a send's answer: the constructor identifies it, and the two public
+  // surfaces describe the same value differently to the type system.
+  const answer = source as TlValue
+
   if (answer._ !== 'messages.dialogsSlice') return undefined
 
   const messages = values(answer['messages'])

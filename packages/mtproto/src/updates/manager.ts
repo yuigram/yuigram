@@ -30,6 +30,7 @@
  */
 
 import { PeerError, TelegramError } from '@yuigram/core'
+import type { TypeInputChannel } from '../generated/api/types/index.js'
 import { harvest, inputChannel } from '../network/peers.js'
 import type { PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
@@ -339,7 +340,7 @@ export function openUpdates(options: UpdatesOptions): Updates {
    * at all, and saying so is better than sending a reference that will be
    * refused for a reason that names the call rather than the channel.
    */
-  const nameChannel = async (channelId: bigint): Promise<TlValue> => {
+  const nameChannel = async (channelId: bigint): Promise<TypeInputChannel> => {
     const record = await options.peers.byId('channel', channelId)
     if (record === undefined) {
       throw new PeerError(`channel ${channelId} cannot be caught up on: it has never been named`)

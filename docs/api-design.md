@@ -706,7 +706,9 @@ answered. See [mtproto.md](mtproto.md) §11 for what each form of media requires
 What a send answers with is not the message. MTProto answers with the updates the send caused,
 so `sentMessage(answer, random_id)` picks the message out of them against the number the send
 was deduplicated by — `event.reply()` already returns that, with the answer itself reachable
-under `raw`. [mtproto.md](mtproto.md) §9.6 records the two shapes an answer takes and why the
+under `raw`. It takes the answer from whichever surface produced it: a typed method hands back
+the shape the schema names, `call` hands back the shape the decoder produced, and both are the
+same value described to the type system twice. [mtproto.md](mtproto.md) §9.6 records the two shapes an answer takes and why the
 short one can carry no message at all.
 
 A page of dialogs is read the same way. `nextDialogs(answer)` says where the next page begins,

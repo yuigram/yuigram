@@ -13,8 +13,11 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import type { Account } from '../src/account.js'
 import type { MtprotoApi } from '../src/api.js'
+import { documentMedia, photoMedia, uploadedDocument, uploadedPhoto } from '../src/files/media.js'
 import type * as types from '../src/generated/api/types/index.js'
-import type { MtprotoContext } from '../src/normalize/index.js'
+import { inputChannel, inputPeerFromMessage } from '../src/network/peers.js'
+import type { DialogsOffset, MtprotoContext, SentMessage } from '../src/normalize/index.js'
+import { nextDialogs, sentMessage } from '../src/normalize/index.js'
 import type { TlValue } from '../src/tl/index.js'
 
 declare const account: Account
@@ -164,5 +167,71 @@ describe('the escape hatch beside it', () => {
     // A method newer than this build has no signature, so the hatch must keep
     // accepting any constructor name at all.
     expectTypeOf(api.call).toBeCallableWith({ _: 'messages.brandNewMethod', whatever: 1 })
+  })
+})
+
+/**
+ * Whether the helpers compose with the surface that produces their input.
+ *
+ * Each of these reads or builds a value that crosses between the typed methods
+ * and the readers beside them, and each was written down in a doc comment as
+ * the way to use one. A signature that accepts only the decoder's shape looks
+ * right until a caller holds the schema's — the same value, described twice —
+ * and then the documented line does not compile. There is nothing to run: what
+ * is being asserted is that these fit together at all.
+ */
+describe('the helpers beside the generated surface', () => {
+  it('reads a send answered by a typed method', async () => {
+    const answer = await api.messages.sendMessage({
+      peer: { _: 'inputPeerSelf' },
+      message: 'hi',
+      random_id: 1n,
+    })
+
+    expectTypeOf(sentMessage(answer, 1n)).toEqualTypeOf<SentMessage>()
+  })
+
+  it('reads a send answered through the untyped escape hatch', async () => {
+    const answer = await api.call({ _: 'messages.sendMessage' })
+
+    expectTypeOf(sentMessage(answer, 1n)).toEqualTypeOf<SentMessage>()
+  })
+
+  it('reads a send answered on the surface bound to an event', async () => {
+    const answer = await event.here.messages.sendMedia({
+      media: { _: 'inputMediaEmpty' },
+      message: '',
+      random_id: 1n,
+    })
+
+    expectTypeOf(sentMessage(answer, 1n)).toEqualTypeOf<SentMessage>()
+  })
+
+  it('reads a page of dialogs answered by a typed method', async () => {
+    const answer = await api.messages.getDialogs({
+      offset_date: 0,
+      offset_id: 0,
+      offset_peer: { _: 'inputPeerEmpty' },
+      limit: 100,
+      hash: 0n,
+    })
+
+    expectTypeOf(nextDialogs(answer)).toEqualTypeOf<DialogsOffset | undefined>()
+  })
+
+  it('builds a peer a typed method accepts', () => {
+    expectTypeOf(inputPeerFromMessage).returns.toEqualTypeOf<types.TypeInputPeer>()
+    expectTypeOf(account.resolve).returns.resolves.toEqualTypeOf<types.TypeInputPeer>()
+  })
+
+  it('builds a channel the channel methods accept', () => {
+    expectTypeOf(inputChannel).returns.toEqualTypeOf<types.TypeInputChannel>()
+  })
+
+  it('builds media a send accepts', () => {
+    expectTypeOf(documentMedia).returns.toEqualTypeOf<types.TypeInputMedia>()
+    expectTypeOf(photoMedia).returns.toEqualTypeOf<types.TypeInputMedia>()
+    expectTypeOf(uploadedPhoto).returns.toEqualTypeOf<types.TypeInputMedia>()
+    expectTypeOf(uploadedDocument).returns.toEqualTypeOf<types.TypeInputMedia>()
   })
 })

@@ -25,6 +25,7 @@
  */
 
 import { PeerError } from '@yuigram/core'
+import type { TypeInputChannel, TypeInputPeer } from '../generated/api/types/index.js'
 import type { PeerKind, PeerRecord, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { Callable } from './migration.js'
@@ -117,7 +118,7 @@ export async function resolveUsername(options: {
  * here rather than built and refused by Telegram, which would report a problem
  * with the call rather than with the peer.
  */
-export function inputPeer(record: PeerRecord): TlValue {
+export function inputPeer(record: PeerRecord): TypeInputPeer {
   if (record.kind === 'chat') return { _: 'inputPeerChat', chat_id: record.id }
 
   if (record.min) {
@@ -162,7 +163,7 @@ export function inputPeer(record: PeerRecord): TlValue {
  * cannot name a channel and the handler that cannot delete in one do not want
  * the same sentence.
  */
-export function inputChannel(record: PeerRecord): TlValue {
+export function inputChannel(record: PeerRecord): TypeInputChannel {
   if (record.kind !== 'channel') {
     throw new PeerError(`${record.kind} ${record.id} is not a channel`)
   }
@@ -208,10 +209,10 @@ export function inputChannel(record: PeerRecord): TlValue {
 export function inputPeerFromMessage(options: {
   readonly record: PeerRecord
   /** The peer whose message mentioned this one. */
-  readonly context: TlValue
+  readonly context: TypeInputPeer
   /** The message that mentioned it. */
   readonly messageId: number
-}): TlValue {
+}): TypeInputPeer {
   const { record } = options
   if (record.kind === 'chat') {
     throw new PeerError('a basic group is named by its identifier alone')

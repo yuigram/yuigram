@@ -10,6 +10,7 @@
 
 import { PeerError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
+import type { TypeInputPeer } from '../src/generated/api/types/index.js'
 import {
   harvest,
   inputChannel,
@@ -214,7 +215,7 @@ describe('naming a peer in a call', () => {
   })
 
   it('names a peer seen in passing by where it was seen', () => {
-    const context: TlValue = { _: 'inputPeerChannel', channel_id: 5n, access_hash: 6n }
+    const context: TypeInputPeer = { _: 'inputPeerChannel', channel_id: 5n, access_hash: 6n }
 
     expect(inputPeerFromMessage({ record: record({ min: true }), context, messageId: 42 })).toEqual(
       {
@@ -227,7 +228,7 @@ describe('naming a peer in a call', () => {
   })
 
   it('names a channel seen in passing the same way', () => {
-    const context: TlValue = { _: 'inputPeerSelf' }
+    const context: TypeInputPeer = { _: 'inputPeerSelf' }
 
     expect(
       inputPeerFromMessage({
