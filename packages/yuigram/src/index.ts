@@ -94,6 +94,7 @@ export {
   type MtprotoContext,
   type MtprotoEventKind,
   type PeerRef,
+  photoFile,
   type SignInState,
   type TlValue,
   type UploadedFile,

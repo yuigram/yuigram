@@ -15,9 +15,8 @@
 
 import { PeerError, ValidationError } from '@yuigram/core'
 import type { DownloadRequest } from '../files/download.js'
-import { documentFile } from '../files/media.js'
+import { documentFile, photoFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'
-import type { Document } from '../generated/api/types/index.js'
 import { inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
@@ -85,22 +84,28 @@ async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise
 }
 
 /**
- * The document the update's own message carried.
+ * The media the update's own message carried, and where its bytes live.
  *
- * A photo is not one file but the same picture at several sizes, and which one
- * to fetch is a choice `docs/mtproto.md` §11 does not make — so it is refused
- * here by name rather than answered with a guess.
+ * A document is one file. A photo is the same picture at several sizes and the
+ * largest that has to be fetched is taken, which is the answer this project
+ * already gives the same question on the other transport. Anything else — a
+ * poll, a contact, a location — carries no file at all.
  */
-function documentOf(update: NormalizedUpdate): Document {
+function fileOf(update: NormalizedUpdate): { request: DownloadRequest; id: bigint } {
   const media = update.message?._ === 'message' ? update.message.media : undefined
   if (media === undefined) {
     throw new ValidationError(`a '${update.kind}' event carries no media to fetch`)
   }
-  if (media._ !== 'messageMediaDocument' || media.document?._ !== 'document') {
-    throw new ValidationError(`a '${media._}' is not a document, and this fetches documents alone`)
+
+  if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
+    return { request: documentFile(media.document), id: media.document.id }
   }
 
-  return media.document
+  if (media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') {
+    return { request: photoFile(media.photo), id: media.photo.id }
+  }
+
+  throw new ValidationError(`a '${media._}' carries no file this can fetch`)
 }
 
 /**
@@ -119,19 +124,20 @@ function documentOf(update: NormalizedUpdate): Document {
 function managed(
   update: NormalizedUpdate,
   context: ActionContext,
-  document: Document,
+  request: DownloadRequest,
+  id: bigint,
 ): ManagedLocation {
-  let reference = document.file_reference
+  let reference = request.location['file_reference'] as Uint8Array
 
   return {
-    current: () => ({ ...documentFile(document).location, file_reference: reference }),
+    current: () => ({ ...request.location, file_reference: reference }),
 
     async refresh(used: Uint8Array) {
       // A caller that lost a race is not made to wait for a refetch it does not
       // need: the reference it was refused is already the old one.
       if (!sameBytes(used, reference)) return
 
-      reference = await refetch(update, context, document.id)
+      reference = await refetch(update, context, id)
     },
   }
 }
@@ -168,13 +174,18 @@ async function refetch(
   const found = Array.isArray(messages) ? messages : []
   for (const entry of found) {
     const media = (entry as TlValue)['media'] as TlValue | undefined
-    const document = media?.['document'] as TlValue | undefined
-    if (document?.['id'] === id && document['file_reference'] instanceof Uint8Array) {
-      return document['file_reference']
+    // Whichever of the two a message carries. Matched on the identifier
+    // because an answer may describe several messages, each with media of its
+    // own, and any other reference would be issued for a different file.
+    for (const key of ['document', 'photo'] as const) {
+      const carried = media?.[key] as TlValue | undefined
+      if (carried?.['id'] === id && carried['file_reference'] instanceof Uint8Array) {
+        return carried['file_reference']
+      }
     }
   }
 
-  throw new ValidationError(`message ${msgId} no longer carries the document that was asked for`)
+  throw new ValidationError(`message ${msgId} no longer carries the file that was asked for`)
 }
 
 /** Whether two references are the same bytes. */
@@ -291,9 +302,9 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
     },
 
     async download(): Promise<Uint8Array> {
-      const document = documentOf(update)
+      const { request, id } = fileOf(update)
 
-      return await context.fetch(documentFile(document), managed(update, context, document))
+      return await context.fetch(request, managed(update, context, request, id))
     },
 
     async react(emoji: string): Promise<TlValue> {

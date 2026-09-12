@@ -2336,9 +2336,9 @@ describe('a document an event carried', () => {
     await instance.dispose()
   })
 
-  it('refuses a photo rather than choosing a size for the caller', async () => {
-    // A photo is the same picture at several sizes and a location has to name
-    // one. Which is a decision this framework does not make.
+  it('refuses a photo that carries no size to fetch', async () => {
+    // An empty photo is a hole where one the account cannot see used to be.
+    // There is no size to name and nothing to ask a datacenter for.
     const { instance } = serving()
     await instance.account.connect()
 
@@ -2360,7 +2360,7 @@ describe('a document an event carried', () => {
       pts_count: 1,
     })
 
-    expect((outcome as Error).message).toMatch(/is not a document/)
+    expect((outcome as Error).message).toMatch(/carries no file this can fetch/)
     await instance.dispose()
   })
 })

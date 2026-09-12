@@ -49,6 +49,39 @@ const messageWith = (reference: Uint8Array, id = 77, file = FILE): TlValue => ({
   },
 })
 
+/** A message carrying a photo whose largest fetchable size is `x`. */
+const photoMessage = (reference: Uint8Array, id = 77): TlValue => ({
+  _: 'message',
+  id,
+  peer_id: { _: 'peerUser', user_id: 5n },
+  from_id: { _: 'peerUser', user_id: 5n },
+  message: 'look',
+  date: 1_700_000_000,
+  media: {
+    _: 'messageMediaPhoto',
+    photo: {
+      _: 'photo',
+      id: FILE,
+      access_hash: 5n,
+      file_reference: reference,
+      date: 1_700_000_000,
+      dc_id: 4,
+      sizes: [
+        { _: 'photoStrippedSize', type: 'i', bytes: Uint8Array.of(1) },
+        { _: 'photoSize', type: 'm', w: 320, h: 320, size: 1_000 },
+        { _: 'photoSize', type: 'x', w: 800, h: 800, size: 9_000 },
+      ],
+    },
+  },
+})
+
+const photoUpdate = (reference: Uint8Array): TlValue => ({
+  _: 'updateNewMessage',
+  message: photoMessage(reference),
+  pts: 1,
+  pts_count: 1,
+})
+
 const update = (reference: Uint8Array): TlValue => ({
   _: 'updateNewMessage',
   message: messageWith(reference),
@@ -155,7 +188,7 @@ describe('a reference the datacenter has refused', () => {
     expect(asked.length).toBeGreaterThan(after)
   })
 
-  it('reports a message that no longer carries the document', async () => {
+  it('reports a message that no longer carries the file', async () => {
     const { actions, captured } = context(() => ({
       _: 'messages.messages',
       messages: [],
@@ -166,7 +199,7 @@ describe('a reference the datacenter has refused', () => {
     await updateActions(normalizeUpdate(update(FIRST)), actions).download()
 
     await expect((captured.references as ManagedLocation).refresh(FIRST)).rejects.toThrow(
-      /no longer carries the document/,
+      /no longer carries the file/,
     )
   })
 
@@ -224,9 +257,30 @@ describe('a reference the datacenter has refused', () => {
     })
   })
 
-  it('refuses media that is not a document', async () => {
+  it('fetches a photo at its largest size, and refreshes it the same way', async () => {
+    // The same seam serves both: what differs is which location is built, and
+    // the reference is refreshed from the same message either way.
+    const { actions, asked, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [photoMessage(SECOND)],
+      chats: [],
+      users: [],
+    }))
+
+    await updateActions(normalizeUpdate(photoUpdate(FIRST)), actions).download()
+
+    expect(captured.request?.location['_']).toBe('inputPhotoFileLocation')
+    expect(captured.request?.location['thumb_size']).toBe('x')
+
+    await (captured.references as ManagedLocation).refresh(FIRST)
+
+    expect(sending(captured.references as ManagedLocation)).toBe(SECOND)
+    expect(asked.at(-1)?.['_']).toBe('messages.getMessages')
+  })
+
+  it('refuses media that carries no file at all', async () => {
     const { actions } = context(() => ({ _: 'boolTrue' }))
-    const photo: TlValue = {
+    const poll: TlValue = {
       _: 'updateNewMessage',
       message: {
         _: 'message',
@@ -234,13 +288,13 @@ describe('a reference the datacenter has refused', () => {
         peer_id: { _: 'peerUser', user_id: 5n },
         message: '',
         date: 1_700_000_000,
-        media: { _: 'messageMediaPhoto', photo: { _: 'photoEmpty', id: 1n } },
+        media: { _: 'messageMediaContact', phone_number: '1', user_id: 1n },
       },
       pts: 1,
       pts_count: 1,
     }
 
-    await expect(updateActions(normalizeUpdate(photo), actions).download()).rejects.toThrow(
+    await expect(updateActions(normalizeUpdate(poll), actions).download()).rejects.toThrow(
       ValidationError,
     )
   })

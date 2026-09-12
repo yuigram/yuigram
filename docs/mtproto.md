@@ -1744,13 +1744,18 @@ the reference issued alongside whatever the media arrived in. Assembling those i
 is mechanical for a **document**, and `documentFile` does it — every field is copied, nothing is
 chosen, and the reference travels as it arrived.
 
-**A photo is not one file.** It is the same picture at several sizes, each named by a `type`,
-and a location has to name one of them. Which one a framework should reach for is not something
-the protocol decides: the largest is what most callers mean and the most expensive, a stripped
-size is not a fetchable file at all, and a progressive size carries a vector of lengths rather
-than one. Choosing between them is a product decision this document does not make, so photos
-have no equivalent of `documentFile` and are absent rather than guessed at. The same choice
-applies to a document's own thumbnails, which are photo sizes.
+**A photo is several files**, and `photoFile` names one of them. Which are candidates is the
+protocol's own answer rather than a policy: of the six size constructors only `photoSize` and
+`photoSizeProgressive` describe bytes a client has to ask for. The rest arrived with the
+message — a stripped placeholder, a cached copy, a vector path — or describe nothing at all,
+and asking a datacenter for one would be asking for a file that is not there.
+
+Among the candidates the largest is taken, ranked by the bytes it is where that is stated and
+by its area otherwise. That is not a new decision: it is the one this project already makes on
+the Bot API side, where a photo's size list is an accepted download target and the largest of it
+is chosen. A progressive size states the length at each stage of the encoding, so the whole of
+it is the largest of them rather than the first. A photo carrying nothing fetchable is refused
+saying so.
 
 **Refreshing an expired reference belongs to whatever still holds the message.** The tables
 above are keyed by origin, and a location built from a document knows the document and not

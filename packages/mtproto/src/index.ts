@@ -21,7 +21,7 @@ export type {
   DownloadSink,
 } from './files/download.js'
 export type { DownloadMode } from './files/geometry.js'
-export { documentFile } from './files/media.js'
+export { documentFile, photoFile } from './files/media.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
