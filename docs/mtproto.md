@@ -1544,7 +1544,7 @@ file transfer simultaneously without one starving the other:
 | main | 1 | RPC and updates |
 | upload | up to 8 | Parallel upload parts |
 | download | up to 8 | Parallel download parts |
-| download-small | 1–2 | Thumbnails, small media |
+| download-small | up to 2 | Transfers that are a single request |
 
 File-transfer connections use **separate `session_id` values over the same auth key**, as the
 documentation recommends: they carry no updates and need no re-authorization, and they keep
@@ -1713,6 +1713,21 @@ whose answer names others, and discarding them means asking again for what has a
 | `precise` | divisible by 1 KB | divisible by 1 KB, ≤ 1 MB | same |
 
 Route to the media DC when `dcOption.media_only` is available for the target DC.
+
+### Which connections a fetch uses
+
+A download goes to one of two pools, and which one is arithmetic rather than a chosen size. A
+range may not cross a 1 MB boundary, so a file no larger than one is a single request: it
+occupies one connection however many the pool allows, and taking a bulk connection for it would
+keep that connection from the transfers that can use several at once. Those fetches go to
+`download-small`, which is an allowance of its own rather than a connection per thumbnail.
+
+Everything else goes to `download`, including a file whose length nobody stated. Such a transfer
+is read in order until it ends, which is also one request at a time, but it may be any size at
+all — two of them would fill the smaller allowance and leave nothing for what it exists for.
+
+The measure is the length the caller stated, so it applies equally to a file fetched whole, one
+handed over range by range, and one an event fetches for itself.
 
 ### CDN
 

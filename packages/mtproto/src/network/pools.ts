@@ -54,10 +54,11 @@ export type PoolPurpose = 'main' | 'upload' | 'download' | 'download-small'
  * move at once. Small media takes fewer than bulk: a thumbnail is worth a
  * connection but not eight of them.
  *
- * Nothing asks for the small allowance yet, and what is missing is not a size
- * to compare against. A thumbnail is a photo size, and which of a photo's sizes
- * to fetch is the choice `docs/mtproto.md` §11 does not make — so the purpose
- * waits on that decision rather than on a threshold.
+ * Which allowance a fetch belongs in is decided by arithmetic rather than by a
+ * chosen size: a range may not cross a megabyte, so a file no larger than one
+ * is a single request and can never occupy more than one connection however
+ * many it is allowed. `Account` routes those here; everything else, including
+ * a file whose length nobody stated, goes to the bulk allowance.
  */
 export const POOL_LIMITS: Readonly<Record<PoolPurpose, number>> = {
   main: 1,

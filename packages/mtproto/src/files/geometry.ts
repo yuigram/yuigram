@@ -169,6 +169,19 @@ export function partAt(options: {
 }
 
 /** How a download range is aligned. */
+/**
+ * Whether a file of this length is served in a single piece.
+ *
+ * A datacenter serves a file a megabyte at a time and a range may not cross
+ * that boundary, so a file no larger than one is one range — which is one
+ * request, which is one connection however many a transfer is allowed. A length
+ * nobody knows is not: it is read in order until it ends, and that may be any
+ * size at all.
+ */
+export function fitsOneRange(size: number | undefined): boolean {
+  return size !== undefined && size >= 0 && size <= MEGABYTE
+}
+
 export type DownloadMode = 'normal' | 'precise'
 
 /**

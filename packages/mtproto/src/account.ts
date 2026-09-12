@@ -400,7 +400,7 @@ export class Account<Ext = unknown> {
    * needs a connection anyway, so loading it here costs the call nothing.
    */
   async download(request: DownloadRequest): Promise<Uint8Array> {
-    const reach = this.#transfers('download')
+    const reach = this.#transfers(await this.#allowance(request))
     const { download } = await import('./files/download.js')
 
     return await download({ ...request, reach })
@@ -419,7 +419,7 @@ export class Account<Ext = unknown> {
   async downloadTo(
     request: DownloadRequest & { readonly write: DownloadSink },
   ): Promise<DownloadOutcome> {
-    const reach = this.#transfers('download')
+    const reach = this.#transfers(await this.#allowance(request))
     const { downloadTo } = await import('./files/download.js')
 
     return await downloadTo({ ...request, reach })
@@ -470,6 +470,27 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * Which allowance a fetch belongs in.
+   *
+   * A datacenter serves a file a megabyte at a time, so a file no larger than
+   * one is a single request and can never occupy more than one connection
+   * however many a transfer is allowed. Those have their own smaller allowance
+   * — a thumbnail is worth a connection but not eight of them — and keeping
+   * them there leaves the bulk connections for the transfers that can actually
+   * use several.
+   *
+   * A length nobody knows is not small. Such a transfer is read in order until
+   * it ends, which is also one connection, but it may be any size at all and
+   * two of them would fill the smaller allowance and leave nothing for the
+   * traffic it exists for.
+   */
+  async #allowance(request: DownloadRequest): Promise<'download' | 'download-small'> {
+    const { fitsOneRange } = await import('./files/geometry.js')
+
+    return fitsOneRange(request.size) ? 'download-small' : 'download'
+  }
+
+  /**
    * How a transfer reaches a datacenter.
    *
    * Not {@link Account.reach}, which asks for the connection that carries
@@ -483,7 +504,7 @@ export class Account<Ext = unknown> {
    * account is stopped fails saying the account is not connected instead of
    * going on against connections nothing owns any more.
    */
-  #transfers(purpose: 'download' | 'upload'): (dcId: number) => Callable {
+  #transfers(purpose: 'download' | 'download-small' | 'upload'): (dcId: number) => Callable {
     this.#require()
 
     return (dcId: number) => this.#require().pools.get({ id: dcId, purpose })
@@ -1005,7 +1026,7 @@ export class Account<Ext = unknown> {
         // What the reference is refreshed from is not, so the location comes
         // from the layer that still holds the message it arrived in.
         fetch: async (request, references) => {
-          const reach = this.#transfers('download')
+          const reach = this.#transfers(await this.#allowance(request))
           const { download } = await import('./files/download.js')
 
           return await download({ ...request, reach, references })

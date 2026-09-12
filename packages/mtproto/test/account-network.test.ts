@@ -26,6 +26,7 @@
 
 import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
+import { POOL_LIMITS } from '../src/network/pools.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer } from './server/files.js'
@@ -65,6 +66,49 @@ function named(value: TlValue): string[] {
 
   return [value._, ...nested]
 }
+
+/**
+ * Every file one message asked a datacenter for.
+ *
+ * The same unwrapping as {@link named}, reading the location rather than the
+ * method, so a case can tell which file a range belonged to.
+ */
+function fetchedIn(value: TlValue): string[] {
+  const inner = value['query']
+  const nested =
+    typeof inner === 'object' && inner !== null && typeof (inner as TlValue)._ === 'string'
+      ? fetchedIn(inner as TlValue)
+      : []
+
+  if (value._ !== 'upload.getFile') return nested
+  const location = value['location'] as TlValue | undefined
+  const id = location?.['id']
+
+  return typeof id === 'bigint' ? [id.toString(), ...nested] : nested
+}
+
+/**
+ * Which connections at a datacenter carried ranges of one file.
+ *
+ * By position in the order the datacenter accepted them, which is enough to
+ * compare two fetches: a pool hands out its own connections and no others, so
+ * two files sharing one were in the same pool and two sharing none were not.
+ */
+function carriedOn(instance: MockAccount, dcId: number, file: bigint): number[] {
+  const wanted = file.toString()
+
+  return instance
+    .datacenter(dcId)
+    .connections.flatMap((connection, index) =>
+      connection.peer.seen.flatMap((message) => fetchedIn(message.value)).includes(wanted)
+        ? [index]
+        : [],
+    )
+}
+
+/** Whether two sets of connections have any in common. */
+const share = (left: readonly number[], right: readonly number[]) =>
+  left.some((index) => right.includes(index))
 
 /** A harness on the shared key, so no case pays for a new one. */
 const harness = (options: Parameters<typeof mockAccount>[0] = {}) =>
@@ -1232,6 +1276,211 @@ describe('a file an account fetches', () => {
 })
 
 /**
+ * Which set of connections a fetch is allowed to use.
+ *
+ * The bulk allowance exists so a file that moves in many ranges can move in
+ * several at once. A file that is one range cannot use it — it occupies one
+ * connection whatever the ceiling says — and a stream of thumbnails taking a
+ * bulk connection each would crowd out the transfers the allowance is for. So
+ * a fetch that is one request goes to the smaller allowance instead, and what
+ * separates the two comes from the protocol rather than from a number somebody
+ * picked: a range may not cross a megabyte, so a file no larger than one is a
+ * single request by arithmetic.
+ *
+ * Pools are separate sets of connections, so two fetches in one pool share
+ * connections and two in different pools cannot. That is what these cases read.
+ */
+describe('how much of a file there is decides which connections carry it', () => {
+  const BULK = 0x0b01_c000n
+  const SMALL = 0x0b01_c001n
+  const OTHER = 0x0b01_c002n
+  const EDGE = 0x0b01_c003n
+  const OVER = 0x0b01_c004n
+
+  const MEGABYTE = 1024 * 1024
+
+  const SIZES = new Map<bigint, number>([
+    [BULK, 3 * MEGABYTE],
+    [SMALL, 64 * 1024],
+    [OTHER, 32 * 1024],
+    [EDGE, MEGABYTE],
+    [OVER, MEGABYTE + 1],
+  ])
+
+  /** An account whose datacenter holds every file these cases fetch. */
+  function stored() {
+    const server = new FileServer(2)
+    const locations = new Map<bigint, TlValue>()
+
+    for (const [id, size] of SIZES) {
+      const { reference } = server.add(id, { size, dcId: 2 })
+      locations.set(id, {
+        _: 'inputDocumentFileLocation',
+        id,
+        access_hash: 5n,
+        file_reference: reference,
+        thumb_size: '',
+      })
+    }
+
+    const instance = harness({
+      api: (query, dcId) =>
+        query._.startsWith('upload.') && dcId === 2 ? server.invoke(query) : undefined,
+    })
+
+    /** Fetch one of them, stating its length unless the case is about not knowing. */
+    const fetch = (id: bigint, known = true) =>
+      instance.account.download({
+        location: locations.get(id) as TlValue,
+        dcId: 2,
+        ...(known ? { size: SIZES.get(id) as number } : {}),
+      })
+
+    /** The same fetch, handed over range by range rather than whole. */
+    const stream = (id: bigint) =>
+      instance.account.downloadTo({
+        location: locations.get(id) as TlValue,
+        dcId: 2,
+        size: SIZES.get(id) as number,
+        write: () => {},
+      })
+
+    return { server, instance, fetch, stream }
+  }
+
+  it('lets two bulk fetches share connections, which is what one pool looks like', async () => {
+    // The control every case below is read against. Both of these are several
+    // ranges, both belong to the bulk allowance, and a pool hands its own
+    // connections back rather than opening a set per transfer.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(BULK)
+    await fetch(OVER)
+
+    expect(share(carriedOn(instance, 2, BULK), carriedOn(instance, 2, OVER))).toBe(true)
+    await instance.dispose()
+  })
+
+  it('does not put a file that fits in one range on a bulk connection', async () => {
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(BULK)
+    await fetch(SMALL)
+
+    const small = carriedOn(instance, 2, SMALL)
+    expect(small.length).toBeGreaterThan(0)
+    expect(share(carriedOn(instance, 2, BULK), small)).toBe(false)
+    await instance.dispose()
+  })
+
+  it('keeps small fetches together, rather than taking a connection each', async () => {
+    // The smaller allowance is an allowance, not a connection per thumbnail.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(SMALL)
+    await fetch(OTHER)
+
+    expect(share(carriedOn(instance, 2, SMALL), carriedOn(instance, 2, OTHER))).toBe(true)
+    await instance.dispose()
+  })
+
+  it('reads a megabyte as one range and a byte more as several', async () => {
+    // The boundary is the one the server enforces on a range, so it falls at a
+    // megabyte exactly rather than at a round number near it.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(EDGE)
+    await fetch(OVER)
+
+    const edge = carriedOn(instance, 2, EDGE)
+    expect(edge.length).toBeGreaterThan(0)
+    expect(share(edge, carriedOn(instance, 2, OVER))).toBe(false)
+    await instance.dispose()
+  })
+
+  it('does not treat a length nobody knows as small', async () => {
+    // Read in order until it ends, which is one range at a time but may be any
+    // size at all. Two of those would fill the smaller allowance and leave
+    // nothing for the traffic it exists for.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(BULK)
+    await fetch(OTHER, false)
+
+    const unknown = carriedOn(instance, 2, OTHER)
+    expect(unknown.length).toBeGreaterThan(0)
+    expect(share(carriedOn(instance, 2, BULK), unknown)).toBe(true)
+    await instance.dispose()
+  })
+
+  it('keeps a small fetch off the connection ordinary calls travel on', async () => {
+    // The smaller allowance is a third set, not the main connection reused for
+    // whatever happens to be short.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getConfig' })
+    await fetch(SMALL)
+
+    const ordinary = instance
+      .datacenter(2)
+      .connections.flatMap((connection, index) =>
+        connection.peer.seen.flatMap((message) => named(message.value)).includes('help.getConfig')
+          ? [index]
+          : [],
+      )
+    expect(ordinary.length).toBeGreaterThan(0)
+    expect(share(ordinary, carriedOn(instance, 2, SMALL))).toBe(false)
+    await instance.dispose()
+  })
+
+  it('gives a bulk transfer more connections than the small allowance would hold', async () => {
+    // What separates the two allowances is how many connections each may take,
+    // and a partition that had them the wrong way round would look identical
+    // everywhere except here: three megabytes is three ranges, they are asked
+    // for together, and each one in flight takes a connection of its own.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    await fetch(BULK)
+
+    expect(carriedOn(instance, 2, BULK).length).toBeGreaterThan(POOL_LIMITS['download-small'])
+    await instance.dispose()
+  })
+
+  it('measures a streamed fetch the same way as a whole one', async () => {
+    // Handing ranges over as they arrive is a different way of receiving a
+    // file, not a different kind of transfer.
+    const { instance, fetch, stream } = stored()
+    await instance.account.connect()
+
+    await fetch(BULK)
+    await stream(SMALL)
+
+    const small = carriedOn(instance, 2, SMALL)
+    expect(small.length).toBeGreaterThan(0)
+    expect(share(carriedOn(instance, 2, BULK), small)).toBe(false)
+    await instance.dispose()
+  })
+
+  it('still hands back the bytes that were asked for', async () => {
+    // Routing decides which connection carries the request, and nothing else.
+    const { instance, fetch } = stored()
+    await instance.account.connect()
+
+    const bytes = await fetch(SMALL)
+
+    expect(bytes).toEqual(contentOf(SMALL, 0, SIZES.get(SMALL) as number))
+    await instance.dispose()
+  })
+})
+
+/**
  * Sending a file, through the account rather than through the transfer.
  *
  * `files-upload.test.ts` already judges the transfer itself: part numbering,
@@ -2308,6 +2557,46 @@ describe('a document an event carried', () => {
     await instance.account.deliver(update(stored.reference))
 
     expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
+    await instance.dispose()
+  })
+
+  it('fetches it through the allowance its length belongs in', async () => {
+    // An event's own fetch is a fetch like any other. Three kilobytes is one
+    // range, so it belongs with the small transfers rather than on a
+    // connection kept for files that move in many — and a handler that fetches
+    // a thumbnail per message must not be able to take the bulk allowance
+    // away from whatever is downloading a video.
+    const BULKY = 0x0d0c_0002n
+    const { instance, files, stored } = serving()
+    const bulk = files.add(BULKY, { size: 3 * 1024 * 1024, dcId: 2 })
+    await instance.account.connect()
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 5n,
+      accessHash: 9n,
+      min: false,
+      usernames: [],
+    })
+
+    instance.account.on('message', async (event) => {
+      await event.download()
+    })
+    await instance.account.deliver(update(stored.reference))
+    await instance.account.download({
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: BULKY,
+        access_hash: 5n,
+        file_reference: bulk.reference,
+        thumb_size: '',
+      },
+      dcId: 2,
+      size: 3 * 1024 * 1024,
+    })
+
+    const carried = carriedOn(instance, 2, FILE)
+    expect(carried.length).toBeGreaterThan(0)
+    expect(share(carried, carriedOn(instance, 2, BULKY))).toBe(false)
     await instance.dispose()
   })
 

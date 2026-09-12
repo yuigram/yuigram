@@ -14,6 +14,7 @@ import {
   BIG_FILE_THRESHOLD,
   checkPartSize,
   checkRange,
+  fitsOneRange,
   isUsablePartSize,
   isUsableRange,
   MAX_PART_SIZE,
@@ -348,5 +349,30 @@ describe('planning a file down', () => {
 
   it('refuses a length that could not be one', () => {
     expect(() => planDownload({ size: -1 })).toThrow(/is not a file/)
+  })
+})
+
+describe('whether a file is served in a single piece', () => {
+  it('says so for a length that fits in one range', () => {
+    // A datacenter serves a file a megabyte at a time and a range may not
+    // cross that boundary, so anything up to one is one request.
+    expect(fitsOneRange(0)).toBe(true)
+    expect(fitsOneRange(1)).toBe(true)
+    expect(fitsOneRange(1024 * 1024)).toBe(true)
+  })
+
+  it('says no for a length that does not', () => {
+    expect(fitsOneRange(1024 * 1024 + 1)).toBe(false)
+    expect(fitsOneRange(50 * 1024 * 1024)).toBe(false)
+  })
+
+  it('says no for a length nobody knows', () => {
+    // Such a transfer is read in order until it ends, which is one connection
+    // but may be any size at all.
+    expect(fitsOneRange(undefined)).toBe(false)
+  })
+
+  it('says no for a length that is not one', () => {
+    expect(fitsOneRange(-1)).toBe(false)
   })
 })
