@@ -1,15 +1,29 @@
 # @yuigram/mtproto
 
-The Telegram MTProto subsystem for [Yuigram](https://github.com/yuigram/yuigram): the protocol
+[![npm](https://img.shields.io/npm/v/@yuigram/mtproto.svg)](https://www.npmjs.com/package/@yuigram/mtproto)
+[![licence](https://img.shields.io/npm/l/@yuigram/mtproto.svg)](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+
+The Telegram MTProto subsystem of [Yuigram](https://github.com/yuigram/yuigram): the protocol
 implementation — cryptography, the TL codec, transport framing, the authorization handshake,
 the session layer, the datacenter pool, peer resolution, file transfer and the updates manager.
 
-**Not implemented, and not published.** This package exists in the repository so the
-architecture and its dependency boundaries are in place before the code is, and it is marked
-private until there is something worth installing — an empty package on a registry is worse
-than no package. The `@yuigram` scope reserves the name meanwhile.
+> **You probably want [`yuigram`](https://www.npmjs.com/package/yuigram).** It is the package
+> applications install, and it re-exports everything here.
 
-See the [roadmap](https://github.com/yuigram/yuigram/blob/main/docs/roadmap.md) for what lands
-when.
+> **Using a user account through MTProto can get that account banned permanently.** Telegram
+> states that accounts used for flooding, spamming or faking counters will be banned, and the
+> ban applies to the account rather than to the application — what is lost is somebody's
+> messages, groups and contacts. That is the reason this subsystem is shaped the way it is, and
+> [mtproto.md](https://github.com/yuigram/yuigram/blob/main/docs/mtproto.md) opens with it.
 
-Applications should install [`yuigram`](https://www.npmjs.com/package/yuigram).
+This package is published separately for the reason the core is: it lets the protocol be
+depended on without the Bot API coming with it, and it makes the architecture enforceable — the
+subsystem cannot import the Bot API, and CI fails the build if it ever does.
+
+Node.js 22 or newer. ESM only. Zero runtime dependencies: the cryptography Node does not
+provide — AES-IGE, Telegram's RSA padding, PQ factorization, Miller-Rabin, SRP — is implemented
+here.
+
+## Licence
+
+[MIT](https://github.com/yuigram/yuigram/blob/main/LICENSE)
