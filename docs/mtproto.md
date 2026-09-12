@@ -1485,15 +1485,21 @@ and connection pooling. The last two are implemented in the layers that own them
 is followed by whatever knows why the call was being made, and the pools decide which connection
 carries what. Issuing `help.getConfig` is implemented nowhere.
 
-That leaves one hole with a visible edge. A first run is given a single address, and an account
-told it belongs at a datacenter that address's configuration does not list cannot reach it: the
-call fails saying no address is known, which is honest and is as far as it goes. Closing it means
-deciding *when* the list is fetched, and the obvious moment is ruled out — connecting assembles
-the layers and reaches no network, which is a property with a test behind it. Fetching on the
-first call would make an ordinary call quietly issue a second one, and fetching only when an
-address turns out to be missing puts a round trip inside a failure path. The three differ in
-when the network is touched, which is exactly what this layer is careful about, so none is
-chosen here.
+That hole is closed, and the moment settled itself. A first run is given a single address, and a
+redirection to a datacenter that list does not name used to end the account: no address is
+known, and every call after it says the same, because what would fix it is the list nobody
+asked for.
+
+The list is now asked for exactly there — when a redirection names a datacenter the directory
+cannot address. Not on connecting, which assembles the layers and reaches no network, a
+property with a test behind it; and not on the first call, which would make an ordinary call
+quietly issue a second one. Both of those touch the network without knowing whether the list is
+insufficient. This moment knows: the redirection is the proof. A redirection to a datacenter
+already in the list costs nothing, because the list is read rather than fetched.
+
+It is asked over the connection that issued the redirection, which is reachable by definition,
+and `help.getConfig` needs no authorization. A server that publishes a list still missing the
+datacenter it redirected to has left nothing further to try, and is not asked again.
 
 ### Migration
 

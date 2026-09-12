@@ -1116,6 +1116,8 @@ export class Account<Ext = unknown> {
         if (!(error instanceof MigrationError)) throw error
         if (error.kind !== 'user' && error.kind !== 'network') throw error
 
+        await this.#addressable(error.dcId, here)
+
         if (error.kind === 'user') {
           const { transferAuthorization } = await import('./network/migration.js')
           await transferAuthorization({
@@ -1132,6 +1134,34 @@ export class Account<Ext = unknown> {
     }
 
     throw new SessionError(`the datacenters redirected in a loop: ${seen.join(' → ')}`)
+  }
+
+  /**
+   * Make sure a datacenter a redirection named can be reached at all.
+   *
+   * A first run is given one address, and the list it starts with is the list
+   * it keeps. A redirection to a datacenter that list does not name would
+   * otherwise be the end of the account: the call fails saying no address is
+   * known, and every call after it fails the same way, because the thing that
+   * would fix it is the list nobody asked for.
+   *
+   * The server publishes the whole list, and this is the one moment it is both
+   * needed and known to be missing — so it is asked for here rather than on
+   * every connection or every first call, neither of which knows whether the
+   * list is sufficient. A redirection to a datacenter already in the list costs
+   * nothing: the list is read, not fetched.
+   *
+   * Asked over the connection that issued the redirection, which is by
+   * definition reachable, and `help.getConfig` needs no authorization.
+   */
+  async #addressable(dcId: number, here: Callable): Promise<void> {
+    const { datacenters } = this.#require()
+    if (datacenters.directory.candidates({ id: dcId }).length > 0) return
+
+    const { readDcConfiguration } = await import('./network/dc.js')
+    const published = readDcConfiguration(await here.invoke({ _: 'help.getConfig' }))
+
+    await datacenters.adopt(published)
   }
 
   /**

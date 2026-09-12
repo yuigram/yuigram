@@ -128,6 +128,14 @@ export interface MockAccountOptions
    * supplies the answer it wants to see handled.
    */
   readonly api?: (query: TlValue, dcId: number) => TlValue | undefined
+  /**
+   * The addresses the account starts with, when they are not all of them.
+   *
+   * A first run is given one address and discovers the rest, so a case about
+   * that discovery needs datacenters that answer and a list that does not name
+   * them.
+   */
+  readonly bootstrap?: DcConfiguration
 }
 
 /** What a case gets to drive and observe. */
@@ -160,6 +168,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     faults,
     api,
     session,
+    bootstrap: given,
     ...rest
   } = options
   const key = shared ?? createServerKey()
@@ -182,12 +191,13 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     )
 
   const places = [...datacenters.values()]
-  const bootstrap: DcConfiguration = {
+  const discovered: DcConfiguration = {
     // Where a client that has been told nothing else begins.
     thisDc: places[0]?.id ?? 2,
     testMode: true,
     options: places.map(address),
   }
+  const bootstrap = given ?? discovered
 
   const settings = {
     apiId: 10_000,

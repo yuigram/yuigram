@@ -2364,3 +2364,169 @@ describe('a document an event carried', () => {
     await instance.dispose()
   })
 })
+
+/**
+ * Reaching a datacenter the address list does not name.
+ *
+ * A first run is given one address and keeps the list it started with. A
+ * redirection to a datacenter that list does not name would otherwise end the
+ * account: the call fails saying no address is known, and so does every call
+ * after it, because what would fix it is the list nobody asked for.
+ */
+describe('a redirection to a datacenter the list does not name', () => {
+  /** Only datacenter 2 is named, though 4 answers. */
+  const NARROW = {
+    thisDc: 2,
+    testMode: true,
+    options: [
+      {
+        id: 2,
+        host: '127.0.0.2',
+        port: 443,
+        ipv6: false,
+        mediaOnly: false,
+        cdn: false,
+        secret: undefined,
+        tcpoOnly: false,
+        thisPortOnly: false,
+        static: false,
+      },
+    ],
+  }
+
+  /** What `help.getConfig` publishes: both datacenters, as the server knows them. */
+  const PUBLISHED: TlValue = {
+    _: 'config',
+    date: 1_700_000_000,
+    expires: 1_700_003_600,
+    test_mode: true,
+    this_dc: 2,
+    dc_options: [
+      { _: 'dcOption', id: 2, ip_address: '127.0.0.2', port: 443 },
+      { _: 'dcOption', id: 4, ip_address: '127.0.0.4', port: 443 },
+    ],
+    dc_txt_domain_name: 'example',
+    chat_size_max: 200,
+    megagroup_size_max: 200_000,
+    forwarded_count_max: 100,
+    online_update_period_ms: 120_000,
+    offline_blur_timeout_ms: 5_000,
+    offline_idle_timeout_ms: 30_000,
+    online_cloud_timeout_ms: 300_000,
+    notify_cloud_delay_ms: 30_000,
+    notify_default_delay_ms: 1_500,
+    push_chat_period_ms: 60_000,
+    push_chat_limit: 2,
+    edit_time_limit: 172_800,
+    revoke_time_limit: 172_800,
+    revoke_pm_time_limit: 172_800,
+    rating_e_decay: 2_419_200,
+    stickers_recent_limit: 200,
+    channels_read_media_period: 604_800,
+    call_receive_timeout_ms: 20_000,
+    call_ring_timeout_ms: 90_000,
+    call_connect_timeout_ms: 30_000,
+    call_packet_timeout_ms: 10_000,
+    me_url_prefix: 'https://t.me/',
+    caption_length_max: 1_024,
+    message_length_max: 4_096,
+    webfile_dc_id: 4,
+  }
+
+  /** An account that starts knowing one datacenter and is sent to another. */
+  function redirected(publish: boolean) {
+    const asked: Array<{ name: string; dcId: number }> = []
+
+    const instance = harness({
+      bootstrap: NARROW,
+      api: (query, dcId) => {
+        asked.push({ name: query._, dcId })
+        if (query._ === 'help.getConfig') {
+          // A server that publishes a list still missing the datacenter it
+          // redirected to has left nothing further to try.
+          return publish
+            ? PUBLISHED
+            : { ...PUBLISHED, dc_options: [(PUBLISHED['dc_options'] as TlValue[])[0]] }
+        }
+        if (query._ === 'help.getNearestDc' && dcId === 2) {
+          throw new TelegramError('NETWORK_MIGRATE_4 (303)')
+        }
+
+        return undefined
+      },
+    })
+
+    return { instance, asked }
+  }
+
+  it('asks for the published list, and reaches it', async () => {
+    const { instance, asked } = redirected(true)
+    await instance.account.connect()
+
+    const answer = await instance.account.api.call({ _: 'help.getNearestDc' })
+
+    expect(answer['_']).toBe('boolTrue')
+    // Asked of the connection that issued the redirection, which is reachable
+    // by definition, and answered before the account tried to go anywhere.
+    const config = asked.find((entry) => entry.name === 'help.getConfig')
+    expect(config?.dcId).toBe(2)
+    expect(asked.some((entry) => entry.dcId === 4)).toBe(true)
+    await instance.dispose()
+  })
+
+  it('keeps the published list, so the next call needs no second ask', async () => {
+    const { instance, asked } = redirected(true)
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+    const before = asked.filter((entry) => entry.name === 'help.getConfig').length
+    await instance.account.api.call({ _: 'help.getInviteText' })
+
+    expect(asked.filter((entry) => entry.name === 'help.getConfig')).toHaveLength(before)
+    expect(before).toBe(1)
+    await instance.dispose()
+  })
+
+  it('does not ask when the list already names the datacenter', async () => {
+    // The list is read, not fetched. A redirection to somewhere already known
+    // costs nothing.
+    const asked: string[] = []
+    const instance = harness({
+      api: (query, dcId) => {
+        asked.push(query._)
+        if (query._ === 'help.getNearestDc' && dcId === 2) {
+          throw new TelegramError('NETWORK_MIGRATE_4 (303)')
+        }
+
+        return undefined
+      },
+    })
+    await instance.account.connect()
+
+    await instance.account.api.call({ _: 'help.getNearestDc' })
+
+    expect(asked).not.toContain('help.getConfig')
+    await instance.dispose()
+  })
+
+  it('asks once, and does not keep asking, when the list still omits it', async () => {
+    // Asking is the only thing that could have helped. A server that publishes
+    // a list still missing the datacenter it redirected to has left nothing
+    // further to try, and asking again would only repeat the answer.
+    const { instance, asked } = redirected(false)
+    await instance.account.connect()
+
+    const call = instance.account.api.call({ _: 'help.getNearestDc' })
+    const settled = watch(call)
+    await until(
+      () => asked.some((entry) => entry.name === 'help.getConfig'),
+      'the account asked for the published list',
+    )
+
+    expect(asked.filter((entry) => entry.name === 'help.getConfig')).toHaveLength(1)
+    expect(settled()).toBe(false)
+
+    await instance.dispose()
+    await outcome(call)
+  })
+})
