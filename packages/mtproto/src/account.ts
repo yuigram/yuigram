@@ -1158,10 +1158,7 @@ export class Account<Ext = unknown> {
     const { datacenters } = this.#require()
     if (datacenters.directory.candidates({ id: dcId }).length > 0) return
 
-    const { readDcConfiguration } = await import('./network/dc.js')
-    const published = readDcConfiguration(await here.invoke({ _: 'help.getConfig' }))
-
-    await datacenters.adopt(published)
+    await datacenters.refresh(here)
   }
 
   /**

@@ -47,6 +47,7 @@ import {
   readDcConfiguration,
   sameConfiguration,
 } from './dc.js'
+import type { Callable } from './migration.js'
 import type { ByteStream } from './tcp.js'
 
 /**
@@ -165,8 +166,14 @@ export interface Datacenters {
    * the same damage this guards everywhere else.
    */
   forget(id: number, keyId: Uint8Array): Promise<void>
-  /** Ask the server for the current configuration, and adopt what it says. */
-  refresh(channel: Channel): Promise<DcConfiguration>
+  /**
+   * Ask the server for the current configuration, and adopt what it says.
+   *
+   * Over anything that answers a call, because the connection that is able to
+   * ask is not always a channel this layer opened — a redirection is observed
+   * on a pooled connection, and that is where the question belongs.
+   */
+  refresh(reach: Callable): Promise<DcConfiguration>
   /** Take a configuration as the one in force, and remember it. */
   adopt(configuration: DcConfiguration): Promise<void>
 }
@@ -445,11 +452,11 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       })
     },
 
-    async refresh(channel) {
+    async refresh(reach) {
       // Read and checked in full before anything is adopted: a configuration
       // accepted in part would be indistinguishable from one the server
       // published that way.
-      const configuration = readDcConfiguration(await channel.invoke({ _: 'help.getConfig' }))
+      const configuration = readDcConfiguration(await reach.invoke({ _: 'help.getConfig' }))
       await adopt(configuration)
 
       return configuration
