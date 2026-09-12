@@ -278,6 +278,78 @@ describe('a reference the datacenter has refused', () => {
     expect(asked.at(-1)?.['_']).toBe('messages.getMessages')
   })
 
+  it('does not take a photo reference for the document it is fetching', async () => {
+    // Documents and photos are numbered separately, so one of each can carry
+    // the same identifier. Matching on the number alone would hand the
+    // transfer a reference issued for the other, and the refusal that follows
+    // says nothing about which of the two was confused.
+    const { actions, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [photoMessage(SECOND)],
+      chats: [],
+      users: [],
+    }))
+
+    await updateActions(normalizeUpdate(update(FIRST)), actions).download()
+
+    await expect((captured.references as ManagedLocation).refresh(FIRST)).rejects.toThrow(
+      /no longer carries the file/,
+    )
+  })
+
+  it('does not take a document reference for the photo it is fetching', async () => {
+    const { actions, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [messageWith(SECOND)],
+      chats: [],
+      users: [],
+    }))
+
+    await updateActions(normalizeUpdate(photoUpdate(FIRST)), actions).download()
+
+    await expect((captured.references as ManagedLocation).refresh(FIRST)).rejects.toThrow(
+      /no longer carries the file/,
+    )
+  })
+
+  it('keeps sending the reference it has when a refetch fails', async () => {
+    // A failed refresh leaves the location as it was rather than half-updated,
+    // so the transfer that gave up reports the refusal it was given instead of
+    // a second one about a reference nothing issued.
+    const { actions, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [],
+      chats: [],
+      users: [],
+    }))
+
+    await updateActions(normalizeUpdate(update(FIRST)), actions).download()
+    await expect((captured.references as ManagedLocation).refresh(FIRST)).rejects.toThrow(
+      ValidationError,
+    )
+
+    expect(sending(captured.references as ManagedLocation)).toBe(FIRST)
+  })
+
+  it('asks once per refusal, however many times the transfer is refused', async () => {
+    // The transfer refreshes at most once per range, and this side refuses to
+    // ask again for a reference it has already replaced. Between them there is
+    // no arrangement of refusals that turns into a loop.
+    const { actions, asked, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [messageWith(SECOND)],
+      chats: [],
+      users: [],
+    }))
+
+    await updateActions(normalizeUpdate(update(FIRST)), actions).download()
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await (captured.references as ManagedLocation).refresh(FIRST)
+    }
+
+    expect(asked.filter((query) => query._ === 'messages.getMessages')).toHaveLength(1)
+  })
+
   it('refuses media that carries no file at all', async () => {
     const { actions } = context(() => ({ _: 'boolTrue' }))
     const poll: TlValue = {

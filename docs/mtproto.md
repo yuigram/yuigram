@@ -1781,12 +1781,18 @@ refetch needs.
 So the event owns it. `event.download()` fetches the document its own message carried, and
 answers a refused reference by asking for that message again and fetching with the reference it
 carries now — once, and invisibly. Which method asks is the same split deleting uses: a channel
-keeps its messages under the channel. Only the document being fetched is read out of the
-answer, because an answer may describe several messages and each carries its own; and a caller
-whose reference was already replaced is not made to wait for a refetch it does not need.
+keeps its messages under the channel.
 
-A message that no longer carries the document is reported rather than retried. There is nothing
-left to ask for, and the alternative is a loop.
+Only the file being fetched is read out of the answer, matched on what sort of media it is as
+well as which one: an answer may describe several messages, each with media of its own, and
+documents and photos are numbered separately so one of each can carry the same identifier. A
+reference taken from any other is one issued for a different file. A caller whose reference was
+already replaced is not made to wait for a refetch it does not need.
+
+A message that no longer carries the file is reported rather than retried. There is nothing
+left to ask for, and the alternative is a loop. Nothing here can become one: the transfer
+refreshes at most once per range, and a refusal carrying a reference that has already been
+replaced is answered from what is held rather than by asking again.
 
 ### Naming a file to send
 

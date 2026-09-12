@@ -22,6 +22,9 @@ import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { NormalizedUpdate } from './normalize.js'
 
+/** Which of the two media a message can carry a file under. */
+type MediaKind = 'document' | 'photo'
+
 /** What acting on an update needs from the account it arrived on. */
 export interface ActionContext {
   /** The peers this account has learned, which is where a reference comes from. */
@@ -91,18 +94,22 @@ async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise
  * already gives the same question on the other transport. Anything else — a
  * poll, a contact, a location — carries no file at all.
  */
-function fileOf(update: NormalizedUpdate): { request: DownloadRequest; id: bigint } {
+function fileOf(update: NormalizedUpdate): {
+  request: DownloadRequest
+  id: bigint
+  kind: MediaKind
+} {
   const media = update.message?._ === 'message' ? update.message.media : undefined
   if (media === undefined) {
     throw new ValidationError(`a '${update.kind}' event carries no media to fetch`)
   }
 
   if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
-    return { request: documentFile(media.document), id: media.document.id }
+    return { request: documentFile(media.document), id: media.document.id, kind: 'document' }
   }
 
   if (media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') {
-    return { request: photoFile(media.photo), id: media.photo.id }
+    return { request: photoFile(media.photo), id: media.photo.id, kind: 'photo' }
   }
 
   throw new ValidationError(`a '${media._}' carries no file this can fetch`)
@@ -126,6 +133,7 @@ function managed(
   context: ActionContext,
   request: DownloadRequest,
   id: bigint,
+  kind: MediaKind,
 ): ManagedLocation {
   let reference = request.location['file_reference'] as Uint8Array
 
@@ -137,7 +145,7 @@ function managed(
       // need: the reference it was refused is already the old one.
       if (!sameBytes(used, reference)) return
 
-      reference = await refetch(update, context, id)
+      reference = await refetch(update, context, id, kind)
     },
   }
 }
@@ -153,6 +161,7 @@ async function refetch(
   update: NormalizedUpdate,
   context: ActionContext,
   id: bigint,
+  kind: MediaKind,
 ): Promise<Uint8Array> {
   const msgId = messageIdOf(update, 'refresh the reference of')
   const chat = update.chat
@@ -174,14 +183,13 @@ async function refetch(
   const found = Array.isArray(messages) ? messages : []
   for (const entry of found) {
     const media = (entry as TlValue)['media'] as TlValue | undefined
-    // Whichever of the two a message carries. Matched on the identifier
-    // because an answer may describe several messages, each with media of its
-    // own, and any other reference would be issued for a different file.
-    for (const key of ['document', 'photo'] as const) {
-      const carried = media?.[key] as TlValue | undefined
-      if (carried?.['id'] === id && carried['file_reference'] instanceof Uint8Array) {
-        return carried['file_reference']
-      }
+    // Matched on both what sort of media it is and which one. An answer may
+    // describe several messages, each with media of its own, and a reference
+    // taken from any other is one issued for a different file — which is a
+    // request that is well formed and refused.
+    const carried = media?.[kind] as TlValue | undefined
+    if (carried?.['id'] === id && carried['file_reference'] instanceof Uint8Array) {
+      return carried['file_reference']
     }
   }
 
@@ -302,9 +310,9 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
     },
 
     async download(): Promise<Uint8Array> {
-      const { request, id } = fileOf(update)
+      const { request, id, kind } = fileOf(update)
 
-      return await context.fetch(request, managed(update, context, request, id))
+      return await context.fetch(request, managed(update, context, request, id, kind))
     },
 
     async react(emoji: string): Promise<TlValue> {
