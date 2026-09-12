@@ -1481,6 +1481,119 @@ describe('how much of a file there is decides which connections carry it', () =>
 })
 
 /**
+ * A delivery node is not somewhere an account goes.
+ *
+ * A datacenter offers one only to a client that says it can accept one, and an
+ * account never says so. The transfer layer implements the node path in full —
+ * `files-cdn.test.ts` judges the decryption and the verification — but reaching
+ * a machine Telegram does not operate is a decision about authorization, and
+ * `docs/security.md` §7 does not leave it to whatever a request carried.
+ *
+ * These cases prove the offer is never made, which is the only place the
+ * boundary can be held without relying on what the node then does.
+ */
+describe('a delivery node an account is never offered', () => {
+  const FILE = 0x0cd0_0001n
+  const SIZE = 512 * 1024
+
+  /** A datacenter that would hand the transfer to a node, if it were allowed to. */
+  function willing() {
+    const server = new FileServer(2)
+    server.faults = { viaCdn: true }
+    const { reference } = server.add(FILE, { size: SIZE, dcId: 2 })
+
+    const instance = harness({
+      api: (query, dcId) =>
+        query._.startsWith('upload.') && dcId === 2 ? server.invoke(query) : undefined,
+    })
+
+    return {
+      instance,
+      server,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: FILE,
+        access_hash: 5n,
+        file_reference: reference,
+        thumb_size: '',
+      } as TlValue,
+    }
+  }
+
+  /** Whether one message asked for a file and said a node would do. */
+  function saidNodeWouldDo(value: TlValue): boolean {
+    const inner = value['query']
+    const nested =
+      typeof inner === 'object' && inner !== null && typeof (inner as TlValue)._ === 'string'
+        ? saidNodeWouldDo(inner as TlValue)
+        : false
+
+    return nested || (value._ === 'upload.getFile' && value['cdn_supported'] === true)
+  }
+
+  /** Whether any request this account made said it would accept a node. */
+  const offered = (instance: MockAccount) =>
+    [...instance.datacenters.values()]
+      .flatMap((datacenter) => datacenter.connections)
+      .flatMap((connection) => connection.peer.seen)
+      .some((element) => saidNodeWouldDo(element.value))
+
+  it('never says it would accept one', async () => {
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    await instance.account.download({ location, dcId: 2, size: SIZE })
+
+    expect(offered(instance)).toBe(false)
+    await instance.dispose()
+  })
+
+  it('is served by the datacenter itself, byte for byte', async () => {
+    // The boundary costs nothing here: a datacenter that would rather redirect
+    // still serves the file when the client has not said it can be redirected.
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    const bytes = await instance.account.download({ location, dcId: 2, size: SIZE })
+
+    expect(bytes).toEqual(contentOf(FILE, 0, SIZE))
+    await instance.dispose()
+  })
+
+  it('does not say so because a caller asked it to', async () => {
+    // The option is not on the type an account takes, and a request that
+    // carried one anyway would otherwise pass straight through.
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    // Cast once, because the option is deliberately not on the type. What is
+    // being checked is what happens when one arrives anyway.
+    await instance.account.download({ location, dcId: 2, size: SIZE, cdn: true } as Parameters<
+      typeof instance.account.download
+    >[0])
+
+    expect(offered(instance)).toBe(false)
+    await instance.dispose()
+  })
+
+  it('does not say so on a streamed fetch either, asked for or not', async () => {
+    const { instance, location } = willing()
+    await instance.account.connect()
+
+    await instance.account.downloadTo({
+      location,
+      dcId: 2,
+      size: SIZE,
+      write: () => {},
+      cdn: true,
+    } as Parameters<typeof instance.account.downloadTo>[0])
+
+    expect(offered(instance)).toBe(false)
+    await instance.dispose()
+  })
+})
+
+/**
  * Sending a file, through the account rather than through the transfer.
  *
  * `files-upload.test.ts` already judges the transfer itself: part numbering,

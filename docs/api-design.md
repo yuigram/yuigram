@@ -709,8 +709,13 @@ was deduplicated by — `event.reply()` already returns that, with the answer it
 under `raw`. [mtproto.md](mtproto.md) §9.6 records the two shapes an answer takes and why the
 short one can carry no message at all.
 
-Delivery nodes are not on the client yet: what is missing is the connection routing a delivery
-node needs. `account.api.upload.*` reaches the methods meanwhile.
+A delivery node is not somewhere an account goes. A datacenter offers one only to a client that
+says it can accept one, and nothing on `Account` says so: the option is not on the type its
+callers pass, and it is stated as off wherever a transfer starts, so a request carrying one
+anyway cannot decide it. The transfer layer implements the node path in full — the decryption
+and the per-block verification that makes those bytes worth anything — and what is still
+missing before an account could use it is a connection to a datacenter it holds no
+authorization at. [security.md](security.md) §5 records why that boundary is where it is.
 
 ---
 

@@ -126,6 +126,24 @@ The DH validation deserves emphasis: it is expensive and it is tempting to skip 
 carelessly. mtcute caches the *result* for a known-good prime, which is the correct
 optimization — cache the verification outcome, never bypass the verification.
 
+### Delivery nodes
+
+A datacenter may answer a request for a file by naming a machine Telegram does not operate. The
+node holds the file encrypted and is told nothing about the account asking for it, but a client
+that goes there is fetching bytes from somewhere outside Telegram, and that is a decision about
+trust rather than about speed.
+
+It is offered only to a client that says it can accept one, and **an account never says so**.
+The transfer layer implements the node path in full — the counter-mode decryption and the
+per-block SHA-256 verification that makes the bytes worth anything — and nothing on `Account`
+turns it on. The flag is not on the type an account's callers pass, and it is stated as off at
+every point a transfer is started, so a request object carrying one anyway cannot decide this.
+
+What is left before an account could go there is a connection to a datacenter it holds no
+authorization at, which is a separate piece of the datacenter layer rather than a missing
+option. Until that exists, holding the boundary costs nothing: a datacenter that would rather
+redirect still serves the file to a client that has not said it can be redirected.
+
 ---
 
 ## 6. Handling untrusted input

@@ -403,7 +403,10 @@ export class Account<Ext = unknown> {
     const reach = this.#transfers(await this.#allowance(request))
     const { download } = await import('./files/download.js')
 
-    return await download({ ...request, reach })
+    // Stated rather than left out. A delivery node is a machine Telegram does
+    // not operate, and reaching one is a decision `docs/security.md` §7 does
+    // not leave to whatever a request object happened to carry.
+    return await download({ ...request, reach, cdn: false })
   }
 
   /**
@@ -422,7 +425,7 @@ export class Account<Ext = unknown> {
     const reach = this.#transfers(await this.#allowance(request))
     const { downloadTo } = await import('./files/download.js')
 
-    return await downloadTo({ ...request, reach })
+    return await downloadTo({ ...request, reach, cdn: false })
   }
 
   /**
@@ -1124,7 +1127,7 @@ export class Account<Ext = unknown> {
           const reach = this.#transfers(await this.#allowance(request))
           const { download } = await import('./files/download.js')
 
-          return await download({ ...request, reach, references })
+          return await download({ ...request, reach, references, cdn: false })
         },
       },
     }) as MtprotoContext & Ext
