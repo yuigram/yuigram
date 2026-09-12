@@ -1673,7 +1673,33 @@ be less true than saying the identifier is not known.
 operations return their answer unchanged: an edit and a deletion are about a message the caller
 already identified, so there is nothing in the answer to discover.
 
-### 9.7 Testing
+### 9.7 Continuing a list that arrived in pages
+
+A page of dialogs does not say where the next one starts. `messages.getDialogs` takes
+`offset_date`, `offset_id` and `offset_peer`, and all three are assembled from the last dialog
+on the page just received.
+
+**The date is not on the dialog.** A dialog carries the identifier of its most recent message
+and nothing about when that was, so the date comes from that message in the same answer. Taken
+from anywhere else — the answer's own timestamp, the moment the page arrived — the offset is
+well formed and names a position nobody has, and Telegram answers it with a page beginning
+somewhere other than where the last one ended. That is a conversation lost rather than an error.
+
+The message is matched on its conversation as well as its number, because identifiers are per
+conversation for channels: a page describing two of them can hold two messages numbered the
+same, and taking either dates the offset by whichever came first in the array.
+
+Only a slice can be continued. The complete form says it is the whole list and the unchanged
+form describes no page at all — both are the end, and asking again fetches the first page a
+second time. A dialog whose most recent message the answer does not describe falls back to the
+one before it: an offset that repeats a dialog costs a caller a duplicate it can see, and one
+that skips past it loses a conversation silently.
+
+`nextDialogs(answer)` is that reading and nothing more. How many pages to ask for, how fast,
+and what to do with them are the caller's — a list that read itself would be deciding all three,
+and neither transport has a precedent for which of those decisions belongs to a framework.
+
+### 9.8 Testing
 
 This subsystem cannot be validated against the live network — the interesting cases are
 precisely the ones that occur rarely and unpredictably. It is therefore built against a
@@ -1729,6 +1755,23 @@ name that resolves to a peer the answer did not describe is reported as unresolv
 A name is resolved through Telegram only when nothing usable was harvested for it, and the answer
 is harvested whole before the peer asked for is picked out — a name usually resolves to a peer
 whose answer names others, and discarding them means asking again for what has already arrived.
+
+**Naming a reduced peer is built and unused, and what is missing is not the builder.**
+`inputPeerFromMessage` assembles the reference a reduced peer is named by, and it needs the peer
+whose message mentioned this one and which message that was. The record says a peer is reduced
+and not where it was seen, so nothing can supply those two from the table alone.
+
+Recording them is derivable in one place only. A message's own sender is a peer that message
+mentions by construction, so an update carrying a message settles the context exactly; anywhere
+else the attribution is a search through whatever fields of whatever messages an answer happened
+to describe, and a wrong guess is a reference Telegram refuses.
+
+Nothing would read it. Every operation bound to an update addresses the conversation the update
+arrived in, and that conversation is described in full by the update that arrived from it — so
+a reduced peer is never the target. Addressing one means addressing a peer other than the one an
+event carried, which [api-decisions.md](api-decisions.md) Decision 11 puts on the client, and
+the client's `resolve` takes a peer rather than a peer and a place it was seen. The builder
+stays ready for the operation that needs it rather than an origin table being kept for nobody.
 
 ---
 

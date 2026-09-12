@@ -709,6 +709,19 @@ was deduplicated by — `event.reply()` already returns that, with the answer it
 under `raw`. [mtproto.md](mtproto.md) §9.6 records the two shapes an answer takes and why the
 short one can carry no message at all.
 
+A page of dialogs is read the same way. `nextDialogs(answer)` says where the next page begins,
+or nothing when there is nowhere to continue from:
+
+```ts
+const answer = await account.api.messages.getDialogs({ ...offset, limit: 100, hash: 0n })
+const next = nextDialogs(answer)
+```
+
+The date it needs is on the last dialog's *message*, not on the dialog, which is the mistake
+that produces an offset Telegram accepts and answers from somewhere else —
+[mtproto.md](mtproto.md) §9.7. Iterating is not here: how many pages, how fast, and what to do
+with them are the caller's.
+
 A delivery node is not somewhere an account goes. A datacenter offers one only to a client that
 says it can accept one, and nothing on `Account` says so: the option is not on the type its
 callers pass, and it is stated as off wherever a transfer starts, so a request carrying one
