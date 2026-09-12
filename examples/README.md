@@ -26,6 +26,7 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 08 | [storage](08-storage) | The built-in adapters, TTLs, and writing your own |
 | 09 | [routers](09-routers) | Features as modules, each with its own scoped middleware |
 | 10 | [production](10-production) | Throttling, retry, rate limiting, concurrency, clean shutdown |
+| 12 | [multiple clients](12-multiple-clients) | A bot and several accounts in one application, each with its own store and connections |
 
 ## Planned
 
@@ -35,4 +36,3 @@ and keep the numbers the [roadmap](../docs/roadmap.md) gives them.
 | | Example | Phase |
 |---|---|---|
 | 11 | raw API across both transports | 11 |
-| 12 | multiple clients | 11 |

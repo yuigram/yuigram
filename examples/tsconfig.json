@@ -30,6 +30,9 @@
     },
     {
       "path": "10-production"
+    },
+    {
+      "path": "12-multiple-clients"
     }
   ]
 }
