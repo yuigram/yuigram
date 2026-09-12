@@ -105,6 +105,7 @@ describe('the entry point', () => {
     expect(typeof yuigram.sentMessage).toBe('function')
     expect(typeof yuigram.nextDialogs).toBe('function')
     expect(typeof yuigram.inputPeerFromMessage).toBe('function')
+    expect(typeof yuigram.inputChannel).toBe('function')
   })
 
   it('paces with the published Telegram limits by default', () => {

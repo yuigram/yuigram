@@ -17,7 +17,7 @@ import { PeerError, ValidationError } from '@yuigram/core'
 import type { DownloadRequest } from '../files/download.js'
 import { documentFile, photoFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'
-import { inputPeer } from '../network/peers.js'
+import { inputChannel, inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { NormalizedUpdate } from './normalize.js'
@@ -220,13 +220,8 @@ async function channelOf(
   if (record === undefined) {
     throw new PeerError(`${chat.kind} ${chat.id} is not known to this account`)
   }
-  if (record.min || record.accessHash === undefined) {
-    throw new PeerError(
-      `channel ${chat.id} was only seen in passing and cannot be named on its own`,
-    )
-  }
 
-  return { _: 'inputChannel', channel_id: record.id, access_hash: record.accessHash }
+  return inputChannel(record)
 }
 
 /** The identifier of the message an update carries, where it carries one. */

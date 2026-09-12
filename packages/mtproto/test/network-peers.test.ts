@@ -12,6 +12,7 @@ import { PeerError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import {
   harvest,
+  inputChannel,
   inputPeer,
   inputPeerFromMessage,
   readPeerReference,
@@ -372,6 +373,56 @@ describe('resolving a name', () => {
 
     await expect(resolveUsername({ store, peer: dc, username: 'durov' })).rejects.toThrow(
       /does not name a peer/,
+    )
+  })
+})
+
+/**
+ * Naming a channel, which the channel methods take instead of a peer.
+ *
+ * Most of the `channels` namespace addresses a channel by a reference of its
+ * own — the same identifier and hash an `inputPeerChannel` carries, under a
+ * different constructor — so holding a peer reference is not holding one of
+ * these. The rules are the ones naming a peer already follows, because the
+ * reason is the same: a hash that means something only where it arrived
+ * produces a request Telegram rejects as a problem with the call.
+ */
+describe('naming a channel', () => {
+  const channel = (overrides: Partial<PeerRecord> = {}): PeerRecord => ({
+    kind: 'channel',
+    id: 200n,
+    accessHash: 9n,
+    min: false,
+    usernames: [],
+    ...overrides,
+  })
+
+  it('names it by its identifier and hash', () => {
+    expect(inputChannel(channel())).toEqual({
+      _: 'inputChannel',
+      channel_id: 200n,
+      access_hash: 9n,
+    })
+  })
+
+  it('refuses a record that is not a channel', () => {
+    // There is no reference to build. A user's identifier under this
+    // constructor names a channel that is somebody else or nobody.
+    expect(() =>
+      inputChannel({ kind: 'user', id: 100n, accessHash: 7n, min: false, usernames: [] }),
+    ).toThrow(/is not a channel/)
+    expect(() => inputChannel({ kind: 'chat', id: 300n, min: false, usernames: [] })).toThrow(
+      PeerError,
+    )
+  })
+
+  it('refuses one only seen in passing', () => {
+    expect(() => inputChannel(channel({ min: true }))).toThrow(/only seen in passing/)
+  })
+
+  it('refuses one whose hash was never learned', () => {
+    expect(() => inputChannel({ kind: 'channel', id: 200n, min: false, usernames: [] })).toThrow(
+      /no access hash/,
     )
   })
 })

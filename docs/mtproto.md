@@ -1831,6 +1831,16 @@ A name is resolved through Telegram only when nothing usable was harvested for i
 is harvested whole before the peer asked for is picked out — a name usually resolves to a peer
 whose answer names others, and discarding them means asking again for what has already arrived.
 
+**A channel is named by a reference of its own.** Two thirds of the `channels` namespace
+addresses one that way — the same identifier and hash an `inputPeerChannel` carries, under a
+different constructor — so a caller holding a peer reference still has nothing those methods
+accept. `inputChannel` builds it, and refuses for the reasons naming a peer is refused: a record
+that is not a channel, one seen only in passing, one whose hash was never learned.
+
+Whether the record exists at all stays with whoever looked it up, because what a missing one
+means depends on what was being attempted. A catch-up that cannot name a channel and a handler
+that cannot delete in one are not the same failure.
+
 **Naming a reduced peer needs a context, and the context is the caller's.**
 `inputPeerFromMessage` assembles the reference, and it needs the peer whose message mentioned
 this one and which message that was. It is public, because a caller holding an update holds

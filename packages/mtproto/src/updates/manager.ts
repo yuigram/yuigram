@@ -30,7 +30,7 @@
  */
 
 import { PeerError, TelegramError } from '@yuigram/core'
-import { harvest } from '../network/peers.js'
+import { harvest, inputChannel } from '../network/peers.js'
 import type { PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { BoxKind, UpdateState } from './state.js'
@@ -341,11 +341,11 @@ export function openUpdates(options: UpdatesOptions): Updates {
    */
   const nameChannel = async (channelId: bigint): Promise<TlValue> => {
     const record = await options.peers.byId('channel', channelId)
-    if (record === undefined || record.accessHash === undefined) {
+    if (record === undefined) {
       throw new PeerError(`channel ${channelId} cannot be caught up on: it has never been named`)
     }
 
-    return { _: 'inputChannel', channel_id: channelId, access_hash: record.accessHash }
+    return inputChannel(record)
   }
 
   const channelDifference = async (box: Box, entry: { held: TlValue[] }): Promise<void> => {

@@ -91,6 +91,7 @@ export {
   type DownloadSink,
   documentFile,
   documentMedia,
+  inputChannel,
   inputPeerFromMessage,
   type LoginTokenState,
   type MtprotoApi,

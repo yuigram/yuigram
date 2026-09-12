@@ -33,7 +33,7 @@ export {
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
-export { inputPeerFromMessage } from './network/peers.js'
+export { inputChannel, inputPeerFromMessage } from './network/peers.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export type {
   DialogsOffset,

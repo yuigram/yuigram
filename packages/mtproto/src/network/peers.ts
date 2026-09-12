@@ -136,6 +136,51 @@ export function inputPeer(record: PeerRecord): TlValue {
 }
 
 /**
+ * Build the reference the channel methods take.
+ *
+ * Not an `InputPeer`. Two thirds of the `channels` namespace addresses a channel
+ * by a reference of its own, carrying the same identifier and hash an
+ * `inputPeerChannel` would but under a different constructor — so a caller
+ * holding a peer reference still has nothing those methods accept.
+ *
+ * ```ts
+ * const record = await account.peers.byId('channel', id)
+ * await account.api.channels.getMessages({
+ *   channel: inputChannel(record),
+ *   id: [{ _: 'inputMessageID', id: 77 }],
+ * })
+ * ```
+ *
+ * Refused for the same reasons naming a peer is refused, and with the same
+ * words: a record that is not a channel names nothing this constructor can
+ * carry, and one seen only in passing carries a hash that means something only
+ * where it arrived — a reference built from either is one Telegram rejects as a
+ * problem with the call rather than with the channel.
+ *
+ * Whether the record exists at all stays with whoever looked it up. What a
+ * missing one means depends on what was being attempted, and the catch-up that
+ * cannot name a channel and the handler that cannot delete in one do not want
+ * the same sentence.
+ */
+export function inputChannel(record: PeerRecord): TlValue {
+  if (record.kind !== 'channel') {
+    throw new PeerError(`${record.kind} ${record.id} is not a channel`)
+  }
+
+  if (record.min) {
+    throw new PeerError(
+      `channel ${record.id} was only seen in passing and cannot be named on its own`,
+    )
+  }
+
+  if (record.accessHash === undefined) {
+    throw new PeerError(`channel ${record.id} has no access hash to be named with`)
+  }
+
+  return { _: 'inputChannel', channel_id: record.id, access_hash: record.accessHash }
+}
+
+/**
  * Build the reference that names a reduced peer by where it was seen.
  *
  * The context is the peer whose message mentioned this one, and the message

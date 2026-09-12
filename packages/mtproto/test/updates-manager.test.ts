@@ -439,6 +439,19 @@ describe('catching up on request', () => {
       /never been named/,
     )
   })
+
+  it('refuses to ask about one it only saw in passing', async () => {
+    // A reduced record carries a hash that means something only where it
+    // arrived. Catching up with it sends a reference Telegram refuses for a
+    // reason that names the call, which is a worse answer than saying the
+    // channel cannot be named at all.
+    const c = client({ seededChannel: false })
+    await c.peers.save({ kind: 'channel', id: 12345n, accessHash: 4n, min: true, usernames: [] })
+
+    await expect(c.updates.recover({ kind: 'channel', channelId: 12345n })).rejects.toThrow(
+      /only seen in passing/,
+    )
+  })
 })
 
 describe('a server that answers with something else entirely', () => {
