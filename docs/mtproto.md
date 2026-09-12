@@ -388,11 +388,17 @@ would be handed to.
 That is a policy rather than a protocol rule, in the same sense as the salt reserve below: the
 protocol says when a key expires, not when to stop using it.
 
-**Not yet implemented:** renewing a key that expires while a connection is *open*. The margin
-above covers the moment a connection is opened, which is where a key is chosen; a connection
-already running holds its key until the datacenter refuses it, and recovering is what
-discarding and re-authorizing already does. Renewing underneath a live connection needs the
-schedule to own a duty that outlives any one request, which is a decision §6 has not made.
+**Deliberately not implemented:** renewing a key that expires while a connection is *open*. The
+margin above covers the moment a connection is opened, which is where a key is chosen. A
+connection already running holds its key until the datacenter refuses it, and recovering from
+that refusal is a path that already exists and is proved rather than assumed: the refused key is
+discarded — named by what was refused, so a key another connection obtained meanwhile survives —
+and the next attempt obtains another.
+
+So what is missing is the saving, not the recovery: renewing ahead of the refusal costs the
+in-flight requests one round trip less. Doing it needs a duty that outlives any one request and
+an owner for it, which is a decision about the schedule rather than a fact about the protocol —
+and paying a rare round trip is a better trade than inventing one.
 
 ### 5.4 Sign-in flows
 
