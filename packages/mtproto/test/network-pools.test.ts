@@ -29,6 +29,8 @@ class Fake implements ManagedConnection {
   readonly purpose: 'main' | 'media' | 'cdn'
   readonly slot: number
   state: ConnectionState = 'ready'
+  /** Whether the key this one holds is nearly finished. Driven by the case. */
+  spent = false
   #inFlight = 0
   /** Answers waiting to be released, in the order they were asked for. */
   readonly waiting: Array<() => void> = []
@@ -568,5 +570,112 @@ describe('what a pool does not own', () => {
     for (const purpose of purposes) {
       for (const id of [2, 4]) expect(pools.size({ id, purpose }), `${id}/${purpose}`).toBe(1)
     }
+  })
+})
+
+/**
+ * A pool replacing a connection whose key is nearly finished.
+ *
+ * The margin that keeps a nearly-expired key from being used to *open* a
+ * connection says nothing about one already open, and a long-lived connection
+ * outlives the key it was opened with. Handing that one out puts a call behind
+ * a key that will not see it out: the datacenter refuses part-way through, the
+ * key is discarded, and the exchange the replacement needed anyway is paid for
+ * with a failed call on top.
+ *
+ * So the pool asks before it hands one out. Only an idle connection is
+ * replaced — closing a busy one would take the calls already on it down to save
+ * a later one, which is the trade the other way round.
+ */
+describe('a connection the pool will not hand out again', () => {
+  it('is replaced when its key is nearly finished', () => {
+    const { connections, made } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' }) as Fake
+    first.spent = true
+    const second = pools.get({ purpose: 'download' })
+
+    expect(second).not.toBe(first)
+    expect(first.state).toBe('closed')
+    expect(made.size).toBe(1)
+  })
+
+  it('is replaced in the slot it held, so the pool does not grow', () => {
+    // A pool that grew every time a key ran out would creep up to its ceiling
+    // on a long-lived client and stay there.
+    const { connections, opened } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' }) as Fake
+    first.spent = true
+    pools.get({ purpose: 'download' })
+
+    expect(pools.size({ purpose: 'download' })).toBe(1)
+    expect(opened).toEqual(['2:media:2000', '2:media:2000'])
+  })
+
+  it('is left alone while calls are still on it', () => {
+    // Closing it would settle those calls with a failure to save a later one
+    // from a refusal, which is a worse trade than the one being avoided. The
+    // next caller gets a second connection, because a busy one under the limit
+    // is contention like any other.
+    const { connections } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' }) as Fake
+    busy(first)
+    first.spent = true
+
+    expect(pools.get({ purpose: 'download' })).not.toBe(first)
+    expect(first.state).not.toBe('closed')
+  })
+
+  it('is replaced once the calls on it have finished', async () => {
+    const { connections } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' }) as Fake
+    busy(first)
+    first.spent = true
+    pools.get({ purpose: 'download' })
+    first.release()
+    await Promise.resolve()
+
+    // The next caller finds it idle and spent, which is the moment to replace.
+    pools.get({ purpose: 'download' })
+
+    expect(first.state).toBe('closed')
+  })
+
+  it('is kept while its key still has a call in it', () => {
+    // The control. A pool that replaced connections regardless would pay for an
+    // exchange on every call.
+    const { connections } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' })
+
+    expect(pools.get({ purpose: 'download' })).toBe(first)
+  })
+
+  it('replaces the one that is finished and keeps the one that is not', async () => {
+    const { connections } = layer()
+    const pools = openPools({ connections })
+
+    const first = pools.get({ purpose: 'download' }) as Fake
+    busy(first)
+    const second = pools.get({ purpose: 'download' }) as Fake
+    busy(second)
+    second.spent = true
+    second.release()
+    await Promise.resolve()
+
+    // Only the spent one goes: the other is still carrying a call, and a key
+    // with life in it is not the pool's business.
+    pools.get({ purpose: 'download' })
+
+    expect(first.state).not.toBe('closed')
+    expect(second.state).toBe('closed')
   })
 })

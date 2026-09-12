@@ -134,7 +134,14 @@ export function openPools(options: PoolsOptions): Pools {
       // in the pool would be handed out for ever. Replacing it in place keeps
       // the slot it was opened under, so the pool does not creep upwards every
       // time a connection is lost and reopened.
+      //
+      // A connection whose key is nearly finished is closed here rather than
+      // handed out: the call it would carry outlives the key, and the refusal
+      // that follows costs that call on top of the exchange the replacement
+      // needs anyway. Only an idle one, because closing a busy connection would
+      // take the calls already on it down to save a later one.
       for (const [slot, connection] of pool.entries()) {
+        if (connection.spent && connection.inFlight === 0) connection.close()
         if (connection.state !== 'closed') continue
 
         pool[slot] = open(options.connections, target, purpose, slot)

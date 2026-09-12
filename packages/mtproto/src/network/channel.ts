@@ -177,6 +177,39 @@ export interface StreamRequest {
   readonly onClose: (error?: Error) => void
 }
 
+/**
+ * Life a key with one must have left to be worth using.
+ *
+ * Expiry is judged when a key is asked for rather than on a timer. A key with a
+ * second left is refused part-way through the call it was handed to, discarded,
+ * and replaced by two fresh exchanges — which is what was about to happen
+ * anyway, paid for with a failed call on top.
+ *
+ * A minute, because that is the longest a single call is prepared to wait for
+ * its answer: a key that cannot outlive one call is of no use to whatever would
+ * use it. `docs/mtproto.md` §5.3 records this as a policy rather than a
+ * protocol rule — the protocol says when a key expires, not when to stop using
+ * one.
+ *
+ * It applies at both moments a key is chosen: when one is loaded from the store
+ * to open a connection, and when a connection already holding one is handed out
+ * to make a call.
+ */
+export const KEY_MARGIN_SECONDS = 60
+
+/**
+ * Whether a key is too near the end of its life to be worth using.
+ *
+ * A key with no lifetime never is: the long-lived key does not expire, and
+ * treating a missing expiry as an imminent one would throw away the credential
+ * that vouches for everything else.
+ */
+export function keySpent(authorization: KnownAuthorization, atSeconds: number): boolean {
+  const expiresAt = authorization.expiresAt
+
+  return expiresAt !== undefined && expiresAt - KEY_MARGIN_SECONDS <= atSeconds
+}
+
 /** A live connection to one datacenter. */
 export interface Channel {
   readonly dcId: number

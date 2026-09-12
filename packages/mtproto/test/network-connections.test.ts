@@ -1258,3 +1258,73 @@ describe('a datacenter that does not know the key', () => {
     expect(forgotten).toEqual([])
   })
 })
+
+/**
+ * A connection reporting that its key is nearly finished.
+ *
+ * The margin is already applied where a stored key is chosen. A connection that
+ * has been running for a day holds one chosen long ago, and the same question
+ * has to be answerable about it — otherwise the only thing that ends a spent
+ * key is a call being refused part-way through, which costs that call on top of
+ * the exchange the replacement needed anyway.
+ */
+describe('a connection whose key is nearly finished', () => {
+  /** The lifetime every channel in this harness is given, in Unix seconds. */
+  const EXPIRES_AT = 4_000_000_000
+
+  it('says nothing while it holds no key at all', async () => {
+    // Nothing is open, so there is nothing to judge — and the key it opens with
+    // will be chosen with the margin already applied.
+    const { layer } = harness()
+
+    expect(layer.get().spent).toBe(false)
+  })
+
+  it('says nothing of a key that does not expire', async () => {
+    // The long-lived key has no lifetime. Treating a missing expiry as an
+    // imminent one would throw away the credential that vouches for the rest.
+    const { layer, advance } = harness()
+    const connection = layer.get()
+    await connection.ready()
+
+    advance(EXPIRES_AT * 1000)
+
+    expect(connection.spent).toBe(false)
+  })
+
+  it('says nothing while a call still fits in what is left', async () => {
+    const { layer, advance, withLifetimes } = harness()
+    withLifetimes()
+    const connection = layer.get()
+    await connection.ready()
+
+    // A second before the margin opens.
+    advance((EXPIRES_AT - 61) * 1000)
+
+    expect(connection.spent).toBe(false)
+  })
+
+  it('says so once a call no longer does', async () => {
+    // A minute, because that is the longest a single call waits for its answer:
+    // a key that cannot outlive one call is of no use to whatever holds it.
+    const { layer, advance, withLifetimes } = harness()
+    withLifetimes()
+    const connection = layer.get()
+    await connection.ready()
+
+    advance((EXPIRES_AT - 60) * 1000)
+
+    expect(connection.spent).toBe(true)
+  })
+
+  it('goes on saying so past the moment the key actually expires', async () => {
+    const { layer, advance, withLifetimes } = harness()
+    withLifetimes()
+    const connection = layer.get()
+    await connection.ready()
+
+    advance((EXPIRES_AT + 3600) * 1000)
+
+    expect(connection.spent).toBe(true)
+  })
+})

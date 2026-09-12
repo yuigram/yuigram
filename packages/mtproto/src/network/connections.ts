@@ -42,6 +42,7 @@ import {
   AUTH_KEY_NOT_FOUND,
   type Channel,
   type KnownAuthorization,
+  keySpent,
   TransportError,
 } from './channel.js'
 import type { Datacenters } from './datacenters.js'
@@ -135,6 +136,19 @@ export interface ManagedConnection {
    * is still work this connection has taken on.
    */
   readonly inFlight: number
+  /**
+   * Whether the key this connection holds is too near the end of its life.
+   *
+   * A connection is opened with a key that had a call's worth of life left, and
+   * a long-lived one goes on being used long after that stops being true. This
+   * is the same test applied where the key is handed out rather than only where
+   * it was chosen, so a layer choosing between connections can replace one
+   * instead of watching a call be refused part-way through.
+   *
+   * False while there is no channel: a connection with nothing open holds no key
+   * to judge, and the one it opens next will be chosen with the margin applied.
+   */
+  readonly spent: boolean
   /**
    * Wait until a channel is live.
    *
@@ -322,6 +336,13 @@ class Logical implements ManagedConnection {
     channel?.close()
 
     this.#settleAll(new CancelledError('the connection was closed'))
+  }
+
+  get spent(): boolean {
+    const channel = this.#channel
+    if (channel === undefined) return false
+
+    return keySpent(channel.authorization, Math.floor(this.#now() / 1000))
   }
 
   /** The live channel, waiting for one if there is none. */

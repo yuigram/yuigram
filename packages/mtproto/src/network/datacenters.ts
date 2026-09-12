@@ -38,7 +38,7 @@ import type { DatacenterStore } from '../storage/datacenters.js'
 import type { TlScope } from '../tl/index.js'
 import type { Framing } from '../transport/framing.js'
 import type { Channel, ChannelOptions, KnownAuthorization, StreamRequest } from './channel.js'
-import { openChannel as defaultOpenChannel } from './channel.js'
+import { openChannel as defaultOpenChannel, KEY_MARGIN_SECONDS } from './channel.js'
 import {
   type DcAddress,
   type DcConfiguration,
@@ -67,23 +67,6 @@ const TEMPORARY_INDEX = 0
  * grant; this is what is asked for.
  */
 const TEMPORARY_LIFETIME = 24 * 60 * 60
-
-/**
- * Life a temporary key must have left to be worth handing out.
- *
- * Expiry is judged when a key is asked for rather than on a timer, because a
- * stored key outlives the process that wrote it. Judging it against the moment
- * alone would hand out one with a second left: the connection opened with it
- * would be refused part-way through a call, discard the key, and pay for two
- * fresh exchanges to replace something that was about to be replaced anyway.
- *
- * A minute, because that is the longest a single call is prepared to wait for
- * its answer. A key that cannot outlive one call is of no use to the connection
- * it would be handed to. `docs/mtproto.md` §5.3 records this as a policy rather
- * than a protocol rule: the protocol says when a key expires, not when to stop
- * using it.
- */
-const TEMPORARY_MARGIN = 60
 
 /** How the layer is built. */
 export interface DatacentersOptions {
@@ -366,7 +349,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
     if (running !== undefined) return running
 
     const attempt = authorize(id, async () => {
-      const stored = await loadTemporary(options.authorization, id, seconds() + TEMPORARY_MARGIN)
+      const stored = await loadTemporary(options.authorization, id, seconds() + KEY_MARGIN_SECONDS)
       if (stored !== undefined) return stored
 
       // The long-lived key first, because it is what vouches for the other. It

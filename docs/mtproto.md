@@ -388,6 +388,17 @@ would be handed to.
 That is a policy rather than a protocol rule, in the same sense as the salt reserve below: the
 protocol says when a key expires, not when to stop using it.
 
+**A key is asked for twice, so the margin applies twice.** Once when one is loaded from the
+store to open a connection, and once when a connection already holding one is handed out to
+carry a call — a connection opened a day ago holds a key chosen a day ago, and the same
+question has to be answerable about it. A pool asking for a connection closes an idle one whose
+key is inside the margin and opens another in the slot it held, so the pool does not creep
+upwards as keys run out.
+
+Only an idle one. Closing a connection with calls on it would settle those with a failure to
+save a later call from a refusal, which is the trade the wrong way round; a busy connection
+keeps its key until the calls finish, and is replaced the next time somebody asks for it.
+
 **Deliberately not implemented:** renewing a key that expires while a connection is *open*. The
 margin above covers the moment a connection is opened, which is where a key is chosen. A
 connection already running holds its key until the datacenter refuses it, and recovering from
