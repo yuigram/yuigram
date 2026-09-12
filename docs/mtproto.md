@@ -399,17 +399,43 @@ Only an idle one. Closing a connection with calls on it would settle those with 
 save a later call from a refusal, which is the trade the wrong way round; a busy connection
 keeps its key until the calls finish, and is replaced the next time somebody asks for it.
 
-**Deliberately not implemented:** renewing a key that expires while a connection is *open*. The
-margin above covers the moment a connection is opened, which is where a key is chosen. A
-connection already running holds its key until the datacenter refuses it, and recovering from
-that refusal is a path that already exists and is proved rather than assumed: the refused key is
-discarded — named by what was refused, so a key another connection obtained meanwhile survives —
-and the next attempt obtains another.
+**The margin is the same number as the request deadline, and that is what makes it a bound
+rather than a heuristic.** A call is given up on after sixty seconds — a Yuigram default, since
+the protocol says nothing about how long a client should wait — and a key is treated as finished
+with sixty seconds left. So a call placed on a connection that passed the margin has
+a deadline before its key's expiry: it completes, or it is given up on, while the key is still
+good. A call already in flight when the key enters its last minute was placed when the key had
+more than a minute left, so the same holds for it.
 
-So what is missing is the saving, not the recovery: renewing ahead of the refusal costs the
-in-flight requests one round trip less. Doing it needs a duty that outlives any one request and
-an owner for it, which is a decision about the schedule rather than a fact about the protocol —
-and paying a rare round trip is a better trade than inventing one.
+That leaves one case, and it is worth naming exactly. A pool replaces an **idle** connection
+whose key is spent; a busy one keeps its key until its calls finish, because closing it would
+settle those calls with a failure to save a later one. If every connection in a pool is busy and
+the pool is at its ceiling, the next caller is handed a busy connection — and if that connection
+is also spent, the call it carries may outlive the key. What happens then is what happens to any
+call on a connection that dies: the key is discarded, the connection reconnects with a fresh one,
+and the call fails without being repeated, because a call that has been written has an unknown
+outcome rather than a repeatable one. A download retries its ranges; an ordinary call reports the
+failure to whoever made it.
+
+**Proactive renewal is not implemented, and the reason is ownership rather than difficulty.** The
+temporary key is *per datacenter* — one index, shared by every connection and every purpose
+reaching it — while every recurring duty in this subsystem is *per connection*: the schedule
+holds expiry, salts, state, ping and flush, and each is something one connection owes. Renewing
+the datacenter's key is not something any one connection can owe, because doing it decides for
+every other connection to that datacenter. There is no datacenter-scoped duty to put it on, and
+adding one means an owner that starts and stops with the layer, coordinates with the single
+exchange the layer already shares between callers, and decides what to do for a datacenter nobody
+is talking to — renewing a key for an idle pool is a call made for nothing, once a day, forever.
+
+Closing the remaining case from inside the pool is not available either. The pool hands out
+connections synchronously and under a ceiling the protocol recommends, so refusing to hand out a
+spent connection would mean either exceeding the ceiling or dropping live calls. Both are worse
+than the failure being avoided.
+
+**One boundary condition belongs with this.** The bound above holds for the deadline every call
+in this subsystem uses. A caller reaching a datacenter directly may ask for a longer one, and a
+call that waits longer than the margin can outlive the key however recently the connection was
+handed out.
 
 ### 5.4 Sign-in flows
 
@@ -1016,7 +1042,9 @@ gap, because a connection that has just opened fetches state anyway.
 | `updates*` | Forward to the updates manager |
 
 Outgoing responsibilities: acknowledgement tracking with resend, batching into containers,
-`invokeAfterMsg` chaining for ordered calls, per-request timeout and cancellation, and
+`invokeAfterMsg` chaining for ordered calls, per-request timeout — a minute unless a caller
+says otherwise, long enough for a slow server and short enough that nobody is left holding a
+promise nothing will settle — and cancellation, and
 resend-on-reconnect for unacknowledged messages.
 
 Inbound replay and duplicate rejection, and the ±30 s / ±300 s acceptance window, belong with
@@ -1717,9 +1745,34 @@ second time. A dialog whose most recent message the answer does not describe fal
 one before it: an offset that repeats a dialog costs a caller a duplicate it can see, and one
 that skips past it loses a conversation silently.
 
-`nextDialogs(answer)` is that reading and nothing more. How many pages to ask for, how fast,
-and what to do with them are the caller's — a list that read itself would be deciding all three,
-and neither transport has a precedent for which of those decisions belongs to a framework.
+`nextDialogs(answer)` is that reading and nothing more.
+
+**Iterating is not a reading, and the protocol does not make it one.** An offset is three fields
+taken from the last row of the page just received; the server issues no cursor and holds no
+notion of an iteration in progress. Rows are ordered by the date of each conversation's most
+recent message, and that date is exactly what a new message changes — so a conversation that
+receives one while a client is paging moves above the offset, and a conversation that had not
+been reached yet is *skipped*. Conversations can also be deleted, pinned or unpinned mid-pass,
+and pinning is handled outside the dated sequence entirely: `exclude_pinned` and
+`messages.getPinnedDialogs` exist precisely because pinned rows do not belong to it.
+
+Nothing above the protocol can repair that. The update stream reports each of those changes, but
+this client keeps no dialog list to reconcile them against — `docs/mtproto.md` §10 records that a
+peer record holds what a reference is built from and not the entity, and there is no dialog state
+anywhere in the store. A snapshot would have to be built before it could be corrected.
+
+So the reading stops here, and the gap between it and an iterator is a list of decisions rather
+than a list of facts: how many rows to ask for, whether to continue automatically, how many pages
+to follow before giving up, what counts as the end when a slice never says it is the last one,
+whether a caller can stop part-way, what to do with a conversation seen twice, and what to
+promise about order. Each has a defensible answer and none of them is Telegram's.
+
+The one place this project already follows pages automatically is gap recovery, and it is not a
+precedent for this: `updates.getDifference` ends on a constructor that says so, the framework owns
+the state being caught up, and a page it has consumed is accounted for by the sequence numbers.
+A page of dialogs has none of that. [bot-api-finalization.md](bot-api-finalization.md) states the
+rule this falls under — something stays outside core when shipping it means owning a policy — and
+a dialog iterator is policy from end to end.
 
 ### 9.8 Testing
 
