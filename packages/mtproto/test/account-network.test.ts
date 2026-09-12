@@ -27,6 +27,7 @@
 import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { POOL_LIMITS } from '../src/network/pools.js'
+import type { MtprotoContext } from '../src/normalize/index.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer } from './server/files.js'
@@ -723,6 +724,184 @@ describe('an account authorizing inside an application', () => {
     expect([...shared.keys()]).toEqual(['clients:alice:seen'])
     expect(await app.storageFor(instance.account).get('auth:dc2:key')).toBeUndefined()
     expect(instance.stored.has('clients:alice:seen')).toBe(false)
+    await app.stop()
+  })
+})
+
+/**
+ * Two accounts in one application.
+ *
+ * A container holding several clients is the arrangement the design documents
+ * claim and the one nothing has exercised: a single account proves that
+ * protocol state stays out of the container's store, but it cannot show that
+ * two accounts stay out of each other's. Everything an account owns is
+ * per-account — its authorizations, the peers it has learned, the place it has
+ * reached in the stream, the connections it holds — and the only thing the
+ * container decides is which clients exist and what surrounds them.
+ *
+ * So these are about the boundary between two clients rather than about either
+ * one: what each writes down, what each is told, and what happens to one when
+ * the other is stopped or fails.
+ */
+describe('two accounts held by one application', () => {
+  /** A container over a store a case can read, as an application's own state. */
+  function container() {
+    const shared = new Map<string, unknown>()
+    // Parameterised, as an application holding accounts is: a container's own
+    // type is every event its clients can produce, and a handler that spans
+    // them reads what that type carries.
+    const app = new App<MtprotoContext>({
+      storage: {
+        get: async (key: string) => shared.get(key),
+        set: async (key: string, value: unknown) => {
+          shared.set(key, value)
+        },
+        delete: async (key: string) => {
+          shared.delete(key)
+        },
+      },
+    })
+
+    return { app, shared }
+  }
+
+  /** An update naming a peer, as one account would be told about it. */
+  const message = (id: number, text: string): TlValue => ({
+    _: 'updateNewMessage',
+    message: {
+      _: 'message',
+      id,
+      peer_id: { _: 'peerUser', user_id: 5n },
+      message: text,
+      date: NOW_SECONDS,
+    },
+    pts: 1,
+    pts_count: 1,
+  })
+
+  it('gives each its own authorization, and neither the other s', async () => {
+    // Each account has its own store because each has its own credentials. Two
+    // sharing one would collide on every name the subsystem owns, so the
+    // container hands out neither and nothing is shared by default.
+    const { app } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await reach(alice)
+    await reach(bob)
+
+    expect([...alice.stored.keys()].toSorted()).toEqual([
+      'auth:dc2:key',
+      'auth:dc2:salt',
+      'auth:dc2:temp0',
+    ])
+    expect(alice.stored.get('auth:dc2:key')).not.toEqual(bob.stored.get('auth:dc2:key'))
+    await app.stop()
+  })
+
+  it('gives each its own area of the application s own store', async () => {
+    const { app, shared } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await app.storageFor(alice.account).set('seen', 1)
+    await app.storageFor(bob.account).set('seen', 2)
+
+    expect([...shared.keys()].toSorted()).toEqual(['clients:alice:seen', 'clients:bob:seen'])
+    expect(await app.storageFor(alice.account).get('seen')).toBe(1)
+    await app.stop()
+  })
+
+  it('tells only the account an update arrived on', async () => {
+    // The container surrounds both, but an update belongs to the client that
+    // received it. A handler registered on one must not run for the other's
+    // traffic, or a program holding two identities would answer as whichever
+    // it happened to register first.
+    const { app } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    const heard: string[] = []
+    alice.account.on('message', (event) => {
+      heard.push(`alice:${event.text ?? ''}`)
+    })
+    bob.account.on('message', (event) => {
+      heard.push(`bob:${event.text ?? ''}`)
+    })
+
+    await alice.account.connect()
+    await bob.account.connect()
+    await alice.account.deliver(message(1, 'for alice'))
+
+    expect(heard).toEqual(['alice:for alice'])
+    await app.stop()
+  })
+
+  it('names the client an update arrived on, for a handler that spans both', async () => {
+    const { app } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    const seen: string[] = []
+    app.on('message', (event) => {
+      seen.push(event.client.name)
+    })
+
+    await alice.account.connect()
+    await bob.account.connect()
+    await alice.account.deliver(message(1, 'one'))
+    await bob.account.deliver(message(2, 'two'))
+    await bob.account.deliver(message(3, 'three'))
+
+    expect(seen).toEqual(['alice', 'bob', 'bob'])
+    await app.stop()
+  })
+
+  it('leaves one usable when the other is stopped', async () => {
+    // Stopping takes down the connections that client holds. Another client's
+    // are not among them, and a container that shared any of it would make one
+    // account's shutdown the other's outage.
+    const { app } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await reach(alice)
+    await reach(bob)
+    await alice.account.stop()
+
+    expect(alice.account.connected).toBe(false)
+    expect(bob.account.connected).toBe(true)
+    // Still answering, on the connections it held all along. What the mock
+    // answers with is not the point; that it answers at all is.
+    await expect(bob.account.api.call({ _: 'help.getNearestDc' })).resolves.toBeDefined()
+    await app.stop()
+  })
+
+  it('refuses the one that was stopped, without touching the other', async () => {
+    const { app } = container()
+    const alice = harness({ name: 'alice' })
+    const bob = harness({ name: 'bob' })
+    app.add(alice.account)
+    app.add(bob.account)
+
+    await reach(alice)
+    await reach(bob)
+    await alice.account.stop()
+
+    await expect(alice.account.api.call({ _: 'help.getNearestDc' })).rejects.toThrow(
+      /is not connected/,
+    )
+    expect(bob.account.connected).toBe(true)
     await app.stop()
   })
 })
