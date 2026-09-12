@@ -28,11 +28,13 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 10 | [production](10-production) | Throttling, retry, rate limiting, concurrency, clean shutdown |
 | 12 | [multiple clients](12-multiple-clients) | A bot and several accounts in one application, each with its own store and connections |
 
-## Planned
+## The gap at 11
 
-The gaps are deliberate: the examples below need more of the MTProto surface than has shipped,
-and keep the numbers the [roadmap](../docs/roadmap.md) gives them.
+Eleven was held for the raw API across both transports, back when the MTProto surface it would
+have needed had not shipped. It has since, and the example is not worth writing: both escape
+hatches are one line each, they compose with nothing, and putting them side by side would mean
+eighty lines of credentials and shutdown around two calls.
 
-| | Example | Phase |
-|---|---|---|
-| 11 | raw API across both transports | 11 |
+[api-design.md](../docs/api-design.md) §12 shows all four forms together — typed and untyped, on
+each transport — in the space this paragraph takes, with the reason the two are shaped
+differently. That is the better reference, so the number stays unused rather than filled.
