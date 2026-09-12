@@ -21,6 +21,7 @@ import { inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { NormalizedUpdate } from './normalize.js'
+import { type SentMessage, sentMessage } from './sent.js'
 
 /** Which of the two media a message can carry a file under. */
 type MediaKind = 'document' | 'photo'
@@ -46,7 +47,7 @@ export interface ActionContext {
 
 /** The operations an update can be acted on with, bound to one update. */
 export interface UpdateActions {
-  reply(text: string): Promise<TlValue>
+  reply(text: string): Promise<SentMessage>
   react(emoji: string): Promise<TlValue>
   edit(text: string): Promise<TlValue>
   delete(): Promise<TlValue>
@@ -248,19 +249,24 @@ function messageIdOf(update: NormalizedUpdate, what: string): number {
  */
 export function updateActions(update: NormalizedUpdate, context: ActionContext): UpdateActions {
   return {
-    async reply(text: string): Promise<TlValue> {
+    async reply(text: string): Promise<SentMessage> {
       // The message first: it is the cheaper check and the more specific
       // answer, and an event with nothing to answer is not about the peer.
       const replyTo = messageIdOf(update, 'answer')
       const peer = await peerOf(update, context)
 
-      return await context.invoke({
+      // Kept, because it is the only thing in the answer that says which of the
+      // messages described is the one this call sent.
+      const random = randomId(context.random)
+      const answer = await context.invoke({
         _: 'messages.sendMessage',
         peer,
         message: text,
-        random_id: randomId(context.random),
+        random_id: random,
         reply_to: { _: 'inputReplyToMessage', reply_to_msg_id: replyTo },
       })
+
+      return sentMessage(answer, random)
     },
 
     async edit(text: string): Promise<TlValue> {

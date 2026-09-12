@@ -28,6 +28,7 @@ import type { TlValue } from '../tl/index.js'
 import { type ActionContext, updateActions } from './actions.js'
 import type { MtprotoEventKind } from './events.js'
 import { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize.js'
+import type { SentMessage } from './sent.js'
 
 /** One event from an account, ready for dispatch. */
 export interface MtprotoContext extends BaseContext, ContextActions {
@@ -64,8 +65,13 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * reference to somebody it just heard from. An event that carries no message,
    * or names a peer this account has never written down, is refused rather than
    * sent as something else.
+   *
+   * Answers with what was sent. MTProto replies to a send with the updates it
+   * caused rather than with the message, so the identifier is picked out of
+   * them against the number the send was deduplicated by; the answer itself
+   * stays reachable under `raw`.
    */
-  reply(text: string): Promise<TlValue>
+  reply(text: string): Promise<SentMessage>
   /** React to the message this event carries. An empty emoji clears it. */
   react(emoji: string): Promise<TlValue>
   /**
@@ -90,16 +96,17 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    */
   delete(): Promise<TlValue>
   /**
-   * Fetch the document this event's message carried.
+   * Fetch the file this event's message carried.
    *
    * The reference a message carries expires on the datacenter's own schedule
    * and nothing announces it. A refused one is answered by asking for the
    * message again and fetching with the reference it carries now — once, and
    * invisibly, which is what `docs/mtproto.md` §11 asks for.
    *
-   * Documents alone. A photo is the same picture at several sizes and which one
-   * to fetch is a choice this framework does not make, so it is refused by name
-   * rather than answered with a guess.
+   * A document is one file. A photo is the same picture at several sizes, and
+   * the largest of the ones that have to be fetched is taken — the answer this
+   * project already gives the same question on the other transport. Media that
+   * carries no file at all is refused by name.
    */
   download(): Promise<Uint8Array>
   /**

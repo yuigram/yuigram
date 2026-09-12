@@ -17,3 +17,4 @@ export {
   UPDATE_EVENTS,
 } from './events.js'
 export { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize.js'
+export { type SentMessage, sentMessage } from './sent.js'

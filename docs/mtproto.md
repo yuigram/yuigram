@@ -1632,7 +1632,34 @@ Updates already observed as RPC results must not be dispatched twice. A bounded
 **no-dispatch index** of recently-applied message identities is consulted before emitting,
 because `getDifference` legitimately returns messages already seen through the normal stream.
 
-### 9.6 Testing
+### 9.6 What a send answers with
+
+A send is not answered with the message. It is answered with the updates it caused, which
+describe the message among whatever else happened at the same moment, and an answer can
+describe several messages — two sends in flight are answered in one batch often enough.
+
+Two shapes, and what makes each readable is different:
+
+| Answer | Identifier | Message |
+|---|---|---|
+| `updates` / `updatesCombined` / `updateShort` | `updateMessageID`, matched on the send's own `random_id` | `updateNewMessage` and relatives, matched on that identifier |
+| `updateShortSentMessage` | its own field — this is the answer to this call and nothing else | none at all |
+
+The random number is the only thing in the long answer that says which of the messages
+described belongs to this send, which is why nothing is read without it. The short answer
+carries no message, so nothing here promises one: a message assembled from the fields around it
+would be one the server never wrote down.
+
+An answer that says neither — `updatesTooLong`, where the server is telling the client to catch
+up rather than describing what happened — reports no identifier rather than failing. The
+message has been sent by the time there is an answer to read, and calling that a failure would
+be less true than saying the identifier is not known.
+
+`event.reply()` returns this, with the answer itself still reachable. The other bound
+operations return their answer unchanged: an edit and a deletion are about a message the caller
+already identified, so there is nothing in the answer to discover.
+
+### 9.7 Testing
 
 This subsystem cannot be validated against the live network — the interesting cases are
 precisely the ones that occur rarely and unpredictably. It is therefore built against a

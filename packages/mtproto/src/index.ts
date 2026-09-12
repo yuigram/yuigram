@@ -39,7 +39,9 @@ export type {
   MtprotoEventKind,
   NormalizedUpdate,
   PeerRef,
+  SentMessage,
 } from './normalize/index.js'
+export { sentMessage } from './normalize/index.js'
 export type { PortableSession } from './session.js'
 export type { TlValue } from './tl/index.js'
 

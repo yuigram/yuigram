@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest'
 import { Account } from '../src/account.js'
 import { AuthKey } from '../src/message/auth-key.js'
 import type { DcConfiguration } from '../src/network/dc.js'
+import type { SentMessage } from '../src/normalize/sent.js'
 import type { TlValue } from '../src/tl/index.js'
 
 const BOOTSTRAP: DcConfiguration = {
@@ -108,6 +109,79 @@ describe('answering an update', () => {
     expect(sent?.['_']).toBe('messages.sendMessage')
     expect(sent?.['message']).toBe('hello back')
     expect(sent?.['peer']).toEqual({ _: 'inputPeerUser', user_id: 5n, access_hash: 9n })
+    await account.stop()
+  })
+
+  it('hands back the message it sent, found against its own identifier', async () => {
+    // A handler that has just replied usually wants to do something else with
+    // what it sent. MTProto answers a send with the updates it caused rather
+    // than with the message, so the identifier is picked out of them against the
+    // number this send was deduplicated by.
+    const asked: TlValue[] = []
+    const account = new Account({
+      apiId: 1,
+      apiHash: 'hash',
+      storage: memory(),
+      keys: [],
+      bootstrap: BOOTSTRAP,
+      openChannel: async (options) =>
+        ({
+          dcId: options.address.id,
+          authorization: options.authorization ?? {
+            key: AuthKey.from(new Uint8Array(256)),
+            salt: 0n,
+            ...(options.expiresIn === undefined ? {} : { expiresAt: 2_000_000_000 }),
+          },
+          state: 'ready',
+          async invoke(query: TlValue) {
+            asked.push(query)
+            if (query._ !== 'messages.sendMessage') return { _: 'boolTrue' } as TlValue
+
+            const random = query['random_id']
+
+            return {
+              _: 'updates',
+              updates: [
+                // Somebody else's message, arriving in the same batch.
+                { _: 'updateMessageID', id: 8, random_id: 0x7777n },
+                { _: 'updateMessageID', id: 99, random_id: random },
+                {
+                  _: 'updateNewMessage',
+                  message: {
+                    _: 'message',
+                    id: 99,
+                    peer_id: { _: 'peerUser', user_id: 5n },
+                    message: 'hello back',
+                    date: 1_700_000_000,
+                  },
+                  pts: 1,
+                  pts_count: 1,
+                },
+              ],
+              users: [],
+              chats: [],
+              date: 1_700_000_000,
+              seq: 0,
+            } as TlValue
+          },
+          bind: async () => {},
+          close() {},
+        }) as never,
+      schedule: () => () => {},
+    })
+
+    await account.connect()
+    await account.peers.save(PEER)
+
+    let sent: SentMessage | undefined
+    account.on('message', async (event) => {
+      sent = await event.reply('hello back')
+    })
+    await account.deliver(update())
+
+    expect(sent?.id).toBe(99)
+    expect(sent?.message?._ === 'message' ? sent.message.message : undefined).toBe('hello back')
+    expect(sent?.raw['_']).toBe('updates')
     await account.stop()
   })
 

@@ -691,6 +691,12 @@ through `account.resolve` or one an update carried, and the call is
 `account.api.messages.sendMedia` — `message` is the caption, `reply_to` the message being
 answered. See [mtproto.md](mtproto.md) §11 for what each form of media requires.
 
+What a send answers with is not the message. MTProto answers with the updates the send caused,
+so `sentMessage(answer, random_id)` picks the message out of them against the number the send
+was deduplicated by — `event.reply()` already returns that, with the answer itself reachable
+under `raw`. [mtproto.md](mtproto.md) §9.6 records the two shapes an answer takes and why the
+short one can carry no message at all.
+
 Delivery nodes are not on the client yet: what is missing is the connection routing a delivery
 node needs. `account.api.upload.*` reaches the methods meanwhile.
 
