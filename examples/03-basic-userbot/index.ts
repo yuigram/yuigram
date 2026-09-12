@@ -23,10 +23,15 @@
  *
  * Get `API_ID` and `API_HASH` from https://my.telegram.org. They belong to the
  * application rather than to the account, so they never go in the session.
+ *
+ * Send yourself `ping`, `read` or `contacts` from another device to exercise
+ * the handlers below. A file with the caption `echo` is fetched and sent
+ * straight back, without being uploaded again.
  */
 
+import { randomBytes } from 'node:crypto'
 import { createInterface } from 'node:readline/promises'
-import { Account, documentFile, memory } from 'yuigram'
+import { Account, documentMedia, memory, sentMessage } from 'yuigram'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
@@ -111,18 +116,43 @@ me.on('message', async (event) => {
   if (event.message?._ === 'message' && event.message.media !== undefined) {
     console.log(`  …with ${event.message.media._}`)
 
-    // A file is fetched from the datacenter that holds it, in ranges asked for
-    // several at a time, on connections kept apart from the one ordinary calls
-    // travel on. What names the file comes from the message that mentioned it:
-    // the reference is issued per account and is what a datacenter checks.
-    const { media } = event.message
-    if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
-      const { document } = media
-      const bytes = await me.download(documentFile(document))
+    // The file the event carried, fetched through the event that carried it.
+    // That is what makes an expired file reference invisible here: the token a
+    // datacenter checks travels with the media and expires on the server's own
+    // schedule, and putting it right means asking for this message again —
+    // which only something still holding the message can do.
+    //
+    // The bytes arrive in ranges asked for several at a time, on connections
+    // kept apart from the one ordinary calls travel on.
+    const bytes = await event.download()
+    console.log(`  …${bytes.length} bytes fetched`)
 
-      // Never a name Telegram supplied: a filename arrives from whoever sent
-      // the file. Where the bytes go is this program's decision.
-      console.log(`  …${bytes.length} bytes fetched from datacenter ${document.dc_id}`)
+    // Sending it back needs no upload. A file already on Telegram is addressed
+    // by the same three fields either way, so the message that arrived carries
+    // everything a send needs.
+    //
+    // `random_id` is what Telegram deduplicates a send by, so it has to differ
+    // between calls and must not restart with the process. Read through the
+    // buffer's own accessor rather than through its `ArrayBuffer`: Node hands
+    // back a view into a shared pool, and reading the pool from zero is reading
+    // somebody else's bytes.
+    const { media } = event.message
+    if (
+      event.text === 'echo' &&
+      media._ === 'messageMediaDocument' &&
+      media.document?._ === 'document'
+    ) {
+      const id = randomBytes(8).readBigInt64LE()
+      const answer = await event.here.messages.sendMedia({
+        media: documentMedia(media.document),
+        message: 'here it is again',
+        random_id: id,
+      })
+
+      // A send is answered with the updates it caused rather than with the
+      // message, so which message it produced is read out of them against the
+      // identifier this send carried.
+      console.log(`  …sent back as message ${sentMessage(answer, id).id}`)
     }
   }
 
@@ -135,7 +165,10 @@ me.on('message', async (event) => {
   // Safe because the peer came from the update — an account already holds a
   // reference to somebody it just heard from. Answering a peer it has never met
   // is a different problem, and it fails saying so rather than silently.
-  if (event.text === 'ping') await event.reply('pong')
+  if (event.text === 'ping') {
+    const sent = await event.reply('pong')
+    console.log(`  replied as message ${sent.id}`)
+  }
 
   // Anything beyond replying is a Telegram method, and `here` is the schema's
   // own surface with one difference: the conversation this event arrived in is
