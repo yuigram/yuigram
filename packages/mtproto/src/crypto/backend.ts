@@ -22,6 +22,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createHash,
+  pbkdf2 as platformPbkdf2,
   randomBytes as platformRandom,
   timingSafeEqual,
 } from 'node:crypto'
@@ -98,6 +99,17 @@ export const backend: CryptoBackend = {
 
     return timingSafeEqual(a, b)
   },
+
+  pbkdf2: (password, salt, iterations, length) =>
+    new Promise((resolve, reject) => {
+      // The callback form deliberately: the synchronous one blocks the thread
+      // that called it for the whole derivation, which on a server is every
+      // request it was handling.
+      platformPbkdf2(password, salt, iterations, length, 'sha512', (error, key) => {
+        if (error) reject(error)
+        else resolve(new Uint8Array(key))
+      })
+    }),
 }
 
 /** Exported for the shared cases to name the block size without a second constant. */

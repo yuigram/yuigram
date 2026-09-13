@@ -92,44 +92,44 @@ function parameters(gB: bigint): SrpParameters {
   return { p: P, g: G, salt1, salt2, gB }
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   // Validating a 2048-bit safe prime is the expensive part, and the module
   // remembers the outcome. Paying for it once here keeps each case quick.
   validateDhParameters({ p: P, g: G })
 }, 120_000)
 
 describe('computeSrpProof against an independent server', () => {
-  it('produces a proof the server accepts', () => {
+  it('produces a proof the server accepts', async () => {
     const b = 0x1234_5678_9abc_def0n * 0x0fed_cba9_8765_4321n
     const gB = serverPublic(password, b)
 
-    const proof = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const proof = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect(serverCheck(password, b, proof.a, proof.m1)).toBe(true)
   })
 
-  it('produces a proof the server rejects when the password is wrong', () => {
+  it('produces a proof the server rejects when the password is wrong', async () => {
     const b = 0x0abc_def0_1234_5678n * 3n
     const gB = serverPublic(password, b)
 
     const wrong = new TextEncoder().encode('correct horse battery stapl')
-    const proof = computeSrpProof(wrong, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const proof = await computeSrpProof(wrong, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect(serverCheck(password, b, proof.a, proof.m1)).toBe(false)
   })
 
-  it('returns a 256-byte public value and a 32-byte proof', () => {
+  it('returns a 256-byte public value and a 32-byte proof', async () => {
     const gB = serverPublic(password, 12_345_678_901n)
-    const proof = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const proof = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect(proof.a.length).toBe(256)
     expect(proof.m1.length).toBe(32)
   })
 
-  it('draws a fresh exponent each time', () => {
+  it('draws a fresh exponent each time', async () => {
     const gB = serverPublic(password, 999_983n)
-    const first = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
-    const second = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const first = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const second = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect([...first.a]).not.toEqual([...second.a])
     expect([...first.m1]).not.toEqual([...second.m1])
@@ -137,16 +137,16 @@ describe('computeSrpProof against an independent server', () => {
 })
 
 describe('the password KDF', () => {
-  it('matches the salting chain the algorithm name describes', () => {
+  it('matches the salting chain the algorithm name describes', async () => {
     const expected = sh(cheapPbkdf2(sh(sh(password, salt1), salt2), salt1, 1, 64), salt2)
 
-    expect([...passwordHash(password, salt1, salt2, cheapPbkdf2)]).toEqual([...expected])
+    expect([...(await passwordHash(password, salt1, salt2, cheapPbkdf2))]).toEqual([...expected])
   })
 
-  it('uses 100,000 PBKDF2 iterations and a 64-byte output by default', () => {
+  it('uses 100,000 PBKDF2 iterations and a 64-byte output by default', async () => {
     let seen: { iterations: number; length: number } | undefined
 
-    passwordHash(password, salt1, salt2, (secret, salt, iterations, length) => {
+    await passwordHash(password, salt1, salt2, (secret, salt, iterations, length) => {
       seen = { iterations, length }
       return cheapPbkdf2(secret, salt, iterations, length)
     })
@@ -154,16 +154,16 @@ describe('the password KDF', () => {
     expect(seen).toEqual({ iterations: 100_000, length: 64 })
   })
 
-  it('depends on both salts', () => {
-    const base = [...passwordHash(password, salt1, salt2, cheapPbkdf2)]
+  it('depends on both salts', async () => {
+    const base = [...(await passwordHash(password, salt1, salt2, cheapPbkdf2))]
 
-    expect([...passwordHash(password, salt2, salt2, cheapPbkdf2)]).not.toEqual(base)
-    expect([...passwordHash(password, salt1, salt1, cheapPbkdf2)]).not.toEqual(base)
+    expect([...(await passwordHash(password, salt2, salt2, cheapPbkdf2))]).not.toEqual(base)
+    expect([...(await passwordHash(password, salt1, salt1, cheapPbkdf2))]).not.toEqual(base)
   })
 })
 
 describe('the 256-byte padding rule', () => {
-  it('pads the generator to the full width before hashing it', () => {
+  it('pads the generator to the full width before hashing it', async () => {
     // `g` is a single-digit number that occupies 255 leading zero bytes. An
     // implementation that hashed it as one byte would produce a different `k`
     // and an `M1` the server rejects without saying why, so the width is what
@@ -177,43 +177,43 @@ describe('the 256-byte padding rule', () => {
     // The proof the client builds must agree with a server that pads this way.
     const b = 7_919n
     const gB = serverPublic(password, b)
-    const proof = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const proof = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect(serverCheck(password, b, proof.a, proof.m1)).toBe(true)
   })
 })
 
 describe('parameter validation', () => {
-  it('refuses a group that is not a validated safe prime', () => {
+  it('refuses a group that is not a validated safe prime', async () => {
     const gB = serverPublic(password, 11n)
 
-    expect(() =>
+    await expect(
       computeSrpProof(password, { p: 23n, g: 2n, salt1, salt2, gB }, { pbkdf2: cheapPbkdf2 }),
-    ).toThrow(/must be 2048 bits/)
+    ).rejects.toThrow(/must be 2048 bits/)
   })
 
-  it('refuses an unsupported generator', () => {
-    expect(() =>
+  it('refuses an unsupported generator', async () => {
+    await expect(
       computeSrpProof(
         password,
         { p: P, g: 9n, salt1, salt2, gB: P >> 1n },
         { pbkdf2: cheapPbkdf2 },
       ),
-    ).toThrow(/must be one of 2, 3, 4, 5, 6, 7/)
+    ).rejects.toThrow(/must be one of 2, 3, 4, 5, 6, 7/)
   })
 
-  it('refuses a server public value outside the permitted window', () => {
+  it('refuses a server public value outside the permitted window', async () => {
     for (const gB of [0n, 1n, P - 1n, 1n << 1984n]) {
-      expect(() => computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })).toThrow(
-        ValidationError,
-      )
+      await expect(
+        computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 }),
+      ).rejects.toThrow(ValidationError)
     }
   })
 
-  it('keeps the password out of every rejection message', () => {
+  it('keeps the password out of every rejection message', async () => {
     let message = ''
     try {
-      computeSrpProof(password, parameters(0n), { pbkdf2: cheapPbkdf2 })
+      await computeSrpProof(password, parameters(0n), { pbkdf2: cheapPbkdf2 })
     } catch (error) {
       message = (error as Error).message
     }
@@ -232,28 +232,30 @@ describe('a server value that collapses the shared secret', () => {
    * is a large number in the middle of the group — so SRP-6a requires this
    * case to be recognised on its own.
    */
-  function collapsingServerValue(): bigint {
-    const x = bytesToBigIntBE(passwordHash(password, salt1, salt2, cheapPbkdf2))
+  async function collapsingServerValue(): Promise<bigint> {
+    const x = bytesToBigIntBE(await passwordHash(password, salt1, salt2, cheapPbkdf2))
     const v = modPow(G, x, P)
     const k = bytesToBigIntBE(h(pad(P), pad(G)))
 
     return (k * v) % P
   }
 
-  it('is a value the ordinary range checks accept', () => {
-    expect(() => validateDhPublicKey(collapsingServerValue(), P)).not.toThrow()
+  it('is a value the ordinary range checks accept', async () => {
+    const value = await collapsingServerValue()
+
+    expect(() => validateDhPublicKey(value, P)).not.toThrow()
   })
 
-  it('is refused rather than answered', () => {
-    expect(() =>
-      computeSrpProof(password, parameters(collapsingServerValue()), { pbkdf2: cheapPbkdf2 }),
-    ).toThrow(/collapses the shared secret/)
+  it('is refused rather than answered', async () => {
+    await expect(
+      computeSrpProof(password, parameters(await collapsingServerValue()), { pbkdf2: cheapPbkdf2 }),
+    ).rejects.toThrow(/collapses the shared secret/)
   })
 
-  it('leaves an honest server value working', () => {
+  it('leaves an honest server value working', async () => {
     const b = 104_729n
     const gB = serverPublic(password, b)
-    const proof = computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
+    const proof = await computeSrpProof(password, parameters(gB), { pbkdf2: cheapPbkdf2 })
 
     expect(serverCheck(password, b, proof.a, proof.m1)).toBe(true)
   })

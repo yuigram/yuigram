@@ -12,7 +12,8 @@ import { EventEmitter } from 'node:events'
 import { createServer, type Server, type Socket } from 'node:net'
 import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import { afterEach, describe, expect, it } from 'vitest'
-import { type ByteStream, connectTcp } from '../src/network/tcp.js'
+import type { ByteStream } from '../src/network/stream.js'
+import { connectTcp } from '../src/network/tcp.js'
 
 /** Listeners opened by a case, closed when it ends. */
 const servers: Server[] = []

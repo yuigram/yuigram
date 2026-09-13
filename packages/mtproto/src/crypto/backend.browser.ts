@@ -97,4 +97,28 @@ export const backend: CryptoBackend = {
 
     return difference === 0
   },
+
+  pbkdf2: async (password, salt, iterations, length) => {
+    const subtle = globalThis.crypto?.subtle
+
+    if (subtle === undefined) {
+      throw new ValidationError(
+        'this runtime provides no `crypto.subtle`, which is needed to stretch a password',
+      )
+    }
+
+    // Imported as raw key material rather than as a key: what goes in is a
+    // password, and `deriveBits` is the only operation it is allowed.
+    const material = await subtle.importKey('raw', password.slice().buffer, 'PBKDF2', false, [
+      'deriveBits',
+    ])
+
+    const bits = await subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-512', salt: salt.slice().buffer, iterations },
+      material,
+      length * 8,
+    )
+
+    return new Uint8Array(bits)
+  },
 }

@@ -24,7 +24,7 @@
  */
 
 import type { StreamRequest } from '../../src/network/channel.js'
-import type { ByteStream } from '../../src/network/tcp.js'
+import type { ByteStream } from '../../src/network/stream.js'
 import type { TlScope, TlValue } from '../../src/tl/index.js'
 import type { HandshakeResult } from './handshake.js'
 import { createServerKey, type ServerKey } from './keys.js'

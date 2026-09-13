@@ -114,11 +114,11 @@ export async function passwordStatus(client: Securing): Promise<PasswordStatus> 
  * has to be fresh for every password set and a caller that reused one would
  * weaken the result without any sign that it had.
  */
-function verifierFor(
+async function verifierFor(
   client: Securing,
   password: string,
   algorithm: TypePasswordKdfAlgo,
-): { readonly algo: TypePasswordKdfAlgo; readonly hash: Uint8Array } {
+): Promise<{ readonly algo: TypePasswordKdfAlgo; readonly hash: Uint8Array }> {
   if (algorithm._ !== SUPPORTED) {
     throw new ValidationError(`'${algorithm._}' is not an algorithm this client can perform`)
   }
@@ -135,7 +135,12 @@ function verifierFor(
 
   const salt1 = concatBytes(algorithm.salt1, client.random(SALT_PADDING))
   const x = bytesToBigIntBE(
-    passwordHash(new TextEncoder().encode(password), salt1, algorithm.salt2, client.srp?.pbkdf2),
+    await passwordHash(
+      new TextEncoder().encode(password),
+      salt1,
+      algorithm.salt2,
+      client.srp?.pbkdf2,
+    ),
   )
   const verifier = modPow(g, x, p)
 
@@ -165,7 +170,7 @@ async function proveCurrent(
     throw new ValidationError('this account has a password, so the current one is required')
   }
 
-  return passwordProof(password, challengeOf(published), client.srp ?? {})
+  return await passwordProof(password, challengeOf(published), client.srp ?? {})
 }
 
 /**
@@ -234,7 +239,7 @@ export async function setPassword(
   // the same answer this comes from, and the algorithm for the new password is
   // published alongside it.
   const published = await client.api.account.getPassword()
-  const { algo, hash } = verifierFor(client, next.password, published.new_algo)
+  const { algo, hash } = await verifierFor(client, next.password, published.new_algo)
 
   await client.api.account.updatePasswordSettings({
     password: proof,

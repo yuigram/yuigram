@@ -18,6 +18,7 @@
 
 import { connect as netConnect, type Socket } from 'node:net'
 import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
+import type { ByteStream, StreamOptions } from './stream.js'
 
 /**
  * How long to wait for the handshake, in milliseconds.
@@ -29,24 +30,8 @@ import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
  */
 const DEFAULT_CONNECT_TIMEOUT = 10_000
 
-/** How a stream is opened. */
-export interface TcpOptions {
-  readonly host: string
-  readonly port: number
-  /** Milliseconds to wait for the handshake. Defaults to 10000. */
-  readonly connectTimeout?: number
-  /** Bytes as they arrived: in order, unmodified, and not necessarily whole. */
-  readonly onData: (bytes: Uint8Array) => void
-  /**
-   * The stream has ended, once.
-   *
-   * Carries the failure when it ended because of one. A peer that closes
-   * cleanly and a peer that vanishes are different events, and the layer above
-   * treats them differently.
-   */
-  readonly onClose: (error?: Error) => void
-  /** Abandon the attempt. Has no effect once the stream is open. */
-  readonly signal?: AbortSignal
+/** How a socket stream is opened. */
+export interface TcpOptions extends StreamOptions {
   /**
    * Open the underlying socket.
    *
@@ -54,24 +39,6 @@ export interface TcpOptions {
    * without a network. The default opens an ordinary TCP socket.
    */
   readonly open?: (host: string, port: number) => Socket
-}
-
-/** An open stream of bytes. */
-export interface ByteStream {
-  /** Send bytes. They are delivered in the order they were given. */
-  write(bytes: Uint8Array): void
-  /** Close the stream. Idempotent. */
-  close(): void
-  /** Whether the stream can still carry bytes. */
-  readonly open: boolean
-  /**
-   * Bytes accepted but not yet handed to the operating system.
-   *
-   * The socket queues what it cannot send yet and never drops or reorders it,
-   * so this is reported rather than acted on. A caller that produces faster
-   * than the connection drains can watch it; nothing here throttles.
-   */
-  readonly pending: number
 }
 
 /**

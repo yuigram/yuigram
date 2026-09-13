@@ -267,7 +267,7 @@ export async function signInWithPassword(
 ): Promise<SignInState> {
   const here = options.reach(options.dcId)
   const challenge = readPasswordChallenge(await here.invoke({ _: 'account.getPassword' }))
-  const answer = answerPasswordChallenge(options.password, challenge, options.srp ?? {})
+  const answer = await answerPasswordChallenge(options.password, challenge, options.srp ?? {})
 
   const { value, dcId } = await followingRedirections(options, () => ({
     _: 'auth.checkPassword',

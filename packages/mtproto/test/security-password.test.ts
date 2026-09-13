@@ -86,7 +86,7 @@ const PADDING = Uint8Array.from({ length: 32 }, (_value, at) => (at * 7) % 251)
  * Validating a safe prime is expensive once and cached after, so it is paid
  * here rather than inside whichever case happened to run first.
  */
-beforeAll(() => {
+beforeAll(async () => {
   validateDhParameters({ p: DH_PRIME, g: 3n })
 }, 60_000)
 
@@ -123,7 +123,7 @@ function fake(options?: {
 
   const api = {
     account: {
-      getPassword: () => {
+      getPassword: async () => {
         calls.push({ method: 'account.getPassword', params: undefined })
 
         return Promise.resolve(options?.password ?? published())
@@ -213,7 +213,9 @@ describe('setting a password for the first time', () => {
     }
 
     const salt1 = concatBytes(ALGO.salt1, PADDING)
-    const x = bytesToBigIntBE(passwordHash(new TextEncoder().encode('secret'), salt1, ALGO.salt2))
+    const x = bytesToBigIntBE(
+      await passwordHash(new TextEncoder().encode('secret'), salt1, ALGO.salt2),
+    )
     const expected = modPow(BigInt(ALGO.g), x, bytesToBigIntBE(P))
 
     // The bytes rather than the number they stand for. A verifier sent at its
@@ -388,7 +390,7 @@ describe('taking the password off', () => {
   })
 })
 
-describe('the recovery address, and recovering through it', () => {
+describe('the recovery address, and recovering through it', async () => {
   it('confirms, resends and cancels', async () => {
     const confirm = fake()
     const resend = fake()

@@ -45,7 +45,7 @@ const cheap: Stretch = (input, salt) => {
 
 const cheapPbkdf2 = (password: Uint8Array, salt: Uint8Array) => cheap(password, salt)
 
-beforeAll(() => {
+beforeAll(async () => {
   validateDhParameters({ p: DH_PRIME, g: 3n })
 }, 60_000)
 
@@ -62,10 +62,10 @@ function server(overrides: Record<string, unknown> = {}): PasswordServer {
 }
 
 /** The proof a client produces for a peer's published parameters. */
-function prove(peer: PasswordServer, password = PASSWORD): TlValue {
+async function prove(peer: PasswordServer, password = PASSWORD): Promise<TlValue> {
   const challenge = readPasswordChallenge(peer.describe() as TlValue)
 
-  return answerPasswordChallenge(password, challenge, { pbkdf2: cheapPbkdf2 })
+  return await answerPasswordChallenge(password, challenge, { pbkdf2: cheapPbkdf2 })
 }
 
 function asAnswer(value: TlValue): { srp_id: bigint; A: Uint8Array; M1: Uint8Array } {
@@ -77,13 +77,13 @@ function asAnswer(value: TlValue): { srp_id: bigint; A: Uint8Array; M1: Uint8Arr
 }
 
 describe('a proof the server accepts', () => {
-  it('is produced from the parameters the server published', () => {
+  it('is produced from the parameters the server published', async () => {
     const peer = server()
 
-    expect(peer.accepts(asAnswer(prove(peer)))).toBe(true)
+    expect(peer.accepts(asAnswer(await prove(peer)))).toBe(true)
   })
 
-  it('is produced with the real stretching step', () => {
+  it('is produced with the real stretching step', async () => {
     // One case pays the full cost, so the derivation itself is exercised and
     // not only the exchange built on top of it.
     const peer = new PasswordServer({
@@ -95,27 +95,27 @@ describe('a proof the server accepts', () => {
     })
     const challenge = readPasswordChallenge(peer.describe() as TlValue)
 
-    expect(peer.accepts(asAnswer(answerPasswordChallenge(PASSWORD, challenge)))).toBe(true)
+    expect(peer.accepts(asAnswer(await answerPasswordChallenge(PASSWORD, challenge)))).toBe(true)
   }, 60_000)
 
-  it('differs every time, because the secret exponent does', () => {
+  it('differs every time, because the secret exponent does', async () => {
     const peer = server()
-    const first = asAnswer(prove(peer))
-    const second = asAnswer(prove(peer))
+    const first = asAnswer(await prove(peer))
+    const second = asAnswer(await prove(peer))
 
     expect(first.A).not.toEqual(second.A)
     expect(first.M1).not.toEqual(second.M1)
     expect(peer.accepts(first) && peer.accepts(second)).toBe(true)
   })
 
-  it('names the exchange it answers', () => {
+  it('names the exchange it answers', async () => {
     const peer = server({ srpId: 0x7777_0000_0000_0001n })
 
-    expect(asAnswer(prove(peer)).srp_id).toBe(0x7777_0000_0000_0001n)
+    expect(asAnswer(await prove(peer)).srp_id).toBe(0x7777_0000_0000_0001n)
   })
 
-  it('carries operands at the width every hash expects', () => {
-    const answer = asAnswer(prove(server()))
+  it('carries operands at the width every hash expects', async () => {
+    const answer = asAnswer(await prove(server()))
 
     // Padded to 2048 bits. An operand hashed at its natural width produces a
     // proof the server rejects without saying why.
@@ -123,10 +123,10 @@ describe('a proof the server accepts', () => {
     expect(answer.M1).toHaveLength(32)
   })
 
-  it('travels as the query that carries it', () => {
+  it('travels as the query that carries it', async () => {
     const peer = server()
     const challenge = readPasswordChallenge(peer.describe() as TlValue)
-    const body = checkPassword(PASSWORD, challenge, SCOPE, { pbkdf2: cheapPbkdf2 })
+    const body = await checkPassword(PASSWORD, challenge, SCOPE, { pbkdf2: cheapPbkdf2 })
     const query = readObject(body, SCOPE) as TlValue
 
     expect(query._).toBe('auth.checkPassword')
@@ -135,32 +135,32 @@ describe('a proof the server accepts', () => {
 })
 
 describe('a proof the server refuses', () => {
-  it('is refused for the wrong password', () => {
+  it('is refused for the wrong password', async () => {
     const peer = server()
 
-    expect(peer.accepts(asAnswer(prove(peer, 'wrong horse battery staple')))).toBe(false)
+    expect(peer.accepts(asAnswer(await prove(peer, 'wrong horse battery staple')))).toBe(false)
   })
 
-  it('is refused for a password differing only in trailing space', () => {
+  it('is refused for a password differing only in trailing space', async () => {
     // The protocol defines no normalization, so a password is the bytes the
     // user typed. Trimming here would let one password prove another.
     const peer = server()
 
-    expect(peer.accepts(asAnswer(prove(peer, `${PASSWORD} `)))).toBe(false)
+    expect(peer.accepts(asAnswer(await prove(peer, `${PASSWORD} `)))).toBe(false)
   })
 
-  it('is refused when answered against a different exchange', () => {
+  it('is refused when answered against a different exchange', async () => {
     const first = server({ srpId: 1n, b: 0x1111n })
     const second = server({ srpId: 2n, b: 0x2222n })
 
     // The server keeps its secret exponent against the identifier, so a proof
     // computed for one exchange proves nothing about another.
-    expect(second.accepts(asAnswer(prove(first)))).toBe(false)
+    expect(second.accepts(asAnswer(await prove(first)))).toBe(false)
   })
 
-  it('is refused when the proof is altered', () => {
+  it('is refused when the proof is altered', async () => {
     const peer = server()
-    const answer = asAnswer(prove(peer))
+    const answer = asAnswer(await prove(peer))
     const tampered = Uint8Array.from(answer.M1)
     tampered[0] = (tampered[0] ?? 0) ^ 0xff
 
@@ -169,7 +169,7 @@ describe('a proof the server refuses', () => {
 })
 
 describe('what the server sent', () => {
-  it('is read into the parameters a proof needs', () => {
+  it('is read into the parameters a proof needs', async () => {
     const challenge = readPasswordChallenge(server().describe() as TlValue)
 
     expect(challenge.p).toBe(DH_PRIME)
@@ -184,7 +184,7 @@ describe('what the server sent', () => {
     )
   })
 
-  it('reports that no password is set rather than failing obscurely', () => {
+  it('reports that no password is set rather than failing obscurely', async () => {
     // The algorithm, the server value and the identifier share the flag that
     // says a password exists, so all three are absent together.
     const none: TlValue = {
@@ -197,7 +197,7 @@ describe('what the server sent', () => {
     expect(() => readPasswordChallenge(none)).toThrow(/no password is set/)
   })
 
-  it('is refused when it names an algorithm this client cannot perform', () => {
+  it('is refused when it names an algorithm this client cannot perform', async () => {
     const peer = server()
     const unknown = { ...peer.describe(), current_algo: { _: 'passwordKdfAlgoUnknown' } }
 
@@ -208,7 +208,7 @@ describe('what the server sent', () => {
     )
   })
 
-  it('is refused when the algorithm is not a stated object', () => {
+  it('is refused when the algorithm is not a stated object', async () => {
     const peer = server()
 
     expect(() => readPasswordChallenge({ ...peer.describe(), current_algo: 7 } as TlValue)).toThrow(
@@ -216,7 +216,7 @@ describe('what the server sent', () => {
     )
   })
 
-  it('is refused when the server value is empty', () => {
+  it('is refused when the server value is empty', async () => {
     const peer = server()
 
     expect(() =>
@@ -224,7 +224,7 @@ describe('what the server sent', () => {
     ).toThrow(/'account.password.srp_B' is empty/)
   })
 
-  it('is refused when the group prime is empty', () => {
+  it('is refused when the group prime is empty', async () => {
     const peer = server()
     const algo = { ...(peer.describe()['current_algo'] as TlValue), p: new Uint8Array(0) }
 
@@ -233,7 +233,7 @@ describe('what the server sent', () => {
     ).toThrow(/is empty/)
   })
 
-  it('is refused when the identifier is missing', () => {
+  it('is refused when the identifier is missing', async () => {
     const peer = server()
     const { srp_id: _omitted, ...rest } = peer.describe()
 
@@ -242,7 +242,7 @@ describe('what the server sent', () => {
 })
 
 describe('a group the client will not accept', () => {
-  it('is refused when the prime is not the safe prime it must be', () => {
+  it('is refused when the prime is not the safe prime it must be', async () => {
     // A password check over an attacker-chosen group proves nothing, so the
     // same checks the handshake applies are applied here.
     const peer = server()
@@ -255,12 +255,12 @@ describe('a group the client will not accept', () => {
       current_algo: algo,
     } as TlValue)
 
-    expect(() => answerPasswordChallenge(PASSWORD, challenge, { pbkdf2: cheapPbkdf2 })).toThrow(
-      ValidationError,
-    )
+    await expect(
+      answerPasswordChallenge(PASSWORD, challenge, { pbkdf2: cheapPbkdf2 }),
+    ).rejects.toThrow(ValidationError)
   })
 
-  it('is refused when the generator is not one the group permits', () => {
+  it('is refused when the generator is not one the group permits', async () => {
     const peer = server()
     const algo = { ...(peer.describe()['current_algo'] as TlValue), g: 9 }
     const challenge = readPasswordChallenge({
@@ -268,17 +268,17 @@ describe('a group the client will not accept', () => {
       current_algo: algo,
     } as TlValue)
 
-    expect(() => answerPasswordChallenge(PASSWORD, challenge, { pbkdf2: cheapPbkdf2 })).toThrow(
-      ValidationError,
-    )
+    await expect(
+      answerPasswordChallenge(PASSWORD, challenge, { pbkdf2: cheapPbkdf2 }),
+    ).rejects.toThrow(ValidationError)
   })
 
-  it('is refused when the server value is outside the group', () => {
+  it('is refused when the server value is outside the group', async () => {
     const peer = server()
     const challenge = readPasswordChallenge(peer.describe() as TlValue)
 
-    expect(() =>
+    await expect(
       answerPasswordChallenge(PASSWORD, { ...challenge, gB: 1n }, { pbkdf2: cheapPbkdf2 }),
-    ).toThrow(ValidationError)
+    ).rejects.toThrow(ValidationError)
   })
 })

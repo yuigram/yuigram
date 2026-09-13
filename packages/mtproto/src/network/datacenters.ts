@@ -48,7 +48,7 @@ import {
   sameConfiguration,
 } from './dc.js'
 import type { Callable } from './migration.js'
-import type { ByteStream } from './tcp.js'
+import type { ByteStream } from './stream.js'
 
 /**
  * The temporary key slot a datacenter's authorization uses.

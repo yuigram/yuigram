@@ -37,9 +37,10 @@ import type { TlScope, TlValue } from '../tl/index.js'
 import type { Framing } from '../transport/framing.js'
 import { IntermediateFraming } from '../transport/framing.js'
 import { createObfuscation } from '../transport/obfuscation.js'
+import { connectStream } from './connect.js'
 import type { DcAddress } from './dc.js'
 import { Link } from './link.js'
-import { type ByteStream, connectTcp } from './tcp.js'
+import type { ByteStream } from './stream.js'
 
 /**
  * The datacenter refused the connection.
@@ -603,7 +604,7 @@ function live(context: {
 }
 
 function defaultOpen(request: StreamRequest): Promise<ByteStream> {
-  return connectTcp(request)
+  return connectStream(request)
 }
 
 function defaultSchedule(run: () => void, delayMs: number): () => void {

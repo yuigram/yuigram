@@ -104,12 +104,12 @@ export function readPasswordChallenge(value: TlValue): PasswordChallenge {
  * is computed once, in {@link computeSrpProof} — only the literal around it
  * differs.
  */
-export function passwordProof(
+export async function passwordProof(
   password: string | Uint8Array,
   challenge: PasswordChallenge,
   options: SrpOptions = {},
-): TypeInputCheckPasswordSRP {
-  const proof = computeSrpProof(encode(password), challenge, options)
+): Promise<TypeInputCheckPasswordSRP> {
+  const proof = await computeSrpProof(encode(password), challenge, options)
 
   return {
     _: 'inputCheckPasswordSRP',
@@ -119,12 +119,12 @@ export function passwordProof(
   }
 }
 
-export function answerPasswordChallenge(
+export async function answerPasswordChallenge(
   password: string | Uint8Array,
   challenge: PasswordChallenge,
   options: SrpOptions = {},
-): TlValue {
-  const proof = computeSrpProof(encode(password), challenge, options)
+): Promise<TlValue> {
+  const proof = await computeSrpProof(encode(password), challenge, options)
 
   return {
     _: 'inputCheckPasswordSRP',
@@ -141,14 +141,17 @@ export function answerPasswordChallenge(
  * together: the proof is only valid for the exchange the challenge names, and
  * pairing them at the call site is one more place to pair them wrongly.
  */
-export function checkPassword(
+export async function checkPassword(
   password: string | Uint8Array,
   challenge: PasswordChallenge,
   scope: TlScope,
   options: SrpOptions = {},
-): Uint8Array {
+): Promise<Uint8Array> {
   return writeObject(
-    { _: 'auth.checkPassword', password: answerPasswordChallenge(password, challenge, options) },
+    {
+      _: 'auth.checkPassword',
+      password: await answerPasswordChallenge(password, challenge, options),
+    },
     scope,
   )
 }

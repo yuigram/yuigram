@@ -28,7 +28,7 @@ import {
   TransportError,
 } from '../src/network/channel.js'
 import type { DcAddress } from '../src/network/dc.js'
-import type { ByteStream } from '../src/network/tcp.js'
+import type { ByteStream } from '../src/network/stream.js'
 import { TlScope } from '../src/tl/index.js'
 import { FramingError, IntermediateFraming } from '../src/transport/index.js'
 import { createServerKey } from './server/keys.js'

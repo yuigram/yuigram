@@ -14,14 +14,15 @@
  * between them is made and why it is made at build time rather than at run
  * time.
  *
- * **Everything here is synchronous, deliberately.** The one asynchronous
- * primitive — key derivation from a password — is not here; it lives with the
- * code that needs it, because it is reached once during a sign-in rather than
- * on the path of every message. A message key is derived in the middle of
- * building a message and a transport stream is advanced in the middle of
- * writing a packet: making those await would turn every send and every receive
- * into a promise chain, on every runtime, to accommodate the one that has no
- * synchronous digest.
+ * **Everything here is synchronous but one.** A message key is derived in the
+ * middle of building a message and a transport stream is advanced in the middle
+ * of writing a packet: making those await would turn every send and every
+ * receive into a promise chain, on every runtime, to accommodate the one that
+ * has no synchronous digest. Stretching a password is the exception and is
+ * asynchronous everywhere, because it is a hundred thousand iterations reached
+ * once during a sign-in — the one place where a runtime's own implementation is
+ * worth waiting for, and the one place where doing it synchronously would stop
+ * a browser tab from drawing for several seconds.
  */
 
 import { ValidationError } from '@yuigram/core'
@@ -119,4 +120,20 @@ export interface CryptoBackend {
    * how long the comparison took.
    */
   constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean
+
+  /**
+   * Stretch a password into a key, with PBKDF2 over SHA-512.
+   *
+   * Asynchronous on both backends. The platform has a callback form that keeps
+   * the work off the thread that called it, and a browser has only
+   * `crypto.subtle`, which is asynchronous and native — and is worth reaching
+   * for here, since a hundred thousand iterations of SHA-512 in JavaScript
+   * would take seconds during which the page could not draw.
+   */
+  pbkdf2(
+    password: Uint8Array,
+    salt: Uint8Array,
+    iterations: number,
+    length: number,
+  ): Promise<Uint8Array>
 }

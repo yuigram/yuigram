@@ -15,6 +15,7 @@ export {
   type StreamRequest,
   TransportError,
 } from './channel.js'
+export { connectStream } from './connect.js'
 export {
   type BackoffOptions,
   type ConnectionInvokeOptions,
@@ -78,4 +79,6 @@ export {
   signInAsBot,
   signInWithPassword,
 } from './signin.js'
-export { type ByteStream, connectTcp, type TcpOptions } from './tcp.js'
+export type { ByteStream, Connector, StreamOptions } from './stream.js'
+export { connectTcp, type TcpOptions } from './tcp.js'
+export { connectWebSocket, type WebSocketOptions } from './websocket.js'

@@ -19,8 +19,8 @@
  * proof.
  */
 
-import { pbkdf2Sync } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
+import { backend } from './backend.js'
 import { mod, modPow } from './bigint.js'
 import { bigIntToBytesBE, bytesToBigIntBE, xorBytes } from './bytes.js'
 import { sha256 } from './hash.js'
@@ -66,16 +66,22 @@ export interface SrpOptions {
   readonly pbkdf2?: Pbkdf2
 }
 
-/** The stretching step, isolated so it can be named in one place. */
+/**
+ * The stretching step, isolated so it can be named in one place.
+ *
+ * Asynchronous, because it is a hundred thousand iterations and every runtime's
+ * own implementation of it is. A caller supplying one may return the bytes
+ * directly; the result is awaited either way.
+ */
 export type Pbkdf2 = (
   password: Uint8Array,
   salt: Uint8Array,
   iterations: number,
   length: number,
-) => Uint8Array
+) => Promise<Uint8Array> | Uint8Array
 
 const defaultPbkdf2: Pbkdf2 = (password, salt, iterations, length) =>
-  new Uint8Array(pbkdf2Sync(password, salt, iterations, length, 'sha512'))
+  backend.pbkdf2(password, salt, iterations, length)
 
 /** Pad an integer to the width every SRP hash expects. */
 function operand(value: bigint): Uint8Array {
@@ -93,15 +99,15 @@ function saltedHash(data: Uint8Array, salt: Uint8Array): Uint8Array {
  * The same derivation produces the verifier when a password is set and the
  * proof when one is checked, so it is named rather than inlined.
  */
-export function passwordHash(
+export async function passwordHash(
   password: Uint8Array,
   salt1: Uint8Array,
   salt2: Uint8Array,
   pbkdf2: Pbkdf2 = defaultPbkdf2,
-): Uint8Array {
+): Promise<Uint8Array> {
   const first = saltedHash(saltedHash(password, salt1), salt2)
 
-  return saltedHash(pbkdf2(first, salt1, PBKDF2_ITERATIONS, PBKDF2_LENGTH), salt2)
+  return saltedHash(await pbkdf2(first, salt1, PBKDF2_ITERATIONS, PBKDF2_LENGTH), salt2)
 }
 
 /**
@@ -110,11 +116,11 @@ export function passwordHash(
  * The secret exponent and the derived session key never leave this function:
  * what comes back is what the protocol puts on the wire, and nothing else.
  */
-export function computeSrpProof(
+export async function computeSrpProof(
   password: Uint8Array,
   parameters: SrpParameters,
   options: SrpOptions = {},
-): SrpProof {
+): Promise<SrpProof> {
   const { p, g, salt1, salt2, gB } = parameters
   const random = options.random ?? randomBytes
   const pbkdf2 = options.pbkdf2 ?? defaultPbkdf2
@@ -122,7 +128,7 @@ export function computeSrpProof(
   validateDhParameters({ p, g })
   validateDhPublicKey(gB, p)
 
-  const x = bytesToBigIntBE(passwordHash(password, salt1, salt2, pbkdf2))
+  const x = bytesToBigIntBE(await passwordHash(password, salt1, salt2, pbkdf2))
   const v = modPow(g, x, p)
   const k = bytesToBigIntBE(sha256(operand(p), operand(g)))
   const t = mod(gB - mod(k * v, p), p)
