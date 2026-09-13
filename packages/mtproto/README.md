@@ -1,7 +1,7 @@
 # @yuigram/mtproto
 
 [![npm](https://img.shields.io/npm/v/@yuigram/mtproto.svg)](https://www.npmjs.com/package/@yuigram/mtproto)
-[![licence](https://img.shields.io/npm/l/@yuigram/mtproto.svg)](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[![licence](https://img.shields.io/npm/l/@yuigram/mtproto.svg)](https://github.com/yuigram/yuigram/blob/master/LICENSE)
 
 The Telegram MTProto subsystem of [Yuigram](https://github.com/yuigram/yuigram): the protocol
 implementation — cryptography, the TL codec, transport framing, the authorization handshake,
@@ -14,7 +14,7 @@ the session layer, the datacenter pool, peer resolution, file transfer and the u
 > states that accounts used for flooding, spamming or faking counters will be banned, and the
 > ban applies to the account rather than to the application — what is lost is somebody's
 > messages, groups and contacts. That is the reason this subsystem is shaped the way it is, and
-> [mtproto.md](https://github.com/yuigram/yuigram/blob/main/docs/mtproto.md) opens with it.
+> [mtproto.md](https://github.com/yuigram/yuigram/blob/master/docs/mtproto.md) opens with it.
 
 This package is published separately for the reason the core is: it lets the protocol be
 depended on without the Bot API coming with it, and it makes the architecture enforceable — the
@@ -26,4 +26,4 @@ here.
 
 ## Licence
 
-[MIT](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

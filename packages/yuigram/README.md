@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/yuigram.svg)](https://www.npmjs.com/package/yuigram)
 [![node](https://img.shields.io/node/v/yuigram.svg)](https://nodejs.org)
-[![licence](https://img.shields.io/npm/l/yuigram.svg)](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[![licence](https://img.shields.io/npm/l/yuigram.svg)](https://github.com/yuigram/yuigram/blob/master/LICENSE)
 [![CI](https://github.com/yuigram/yuigram/actions/workflows/ci.yml/badge.svg)](https://github.com/yuigram/yuigram/actions/workflows/ci.yml)
 
 **An independent TypeScript framework for the Telegram Bot API and MTProto.**
@@ -33,7 +33,7 @@ message with no text.
 > **The Bot API subsystem is complete, and the MTProto account client is reachable.** `App`
 > holds clients of both kinds at once. The high-level MTProto surface — messages, chats,
 > dialogs — is still being built. Nothing released is a stub: unimplemented means absent, not
-> hollow. See the [roadmap](https://github.com/yuigram/yuigram/blob/main/docs/roadmap.md).
+> hollow. See the [roadmap](https://github.com/yuigram/yuigram/blob/master/docs/roadmap.md).
 
 ## What you get
 
@@ -160,4 +160,4 @@ routers, middleware, sessions, storage and a production setup.
 
 ## Licence
 
-[MIT](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

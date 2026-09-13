@@ -1,7 +1,7 @@
 # @yuigram/bot-api
 
 [![npm](https://img.shields.io/npm/v/@yuigram/bot-api.svg)](https://www.npmjs.com/package/@yuigram/bot-api)
-[![licence](https://img.shields.io/npm/l/@yuigram/bot-api.svg)](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[![licence](https://img.shields.io/npm/l/@yuigram/bot-api.svg)](https://github.com/yuigram/yuigram/blob/master/LICENSE)
 
 The Telegram Bot API subsystem of [Yuigram](https://github.com/yuigram/yuigram): the `Bot`
 client, the generated method surface, long polling, webhooks and their adapters, update
@@ -26,4 +26,4 @@ Node.js 22 or newer. ESM only. Zero runtime dependencies.
 
 ## Licence
 
-[MIT](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

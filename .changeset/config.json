@@ -5,7 +5,7 @@
   "fixed": [["@yuigram/core", "@yuigram/bot-api", "@yuigram/mtproto", "yuigram"]],
   "linked": [],
   "access": "public",
-  "baseBranch": "main",
+  "baseBranch": "master",
   "updateInternalDependencies": "patch",
   "ignore": ["@yuigram/invariants"]
 }
