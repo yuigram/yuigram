@@ -115,21 +115,57 @@ MTProto runs on Node, Bun and Deno because all three provide `node:crypto`, `nod
 | Raw TCP | Browsers have no TCP at all. Telegram serves web clients over WebSocket, so this is a second transport rather than a shim. |
 | gzip, for compressed answers | `DecompressionStream('gzip')` exists and is asynchronous. |
 
-### 4.1 The choice this turns on, and what it costs
+### 4.1 Every consumer, and what each one assumes
 
-Two architectures would close it, and they are not close to equivalent.
+The question is not which primitives exist. It is which call sites depend on getting an answer
+without waiting, because that is what a provider boundary would change. Traced over the current
+tree:
 
-**Make the crypto layer asynchronous**, so WebCrypto can back it. Every call site in the session
-layer, the transport obfuscation and the handshake becomes `await`-ing, on every runtime including
-the ones where it is synchronous today. WebCrypto still has no ECB, so IGE would be emulated one
-block at a time — a promise per sixteen bytes.
+| Consumer | Primitive and mode | State and chunking | Synchronous today |
+| --- | --- | --- | --- |
+| `message/encrypted.ts` | AES-256-IGE, both ways | Per message; key and IV derived per message, no state kept | yes |
+| `auth/handshake.ts` | AES-256-IGE, SHA-1, modular exponentiation, PQ factorization | Per handshake step | yes |
+| `auth/bind.ts` | AES-256-IGE encrypt | Once per temporary-key binding | yes |
+| `transport/obfuscation.ts` | AES-256-CTR | **Two long-lived cipher objects per connection**, advanced by every packet in both directions | yes |
+| `files/cdn.ts` | AES-256-CTR, SHA-256 | Counter derived from the chunk's offset; one call per chunk | yes |
+| `files/upload.ts` | MD5 | Accumulated over a whole file | yes |
+| `auth/password.ts`, `security/password.ts` | SRP, PBKDF2-HMAC-SHA512, modular exponentiation | Once per sign-in or password change | yes |
+| `auth/keys.ts` | SHA-1 (`node:crypto` directly) | Once per key fingerprint | yes |
 
-**Implement the block cipher in the repository**, so it is synchronous everywhere and
-`node:crypto` leaves the cryptography entirely. The project already implements AES-IGE, SRP,
-Miller-Rabin and Telegram's RSA padding itself under the zero-dependency policy, so this is the
-same kind of decision rather than a new one. The cost is speed.
+Seventeen call sites across seven modules, plus two that reach `node:crypto` without going through
+the crypto layer. **None of them awaits anything today.**
 
-That cost was measured rather than guessed. A compact AES-256 block cipher was written, checked
+### 4.2 What that rules out
+
+Two of those rows decide the architecture, and neither is the one that looks hardest.
+
+**The transport obfuscation is a stream cipher, not per-message encryption.** It builds two
+`aes-256-ctr` objects when a connection opens and advances them with every packet, in both
+directions, for the life of the connection. WebCrypto has no stateful cipher object at all —
+`crypto.subtle.encrypt` is one-shot. Reproducing this against WebCrypto means computing the
+counter from the byte offset and awaiting a fresh one-shot call **per packet**, on the hot path,
+in a layer where ordering and backpressure are the whole job.
+
+**IGE needs the raw block cipher, which WebCrypto does not expose.** AES-ECB is absent from the
+standard. The usual workaround — a single-block AES-CBC with a zero IV — is asynchronous, so it
+turns the per-message cipher into a promise per sixteen bytes.
+
+So an asynchronous provider does not, by itself, supply what is missing. It supplies waiting, and
+the missing thing is a mode.
+
+### 4.3 The decision
+
+**The provider contract is synchronous.** A browser implementation therefore needs a synchronous
+AES in the repository; WebCrypto can back only the paths where a single wait is already
+acceptable — PBKDF2 at sign-in, and one-shot hashing during the handshake.
+
+The alternative — making the boundary asynchronous — was rejected on the evidence above rather
+than on taste. It would push `await` into the transport's packet path and the session layer's
+message path, where packet ordering, sequence-number ownership, serialized use of a stateful
+cipher, concurrent sends, and disposal-while-pending all live. That is a large amount of risk
+bought in exchange for a mode WebCrypto still would not provide.
+
+What it costs was measured, not assumed. A compact AES-256 block cipher was written, checked
 against `node:crypto` on a known block, and timed against it:
 
 | | Throughput |
@@ -137,29 +173,26 @@ against `node:crypto` on a known block, and timed against it:
 | The platform's AES-256 | 978 MiB/s |
 | A straightforward pure-JS AES-256 | 2.8 MiB/s |
 
-Two things about that number. It is a **deliberately naive** implementation — byte-wise state, an
-allocation per block — and a table-driven one is substantially faster; treat 344× as an upper
-bound on the gap rather than as the cost of a good implementation. And the figure only matters
-where the volume is: a 4 KB message costs about 1.4 ms even at the naive speed, while a 100 MB
-download costs 36 seconds of processor time that the platform does in a tenth of a second.
+That implementation is **deliberately naive** — byte-wise state, an allocation per block — and a
+table-driven one is substantially faster, so the ratio is an upper bound on a naive approach
+rather than the cost of doing it well. Two things follow. Messaging is unaffected either way: a
+4 KB message costs about 1.4 ms even at the slow figure. Bulk file transfer is where it stops
+being acceptable, and it is also the one place a wait is natural, because a download is already
+chunked and already waiting on the network.
 
-So the shape of the answer is that **neither architecture is right for everything**. Messaging is
-unaffected either way. Bulk file transfer is where a pure-JS cipher stops being acceptable, and is
-also the one place where asynchrony is natural — a download is already chunked and already
-awaiting the network.
+Table-driven AES is also the point at which cache-timing behaviour has to be argued rather than
+assumed, and this document does not claim constant-time behaviour for anything not yet written.
 
-### 4.2 Where this is left
+### 4.4 The next executable action
 
-Not started, and deliberately. The measurement says the decision should be made per path rather
-than globally, which means the crypto layer needs an interface that admits both a synchronous
-implementation and an asynchronous one before either can be written. That is a larger change than
-anything else outstanding, and it is the next architectural blocker rather than a gap to be
-closed in passing.
+Introduce the synchronous provider seam over the seventeen call sites, backed on Node, Bun and
+Deno by exactly what they use today, so the change is behaviour-preserving and testable against
+the existing vectors. That seam is the prerequisite for every browser step after it, and it is
+the point at which a browser provider becomes an addition rather than a rewrite.
 
-What is settled: the Bot API subsystem runs everywhere already, entities and formatting are
-portable, and MTProto is Node-shaped on purpose rather than by accident. `packages/*/package.json`
-claims no browser support, which is the honest state — a package that advertised it while unable
-to open a connection would be worse than one that does not.
+Nothing here is started. It is recorded as the next architectural step rather than as a gap that
+could be closed in passing, and no package claims browser support meanwhile — one that advertised
+it while unable to open a connection would be worse than one that does not.
 
 ## 5. What is not verified
 
