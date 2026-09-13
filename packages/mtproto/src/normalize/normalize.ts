@@ -188,6 +188,30 @@ function fromShortMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUp
  * numbers are unique to the account outside channels and the peer is not needed
  * to find them.
  */
+/**
+ * The updates whose `user_id` is the person asking rather than the subject.
+ *
+ * Named rather than inferred, and used for two things. The person is the
+ * sender, because nobody else acted. And the person is *not* the conversation:
+ * an inline query, a payment step or a request to join is a standing question
+ * addressed to the account, not something said in a chat. Half of these name a
+ * conversation of their own and half genuinely have none, so falling back to
+ * `user_id` here would invent a private chat that the query never happened in.
+ *
+ * The distinction matters because several other updates carry a `user_id`
+ * meaning something else entirely, and reading it as the sender on those would
+ * attribute an event to whoever it happened to be about.
+ */
+const ASKED_BY_USER: ReadonlySet<string> = new Set([
+  'updateBotCallbackQuery',
+  'updateInlineBotCallbackQuery',
+  'updateBotInlineQuery',
+  'updateBotInlineSend',
+  'updateBotShippingQuery',
+  'updateBotPrecheckoutQuery',
+  'updateBotChatInviteRequester',
+])
+
 function chatOf(update: TlValue): PeerRef | undefined {
   const direct = peerRefOf(update['peer'])
   if (direct !== undefined) return direct
@@ -205,6 +229,17 @@ function chatOf(update: TlValue): PeerRef | undefined {
 
   const chatId = readBigInt(update['chat_id'])
   if (chatId !== undefined) return { kind: 'chat', id: chatId }
+
+  // The oldest membership update names the chat inside the participant list
+  // rather than beside it, so the conversation is there to be read even though
+  // the update itself carries no identifier at the top level.
+  const nested = asValue(update['participants'])
+  const nestedId = nested === undefined ? undefined : readBigInt(nested['chat_id'])
+  if (nestedId !== undefined) return { kind: 'chat', id: nestedId }
+
+  // A query is not said in a conversation, so it has none rather than one made
+  // up from whoever asked.
+  if (ASKED_BY_USER.has(update._)) return undefined
 
   // A user typing in a private chat: the user is the conversation.
   const userId = readBigInt(update['user_id'])
@@ -228,13 +263,27 @@ function senderOf(update: TlValue): PeerRef | undefined {
     if (userId !== undefined) return { kind: 'user', id: userId }
   }
 
+  // A query from a bot's point of view: the person who pressed the button or
+  // typed the query is who it is from, and there is no other candidate.
+  if (ASKED_BY_USER.has(update._)) {
+    const userId = readBigInt(update['user_id'])
+    if (userId !== undefined) return { kind: 'user', id: userId }
+  }
+
   // A membership change names who made it rather than who it is about: the
   // member is the subject, and the actor is the one who promoted, removed or
   // invited them. Reading `user_id` here would report the person affected as
   // the person responsible.
   const actor = readBigInt(update['actor_id'])
+  if (actor !== undefined) return { kind: 'user', id: actor }
 
-  return actor === undefined ? undefined : { kind: 'user', id: actor }
+  // The basic-group forms predate `actor_id` and name the actor only where they
+  // have one to name: whoever added somebody is on the update, whoever removed,
+  // promoted or renamed them is not. Absent rather than guessed — an admin
+  // change with no actor really is a change nobody is named for.
+  const inviter = readBigInt(update['inviter_id'])
+
+  return inviter === undefined ? undefined : { kind: 'user', id: inviter }
 }
 
 /** Read a `Peer`, whichever of the three it is. */

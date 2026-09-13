@@ -760,13 +760,14 @@ describe('somebody joining, leaving or being promoted', () => {
   })
 
   it('leaves the actor unnamed where the constructor carries none', () => {
-    // The older forms say what changed without saying who changed it.
+    // Removal says what changed without saying who changed it — there is no
+    // field for the actor at all, and the subject is not a substitute for one.
+    // Addition is the exception among the older forms and is covered with the
+    // rest of them below.
     const event = normalizeUpdate({
-      _: 'updateChatParticipantAdd',
+      _: 'updateChatParticipantDelete',
       chat_id: 100n,
       user_id: 42n,
-      inviter_id: 9n,
-      date: 0,
       version: 1,
     })
 
@@ -785,5 +786,290 @@ describe('somebody joining, leaving or being promoted', () => {
     })
 
     expect(event.sender).toEqual({ kind: 'user', id: 42n })
+  })
+})
+
+describe('a bot signed in over this transport', () => {
+  it('reads the queries only this connection can answer', () => {
+    // An account signed in with a bot token receives these here, not over the
+    // Bot API. A Bot API client is a different client on a different
+    // connection and cannot answer a query that arrived on this one, so
+    // classifying these as somebody else's was wrong.
+    expect(UPDATE_EVENTS['updateBotCallbackQuery']).toBe('mtproto:callback_query')
+    expect(UPDATE_EVENTS['updateInlineBotCallbackQuery']).toBe('mtproto:callback_query')
+    expect(UPDATE_EVENTS['updateBotInlineQuery']).toBe('mtproto:inline_query')
+    expect(UPDATE_EVENTS['updateBotInlineSend']).toBe('mtproto:inline_chosen')
+  })
+
+  it('names the person who tapped, and the conversation it happened in', () => {
+    const event = normalizeUpdate({
+      _: 'updateBotCallbackQuery',
+      query_id: 900n,
+      user_id: 42n,
+      peer: peerChannel(55n),
+      msg_id: 7,
+      chat_instance: 1n,
+      data: Uint8Array.of(1, 2),
+    })
+
+    expect(event.kind).toBe('mtproto:callback_query')
+    expect(event.sender).toEqual({ kind: 'user', id: 42n })
+    expect(event.chat).toEqual({ kind: 'channel', id: 55n })
+  })
+
+  it('names the asker for an inline query, which names no conversation', () => {
+    // An inline query is typed into a field rather than sent to a chat, so it
+    // has a sender and no conversation. The user is the asker, not the subject.
+    const event = normalizeUpdate({
+      _: 'updateBotInlineQuery',
+      query_id: 901n,
+      user_id: 42n,
+      query: 'cats',
+      offset: '',
+    })
+
+    expect(event.kind).toBe('mtproto:inline_query')
+    expect(event.sender).toEqual({ kind: 'user', id: 42n })
+  })
+
+  it('names the asker for a chosen result too', () => {
+    const event = normalizeUpdate({
+      _: 'updateBotInlineSend',
+      user_id: 42n,
+      query: 'cats',
+      id: 'result-1',
+    })
+
+    expect(event.kind).toBe('mtproto:inline_chosen')
+    expect(event.sender).toEqual({ kind: 'user', id: 42n })
+  })
+
+  it('keeps the query identifier reachable, because answering needs it', () => {
+    // The identifier is what an answer is addressed to and it expires, so it
+    // has to survive normalization rather than being summarised away.
+    const event = normalizeUpdate({
+      _: 'updateBotCallbackQuery',
+      query_id: 900n,
+      user_id: 42n,
+      peer: peerUser(42n),
+      msg_id: 7,
+      chat_instance: 1n,
+    })
+
+    expect(event.raw['query_id']).toBe(900n)
+  })
+
+  it('does not start naming a sender on updates that mean something else by user_id', () => {
+    // Several updates carry a `user_id` that is the subject rather than the
+    // asker. Only the named ones read it as the sender.
+    const typing = normalizeUpdate({
+      _: 'updateChannelUserTyping',
+      channel_id: 55n,
+      from_id: peerUser(9n),
+      action: { _: 'sendMessageTypingAction' },
+    })
+
+    expect(typing.sender).toEqual({ kind: 'user', id: 9n })
+  })
+})
+
+describe('who acted, and where, on a membership change', () => {
+  // Seven constructors answer one question, and they disagree about which
+  // field means what. The subject is always `user_id`; the actor is `actor_id`
+  // on the two modern forms, `inviter_id` on one of the old ones, and named
+  // nowhere on the rest. Reporting the subject as the actor would say the
+  // person who was removed removed themselves.
+  const CHAT = 333n
+  const ACTOR = 111n
+  const SUBJECT = 222n
+
+  it('reads the actor, not the person it happened to', () => {
+    for (const update of [
+      {
+        _: 'updateChatParticipant',
+        chat_id: CHAT,
+        date: 1,
+        actor_id: ACTOR,
+        user_id: SUBJECT,
+        qts: 1,
+      },
+      {
+        _: 'updateChannelParticipant',
+        channel_id: CHAT,
+        date: 1,
+        actor_id: ACTOR,
+        user_id: SUBJECT,
+        qts: 1,
+      },
+    ]) {
+      const event = normalizeUpdate(update)
+
+      expect(event.kind).toBe('mtproto:membership')
+      expect(event.sender).toEqual({ kind: 'user', id: ACTOR })
+      expect(event.sender).not.toEqual({ kind: 'user', id: SUBJECT })
+    }
+  })
+
+  it('reads the actor an older form names as the inviter', () => {
+    // `updateChatParticipantAdd` predates `actor_id` and calls the same person
+    // `inviter_id`. Leaving it unread reported no actor for a change that
+    // names one.
+    const event = normalizeUpdate({
+      _: 'updateChatParticipantAdd',
+      chat_id: CHAT,
+      user_id: SUBJECT,
+      inviter_id: ACTOR,
+      date: 1,
+      version: 1,
+    })
+
+    expect(event.sender).toEqual({ kind: 'user', id: ACTOR })
+    expect(event.chat).toEqual({ kind: 'chat', id: CHAT })
+  })
+
+  it('names no actor where the update names none', () => {
+    // Removal, promotion and renaming carry only the subject. Absent is the
+    // honest answer; reading `user_id` would blame the person it happened to.
+    for (const update of [
+      { _: 'updateChatParticipantDelete', chat_id: CHAT, user_id: SUBJECT, version: 1 },
+      {
+        _: 'updateChatParticipantAdmin',
+        chat_id: CHAT,
+        user_id: SUBJECT,
+        is_admin: true,
+        version: 1,
+      },
+      { _: 'updateChatParticipantRank', chat_id: CHAT, user_id: SUBJECT, rank: 'boss', version: 1 },
+    ]) {
+      const event = normalizeUpdate(update)
+
+      expect(event.sender).toBeUndefined()
+      expect(event.chat).toEqual({ kind: 'chat', id: CHAT })
+      expect(event.raw['user_id']).toBe(SUBJECT)
+    }
+  })
+
+  it('finds the conversation a whole-list update keeps inside the list', () => {
+    // `updateChatParticipants` carries no identifier of its own: the chat is
+    // named on the participant list it wraps. Reporting no conversation made
+    // the event unroutable.
+    const event = normalizeUpdate({
+      _: 'updateChatParticipants',
+      participants: { _: 'chatParticipants', chat_id: CHAT, participants: [], version: 1 },
+    })
+
+    expect(event.kind).toBe('mtproto:membership')
+    expect(event.chat).toEqual({ kind: 'chat', id: CHAT })
+    expect(event.sender).toBeUndefined()
+  })
+
+  it('reads the forbidden form of the same list', () => {
+    const event = normalizeUpdate({
+      _: 'updateChatParticipants',
+      participants: { _: 'chatParticipantsForbidden', chat_id: CHAT },
+    })
+
+    expect(event.chat).toEqual({ kind: 'chat', id: CHAT })
+  })
+})
+
+describe('a query is not a conversation', () => {
+  // An inline query, a payment step and a chosen result all carry a `user_id`
+  // and nothing else peer-shaped. Falling through to it invented a private
+  // chat with the person asking, which a filter on chat identity would match.
+  const ASKER = 222n
+
+  it('gives an inline query no conversation', () => {
+    for (const update of [
+      { _: 'updateBotInlineQuery', query_id: 7n, user_id: ASKER, query: 'x', offset: '' },
+      { _: 'updateBotInlineSend', user_id: ASKER, query: 'x', id: 'r1' },
+      {
+        _: 'updateInlineBotCallbackQuery',
+        query_id: 7n,
+        user_id: ASKER,
+        msg_id: { _: 'inputBotInlineMessageID', dc_id: 2, id: 1n, access_hash: 1n },
+        chat_instance: 9n,
+      },
+    ]) {
+      const event = normalizeUpdate(update)
+
+      expect(event.chat).toBeUndefined()
+      expect(event.sender).toEqual({ kind: 'user', id: ASKER })
+    }
+  })
+
+  it('keeps the conversation a tapped button does name', () => {
+    // The other callback form carries a real peer, so the rule above must not
+    // take it away.
+    const event = normalizeUpdate({
+      _: 'updateBotCallbackQuery',
+      query_id: 7n,
+      user_id: ASKER,
+      peer: { _: 'peerChannel', channel_id: 55n },
+      msg_id: 5,
+      chat_instance: 9n,
+    })
+
+    expect(event.chat).toEqual({ kind: 'channel', id: 55n })
+    expect(event.sender).toEqual({ kind: 'user', id: ASKER })
+  })
+
+  it('still reads a person typing as the conversation they are typing in', () => {
+    // The fallback the rule above narrows is the one that makes a private chat
+    // routable at all, so it has to survive.
+    const event = normalizeUpdate({
+      _: 'updateUserTyping',
+      user_id: ASKER,
+      action: { _: 'sendMessageTypingAction' },
+    })
+
+    expect(event.chat).toEqual({ kind: 'user', id: ASKER })
+  })
+})
+
+describe('the rest of what a bot receives here', () => {
+  const ASKER = 222n
+
+  it('names the payment steps that stall a checkout until answered', () => {
+    const shipping = normalizeUpdate({
+      _: 'updateBotShippingQuery',
+      query_id: 7n,
+      user_id: ASKER,
+      payload: new Uint8Array([1]),
+      shipping_address: { _: 'postAddress' },
+    })
+    const precheckout = normalizeUpdate({
+      _: 'updateBotPrecheckoutQuery',
+      query_id: 8n,
+      user_id: ASKER,
+      payload: new Uint8Array([1]),
+      currency: 'XTR',
+      total_amount: 100n,
+    })
+
+    expect(shipping.kind).toBe('mtproto:shipping_query')
+    expect(precheckout.kind).toBe('mtproto:precheckout_query')
+    expect(shipping.sender).toEqual({ kind: 'user', id: ASKER })
+    expect(precheckout.sender).toEqual({ kind: 'user', id: ASKER })
+    expect(shipping.chat).toBeUndefined()
+    expect(precheckout.chat).toBeUndefined()
+    expect(shipping.raw['query_id']).toBe(7n)
+    expect(precheckout.raw['query_id']).toBe(8n)
+  })
+
+  it('names a request to join, which does have a conversation', () => {
+    const event = normalizeUpdate({
+      _: 'updateBotChatInviteRequester',
+      peer: { _: 'peerChat', chat_id: 333n },
+      date: 1,
+      user_id: ASKER,
+      about: 'let me in',
+      invite: { _: 'chatInviteEmpty' },
+      qts: 1,
+    })
+
+    expect(event.kind).toBe('mtproto:join_request')
+    expect(event.chat).toEqual({ kind: 'chat', id: 333n })
+    expect(event.sender).toEqual({ kind: 'user', id: ASKER })
   })
 })

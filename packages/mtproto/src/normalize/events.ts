@@ -45,6 +45,12 @@ export const ACCOUNT_KINDS = [
   'mtproto:folder',
   'mtproto:call',
   'mtproto:membership',
+  'mtproto:callback_query',
+  'mtproto:inline_query',
+  'mtproto:inline_chosen',
+  'mtproto:shipping_query',
+  'mtproto:precheckout_query',
+  'mtproto:join_request',
   RAW_KIND,
 ] as const
 
@@ -93,6 +99,20 @@ export const UPDATE_EVENTS: Readonly<Record<string, MtprotoEventKind>> = {
   updateChatParticipantDelete: 'mtproto:membership',
   updateChatParticipantAdmin: 'mtproto:membership',
   updateChatParticipantRank: 'mtproto:membership',
+  // An account signed in with a bot token receives these over this transport,
+  // not over the Bot API. Nothing else can answer them: a query that arrived
+  // here is answered here, with the identifier it arrived with.
+  updateBotCallbackQuery: 'mtproto:callback_query',
+  updateInlineBotCallbackQuery: 'mtproto:callback_query',
+  updateBotInlineQuery: 'mtproto:inline_query',
+  updateBotInlineSend: 'mtproto:inline_chosen',
+  // A payment in progress. Both stall the checkout until they are answered, and
+  // the second is the last point at which the charge can still be refused.
+  updateBotShippingQuery: 'mtproto:shipping_query',
+  updateBotPrecheckoutQuery: 'mtproto:precheckout_query',
+  // Somebody asking to be let in. Unlike the queries above this one stands
+  // until it is decided rather than expiring.
+  updateBotChatInviteRequester: 'mtproto:join_request',
   updateDialogPinned: 'mtproto:dialog_pinned',
   updateFolderPeers: 'mtproto:folder',
   updatePhoneCall: 'mtproto:call',

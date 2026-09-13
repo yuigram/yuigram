@@ -61,14 +61,22 @@ export { fromHtml, fromMarkdown, toHtml, toMarkdown } from './format/index.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
 export type {
+  CallbackAnswer,
   EditOptions,
   ForwardOptions,
+  InlineAnswer,
   MessageBody,
   ReactionInput,
   Sending,
   SendOptions,
+  ShippingAnswer,
 } from './messaging/send.js'
 export {
+  answerCallback,
+  answerInlineQuery,
+  answerPrecheckout,
+  answerShipping,
+  decideJoinRequest,
   deleteMessages,
   editMessage,
   forwardMessages,

@@ -25,7 +25,11 @@
  */
 
 import { PeerError } from '@yuigram/core'
-import type { TypeInputChannel, TypeInputPeer } from '../generated/api/types/index.js'
+import type {
+  TypeInputChannel,
+  TypeInputPeer,
+  TypeInputUser,
+} from '../generated/api/types/index.js'
 import type { PeerKind, PeerRecord, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { Callable } from './migration.js'
@@ -183,6 +187,33 @@ export function channelFor(peer: TypeInputPeer): TypeInputChannel | undefined {
       peer: peer.peer,
       msg_id: peer.msg_id,
       channel_id: peer.channel_id,
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * The user a resolved peer names, or nothing where it names something else.
+ *
+ * The counterpart to `channelFor`, for the methods that address a person
+ * directly rather than a conversation: approving somebody's request to join
+ * names the chat and the person as separate arguments, and only the second of
+ * them has to be a user.
+ */
+export function userFor(peer: TypeInputPeer): TypeInputUser | undefined {
+  if (peer._ === 'inputPeerSelf') return { _: 'inputUserSelf' }
+
+  if (peer._ === 'inputPeerUser') {
+    return { _: 'inputUser', user_id: peer.user_id, access_hash: peer.access_hash }
+  }
+
+  if (peer._ === 'inputPeerUserFromMessage') {
+    return {
+      _: 'inputUserFromMessage',
+      peer: peer.peer,
+      msg_id: peer.msg_id,
+      user_id: peer.user_id,
     }
   }
 

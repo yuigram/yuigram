@@ -82,7 +82,23 @@ rather than a person.
 **Membership changes arrive as events.** Somebody joining, leaving, being promoted or being
 restricted now reaches a handler as `mtproto:membership` rather than as a raw update — all seven
 constructors Telegram kept for the one question, naming the conversation it happened in and the
-account that made the change rather than the one it was about.
+account that made the change rather than the one it was about. The seven disagree about which
+field means what: the actor is `actor_id` on the two modern forms, `inviter_id` on the oldest of
+the additions, and named nowhere on removal, promotion and renaming, where the event now says so
+instead of blaming the person it happened to. The whole-list form keeps its chat inside the list
+it wraps, and is read from there rather than reported as concerning no conversation.
+
+**A bot signed in over this transport gets its queries here.** A tapped button, an inline query,
+a chosen result, the two payment steps and a request to join now reach a handler as
+`mtproto:callback_query`, `mtproto:inline_query`, `mtproto:inline_chosen`,
+`mtproto:shipping_query`, `mtproto:precheckout_query` and `mtproto:join_request`. They have to
+be: a Bot API client is a different client on a different connection and cannot answer a query
+that arrived on this one. So `answerCallback`, `answerInlineQuery`, `answerShipping`,
+`answerPrecheckout` and `decideJoinRequest` sit on `Account`, each answering with the identifier
+the query arrived with — every one of these stalls something visible until it is answered, and a
+pre-checkout answer is the last point at which a charge can still be refused. A query is not a
+conversation, either: an inline query names no chat, and the event no longer invents a private
+one from whoever asked.
 
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather

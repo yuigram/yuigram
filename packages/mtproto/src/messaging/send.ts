@@ -26,18 +26,22 @@
  * refused call rather than a wrong answer.
  */
 
+import { PeerError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
 import { MessageView } from '../entities/message.js'
 import type { FormattedText } from '../format/text.js'
 import type {
+  TypeInlineBotSwitchPM,
+  TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
   TypeMessageEntity,
   TypeReaction,
   TypeReplyMarkup,
   TypeSendMessageAction,
+  TypeShippingOption,
 } from '../generated/api/types/index.js'
-import { channelFor } from '../network/peers.js'
+import { channelFor, userFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { randomId, type SentMessage, sentMessage } from '../normalize/sent.js'
 
@@ -454,4 +458,162 @@ export async function getMessages(
   if (answer._ === 'messages.messagesNotModified') return []
 
   return answer.messages.map((value) => new MessageView(value))
+}
+
+/** How to answer a tapped button. */
+export interface CallbackAnswer {
+  /** What to show the person who tapped. Nothing dismisses the spinner silently. */
+  readonly text?: string
+  /** Show it as a dialog rather than as a bar along the top. */
+  readonly alert?: boolean
+  /** Open this instead of showing anything. */
+  readonly url?: string
+  /** How long a client may reuse this answer, in seconds. */
+  readonly cacheTime?: number
+}
+
+/**
+ * Answer a tapped button.
+ *
+ * An account signed in with a bot token receives these over this transport, so
+ * this is where they are answered — a Bot API client is a different client with
+ * a different connection and cannot answer a query that arrived here. The
+ * identifier comes from the update and is good only briefly: Telegram shows the
+ * person a spinner until it is answered or it expires.
+ */
+export async function answerCallback(
+  client: Sending,
+  queryId: bigint,
+  answer?: CallbackAnswer,
+): Promise<void> {
+  await client.api.messages.setBotCallbackAnswer({
+    query_id: queryId,
+    cache_time: answer?.cacheTime ?? 0,
+    ...(answer?.text === undefined ? {} : { message: answer.text }),
+    ...(answer?.alert === true ? { alert: true as const } : {}),
+    ...(answer?.url === undefined ? {} : { url: answer.url }),
+  })
+}
+
+/** How to answer an inline query. */
+export interface InlineAnswer {
+  /** How long a client may reuse these results, in seconds. */
+  readonly cacheTime?: number
+  /** Show them as a grid rather than as a list. */
+  readonly gallery?: boolean
+  /** Cache them for the person who asked rather than for everybody. */
+  readonly private?: boolean
+  /** The offset a client sends back to ask for the next page. */
+  readonly nextOffset?: string
+  /** A button offering to open a conversation with the bot instead. */
+  readonly switchPm?: TypeInlineBotSwitchPM
+}
+
+/**
+ * Answer an inline query with results.
+ *
+ * As with a tapped button: the query arrived on this connection and is answered
+ * on it. An empty list is a valid answer and means there is nothing to offer,
+ * which is different from not answering at all — that leaves the person waiting
+ * until the query expires.
+ */
+export async function answerInlineQuery(
+  client: Sending,
+  queryId: bigint,
+  results: readonly TypeInputBotInlineResult[],
+  answer?: InlineAnswer,
+): Promise<void> {
+  await client.api.messages.setInlineBotResults({
+    query_id: queryId,
+    results,
+    cache_time: answer?.cacheTime ?? 300,
+    ...(answer?.gallery === true ? { gallery: true as const } : {}),
+    ...(answer?.private === true ? { private: true as const } : {}),
+    ...(answer?.nextOffset === undefined ? {} : { next_offset: answer.nextOffset }),
+    ...(answer?.switchPm === undefined ? {} : { switch_pm: answer.switchPm }),
+  })
+}
+
+/** How to answer a request for delivery options. */
+export interface ShippingAnswer {
+  /** What can be offered, and what each costs. */
+  readonly options?: readonly TypeShippingOption[]
+  /**
+   * Why nothing can be offered, shown to the person as written.
+   *
+   * One of the two is required by the protocol: an answer carrying neither
+   * offers nothing and gives no reason, which leaves the checkout stuck.
+   */
+  readonly error?: string
+}
+
+/**
+ * Answer a request for delivery options.
+ *
+ * The same rule as a tapped button: the query arrived on this connection, names
+ * itself by an identifier, and expires. Telegram asks this only for an invoice
+ * that requested an address, and the checkout cannot proceed until it is
+ * answered either way.
+ */
+export async function answerShipping(
+  client: Sending,
+  queryId: bigint,
+  answer: ShippingAnswer,
+): Promise<void> {
+  if (answer.options === undefined && answer.error === undefined) {
+    throw new TypeError('a shipping answer offers options or gives a reason there are none')
+  }
+
+  await client.api.messages.setBotShippingResults({
+    query_id: queryId,
+    ...(answer.error === undefined ? {} : { error: answer.error }),
+    ...(answer.options === undefined ? {} : { shipping_options: answer.options }),
+  })
+}
+
+/**
+ * Approve or refuse a payment about to be taken.
+ *
+ * The last chance to refuse: Telegram charges the card once this succeeds, and
+ * refusing needs a reason because the person is shown it. There is no silent
+ * refusal, and no answer at all means the payment fails on a timeout with
+ * nothing explaining why.
+ */
+export async function answerPrecheckout(
+  client: Sending,
+  queryId: bigint,
+  refusal?: string,
+): Promise<void> {
+  await client.api.messages.setBotPrecheckoutResults({
+    query_id: queryId,
+    ...(refusal === undefined ? { success: true as const } : { error: refusal }),
+  })
+}
+
+/**
+ * Let somebody into a conversation they asked to join, or turn them down.
+ *
+ * Unlike the query answers this names the chat and the person rather than an
+ * identifier, because a join request stands until it is decided rather than
+ * expiring. Turning somebody down does not ban them; they may ask again.
+ */
+export async function decideJoinRequest(
+  client: Sending,
+  chat: string | PeerRef,
+  user: string | PeerRef,
+  approved: boolean,
+): Promise<void> {
+  const peer = await client.resolve(chat)
+  const resolved = await client.resolve(user)
+  const asUser = userFor(resolved)
+
+  if (asUser === undefined) {
+    throw new PeerError('only a person can be let into a conversation')
+  }
+
+  await client.api.messages.hideChatJoinRequest({
+    peer,
+    user_id: asUser,
+    ...(approved ? { approved: true as const } : {}),
+  })
 }

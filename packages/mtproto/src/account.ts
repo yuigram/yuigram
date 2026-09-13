@@ -59,19 +59,28 @@ import type { MessageView } from './entities/message.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type {
+  TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
   TypeSendMessageAction,
 } from './generated/api/types/index.js'
 import type {
+  CallbackAnswer,
   EditOptions,
   ForwardOptions,
+  InlineAnswer,
   MessageBody,
   ReactionInput,
   Sending,
   SendOptions,
+  ShippingAnswer,
 } from './messaging/send.js'
 import {
+  answerCallback,
+  answerInlineQuery,
+  answerPrecheckout,
+  answerShipping,
+  decideJoinRequest,
   deleteMessages,
   editMessage,
   forwardMessages,
@@ -900,6 +909,74 @@ export class Account<Ext = unknown> {
     ids: readonly number[],
   ): Promise<readonly MessageView[]> {
     return await getMessages(this.#sending, peer, ids)
+  }
+
+  /**
+   * Answer a tapped button.
+   *
+   * An account signed in with a bot token receives these over this connection,
+   * so this is where they are answered: a Bot API client is a different client
+   * on a different connection and cannot answer a query that arrived here.
+   *
+   * ```ts
+   * account.on('mtproto:callback_query', async (event) => {
+   *   await account.answerCallback(event.raw['query_id'] as bigint, { text: 'done' })
+   * })
+   * ```
+   */
+  async answerCallback(queryId: bigint, answer?: CallbackAnswer): Promise<void> {
+    await answerCallback(this.#sending, queryId, answer)
+  }
+
+  /**
+   * Answer an inline query with results.
+   *
+   * An empty list is a valid answer meaning there is nothing to offer, which is
+   * not the same as leaving the query unanswered — that leaves the person
+   * waiting until it expires.
+   */
+  async answerInlineQuery(
+    queryId: bigint,
+    results: readonly TypeInputBotInlineResult[],
+    answer?: InlineAnswer,
+  ): Promise<void> {
+    await answerInlineQuery(this.#sending, queryId, results, answer)
+  }
+
+  /**
+   * Answer a request for delivery options.
+   *
+   * Telegram asks this only for an invoice that wanted an address. The answer
+   * either offers options or says why there are none; the checkout waits on it
+   * either way.
+   */
+  async answerShipping(queryId: bigint, answer: ShippingAnswer): Promise<void> {
+    await answerShipping(this.#sending, queryId, answer)
+  }
+
+  /**
+   * Approve or refuse a payment about to be taken.
+   *
+   * The last point at which it can be stopped. Passing a reason refuses and
+   * shows it to the person; passing nothing approves and the card is charged.
+   */
+  async answerPrecheckout(queryId: bigint, refusal?: string): Promise<void> {
+    await answerPrecheckout(this.#sending, queryId, refusal)
+  }
+
+  /**
+   * Let somebody into a conversation they asked to join, or turn them down.
+   *
+   * A standing request rather than an expiring query, so this names the chat
+   * and the person instead of an identifier. Turning somebody down leaves them
+   * free to ask again.
+   */
+  async decideJoinRequest(
+    chat: string | PeerRef,
+    user: string | PeerRef,
+    approved: boolean,
+  ): Promise<void> {
+    await decideJoinRequest(this.#sending, chat, user, approved)
   }
 
   // ---------------------------------------------------------------------

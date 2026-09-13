@@ -14,6 +14,11 @@ import type { MtprotoApi } from '../src/api.js'
 import { fromHtml } from '../src/format/index.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
 import {
+  answerCallback,
+  answerInlineQuery,
+  answerPrecheckout,
+  answerShipping,
+  decideJoinRequest,
   deleteMessages,
   editMessage,
   forwardMessages,
@@ -70,6 +75,11 @@ function fake(options?: {
       readHistory: record('messages.readHistory'),
       setTyping: record('messages.setTyping'),
       getMessages: record('messages.getMessages'),
+      setBotCallbackAnswer: record('messages.setBotCallbackAnswer'),
+      setInlineBotResults: record('messages.setInlineBotResults'),
+      setBotShippingResults: record('messages.setBotShippingResults'),
+      setBotPrecheckoutResults: record('messages.setBotPrecheckoutResults'),
+      hideChatJoinRequest: record('messages.hideChatJoinRequest'),
     },
     channels: {
       deleteMessages: record('channels.deleteMessages'),
@@ -488,5 +498,164 @@ describe('fetching messages by number', () => {
     })
 
     expect(await getMessages(client, '@someone', [7])).toEqual([])
+  })
+})
+
+describe('answering a query that arrived on this connection', () => {
+  it('answers a tapped button with the identifier it arrived with', async () => {
+    const client = fake()
+
+    await answerCallback(client, 900n, { text: 'done' })
+
+    expect(client.calls[0]?.method).toBe('messages.setBotCallbackAnswer')
+    expect(client.calls[0]?.params).toMatchObject({
+      query_id: 900n,
+      message: 'done',
+      cache_time: 0,
+    })
+  })
+
+  it('dismisses the spinner silently when given nothing to say', async () => {
+    // Answering with no text is a valid answer and the usual one. Leaving it
+    // unanswered is not: the person sees a spinner until the query expires.
+    const client = fake()
+
+    await answerCallback(client, 900n)
+
+    expect(client.calls[0]?.params).toMatchObject({ query_id: 900n })
+    expect(client.calls[0]?.params).not.toHaveProperty('message')
+    expect(client.calls[0]?.params).not.toHaveProperty('alert')
+    expect(client.calls[0]?.params).not.toHaveProperty('url')
+  })
+
+  it('shows a dialog rather than a bar only when asked', async () => {
+    const bar = fake()
+    const dialog = fake()
+
+    await answerCallback(bar, 900n, { text: 'x' })
+    await answerCallback(dialog, 900n, { text: 'x', alert: true })
+
+    expect(bar.calls[0]?.params).not.toHaveProperty('alert')
+    expect(dialog.calls[0]?.params).toMatchObject({ alert: true })
+  })
+
+  it('answers an inline query, and treats no results as an answer', async () => {
+    const client = fake()
+
+    await answerInlineQuery(client, 901n, [])
+
+    expect(client.calls[0]?.method).toBe('messages.setInlineBotResults')
+    expect(client.calls[0]?.params).toMatchObject({ query_id: 901n, results: [] })
+  })
+
+  it('carries paging and presentation only when given them', async () => {
+    const plain = fake()
+    const rich = fake()
+
+    await answerInlineQuery(plain, 901n, [])
+    await answerInlineQuery(rich, 901n, [], {
+      gallery: true,
+      private: true,
+      nextOffset: '20',
+      cacheTime: 60,
+    })
+
+    expect(plain.calls[0]?.params).not.toHaveProperty('gallery')
+    expect(plain.calls[0]?.params).not.toHaveProperty('next_offset')
+    expect(rich.calls[0]?.params).toMatchObject({
+      gallery: true,
+      private: true,
+      next_offset: '20',
+      cache_time: 60,
+    })
+  })
+})
+
+describe('the payment steps a checkout waits on', () => {
+  it('offers what can be delivered', () => {
+    const client = fake()
+    const options = [{ _: 'shippingOption' as const, id: 'fast', title: 'Fast', prices: [] }]
+
+    return answerShipping(client, 500n, { options }).then(() => {
+      expect(client.calls[0]?.method).toBe('messages.setBotShippingResults')
+      expect(client.calls[0]?.params).toMatchObject({ query_id: 500n, shipping_options: options })
+      expect(client.calls[0]?.params).not.toHaveProperty('error')
+    })
+  })
+
+  it('says why there is nothing to offer', async () => {
+    const client = fake()
+
+    await answerShipping(client, 500n, { error: 'we do not ship there' })
+
+    expect(client.calls[0]?.params).toMatchObject({ error: 'we do not ship there' })
+    expect(client.calls[0]?.params).not.toHaveProperty('shipping_options')
+  })
+
+  it('refuses an answer that neither offers nor explains', async () => {
+    // The protocol requires one of the two. An answer carrying neither leaves
+    // the checkout waiting on a reply Telegram cannot show anybody.
+    const client = fake()
+
+    await expect(answerShipping(client, 500n, {})).rejects.toThrow()
+    expect(client.calls).toHaveLength(0)
+  })
+
+  it('approves a payment by saying nothing against it', async () => {
+    const client = fake()
+
+    await answerPrecheckout(client, 501n)
+
+    expect(client.calls[0]?.method).toBe('messages.setBotPrecheckoutResults')
+    expect(client.calls[0]?.params).toMatchObject({ query_id: 501n, success: true })
+    expect(client.calls[0]?.params).not.toHaveProperty('error')
+  })
+
+  it('refuses a payment with a reason, and never both at once', async () => {
+    // Sending `success` alongside an error would be a charge and a refusal in
+    // one message.
+    const client = fake()
+
+    await answerPrecheckout(client, 501n, 'out of stock')
+
+    expect(client.calls[0]?.params).toMatchObject({ error: 'out of stock' })
+    expect(client.calls[0]?.params).not.toHaveProperty('success')
+  })
+})
+
+describe('deciding a request to join', () => {
+  it('approves by naming the chat and the person separately', async () => {
+    const client = fake()
+
+    await decideJoinRequest(client, 'group', { kind: 'user', id: 42n }, true)
+
+    expect(client.calls[0]?.method).toBe('messages.hideChatJoinRequest')
+    expect(client.calls[0]?.params).toMatchObject({ approved: true })
+    expect(client.calls[0]?.params?.['user_id']).toMatchObject({ _: 'inputUser' })
+
+    // The two arguments are resolved separately and are not interchangeable:
+    // approving against the person instead of the chat would decide a request
+    // in the wrong conversation, which no assertion on the person would catch.
+    expect(client.resolved).toEqual(['group', { kind: 'user', id: 42n }])
+    expect(client.calls[0]?.params?.['peer']).not.toEqual(client.calls[0]?.params?.['user_id'])
+    expect(client.calls[0]?.params?.['peer']).toMatchObject({ user_id: 614n })
+  })
+
+  it('turns somebody down by leaving the approval off', async () => {
+    // A refusal is the absence of the flag rather than a flag of its own, so
+    // sending it either way would let everybody in.
+    const client = fake()
+
+    await decideJoinRequest(client, 'group', { kind: 'user', id: 42n }, false)
+
+    expect(client.calls[0]?.params).not.toHaveProperty('approved')
+  })
+
+  it('refuses to let a channel into a conversation', async () => {
+    const client = fake({ peer: { _: 'inputPeerChannel', channel_id: 5n, access_hash: 1n } })
+
+    await expect(
+      decideJoinRequest(client, 'group', { kind: 'channel', id: 5n }, true),
+    ).rejects.toThrow()
   })
 })
