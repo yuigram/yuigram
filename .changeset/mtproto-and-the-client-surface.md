@@ -44,6 +44,13 @@ entities, `toHtml` and `toMarkdown` write it back, and both parsers are in the p
 in a dependency. Used as template tags they escape what is interpolated and leave the markup
 alone, so a user called `<b>` cannot format the message they appear in.
 
+**Runtimes.** The Bot API subsystem now reaches no Node built-in at all: polling, webhooks,
+sending and files-by-`Blob` need nothing but `fetch`. One import of `node:crypto`, for the single
+function comparing a webhook secret, had been keeping every bundle containing a bot from loading
+on Bun, Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webhook adapter exists
+to serve. `docs/runtimes.md` has the matrix, says which cells were executed and which were only
+reasoned about, and records what MTProto would still need to run in a browser.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones

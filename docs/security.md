@@ -276,7 +276,12 @@ the surface that was read to establish there is no way round it.
 - [x] Redaction verified against tokens, `api_hash`, session strings, auth keys — `log.test.ts`
 - [x] Errors scrubbed of URLs containing tokens — `download.test.ts`, `fetch-client.test.ts`
 - [x] Constant-time comparison everywhere a secret is compared — the webhook secret is the only
-      one the Bot API has, and uses `timingSafeEqual`
+      one the Bot API has. The comparison is written out in `webhook/handler.ts` rather than taken
+      from `node:crypto`: length is checked first and separately, then every byte of both is read
+      and none is branched on. That import was the one thing keeping the whole Bot API subsystem
+      from running anywhere `fetch` exists, and it was worth one function — see
+      [runtimes.md](runtimes.md) §3. The property under test is unchanged, and
+      `webhook.test.ts` still tests it
 - [x] Session files `0600`, and the store directory `0700` — `storage.test.ts`
 - [x] Webhook secret comparison is constant-time — `webhook.test.ts`
 - [x] Path-traversal test over download helpers — `secret-exposure.test.ts` covers `..` on both

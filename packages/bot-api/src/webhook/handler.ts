@@ -16,7 +16,6 @@
  *   second reply, a second charge — is visible to the user.
  */
 
-import { timingSafeEqual } from 'node:crypto'
 import type { Logger } from '@yuigram/core'
 import type { Update } from '../generated/types/index.js'
 
@@ -76,20 +75,37 @@ function status(code: number): WebhookResponse {
   return { status: code, body: '', contentType: 'text/plain' }
 }
 
+/** Encoding a secret to bytes, so the comparison is over bytes and not code units. */
+const BYTES = new TextEncoder()
+
 /**
  * Compare two secrets without leaking their contents through timing.
  *
  * Length is compared first and separately, which is unavoidable — the length
- * of a secret is not the secret.
+ * of a secret is not the secret. Past that the loop reads every byte of both
+ * and branches on none of them, so how long it takes says nothing about where
+ * they first differ.
+ *
+ * Written out rather than taken from `node:crypto`, which is the one thing that
+ * kept the whole Bot API subsystem from running anywhere `fetch` exists. The
+ * import was worth one function; the function is worth eight lines. See
+ * `docs/runtimes.md`.
  */
 function secretMatches(expected: string, received: string | undefined): boolean {
   if (received === undefined) return false
 
-  const a = Buffer.from(expected, 'utf8')
-  const b = Buffer.from(received, 'utf8')
+  const a = BYTES.encode(expected)
+  const b = BYTES.encode(received)
 
   if (a.length !== b.length) return false
-  return timingSafeEqual(a, b)
+
+  let difference = 0
+
+  for (let at = 0; at < a.length; at += 1) {
+    difference |= (a[at] as number) ^ (b[at] as number)
+  }
+
+  return difference === 0
 }
 
 /** Read a header, taking the first value when an adapter supplies several. */
