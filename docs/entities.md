@@ -193,6 +193,10 @@ Three decisions worth knowing:
   from a spoiler closing on the same line is done by reading the body twice, because counting
   pipes cannot: `>ends with ||shh||` closes a spoiler and `>hidden||` is a mark, and both end in
   exactly two.
+- **`__` is one token, not two.** The dialect reads it greedily as the beginning or end of an
+  underline, so `a__b` is a word with two underscores in it. That an empty pair of markers is
+  consumed — which is what makes `**` work as a separator — does not extend to it. The module
+  header separates what the dialect requires from what this parser chooses.
 
 Entities the server finds on its own — mentions, hashtags, bare links, phone numbers, bank cards
 — are written as plain text in both directions, because marking them up changes nothing about

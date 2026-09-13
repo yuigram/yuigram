@@ -460,14 +460,14 @@ describe('the cases where a near-miss reading is still plausible', () => {
   })
 
   it('does not let a double underscore close an italic halfway', () => {
-    // Reaching a `__` while looking for the `_` that closes an italic is the
-    // one place the two markers are genuinely ambiguous. The italic runs to the
-    // final underscore; the `__` inside it is an empty underline and is
-    // consumed, which is what this dialect does with an empty pair.
+    // The dialect reads `__` greedily, left to right, as the beginning or end
+    // of an underline — never as two italic markers. So the italic runs to the
+    // final underscore, and the `__` inside it opens an underline that never
+    // closes and stays in the text.
     const read = fromMarkdown('_a__b_')
 
-    expect(read.text).toBe('ab')
-    expect(shape(read.entities)).toEqual(['Italic@0+2'])
+    expect(read.text).toBe('a__b')
+    expect(shape(read.entities)).toEqual(['Italic@0+4'])
   })
 
   it('does not let a marker inside a code span close a range around it', () => {
@@ -490,12 +490,19 @@ describe('the cases where a near-miss reading is still plausible', () => {
 })
 
 describe('markers with nothing between them', () => {
-  it('consumes them, because the dialect uses an empty pair as a separator', () => {
-    // `**` is an empty bold entity, and the dialect uses one to keep two
-    // adjacent blockquotes from reading as a single quote. A reader that kept
-    // the two characters would put them in the message.
-    expect(fromMarkdown('a__b').text).toBe('ab')
+  it('consumes an empty bold pair, which is the separator the dialect names', () => {
+    // `**` is a genuine pair of bold markers with nothing between them, and the
+    // dialect uses one to keep two adjacent blockquotes from reading as a
+    // single quote. A reader that kept the two characters would put them in the
+    // message.
     expect(fromMarkdown('a**b').text).toBe('ab')
+    expect(fromMarkdown('a**b').entities).toEqual([])
+  })
+
+  it('does not extend that to a double underscore, which is one token', () => {
+    // `__` is not two `_` markers. It is read greedily as an underline, and one
+    // that never closes stays in the text rather than collapsing away.
+    expect(fromMarkdown('a__b').text).toBe('a__b')
     expect(fromMarkdown('a__b').entities).toEqual([])
   })
 
@@ -514,7 +521,7 @@ describe('markers with nothing between them', () => {
   })
 
   it('still reads a real pair that follows one', () => {
-    const read = fromMarkdown('a__b and *bold*')
+    const read = fromMarkdown('a**b and *bold*')
 
     expect(read.text).toBe('ab and bold')
     expect(shape(read.entities)).toEqual(['Bold@7+4'])
@@ -704,5 +711,63 @@ describe('quote shapes the dialect cannot express', () => {
 
     expect(written).toBe('<blockquote expandable>a</blockquote><blockquote>b</blockquote>')
     expect(fromHtml(written).entities).toEqual(value.entities)
+  })
+})
+
+describe('the cases the dialect specifies by name', () => {
+  // Expectations written from the specification rather than from what this
+  // parser produces, and stated as text plus ranges rather than as a round
+  // trip — a parser and a serializer can agree with each other and both be
+  // wrong.
+
+  it('reads the ambiguous form the specification gives an answer for', () => {
+    // `___italic underline___` is the ambiguous spelling; the dialect says to
+    // write it with an empty bold entity separating the two closers. Both
+    // ranges cover the whole text.
+    const read = fromMarkdown('___italic underline_**__')
+
+    expect(read.text).toBe('italic underline')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityItalic', offset: 0, length: 16 },
+      { _: 'messageEntityUnderline', offset: 0, length: 16 },
+    ])
+  })
+
+  it('reads a double underscore greedily, left to right', () => {
+    // Not two italics either side of `a_b`: one underline containing it.
+    const read = fromMarkdown('__a_b__')
+
+    expect(read.text).toBe('a_b')
+    expect(read.entities).toEqual([{ _: 'messageEntityUnderline', offset: 0, length: 3 }])
+  })
+
+  it('leaves an underline that never closes in the text', () => {
+    for (const source of ['a__b', '__unclosed', 'trailing__']) {
+      expect(fromMarkdown(source).text).toBe(source)
+      expect(fromMarkdown(source).entities).toEqual([])
+    }
+  })
+
+  it('treats an escaped delimiter as an ordinary character', () => {
+    // Any character between 1 and 126 may be escaped anywhere, and is then not
+    // part of the markup.
+    const read = fromMarkdown(String.raw`\_\_not underline\_\_ and \*not bold\*`)
+
+    expect(read.text).toBe('__not underline__ and *not bold*')
+    expect(read.entities).toEqual([])
+  })
+
+  it('reads each simple form the specification lists', () => {
+    const read = fromMarkdown('*b* _i_ __u__ ~s~ ||p|| `c`')
+
+    expect(read.text).toBe('b i u s p c')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityBold', offset: 0, length: 1 },
+      { _: 'messageEntityItalic', offset: 2, length: 1 },
+      { _: 'messageEntityUnderline', offset: 4, length: 1 },
+      { _: 'messageEntityStrike', offset: 6, length: 1 },
+      { _: 'messageEntitySpoiler', offset: 8, length: 1 },
+      { _: 'messageEntityCode', offset: 10, length: 1 },
+    ])
   })
 })

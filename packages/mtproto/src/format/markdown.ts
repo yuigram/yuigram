@@ -24,10 +24,32 @@
  * interpolated value goes through, and the reason the template-tag form of
  * {@link fromMarkdown} exists.
  *
- * Where a marker opens nothing that ever closes, it stays in the text as
- * written. A message saying `2 * 3 = 6` should arrive saying that, and eating
- * the asterisk or refusing the message are both worse than reading it
- * literally.
+ * **What comes from the dialect, and what is this parser's own choice.** The
+ * two are worth keeping apart, because only the first is something Telegram
+ * will agree with.
+ *
+ * From the dialect:
+ *
+ * - `__` is one token, read greedily from left to right as the beginning or end
+ *   of an underline. It is never two italic markers, which is why `a__b` is a
+ *   word with two underscores in it rather than an empty italic.
+ * - An empty bold entity, written `**`, separates two things that would
+ *   otherwise run together — two adjacent blockquotes, or the two closers of
+ *   `___italic underline_**__`. A genuine pair of markers with nothing between
+ *   them is consumed; that is what makes the separator work, and it does not
+ *   extend to `__`, which is not a pair.
+ * - Every reserved character may be escaped anywhere, and is then ordinary.
+ *
+ * This parser's own choices, which Telegram neither requires nor forbids:
+ *
+ * - `~~strike~~` is accepted as well as `~strike~`, because it is the spelling
+ *   most people reach for. It is written back in the dialect's own spelling.
+ * - A marker that opens nothing which ever closes stays in the text as written.
+ *   A message saying `2 * 3 = 6` should arrive saying that, and eating the
+ *   asterisk or refusing the message are both worse than reading it literally.
+ * - Two blockquotes with no line between them cannot be written in this dialect
+ *   at all. {@link toMarkdown} writes what it can and the shape is disclosed
+ *   rather than silently altered; {@link toHtml} expresses it exactly.
  */
 
 import type { TypeMessageEntity } from '../generated/api/types/index.js'
@@ -39,11 +61,11 @@ const SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g
 /**
  * The paired markers, longest first.
  *
- * The order is defence in depth rather than the thing that makes `__under__`
- * read as an underline. What decides that is {@link takePair} refusing a pair
- * with nothing between it: `_` matched first would close immediately on the
- * second underscore, find an empty span, and fall through to `__` anyway.
- * Longest-first is still how this should be read, and costs nothing.
+ * Longest-first is how these should be read, but it is not what makes `__` an
+ * underline rather than two italics — {@link takePair} refuses `_` outright at
+ * a position beginning `__`, because the dialect makes that one greedy token.
+ * Order alone would not be enough: an underline whose closer never arrives has
+ * to stay in the text, and falling through to `_` would collapse it instead.
  */
 const PAIRS: readonly (readonly [string, TypeMessageEntity['_']])[] = [
   ['||', 'messageEntitySpoiler'],
@@ -265,6 +287,14 @@ function takePair(scan: Scan, markup: string, at: number): number | undefined {
   for (const [marker, kind] of PAIRS) {
     if (!markup.startsWith(marker, at)) continue
 
+    // `__` is one token, always. The dialect states that it is read greedily
+    // from left to right as the beginning or end of an underline, so it is
+    // never two italic markers — and where it opens an underline that never
+    // closes, the two characters stay in the text rather than collapsing into
+    // an empty italic. Falling through to `_` here is what made `a__b` arrive
+    // as `ab`.
+    if (marker === '_' && markup.startsWith('__', at)) return undefined
+
     const close = findClose(markup, at + marker.length, marker)
     if (close === -1) continue
 
@@ -273,10 +303,11 @@ function takePair(scan: Scan, markup: string, at: number): number | undefined {
 
     // A pair with nothing between it formats nothing, and the zero-length range
     // is dropped later — but the markers are still consumed rather than left in
-    // the text. That is not a detail: the dialect separates two adjacent
-    // blockquotes with an empty bold entity, written `**`, and a reader that
-    // kept those two characters would put them in the message. Text meaning a
-    // literal `_` or `*` escapes it, which this dialect requires anyway.
+    // the text. The dialect separates two adjacent blockquotes with an empty
+    // bold entity, written `**`, and a reader that kept those two characters
+    // would put them in the message. This applies to a genuine pair of markers;
+    // it is not a general rule that any two delimiter characters vanish, which
+    // is why `__` is excluded above.
     scan.entities.push({ _: kind, offset, length: inner.text.length } as TypeMessageEntity)
 
     return close + marker.length
