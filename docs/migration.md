@@ -6,12 +6,16 @@ What changes between releases, and what to do about it. Newest first.
 
 ## 0.1 → 0.2
 
-`0.2.0` replaces the client surface. Registration now selects the context type, so a handler
-receives what its registration proved rather than the weakest case across every update kind.
+`0.2.0` replaces the client surface and adds the MTProto subsystem. Registration now selects
+the context type, so a handler receives what its registration proved rather than the weakest
+case across every update kind.
 
 The change is mechanical: renamed methods, one construction form, and a type parameter that
 carries less. Nothing was removed without a replacement, and no behaviour silently changed
 underneath a name that stayed the same.
+
+MTProto is additive. There is nothing to migrate to reach it and nothing to pay for ignoring
+it — see [Accounts arrive](#accounts-arrive) below.
 
 ### Why
 
@@ -157,8 +161,41 @@ client holds.
 kind fixed. `onText`, `onCommand` and `onCallbackQuery` stay hand-written, because each
 matches as well as selects.
 
+### Accounts arrive
+
+`0.2.0` is the first release with the MTProto subsystem in it. Nothing here is a migration:
+there is no `0.1` equivalent to move off, and a bot that ignores it is unaffected.
+
+```ts
+import { Account, App, Bot } from 'yuigram'
+
+const account = Account.fromString(process.env.SESSION!, { apiId, apiHash, keys: [], bootstrap, storage })
+account.onMessage((event) => event.reply('as me, not as a bot'))
+```
+
+An account is a client like a bot: its own lifecycle, its own store, its own handlers. An `App`
+holds any number of them alongside a bot, each with its own credentials and connections.
+
+**What it costs a bot that never uses it: nothing.** The subsystem is loaded when something
+first needs it, so a Bot API bundle contains none of it — a budget CI measures at zero bytes on
+every build, not a claim. Installing `yuigram` is the same install it was.
+
+**An account is not a bot, and the difference is not cosmetic.** It signs in with an
+application's credentials rather than a token, it acts as the person who owns it, and Telegram
+bans accounts used for flooding, spamming or faking counters. The ban applies to the account,
+not to the application. [mtproto.md](mtproto.md) opens with what that means, and it is worth
+reading before the first sign-in rather than after.
+
+Two things a Bot API user will look for and not find, both deliberate. There is no
+`sendMessage(chatId, …)` on an account: addressing a peer needs an access hash issued per
+account and impossible to derive, so a peer the client has never encountered is resolved
+explicitly through `account.resolve()` and can fail. And there is no unified entity model —
+a `Chat` on the Bot API and a peer reference on MTProto are different things, and
+[unified-model.md](unified-model.md) §5 says why pretending otherwise would misrepresent both.
+
 ### Reading order
 
 The reasoning behind each decision is in [api-decisions.md](api-decisions.md), the assessment of
 the `0.1.0` surface it answers in [api-review.md](api-review.md), and the resulting surface in
-[api-design.md](api-design.md).
+[api-design.md](api-design.md). The MTProto subsystem has its own:
+[mtproto.md](mtproto.md) for the protocol and the decisions inside it.

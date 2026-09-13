@@ -248,8 +248,9 @@ Where the thesis becomes real.
 - Unified error handling
 - Examples 03, 04, 09, 10 (bot + userbot, multiple clients, raw API, production)
 
-Exit: `yuigram@0.5.0` — the first release that does what no other framework does, on an
-implementation Yuigram owns end to end.
+Exit: the first release that does what no other framework does, on an implementation Yuigram
+owns end to end. That is `0.2.0` — the release after `0.1.0`, since a 0.x line puts breaking
+change in the minor position and nothing between the two was published.
 
 ---
 
@@ -265,7 +266,9 @@ implementation Yuigram owns end to end.
 - Performance budgets met and published
 - Security review against the [security.md](security.md) §10 checklist
 
-Exit: `yuigram@0.8.0` — production-ready for real workloads.
+Exit: production-ready for real workloads. Which version that is depends on how many
+releases the phase takes; the number is whatever the releases before it reached, not a figure
+reserved in advance.
 
 ---
 
