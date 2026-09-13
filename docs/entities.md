@@ -1,0 +1,212 @@
+# Entities
+
+How Yuigram turns what Telegram sent into something a reader can ask questions of, which parts
+of the schema have that treatment today, and which are still read through `raw`.
+
+This document covers the MTProto side. The Bot API subsystem has no equivalent problem: its
+schema is already a set of plain objects with named fields, and its context binds behaviour to
+them. See [unified-model.md](unified-model.md) §5 for why the two are modelled separately.
+
+---
+
+## 1. The problem
+
+An MTProto answer is a tree of TL constructors. Reading one field means knowing which
+constructor arrived and which fields that constructor happens to carry:
+
+```ts
+// Who sent this?
+const sender =
+  message._ === 'messageEmpty'
+    ? undefined
+    : message.from_id?._ === 'peerUser'
+      ? message.from_id.user_id
+      : undefined
+```
+
+That is three narrowings for one question, repeated at every call site, and the compiler helps
+only after the shape is already known. Multiply by the forty-odd fields on a message and the
+five constructors of a chat, and reading Telegram becomes the bulk of the work in a program
+that wanted to do something else.
+
+Three specific hazards make this worse than verbosity:
+
+- **Absence is overloaded.** A field can be missing because the constructor has no such field,
+  because the flag was not set, or because the record is an outline that deliberately withholds
+  it. All three read as `undefined`.
+- **Numbers are not identities.** A user, a basic group and a channel can all be numbered 20.
+  A message number restarts per conversation.
+- **Some flags describe other flags.** A partial channel record carries a marker saying its
+  stories-hidden flag is unpopulated; reading the flag directly turns "not told" into "no".
+
+---
+
+## 2. The shape chosen
+
+**A view over the value.** A view holds the TL value it was given, computes on access, caches
+nothing, and keeps the value reachable as `raw`.
+
+```ts
+const message = readMessage(update.message)
+
+message.sender      // PeerRef | undefined
+message.isOutgoing  // boolean, never `true | undefined`
+message.raw         // the value, unchanged
+```
+
+Four properties follow, and each was a deliberate choice:
+
+**It copies nothing.** Constructing a view allocates one object with one field. Reading a
+property costs what reading the underlying field costs. There is no normalization pass, so a
+program that reads two fields off a message does not pay for the other forty-five.
+
+**It reaches nothing.** No account, no store, no network. Every accessor is a function of the
+value alone. That is what makes it safe to build one from a message that arrived in any answer,
+on any account, without asking which — and it is why the views can be constructed in a test, in
+a worker, or from a stored copy with no client present.
+
+**Behaviour is not on it.** Answering a message, editing it or fetching what it carried needs an
+account and the conversation the update arrived in. That is what the event context already
+owns — see [api-design.md](api-design.md) §6. A view that could act would be a second owner of
+the network, with its own idea of which account it belonged to.
+
+**The value stays reachable.** A reader that wants something a view does not expose is not
+blocked by it. The view is a convenience over the schema, never a wall in front of it.
+
+### 2.1 Why not the alternatives
+
+| Considered | Why not |
+| --- | --- |
+| One shared `Message` type across Bot API and MTProto | The two schemas disagree on what a message is: peer references against resolved objects, Unix seconds against a formatted date, different field sets. [unified-model.md](unified-model.md) §5 forbids it on the unified surface, and honouring the difference is the point. |
+| Eagerly normalized plain objects | Pays the conversion cost for every field on every message, for a reader that wanted two of them. Also freezes the answer at conversion time, so anything the schema gains later is invisible until the converter is updated. |
+| Classes carrying an account, able to act | Makes every entity a network owner. Two views of one message would each hold a client, and a message forwarded between accounts would carry the wrong one. |
+| Accessor functions over raw values, no objects | Loses discoverability entirely: `senderOf(message)` is not something autocomplete offers when the reader has a message in hand. |
+
+### 2.2 Resolution is a separate step
+
+A message names its sender as `peerUser(5)`. The name lives in a `User` in the same answer:
+every reply that carries messages carries `users` and `chats` alongside them.
+
+`PeerIndex` is that join, built per answer rather than threaded through each message view:
+
+```ts
+const people = readPeers(answer)
+
+for (const value of answer.messages) {
+  const message = readMessage(value)
+  console.log(people.name(message?.sender), message?.text)
+}
+```
+
+Two reasons it is not a constructor argument on `MessageView`. A message read from an update has
+an index; one read from a stored copy does not, and a view whose accessors work only sometimes
+is worse than one that never claims to know. And an index is per answer, not per message —
+building one and reading many messages through it is the shape the data already has.
+
+A reference the index does not hold reads as `undefined`. That is not a failed lookup: the
+answer did not carry it, and finding out means asking, which is a call on the client.
+
+---
+
+## 3. Coverage
+
+Coverage is measured mechanically: every field the generated interface declares, against every
+field an accessor reads. It is a floor, not a score — a field with an accessor may still deserve
+a better question than the one the schema asks.
+
+| Constructor | Fields | Answered | Deliberately not |
+| --- | --- | --- | --- |
+| `message` | 47 | 47 | `legacy` |
+| `messageService` | 16 | 16 | `legacy` |
+| `messageEmpty` | 2 | 2 | — |
+| `user` | 47 | 47 | — |
+| `userEmpty` | 1 | 1 | — |
+| `chat` | 15 | 15 | — |
+| `chatEmpty` | 1 | 1 | — |
+| `chatForbidden` | 2 | 2 | — |
+| `channel` | 49 | 49 | — |
+| `channelForbidden` | 7 | 7 | — |
+
+`legacy` marks a message sent by a client old enough that its text needs re-fetching before its
+formatting can be trusted. It is an instruction to the code that fetches rather than a fact
+about the conversation, and a reader acting on it could do nothing useful with the answer.
+
+Where the schema asks a question badly, the view asks a better one rather than mirroring it:
+
+- **Two flags, one question.** A suggested post records what it was paid in as
+  `paid_suggested_post_stars` and `paid_suggested_post_ton`, never both. `suggestedPostPaidIn`
+  answers `'stars' | 'ton' | undefined`.
+- **A wrapper around two answers.** `stories_max_id` is a structure carrying the newest story
+  and whether one is live. Those are `storiesMaxId` and `hasLiveStory`.
+- **A flag about a flag.** `stories_hidden_min` marks `stories_hidden` unpopulated, so
+  `storiesHidden` answers `boolean | undefined` and never guesses.
+- **Present-or-absent booleans.** The wire carries `out?: true`. A reader asking whether a
+  message is outgoing wants an answer either way, so these read as `boolean`.
+- **Derived, but from the value alone.** `canBeForwarded`, `isAutomaticForward`,
+  `isTopicMessage`, `isReply` and `displayName` are computed, and computed without reaching
+  anything.
+
+---
+
+## 4. What is not modelled yet
+
+Everything below is reachable through `raw` and through the generated method surface today.
+Listing it here is a statement of what has no reading layer, not of what is impossible.
+
+Ordered by how often a program meets it.
+
+| Area | What it covers | Notes |
+| --- | --- | --- |
+| **Media** | The `MessageMedia` union: photos, documents and their audio/video/voice/sticker/animation specialisations, web pages, polls, contacts, locations and venues, dice, games, invoices, paid media, stories as media, to-do lists | The largest remaining group, and the one a message reader hits first. Sending media is already served by the input helpers in `files/media.ts`; this is the reading half. |
+| **Formatting** | `MessageEntity` and the offset arithmetic over UTF-16 code units that Telegram's offsets are measured in | Needs a parser and a serializer, both in-repo under the zero-dependency policy. |
+| **Conversation lists** | `Dialog`, `DraftMessage`, `ForumTopic` | Paging over these is a separate question — see §5. |
+| **Membership** | `ChatMember`, admin and banned rights, invite links, bot info | Rights are two bitfield-like structures whose absent fields mean different things in each. |
+| **Reactions** | `MessageReactions`, per-reaction counts, who reacted | `MessageView.reactions` returns the raw structure today. |
+| **Full profiles** | `UserFull`, `ChatFull`, `ChannelFull` | Distinct from `User`/`Chat`: fetched deliberately, much larger, and carrying settings rather than identity. |
+| **Stories** | Stories, their views, interactive elements, stealth mode | Depends on the story methods, which are not surfaced. |
+| **Premium and payments** | Stars transactions, gifts, boosts, business accounts and connections | Same: the reading layer is worth building after the calls it reads the answers of. |
+
+### 4.1 Modelled differently, on purpose
+
+These have no entity class and are not gaps.
+
+| Concept | How Yuigram models it |
+| --- | --- |
+| Update kinds | Normalized events plus a context per kind, not a class per update. See [events.md](events.md). |
+| A peers index carried on every entity | `PeerIndex` per answer, and `PeerStore` for what the account has learned across answers. |
+| Errors | The error taxonomy in [architecture.md](architecture.md) §9, shared with the Bot API side. |
+| Keyboard construction | `Keyboard` and `InlineKeyboard` on the framework surface, shared by both transports. |
+
+---
+
+## 5. What the entity layer does not decide
+
+**Paging.** Iterating dialogs or history is not an entity question. `nextDialogs` advances an
+offset from an answer; whether Yuigram grows async iterators over that is a separate decision
+about the client surface, not about how a `Dialog` is read.
+
+**Links.** A message's `t.me` address needs the conversation's username, which the message does
+not carry. It belongs on the client or the context — whichever holds the peer — not on a view
+that reaches nothing.
+
+**Refresh.** A view is a reading of one value at one moment. Getting a newer one means asking
+again, and asking is a call.
+
+---
+
+## 6. Adding an entity
+
+The pattern, in order:
+
+1. Read the constructors in `schemas/tl/api.<layer>.tl`. Count them, and find what separates
+   them — a union of five constructors covering three real things needs one accessor that says
+   which, before any field accessor is worth writing.
+2. Write the view over the union, not over one constructor. Accessors answer `undefined` where
+   the message does not carry the field, and `false` rather than `undefined` for a
+   present-or-absent boolean.
+3. Check every field is answered, or say in the module why one is not.
+4. Test all constructors, including the empty and forbidden ones. Those are the cases that
+   arrive when something has gone wrong, and the ones a reader has never seen.
+5. Export from `entities/index.ts`, the package entry, and the façade — and add a case to
+   `packages/yuigram/test/facade.test.ts`, which is the only test that checks what a user
+   actually receives from `npm install yuigram`.

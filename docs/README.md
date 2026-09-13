@@ -24,9 +24,11 @@ events, and reaches Telegram three ways — the generated method surface, the bo
 the peer an update arrived from, and the untyped hatch for anything newer than the schema. It
 sends and fetches files. `App` holds several clients of either kind together.
 
-What is still design is the surface *above* that: entities, dialogs and history, sending media
-through an account, and addressing a peer seen only in passing. [api-design.md](api-design.md)
-shows those alongside what ships and says which is which; [mtproto.md](mtproto.md) §5.3 and §11
+Above that, messages, users and conversations are read through views over the schema value, and
+the people an answer named are joined to what its messages reference — [entities.md](entities.md)
+records the shape and measures what has a reading layer and what does not. Media, formatting,
+dialogs and history do not have one yet. [api-design.md](api-design.md) shows the proposed
+surface alongside what ships and says which is which; [mtproto.md](mtproto.md) §5.3 and §11
 record what remains inside the protocol layers themselves.
 
 The rule when reading: the protocol subsystems and the clients on top of them exist today; the
@@ -84,6 +86,7 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, how they were closed, and what is deliberately not built |
 | 22 | [mtproto-plan.md](mtproto-plan.md) | How the MTProto subsystem is built, in what order, behind what boundaries |
 | 23 | [mtproto-crypto.md](mtproto-crypto.md) | The cryptographic layer: every primitive, and how each is verified |
+| 24 | [entities.md](entities.md) | How TL values are read, what has a reading layer, and what does not |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
 the specification does not cover. Empty until the MTProto subsystem begins.
