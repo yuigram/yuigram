@@ -43,6 +43,8 @@ export {
   uploadedPhoto,
 } from './files/media.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
+export type { FormattedText, Markup } from './format/index.js'
+export { fromHtml, fromMarkdown, toHtml, toMarkdown } from './format/index.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
 export { inputChannel, inputPeerFromMessage } from './network/peers.js'

@@ -154,6 +154,19 @@ describe('the entry point', () => {
     expect(people.name({ kind: 'chat', id: 3n })).toBe('Group')
   })
 
+  it('offers markup in both directions, which MTProto has no server-side parsing for', () => {
+    expect(typeof yuigram.fromHtml).toBe('function')
+    expect(typeof yuigram.fromMarkdown).toBe('function')
+    expect(typeof yuigram.toHtml).toBe('function')
+    expect(typeof yuigram.toMarkdown).toBe('function')
+
+    const body = yuigram.fromHtml('<b>bold</b> text')
+
+    expect(body.text).toBe('bold text')
+    expect(body.entities).toEqual([{ _: 'messageEntityBold', offset: 0, length: 4 }])
+    expect(yuigram.toMarkdown(body)).toBe('*bold* text')
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)
