@@ -128,6 +128,7 @@ a better question than the one the schema asks.
 | `channelForbidden` | 7 | 7 | — |
 | `dialog` | 15 | 15 | — |
 | `dialogFolder` | 8 | 8 | — |
+| every `messageMedia*` | 17 constructors | all | — |
 
 `legacy` marks a message sent by a client old enough that its text needs re-fetching before its
 formatting can be trusted. It is an instruction to the code that fetches rather than a fact
@@ -147,6 +148,11 @@ Where the schema asks a question badly, the view asks a better one rather than m
 - **Derived, but from the value alone.** `canBeForwarded`, `isAutomaticForward`,
   `isTopicMessage`, `isReply` and `displayName` are computed, and computed without reaching
   anything.
+- **One constructor, six things.** `messageMediaDocument` is a video, a voice note, a sticker, an
+  animation, a music track or a plain file, and which one lives in the document's attributes
+  rather than in the constructor. `MediaView.kind` is that search, done once and named — and the
+  order it searches in matters, because a sticker also carries an image size and an animation also
+  carries a video attribute.
 
 ---
 
@@ -203,7 +209,6 @@ Ordered by how often a program meets it.
 
 | Area | What it covers | Notes |
 | --- | --- | --- |
-| **Media** | The `MessageMedia` union: photos, documents and their audio/video/voice/sticker/animation specialisations, web pages, polls, contacts, locations and venues, dice, games, invoices, paid media, stories as media, to-do lists | The largest remaining group, and the one a message reader hits first. Sending media is already served by the input helpers in `files/media.ts`; this is the reading half. |
 | **Conversation lists** | `DraftMessage`, `ForumTopic` | `Dialog` has a view and a walk over it; these two arrive beside it and do not. |
 | **Membership** | `ChatMember`, admin and banned rights, invite links, bot info | Rights are two bitfield-like structures whose absent fields mean different things in each. |
 | **Reactions** | `MessageReactions`, per-reaction counts, who reacted | `MessageView.reactions` returns the raw structure today. |

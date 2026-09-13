@@ -15,14 +15,22 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
-export type { ChatForm, DialogForm, MessageForm, PeerBearing } from './entities/index.js'
+export type {
+  ChatForm,
+  DialogForm,
+  MediaKind,
+  MessageForm,
+  PeerBearing,
+} from './entities/index.js'
 export {
   ChatView,
   DialogView,
+  MediaView,
   MessageView,
   PeerIndex,
   readChat,
   readDialog,
+  readMedia,
   readMessage,
   readPeers,
   readUser,

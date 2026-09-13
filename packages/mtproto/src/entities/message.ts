@@ -43,7 +43,6 @@ import type {
   TypeMessageAction,
   TypeMessageEntity,
   TypeMessageFwdHeader,
-  TypeMessageMedia,
   TypeMessageReactions,
   TypeMessageReplies,
   TypeMessageReplyHeader,
@@ -53,6 +52,7 @@ import type {
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
+import { type MediaView, readMedia } from './media.js'
 
 /**
  * Which of the three a message is.
@@ -148,9 +148,17 @@ export class MessageView {
     return this.raw._ === 'message' ? this.raw.entities : undefined
   }
 
-  /** What it carried besides text. */
-  get media(): TypeMessageMedia | undefined {
-    return this.raw._ === 'message' ? this.raw.media : undefined
+  /**
+   * What it carried besides text, read.
+   *
+   * A view rather than the value, because the value is nineteen constructors
+   * and what a reader wants first — is this a voice note — is not one of them.
+   * The value is still there, as `media.raw` or as `raw.media`.
+   */
+  get media(): MediaView | undefined {
+    if (this.raw._ !== 'message') return undefined
+
+    return readMedia(this.raw.media)
   }
 
   /** What happened, for a service message. */

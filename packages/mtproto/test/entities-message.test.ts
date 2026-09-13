@@ -97,7 +97,7 @@ describe('an ordinary message, read', () => {
 
   it('hands back what it carried, unchanged', () => {
     expect(message.entities).toBe(ORDINARY.entities)
-    expect(message.media).toBe(ORDINARY.media)
+    expect(message.media?.raw).toBe(ORDINARY.media)
     expect(message.raw).toBe(ORDINARY)
   })
 })

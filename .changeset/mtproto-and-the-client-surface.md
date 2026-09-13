@@ -60,6 +60,12 @@ than a string and a list of ranges kept in step by hand. The deduplication key e
 is drawn rather than left to the caller, and where Telegram splits a method in two for channels
 the right one is chosen from the conversation.
 
+**Reading media.** `message.media` is a view rather than nineteen constructors. The one that
+matters most is the least informative — a video, a voice note, a sticker, an animation, a music
+track and a plain file all arrive as `messageMediaDocument`, and which one it is lives in the
+document's attributes — so `kind` answers that in a word, and duration, size, dimensions and the
+rest come off whichever attribute actually holds them.
+
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather
 than leaving them to the caller. Both are async generators: nothing is requested until the loop
