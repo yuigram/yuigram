@@ -115,16 +115,51 @@ MTProto runs on Node, Bun and Deno because all three provide `node:crypto`, `nod
 | Raw TCP | Browsers have no TCP at all. Telegram serves web clients over WebSocket, so this is a second transport rather than a shim. |
 | gzip, for compressed answers | `DecompressionStream('gzip')` exists and is asynchronous. |
 
-The shape of the work is therefore: make the crypto layer's callers tolerate asynchrony, or
-implement the block cipher in the repository. The second is worth noting, because it is not the
-obvious choice and may be the better one — the project already implements AES-IGE, SRP,
-Miller-Rabin and Telegram's RSA padding itself under the zero-dependency policy, and an in-repo
-AES would be synchronous, would remove `node:crypto` from the cryptography entirely, and would
-make every runtime the same. It would also be slower than the platform's, by an amount nobody has
-measured. Neither path is started, and neither should be until someone wants MTProto in a browser
-badly enough to pay for it.
+### 4.1 The choice this turns on, and what it costs
 
----
+Two architectures would close it, and they are not close to equivalent.
+
+**Make the crypto layer asynchronous**, so WebCrypto can back it. Every call site in the session
+layer, the transport obfuscation and the handshake becomes `await`-ing, on every runtime including
+the ones where it is synchronous today. WebCrypto still has no ECB, so IGE would be emulated one
+block at a time — a promise per sixteen bytes.
+
+**Implement the block cipher in the repository**, so it is synchronous everywhere and
+`node:crypto` leaves the cryptography entirely. The project already implements AES-IGE, SRP,
+Miller-Rabin and Telegram's RSA padding itself under the zero-dependency policy, so this is the
+same kind of decision rather than a new one. The cost is speed.
+
+That cost was measured rather than guessed. A compact AES-256 block cipher was written, checked
+against `node:crypto` on a known block, and timed against it:
+
+| | Throughput |
+| --- | --- |
+| The platform's AES-256 | 978 MiB/s |
+| A straightforward pure-JS AES-256 | 2.8 MiB/s |
+
+Two things about that number. It is a **deliberately naive** implementation — byte-wise state, an
+allocation per block — and a table-driven one is substantially faster; treat 344× as an upper
+bound on the gap rather than as the cost of a good implementation. And the figure only matters
+where the volume is: a 4 KB message costs about 1.4 ms even at the naive speed, while a 100 MB
+download costs 36 seconds of processor time that the platform does in a tenth of a second.
+
+So the shape of the answer is that **neither architecture is right for everything**. Messaging is
+unaffected either way. Bulk file transfer is where a pure-JS cipher stops being acceptable, and is
+also the one place where asynchrony is natural — a download is already chunked and already
+awaiting the network.
+
+### 4.2 Where this is left
+
+Not started, and deliberately. The measurement says the decision should be made per path rather
+than globally, which means the crypto layer needs an interface that admits both a synchronous
+implementation and an asynchronous one before either can be written. That is a larger change than
+anything else outstanding, and it is the next architectural blocker rather than a gap to be
+closed in passing.
+
+What is settled: the Bot API subsystem runs everywhere already, entities and formatting are
+portable, and MTProto is Node-shaped on purpose rather than by accident. `packages/*/package.json`
+claims no browser support, which is the honest state — a package that advertised it while unable
+to open a connection would be worse than one that does not.
 
 ## 5. What is not verified
 
