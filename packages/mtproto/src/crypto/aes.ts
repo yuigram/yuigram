@@ -31,8 +31,8 @@
  * hardware.
  */
 
-import { ValidationError } from '@yuigram/core'
-import { assertLength } from './bytes.js'
+import { assertLength } from './backend-types.js'
+import { checkIge as checkIgeInputs } from './ige-mode.js'
 
 /** AES block size, in bytes. */
 const BLOCK = 16
@@ -401,15 +401,10 @@ export function decryptBlock(
 
 /** Reject what the modes cannot express, before any key material is touched. */
 function checkIge(key: Uint8Array, iv: Uint8Array, data: Uint8Array): void {
-  assertLength(key, KEY_SIZE, 'AES-IGE key')
-  assertLength(iv, IGE_IV, 'AES-IGE iv')
-
-  if (data.length === 0) throw new ValidationError('AES-IGE data must not be empty')
-  if (data.length % BLOCK !== 0) {
-    throw new ValidationError(
-      `AES-IGE data must be a multiple of ${BLOCK} bytes, received ${data.length}`,
-    )
-  }
+  // The same validator the platform path uses. Two implementations of one
+  // precondition would eventually disagree, and the one that mattered would be
+  // whichever ran where nobody was looking.
+  checkIgeInputs(key, iv, data)
 }
 
 /**

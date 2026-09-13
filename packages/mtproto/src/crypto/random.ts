@@ -2,13 +2,13 @@
  * The subsystem's only source of randomness.
  *
  * Every nonce, DH secret, padding block and temporary key comes from here, and
- * here comes from `crypto.randomBytes`. Routing them through one module is what
- * makes "no `Math.random` anywhere in the protocol stack" a property that can
- * be checked by reading one file.
+ * here comes from the backend this runtime resolved to. Routing them through
+ * one module is what makes "no `Math.random` anywhere in the protocol stack" a
+ * property that can be checked by reading one file.
  */
 
-import { randomBytes as nodeRandomBytes } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
+import { backend } from './backend.js'
 import { bytesToBigIntBE } from './bytes.js'
 
 /** Smallest padding MTProto 2.0 permits. */
@@ -24,7 +24,7 @@ export function randomBytes(length: number): Uint8Array {
     throw new ValidationError('random byte length must be a non-negative integer')
   }
 
-  return new Uint8Array(nodeRandomBytes(length))
+  return backend.randomBytes(length)
 }
 
 /** A uniform integer in `[0, 2^bits)`. */

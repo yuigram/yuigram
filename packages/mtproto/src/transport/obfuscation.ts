@@ -25,7 +25,8 @@
  * same keystream appearing in both directions.
  */
 
-import { createCipheriv, createHash } from 'node:crypto'
+import { ctrStream } from '../crypto/ctr.js'
+import { sha256 } from '../crypto/hash.js'
 import { randomBytes as defaultRandom } from '../crypto/random.js'
 import { type Framing, FramingError } from './framing.js'
 
@@ -106,20 +107,23 @@ export function createObfuscation(framing: Framing, options: ObfuscationOptions 
   const decryptKey = mix(reversed.subarray(0, 32), options.secret)
   const decryptIv = reversed.slice(32, 48)
 
-  const encryptor = createCipheriv('aes-256-ctr', encryptKey, encryptIv)
-  const decryptor = createCipheriv('aes-256-ctr', decryptKey, decryptIv)
+  // One stream per direction, kept for the life of the connection: what
+  // arrives from a socket has nothing to do with block boundaries, so a stream
+  // that restarted per call would decrypt the first packet and nothing after.
+  const encryptor = ctrStream(encryptKey, encryptIv)
+  const decryptor = ctrStream(decryptKey, decryptIv)
 
   // The packet is encrypted under its own keys, and only the tail of the
   // result is sent encrypted — the prefix has to stay readable, because it is
   // where the receiver finds the keys.
-  const encrypted = new Uint8Array(encryptor.update(packet))
+  const encrypted = encryptor.process(packet)
   const init = packet.slice()
   init.set(encrypted.subarray(TAG_OFFSET, INIT_SIZE), TAG_OFFSET)
 
   return {
     init,
-    encrypt: (data) => new Uint8Array(encryptor.update(data)),
-    decrypt: (data) => new Uint8Array(decryptor.update(data)),
+    encrypt: (data) => encryptor.process(data),
+    decrypt: (data) => decryptor.process(data),
   }
 }
 
@@ -178,8 +182,5 @@ function writeTag(packet: Uint8Array, tag: Uint8Array): void {
 function mix(key: Uint8Array, secret: Uint8Array | undefined): Uint8Array {
   if (secret === undefined) return key.slice()
 
-  const hash = createHash('sha256')
-  hash.update(key)
-  hash.update(secret)
-  return new Uint8Array(hash.digest())
+  return sha256(key, secret)
 }

@@ -12,8 +12,11 @@
  * exponentiation.
  */
 
-import { timingSafeEqual } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
+import { backend } from './backend.js'
+import { assertLength } from './backend-types.js'
+
+export { assertLength }
 
 /** Join byte strings. */
 export function concatBytes(...parts: readonly Uint8Array[]): Uint8Array {
@@ -50,15 +53,12 @@ export function xorBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
  * Compare in time that does not depend on the contents.
  *
  * A length mismatch returns `false` immediately: lengths are not secret, and
- * `timingSafeEqual` throws on unequal lengths rather than answering. This
+ * the platform comparison throws on unequal lengths rather than answering. This
  * never throws, so it is safe to use on a comparison path where an exception
  * would itself be an oracle.
  */
 export function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false
-  if (a.length === 0) return true
-
-  return timingSafeEqual(a, b)
+  return backend.constantTimeEqual(a, b)
 }
 
 /** Read a byte string as an unsigned big-endian integer. */
@@ -114,8 +114,3 @@ export function bigIntToBytesBE(value: bigint, length?: number): Uint8Array {
 }
 
 /** Reject a byte string that is not exactly `length` bytes. */
-export function assertLength(value: Uint8Array, length: number, name: string): void {
-  if (value.length !== length) {
-    throw new ValidationError(`${name} must be ${length} bytes, received ${value.length}`)
-  }
-}

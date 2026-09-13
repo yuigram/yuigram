@@ -12,9 +12,9 @@
  * without a release.
  */
 
-import { createHash } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
 import { bigIntToBytesBE } from '../crypto/bytes.js'
+import { sha1 } from '../crypto/hash.js'
 import type { RsaPublicKey } from '../crypto/rsa.js'
 
 /** A key the client holds, addressable by the fingerprint a server offers. */
@@ -35,12 +35,11 @@ export function rsaKeyFingerprint(key: RsaPublicKey): bigint {
     throw new ValidationError('an rsa key needs a positive modulus and exponent')
   }
 
-  const digest = createHash('sha1')
-    .update(tlBytes(magnitude(key.n)))
-    .update(tlBytes(magnitude(key.e)))
-    .digest()
+  const digest = sha1(tlBytes(magnitude(key.n)), tlBytes(magnitude(key.e)))
 
-  return digest.readBigInt64LE(12)
+  // The fingerprint is the low 64 bits of the digest, read little-endian and
+  // signed — which is what the server sends, so it is what has to be matched.
+  return new DataView(digest.buffer, digest.byteOffset, digest.byteLength).getBigInt64(12, true)
 }
 
 /** Pair a key with its fingerprint so a handshake can match one by name. */

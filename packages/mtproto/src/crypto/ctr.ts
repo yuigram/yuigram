@@ -13,8 +13,9 @@
  * those and being wrong about the other.
  */
 
-import { createCipheriv } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
+import { backend } from './backend.js'
+import type { CtrCipher } from './backend-types.js'
 
 /** Bytes to an AES block. */
 export const AES_BLOCK = 16
@@ -22,14 +23,8 @@ export const AES_BLOCK = 16
 /** The only key length MTProto uses counter mode with. */
 const KEY_LENGTH = 32
 
-/**
- * Combine data with the keystream that starts at a counter block.
- *
- * Reusing a counter block under the same key with different data destroys the
- * secrecy of both, which is why callers derive the block from a position rather
- * than choosing one.
- */
-export function ctrCrypt(data: Uint8Array, key: Uint8Array, counter: Uint8Array): Uint8Array {
+/** Reject a key or counter the mode cannot use, before any key material is touched. */
+function check(key: Uint8Array, counter: Uint8Array): void {
   if (key.length !== KEY_LENGTH) {
     throw new ValidationError(
       `a counter-mode key must be ${KEY_LENGTH} bytes, received ${key.length}`,
@@ -40,10 +35,32 @@ export function ctrCrypt(data: Uint8Array, key: Uint8Array, counter: Uint8Array)
       `a counter block must be ${AES_BLOCK} bytes, received ${counter.length}`,
     )
   }
+}
 
-  const cipher = createCipheriv('aes-256-ctr', key, counter)
+/**
+ * Combine data with the keystream that starts at a counter block.
+ *
+ * Reusing a counter block under the same key with different data destroys the
+ * secrecy of both, which is why callers derive the block from a position rather
+ * than choosing one.
+ */
+export function ctrCrypt(data: Uint8Array, key: Uint8Array, counter: Uint8Array): Uint8Array {
+  check(key, counter)
 
-  return new Uint8Array(cipher.update(data))
+  return backend.ctr(key, counter).process(data)
+}
+
+/**
+ * A keystream that keeps its place across calls.
+ *
+ * What the transport obfuscation layer needs: one of these per direction for
+ * the life of a connection, fed whatever arrived from the socket rather than
+ * whole blocks.
+ */
+export function ctrStream(key: Uint8Array, counter: Uint8Array): CtrCipher {
+  check(key, counter)
+
+  return backend.ctr(key, counter)
 }
 
 /**
