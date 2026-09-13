@@ -66,6 +66,11 @@ track and a plain file all arrive as `messageMediaDocument`, and which one it is
 document's attributes — so `kind` answers that in a word, and duration, size, dimensions and the
 rest come off whichever attribute actually holds them.
 
+**The second factor.** Signing in with a password worked; managing one did not exist.
+`passwordStatus`, `setPassword`, `removePassword`, the recovery-address calls and the recovery
+flow are on `Account` now. The password never leaves the process: what goes to Telegram is a proof
+of the old one and a verifier for the new, and neither can be turned back into what was typed.
+
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather
 than leaving them to the caller. Both are async generators: nothing is requested until the loop

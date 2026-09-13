@@ -93,6 +93,17 @@ import type { PeerRef } from './normalize/index.js'
 import { type MtprotoContext, mtprotoContext, type SentMessage } from './normalize/index.js'
 import type { WalkOptions } from './paging/walk.js'
 import { walkDialogs, walkHistory } from './paging/walk.js'
+import type { NewPassword, PasswordStatus, Securing } from './security/password.js'
+import {
+  cancelRecoveryEmail,
+  checkRecoveryCode,
+  confirmRecoveryEmail,
+  passwordStatus,
+  removePassword,
+  requestPasswordRecovery,
+  resendRecoveryEmail,
+  setPassword,
+} from './security/password.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
@@ -833,6 +844,82 @@ export class Account<Ext = unknown> {
     ids: readonly number[],
   ): Promise<readonly MessageView[]> {
     return await getMessages(this.#sending, peer, ids)
+  }
+
+  // ---------------------------------------------------------------------
+  // The second factor
+  // ---------------------------------------------------------------------
+
+  /**
+   * What the operations below need from this account.
+   *
+   * The same two things sending needs, and for the same reason: the randomness
+   * is the account's, and the salt padding a new password is derived with has
+   * to be fresh.
+   */
+  get #securing(): Securing {
+    return { api: this.#api, random: this.#options.random ?? randomBytes }
+  }
+
+  /**
+   * What this account's second factor looks like right now.
+   *
+   * Says nothing secret: whether a password is set, its hint, and whether a
+   * recovery address is confirmed.
+   */
+  async passwordStatus(): Promise<PasswordStatus> {
+    return await passwordStatus(this.#securing)
+  }
+
+  /**
+   * Set a password, or change the one already set.
+   *
+   * ```ts
+   * await account.setPassword({ password: secret, hint: 'the usual' })
+   * await account.setPassword({ password: next }, current)
+   * ```
+   *
+   * The current password is required whenever one is already set. Neither it
+   * nor the new one leaves this process: what goes to Telegram is a proof of
+   * the old and a verifier for the new, and neither can be turned back into
+   * what was typed.
+   */
+  async setPassword(next: NewPassword, current?: string): Promise<void> {
+    await setPassword(this.#securing, next, current)
+  }
+
+  /** Take the password off the account. */
+  async removePassword(current: string): Promise<void> {
+    await removePassword(this.#securing, current)
+  }
+
+  /** Confirm a recovery address with the code Telegram sent to it. */
+  async confirmRecoveryEmail(code: string): Promise<void> {
+    await confirmRecoveryEmail(this.#securing, code)
+  }
+
+  /** Ask Telegram to send the confirmation code again. */
+  async resendRecoveryEmail(): Promise<void> {
+    await resendRecoveryEmail(this.#securing)
+  }
+
+  /** Give up on confirming a recovery address. */
+  async cancelRecoveryEmail(): Promise<void> {
+    await cancelRecoveryEmail(this.#securing)
+  }
+
+  /**
+   * Ask for a recovery code, for a password that has been forgotten.
+   *
+   * Answers the address it went to, partly hidden.
+   */
+  async requestPasswordRecovery(): Promise<string> {
+    return await requestPasswordRecovery(this.#securing)
+  }
+
+  /** Check a recovery code without spending it. */
+  async checkRecoveryCode(code: string): Promise<boolean> {
+    return await checkRecoveryCode(this.#securing, code)
   }
 
   // ---------------------------------------------------------------------

@@ -18,6 +18,7 @@
 import { ValidationError } from '@yuigram/core'
 import { bytesToBigIntBE } from '../crypto/bytes.js'
 import { computeSrpProof, type SrpOptions, type SrpParameters } from '../crypto/srp.js'
+import type { TypeInputCheckPasswordSRP } from '../generated/api/types/index.js'
 import { type TlScope, type TlValue, writeObject } from '../tl/index.js'
 
 /**
@@ -94,6 +95,30 @@ export function readPasswordChallenge(value: TlValue): PasswordChallenge {
  * applies. A password check over an attacker-chosen group proves nothing, so
  * there is no path through this function that skips them.
  */
+/**
+ * The same proof, in the shape a generated method accepts.
+ *
+ * Two functions rather than one because the two public surfaces describe this
+ * value differently to the type system: the untyped hatch takes a `TlValue`,
+ * and a generated method takes the interface the schema names. The proof itself
+ * is computed once, in {@link computeSrpProof} — only the literal around it
+ * differs.
+ */
+export function passwordProof(
+  password: string | Uint8Array,
+  challenge: PasswordChallenge,
+  options: SrpOptions = {},
+): TypeInputCheckPasswordSRP {
+  const proof = computeSrpProof(encode(password), challenge, options)
+
+  return {
+    _: 'inputCheckPasswordSRP',
+    srp_id: challenge.srpId,
+    A: proof.a,
+    M1: proof.m1,
+  }
+}
+
 export function answerPasswordChallenge(
   password: string | Uint8Array,
   challenge: PasswordChallenge,

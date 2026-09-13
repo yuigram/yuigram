@@ -90,6 +90,17 @@ export type {
 export { nextDialogs, sentMessage } from './normalize/index.js'
 export type { Paging, WalkOptions } from './paging/walk.js'
 export { walkDialogs, walkHistory } from './paging/walk.js'
+export type { NewPassword, PasswordStatus, Securing } from './security/password.js'
+export {
+  cancelRecoveryEmail,
+  checkRecoveryCode,
+  confirmRecoveryEmail,
+  passwordStatus,
+  removePassword,
+  requestPasswordRecovery,
+  resendRecoveryEmail,
+  setPassword,
+} from './security/password.js'
 export type { PortableSession } from './session.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type { TlValue } from './tl/index.js'
