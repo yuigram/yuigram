@@ -124,9 +124,87 @@ Namespaced, because they exist only on an `Account`:
 | `mtproto:dialog_pinned` / `mtproto:dialog_unpinned` | Dialog list changes |
 | `mtproto:folder` | Folder membership changed |
 | `mtproto:call` | Call state |
+| `mtproto:membership` | Somebody joined, left, was promoted or was restricted |
+| `mtproto:callback_query` | An inline-keyboard button was tapped |
+| `mtproto:inline_query` | Somebody typed an inline query |
+| `mtproto:inline_chosen` | Somebody picked one of the results offered |
+| `mtproto:shipping_query` | A checkout is asking what delivery options exist |
+| `mtproto:precheckout_query` | A payment is about to be taken and can still be refused |
+| `mtproto:join_request` | Somebody asked to be let into a conversation |
 | `mtproto:raw` | Any TL update, unwrapped |
 
 Registering an `mtproto:*` handler on a `Bot` is a **type error**, not a silent no-op.
+
+#### Why the bot-facing queries are here and not on `Bot`
+
+A bot token can sign an account in over MTProto — `account.signInAsBot(token)` — and an account
+signed in that way receives these queries on its own connection. A `Bot` is a different client
+talking to a different endpoint; it cannot answer a query that arrived on an `Account`, because
+the identifier the answer is keyed by is scoped to the connection the query came in on. Sharing
+a framework does not make the two interchangeable, so these keep the `mtproto:` prefix and each
+has an answer on `Account` rather than being delegated to the Bot API subsystem.
+
+Every one of them holds something a person is looking at. An unanswered callback query leaves a
+spinner on the button; an unanswered inline query leaves an empty result list; an unanswered
+shipping or pre-checkout query stalls a checkout. Answering with nothing to say is still an
+answer, and is usually the right one.
+
+| Event | Constructor | Answered by | Keyed by | Deadline |
+|---|---|---|---|---|
+| `mtproto:callback_query` | `updateBotCallbackQuery`, `updateInlineBotCallbackQuery` | `account.answerCallback` | `query_id` | Expires; the spinner runs until then |
+| `mtproto:inline_query` | `updateBotInlineQuery` | `account.answerInlineQuery` | `query_id` | Expires; results are dropped after |
+| `mtproto:inline_chosen` | `updateBotInlineSend` | — | — | Nothing to answer |
+| `mtproto:shipping_query` | `updateBotShippingQuery` | `account.answerShipping` | `query_id` | Checkout waits |
+| `mtproto:precheckout_query` | `updateBotPrecheckoutQuery` | `account.answerPrecheckout` | `query_id` | Checkout waits; last refusal point |
+| `mtproto:join_request` | `updateBotChatInviteRequester` | `account.decideJoinRequest` | chat + person | Stands until decided |
+
+**`mtproto:shipping_query`.** Sent only for an invoice that asked for a delivery address, and
+only to the account that issued it. `event.raw` carries the `payload` the invoice was created
+with and the `shipping_address` the person entered. The answer either offers `shipping_option`
+entries — each an id, a title and a list of labelled prices — or gives an error string shown to
+the person as written. `answerShipping` refuses an answer carrying neither, because the protocol
+requires one and an answer with neither leaves the checkout waiting on a reply Telegram cannot
+display.
+
+**`mtproto:precheckout_query`.** The last point at which a charge can be stopped. `event.raw`
+carries the `payload`, the `currency` and `total_amount`, and the `info` and `shipping_option_id`
+chosen earlier. `answerPrecheckout` with no argument approves and the card is charged;
+`answerPrecheckout(queryId, reason)` refuses and the reason is shown. There is no silent
+refusal, and the two are mutually exclusive on the wire — approving and refusing in one message
+is not expressible.
+
+**`mtproto:join_request`.** Not a query: it stands until it is decided rather than expiring, so
+it is answered by naming the conversation and the person rather than by an identifier.
+`event.raw` carries the `about` text the person wrote and the `invite` they used.
+`decideJoinRequest(chat, user, approved)` lets them in or turns them down; turning somebody down
+is not a ban and they may ask again.
+
+**What these events do not carry.** A query is not said in a conversation. `updateBotInlineQuery`,
+`updateBotInlineSend`, `updateInlineBotCallbackQuery` and both payment steps name no chat at all,
+so `event.chat` is `undefined` for them rather than the private chat with whoever asked — an
+inline query typed in a group is not a message to the bot. `updateBotCallbackQuery` and
+`updateBotChatInviteRequester` do name one, and it is read. `event.sender` is the person asking
+in every case.
+
+#### Which field names the actor on a membership change
+
+`mtproto:membership` covers the seven constructors Telegram kept for one question, and they
+disagree about which field means what. The subject — the person the change happened to — is
+always `user_id` and is reachable through `event.raw`. The actor is not:
+
+| Constructor | Conversation | Actor | Subject |
+|---|---|---|---|
+| `updateChatParticipant` | `chat_id` | `actor_id` | `user_id` |
+| `updateChannelParticipant` | `channel_id` | `actor_id` | `user_id` |
+| `updateChatParticipantAdd` | `chat_id` | `inviter_id` | `user_id` |
+| `updateChatParticipantDelete` | `chat_id` | not named | `user_id` |
+| `updateChatParticipantAdmin` | `chat_id` | not named | `user_id` |
+| `updateChatParticipantRank` | `chat_id` | not named | `user_id` |
+| `updateChatParticipants` | `participants.chat_id` | not named | the whole list |
+
+`event.sender` is the actor where one is named and `undefined` where none is. The three that name
+none really do not carry it: the basic-group forms predate `actor_id`, and reading `user_id` in
+its place would report the person who was removed as the person who removed them.
 
 ### 3.5 Framework events
 
