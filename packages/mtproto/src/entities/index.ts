@@ -12,6 +12,7 @@
  * A view that could act would be a second owner of the network.
  */
 
+export { type DialogForm, DialogView, readDialog } from './dialog.js'
 export { type MessageForm, MessageView, readMessage, sameMessage } from './message.js'
 export {
   type ChatForm,

@@ -86,7 +86,9 @@ export {
   type BoundApi,
   type ChatForm,
   ChatView,
+  type DialogForm,
   type DialogsOffset,
+  DialogView,
   type DownloadMode,
   type DownloadOutcome,
   type DownloadRequest,
@@ -106,6 +108,7 @@ export {
   type MtprotoContext,
   type MtprotoEventKind,
   nextDialogs,
+  type Paging,
   type PeerBearing,
   PeerIndex,
   type PeerKind,
@@ -115,6 +118,7 @@ export {
   photoFile,
   photoMedia,
   readChat,
+  readDialog,
   readMessage,
   readPeers,
   readUser,
@@ -132,6 +136,9 @@ export {
   UserView,
   uploadedDocument,
   uploadedPhoto,
+  type WalkOptions,
+  walkDialogs,
+  walkHistory,
 } from '@yuigram/mtproto'
 
 /**

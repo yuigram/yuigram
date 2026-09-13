@@ -167,6 +167,28 @@ describe('the entry point', () => {
     expect(yuigram.toMarkdown(body)).toBe('*bold* text')
   })
 
+  it('offers the walk over a list that arrives one page at a time', () => {
+    expect(typeof yuigram.walkDialogs).toBe('function')
+    expect(typeof yuigram.walkHistory).toBe('function')
+    expect(typeof yuigram.DialogView).toBe('function')
+    expect(typeof yuigram.readDialog).toBe('function')
+
+    const row = yuigram.readDialog({
+      _: 'dialog',
+      peer: { _: 'peerUser', user_id: 4n },
+      top_message: 7,
+      read_inbox_max_id: 0,
+      read_outbox_max_id: 0,
+      unread_count: 1,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      notify_settings: { _: 'peerNotifySettings' },
+    })
+
+    expect(row?.peer).toEqual({ kind: 'user', id: 4n })
+    expect(row?.unreadCount).toBe(1)
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)

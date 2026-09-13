@@ -15,12 +15,14 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
-export type { ChatForm, MessageForm, PeerBearing } from './entities/index.js'
+export type { ChatForm, DialogForm, MessageForm, PeerBearing } from './entities/index.js'
 export {
   ChatView,
+  DialogView,
   MessageView,
   PeerIndex,
   readChat,
+  readDialog,
   readMessage,
   readPeers,
   readUser,
@@ -58,6 +60,8 @@ export type {
   SentMessage,
 } from './normalize/index.js'
 export { nextDialogs, sentMessage } from './normalize/index.js'
+export type { Paging, WalkOptions } from './paging/walk.js'
+export { walkDialogs, walkHistory } from './paging/walk.js'
 export type { PortableSession } from './session.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type { TlValue } from './tl/index.js'

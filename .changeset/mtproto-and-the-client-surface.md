@@ -51,6 +51,13 @@ on Bun, Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webh
 to serve. `docs/runtimes.md` has the matrix, says which cells were executed and which were only
 reasoned about, and records what MTProto would still need to run in a browser.
 
+**Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
+page at a time as one sequence, working out the offsets — three fields that have to agree — rather
+than leaving them to the caller. Both are async generators: nothing is requested until the loop
+asks for the next item, so breaking out stops the fetching and `limit` means what it says. A
+`DialogView` reads a row in a conversation list, which is this account's record about a
+conversation rather than the conversation itself.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones

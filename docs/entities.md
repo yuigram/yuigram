@@ -126,6 +126,8 @@ a better question than the one the schema asks.
 | `chatForbidden` | 2 | 2 | — |
 | `channel` | 49 | 49 | — |
 | `channelForbidden` | 7 | 7 | — |
+| `dialog` | 15 | 15 | — |
+| `dialogFolder` | 8 | 8 | — |
 
 `legacy` marks a message sent by a client old enough that its text needs re-fetching before its
 formatting can be trusted. It is an instruction to the code that fetches rather than a fact
@@ -198,7 +200,7 @@ Ordered by how often a program meets it.
 | Area | What it covers | Notes |
 | --- | --- | --- |
 | **Media** | The `MessageMedia` union: photos, documents and their audio/video/voice/sticker/animation specialisations, web pages, polls, contacts, locations and venues, dice, games, invoices, paid media, stories as media, to-do lists | The largest remaining group, and the one a message reader hits first. Sending media is already served by the input helpers in `files/media.ts`; this is the reading half. |
-| **Conversation lists** | `Dialog`, `DraftMessage`, `ForumTopic` | Paging over these is a separate question — see §6. |
+| **Conversation lists** | `DraftMessage`, `ForumTopic` | `Dialog` has a view and a walk over it; these two arrive beside it and do not. |
 | **Membership** | `ChatMember`, admin and banned rights, invite links, bot info | Rights are two bitfield-like structures whose absent fields mean different things in each. |
 | **Reactions** | `MessageReactions`, per-reaction counts, who reacted | `MessageView.reactions` returns the raw structure today. |
 | **Full profiles** | `UserFull`, `ChatFull`, `ChannelFull` | Distinct from `User`/`Chat`: fetched deliberately, much larger, and carrying settings rather than identity. |
@@ -220,9 +222,15 @@ These have no entity class and are not gaps.
 
 ## 6. What the entity layer does not decide
 
-**Paging.** Iterating dialogs or history is not an entity question. `nextDialogs` advances an
-offset from an answer; whether Yuigram grows async iterators over that is a separate decision
-about the client surface, not about how a `Dialog` is read.
+**Paging.** Iterating is not an entity question, and the answer lives on the client. `nextDialogs`
+works out where the next page begins without fetching it; `account.dialogs()` and
+`account.history(peer)` do the fetching, as async generators.
+
+A generator was the resolution to what looked like a conflict. `normalize/paging.ts` says how many
+pages to ask for, how fast, and what to do with them are the caller's — and a generator decides
+none of the three: nothing is requested until the loop asks for the next item, breaking out stops
+the fetching, and `limit` is the caller's own answer. What it removes is the offset arithmetic,
+which is three fields that have to agree and the part a caller gets wrong.
 
 **Links.** A message's `t.me` address needs the conversation's username, which the message does
 not carry. It belongs on the client or the context — whichever holds the peer — not on a view

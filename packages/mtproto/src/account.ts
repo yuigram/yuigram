@@ -53,6 +53,8 @@ import {
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
+import type { DialogView } from './entities/dialog.js'
+import type { MessageView } from './entities/message.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type { TypeInputPeer } from './generated/api/types/index.js'
@@ -65,6 +67,8 @@ import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import type { PeerRef } from './normalize/index.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
+import type { WalkOptions } from './paging/walk.js'
+import { walkDialogs, walkHistory } from './paging/walk.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
@@ -629,6 +633,44 @@ export class Account<Ext = unknown> {
     })
 
     return inputPeer(record)
+  }
+
+  /**
+   * Walk this account's conversations, most recent first.
+   *
+   * ```ts
+   * for await (const dialog of account.dialogs({ limit: 50 })) {
+   *   console.log(dialog.peer, dialog.unreadCount)
+   * }
+   * ```
+   *
+   * One request per page, made when the loop asks for the next item rather than
+   * up front, so stopping the loop stops the fetching. An account with a long
+   * list is many requests and Telegram limits accounts that make many: how fast
+   * to walk stays the caller's, which is what leaving it a generator preserves.
+   */
+  dialogs(options?: WalkOptions): AsyncGenerator<DialogView, void, undefined> {
+    return walkDialogs(this, options)
+  }
+
+  /**
+   * Walk a conversation's messages, most recent first.
+   *
+   * ```ts
+   * for await (const message of account.history('@someone', { limit: 200 })) {
+   *   if (!message.isService) console.log(message.text)
+   * }
+   * ```
+   *
+   * The peer is resolved once, by the same rules as {@link Account.resolve}: a
+   * name is asked of Telegram where nothing is known, and a reference has to be
+   * one this account has already seen.
+   */
+  history(
+    peer: string | PeerRef,
+    options?: WalkOptions,
+  ): AsyncGenerator<MessageView, void, undefined> {
+    return walkHistory(this, peer, options)
   }
 
   // ---------------------------------------------------------------------
