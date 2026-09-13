@@ -71,6 +71,14 @@ rest come off whichever attribute actually holds them.
 flow are on `Account` now. The password never leaves the process: what goes to Telegram is a proof
 of the old one and a verifier for the new, and neither can be turned back into what was typed.
 
+**Searching, and who is in a conversation.** `account.search` walks the messages in one
+conversation that match a query; `account.searchGlobal` walks matches across every conversation;
+`account.members` walks a channel's members. Three lists, three different ways of continuing —
+by message number, by a rate the server returns with each page, and by how many have been seen —
+and each is the one Telegram actually specifies rather than one policy forced onto all three. A
+`MemberView` reads somebody's standing, where two of the six constructors name a conversation
+rather than a person.
+
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather
 than leaving them to the caller. Both are async generators: nothing is requested until the loop

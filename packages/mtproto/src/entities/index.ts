@@ -14,6 +14,7 @@
 
 export { type DialogForm, DialogView, readDialog } from './dialog.js'
 export { type MediaKind, MediaView, readMedia } from './media.js'
+export { type MemberStanding, MemberView, readMember } from './member.js'
 export { type MessageForm, MessageView, readMessage, sameMessage } from './message.js'
 export {
   type ChatForm,

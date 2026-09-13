@@ -26,10 +26,18 @@
  * the caller, which is another thing a generator leaves where it was.
  */
 
+import { PeerError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
 import { DialogView } from '../entities/dialog.js'
+import { MemberView } from '../entities/member.js'
 import { MessageView } from '../entities/message.js'
-import type { TypeInputPeer } from '../generated/api/types/index.js'
+import type {
+  messages,
+  TypeChannelParticipantsFilter,
+  TypeInputPeer,
+  TypeMessagesFilter,
+} from '../generated/api/types/index.js'
+import { channelFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { nextDialogs } from '../normalize/paging.js'
 
@@ -133,43 +141,21 @@ export async function* walkDialogs(
 }
 
 /**
- * Walk a conversation's messages, most recent first.
+ * Walk pages of messages that are ordered and continued by message number.
  *
- * ```ts
- * for await (const message of walkHistory(account, '@someone', { limit: 200 })) {
- *   if (!message.isService) console.log(message.text)
- * }
- * ```
- *
- * The peer is resolved once rather than per page. Paging is by message number:
- * each request asks for what sits before the oldest message of the last page,
- * which is the ordering this method guarantees.
- *
- * Stops at the beginning of the conversation, at `limit`, or when a page fails
- * to reach further back than the last one did — a conversation whose oldest
- * message keeps coming back would otherwise be walked forever.
+ * History and an in-conversation search page identically — newest first, each
+ * request asking for what sits before the oldest of the last page — so they
+ * share this rather than each carrying the termination rule separately.
  */
-export async function* walkHistory(
-  client: Paging,
-  peer: string | PeerRef,
-  options?: WalkOptions,
+async function* walkByMessageId(
+  fetch: (before: number, limit: number) => Promise<messages.TypeMessages>,
+  options: WalkOptions | undefined,
 ): AsyncGenerator<MessageView, void, undefined> {
-  const target = await client.resolve(peer)
-
   let before = 0
   let taken = 0
 
   while (options?.limit === undefined || taken < options.limit) {
-    const answer = await client.api.messages.getHistory({
-      peer: target,
-      offset_id: before,
-      offset_date: 0,
-      add_offset: 0,
-      limit: askFor(options, taken),
-      max_id: 0,
-      min_id: 0,
-      hash: 0n,
-    })
+    const answer = await fetch(before, askFor(options, taken))
 
     if (answer._ === 'messages.messagesNotModified') return
     if (answer.messages.length === 0) return
@@ -194,6 +180,46 @@ export async function* walkHistory(
 }
 
 /**
+ * Walk a conversation's messages, most recent first.
+ *
+ * ```ts
+ * for await (const message of walkHistory(account, '@someone', { limit: 200 })) {
+ *   if (!message.isService) console.log(message.text)
+ * }
+ * ```
+ *
+ * The peer is resolved once rather than per page. Paging is by message number:
+ * each request asks for what sits before the oldest message of the last page,
+ * which is the ordering this method guarantees.
+ *
+ * Stops at the beginning of the conversation, at `limit`, or when a page fails
+ * to reach further back than the last one did — a conversation whose oldest
+ * message keeps coming back would otherwise be walked forever.
+ */
+export async function* walkHistory(
+  client: Paging,
+  peer: string | PeerRef,
+  options?: WalkOptions,
+): AsyncGenerator<MessageView, void, undefined> {
+  const target = await client.resolve(peer)
+
+  yield* walkByMessageId(
+    async (before, limit) =>
+      await client.api.messages.getHistory({
+        peer: target,
+        offset_id: before,
+        offset_date: 0,
+        add_offset: 0,
+        limit,
+        max_id: 0,
+        min_id: 0,
+        hash: 0n,
+      }),
+    options,
+  )
+}
+
+/**
  * Where the next request should start, or nothing when this page was the end.
  *
  * Two ways a page is the last one. `messages.messages` is the whole
@@ -212,4 +238,190 @@ function reachedFurther(
   if (oldest === undefined) return undefined
 
   return before !== 0 && oldest >= before ? undefined : oldest
+}
+
+/** What to search for, and where to stop. */
+export interface SearchOptions extends WalkOptions {
+  /** Only messages of this kind. Every kind when omitted. */
+  readonly filter?: TypeMessagesFilter
+  /** Only messages from this sender, within the conversation. */
+  readonly from?: string | PeerRef
+  /** Only messages in this forum topic. */
+  readonly topicId?: number
+  /** Only messages at or after this moment, in Unix seconds. */
+  readonly since?: number
+  /** Only messages at or before this moment, in Unix seconds. */
+  readonly until?: number
+}
+
+/**
+ * Walk the messages in one conversation that match a search.
+ *
+ * ```ts
+ * for await (const found of walkSearch(account, chat, 'invoice', { limit: 20 })) {
+ *   console.log(found.id, found.text)
+ * }
+ * ```
+ *
+ * Paged the same way history is — by message number, newest first — because it
+ * is the same ordering over the same conversation. A filtered search returns
+ * fewer messages per page than it was asked for without that meaning the end,
+ * so a short page is not an exhaustion signal here; the cursor failing to
+ * advance is.
+ */
+export async function* walkSearch(
+  client: Paging,
+  peer: string | PeerRef,
+  query: string,
+  options?: SearchOptions,
+): AsyncGenerator<MessageView, void, undefined> {
+  const target = await client.resolve(peer)
+  const from = options?.from === undefined ? undefined : await client.resolve(options.from)
+
+  yield* walkByMessageId(
+    async (before, limit) =>
+      await client.api.messages.search({
+        peer: target,
+        q: query,
+        filter: options?.filter ?? { _: 'inputMessagesFilterEmpty' },
+        min_date: options?.since ?? 0,
+        max_date: options?.until ?? 0,
+        offset_id: before,
+        add_offset: 0,
+        limit,
+        max_id: 0,
+        min_id: 0,
+        hash: 0n,
+        ...(from === undefined ? {} : { from_id: from }),
+        ...(options?.topicId === undefined ? {} : { top_msg_id: options.topicId }),
+      }),
+    options,
+  )
+}
+
+/** Where the next page of a global search begins. */
+interface GlobalCursor {
+  readonly rate: number
+  readonly peer: TypeInputPeer
+  readonly id: number
+}
+
+/**
+ * Walk messages matching a search across every conversation.
+ *
+ * Paged differently from everything else here, because the results are not in
+ * one conversation and a message number means nothing across them. Telegram
+ * returns a rate with each page and expects it back with the last message's
+ * conversation and number — three fields that have to agree, like the dialog
+ * offset and unlike the history one.
+ *
+ * A page that reports no rate to continue from is the end, whatever else it
+ * carried.
+ */
+export async function* walkGlobalSearch(
+  client: Paging,
+  query: string,
+  options?: SearchOptions,
+): AsyncGenerator<MessageView, void, undefined> {
+  let cursor: GlobalCursor = { rate: 0, peer: { _: 'inputPeerEmpty' }, id: 0 }
+  let taken = 0
+
+  while (options?.limit === undefined || taken < options.limit) {
+    const answer = await client.api.messages.searchGlobal({
+      q: query,
+      filter: options?.filter ?? { _: 'inputMessagesFilterEmpty' },
+      min_date: options?.since ?? 0,
+      max_date: options?.until ?? 0,
+      offset_rate: cursor.rate,
+      offset_peer: cursor.peer,
+      offset_id: cursor.id,
+      limit: askFor(options, taken),
+    })
+
+    if (answer._ === 'messages.messagesNotModified') return
+    if (answer.messages.length === 0) return
+
+    let last: MessageView | undefined
+
+    for (const value of answer.messages) {
+      const message = new MessageView(value)
+
+      yield message
+      taken += 1
+      last = message
+
+      if (options?.limit !== undefined && taken >= options.limit) return
+    }
+
+    // Only the slice form carries a rate, and without one there is nowhere to
+    // continue from — which is the end regardless of how full the page looked.
+    const rate = answer._ === 'messages.messagesSlice' ? answer.next_rate : undefined
+    const where = last?.chat
+
+    if (rate === undefined || last === undefined || where === undefined) return
+
+    cursor = { rate, peer: await client.resolve(where), id: last.id }
+  }
+}
+
+/** Which members to walk. */
+export interface MemberOptions extends WalkOptions {
+  /**
+   * Which of them.
+   *
+   * Everyone recently active when omitted, which is Telegram's own default and
+   * the only filter that answers for an ordinary member.
+   */
+  readonly filter?: TypeChannelParticipantsFilter
+}
+
+/**
+ * Walk the members of a channel or supergroup.
+ *
+ * Paged by how many have already been seen rather than by an identifier, which
+ * is a third policy again — and the one that makes this list the least stable
+ * of the three. Somebody joining or leaving while the walk is in progress
+ * shifts every later position, so an entry can be seen twice or missed. That is
+ * a property of counting into a live list rather than something this could fix,
+ * and no snapshot is claimed.
+ *
+ * Only a channel or supergroup keeps members this way; a basic group carries
+ * them in its full description instead.
+ */
+export async function* walkMembers(
+  client: Paging,
+  peer: string | PeerRef,
+  options?: MemberOptions,
+): AsyncGenerator<MemberView, void, undefined> {
+  const target = await client.resolve(peer)
+  const channel = channelFor(target)
+
+  if (channel === undefined) {
+    throw new PeerError('only a channel or supergroup keeps its members as a list')
+  }
+
+  let seen = 0
+  let taken = 0
+
+  while (options?.limit === undefined || taken < options.limit) {
+    const answer = await client.api.channels.getParticipants({
+      channel,
+      filter: options?.filter ?? { _: 'channelParticipantsRecent' },
+      offset: seen,
+      limit: askFor(options, taken),
+      hash: 0n,
+    })
+
+    if (answer._ === 'channels.channelParticipantsNotModified') return
+    if (answer.participants.length === 0) return
+
+    for (const value of answer.participants) {
+      yield new MemberView(value)
+      taken += 1
+
+      if (options?.limit !== undefined && taken >= options.limit) return
+    }
+
+    seen += answer.participants.length
+  }
 }

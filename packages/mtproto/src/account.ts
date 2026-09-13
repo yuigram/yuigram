@@ -54,6 +54,7 @@ import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { randomBytes } from './crypto/random.js'
 import type { DialogView } from './entities/dialog.js'
+import type { MemberView } from './entities/member.js'
 import type { MessageView } from './entities/message.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
@@ -91,8 +92,14 @@ import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import type { PeerRef } from './normalize/index.js'
 import { type MtprotoContext, mtprotoContext, type SentMessage } from './normalize/index.js'
-import type { WalkOptions } from './paging/walk.js'
-import { walkDialogs, walkHistory } from './paging/walk.js'
+import type { MemberOptions, SearchOptions, WalkOptions } from './paging/walk.js'
+import {
+  walkDialogs,
+  walkGlobalSearch,
+  walkHistory,
+  walkMembers,
+  walkSearch,
+} from './paging/walk.js'
 import type { NewPassword, PasswordStatus, Securing } from './security/password.js'
 import {
   cancelRecoveryEmail,
@@ -706,6 +713,55 @@ export class Account<Ext = unknown> {
     options?: WalkOptions,
   ): AsyncGenerator<MessageView, void, undefined> {
     return walkHistory(this, peer, options)
+  }
+
+  /**
+   * Walk the messages in one conversation that match a search.
+   *
+   * ```ts
+   * for await (const found of account.search(chat, 'invoice', { limit: 20 })) {
+   *   console.log(found.id, found.text)
+   * }
+   * ```
+   *
+   * A filtered search returns fewer than it was asked for without that meaning
+   * the end, so a short page does not stop the walk — a cursor that fails to
+   * advance does.
+   */
+  search(
+    peer: string | PeerRef,
+    query: string,
+    options?: SearchOptions,
+  ): AsyncGenerator<MessageView, void, undefined> {
+    return walkSearch(this, peer, query, options)
+  }
+
+  /**
+   * Walk messages matching a search across every conversation.
+   *
+   * Continued differently from the others: a message number means nothing
+   * across conversations, so Telegram returns a rate with each page and expects
+   * it back with the last message's conversation and number.
+   */
+  searchGlobal(
+    query: string,
+    options?: SearchOptions,
+  ): AsyncGenerator<MessageView, void, undefined> {
+    return walkGlobalSearch(this, query, options)
+  }
+
+  /**
+   * Walk the members of a channel or supergroup.
+   *
+   * Counted into rather than keyed, so somebody joining or leaving mid-walk
+   * shifts every later position: an entry can be seen twice or missed. That is
+   * what counting into a live list means, and no snapshot is claimed.
+   */
+  members(
+    peer: string | PeerRef,
+    options?: MemberOptions,
+  ): AsyncGenerator<MemberView, void, undefined> {
+    return walkMembers(this, peer, options)
   }
 
   /**

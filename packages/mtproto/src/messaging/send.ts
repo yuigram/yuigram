@@ -30,7 +30,6 @@ import type { MtprotoApi } from '../api.js'
 import { MessageView } from '../entities/message.js'
 import type { FormattedText } from '../format/text.js'
 import type {
-  TypeInputChannel,
   TypeInputMedia,
   TypeInputPeer,
   TypeMessageEntity,
@@ -38,6 +37,7 @@ import type {
   TypeReplyMarkup,
   TypeSendMessageAction,
 } from '../generated/api/types/index.js'
+import { channelFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { randomId, type SentMessage, sentMessage } from '../normalize/sent.js'
 
@@ -246,24 +246,6 @@ export async function editMessage(
   return sentMessage(answer, 0n)
 }
 
-/** Whether a resolved peer is a channel, which several methods address differently. */
-function channelOf(peer: TypeInputPeer): TypeInputChannel | undefined {
-  if (peer._ === 'inputPeerChannel') {
-    return { _: 'inputChannel', channel_id: peer.channel_id, access_hash: peer.access_hash }
-  }
-
-  if (peer._ === 'inputPeerChannelFromMessage') {
-    return {
-      _: 'inputChannelFromMessage',
-      peer: peer.peer,
-      msg_id: peer.msg_id,
-      channel_id: peer.channel_id,
-    }
-  }
-
-  return undefined
-}
-
 /**
  * Remove messages.
  *
@@ -278,7 +260,7 @@ export async function deleteMessages(
   options?: { readonly revoke?: boolean },
 ): Promise<void> {
   const target = await client.resolve(peer)
-  const channel = channelOf(target)
+  const channel = channelFor(target)
 
   if (channel !== undefined) {
     await client.api.channels.deleteMessages({ channel, id: ids })
@@ -411,7 +393,7 @@ export async function readHistory(
   upTo?: number,
 ): Promise<void> {
   const target = await client.resolve(peer)
-  const channel = channelOf(target)
+  const channel = channelFor(target)
   const max = upTo ?? 0
 
   if (channel !== undefined) {
@@ -461,7 +443,7 @@ export async function getMessages(
   ids: readonly number[],
 ): Promise<readonly MessageView[]> {
   const target = await client.resolve(peer)
-  const channel = channelOf(target)
+  const channel = channelFor(target)
   const wanted = ids.map((id) => ({ _: 'inputMessageID' as const, id }))
 
   const answer =

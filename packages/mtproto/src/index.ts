@@ -19,6 +19,7 @@ export type {
   ChatForm,
   DialogForm,
   MediaKind,
+  MemberStanding,
   MessageForm,
   PeerBearing,
 } from './entities/index.js'
@@ -26,11 +27,13 @@ export {
   ChatView,
   DialogView,
   MediaView,
+  MemberView,
   MessageView,
   PeerIndex,
   readChat,
   readDialog,
   readMedia,
+  readMember,
   readMessage,
   readPeers,
   readUser,
@@ -88,8 +91,14 @@ export type {
   SentMessage,
 } from './normalize/index.js'
 export { nextDialogs, sentMessage } from './normalize/index.js'
-export type { Paging, WalkOptions } from './paging/walk.js'
-export { walkDialogs, walkHistory } from './paging/walk.js'
+export type { MemberOptions, Paging, SearchOptions, WalkOptions } from './paging/walk.js'
+export {
+  walkDialogs,
+  walkGlobalSearch,
+  walkHistory,
+  walkMembers,
+  walkSearch,
+} from './paging/walk.js'
 export type { NewPassword, PasswordStatus, Securing } from './security/password.js'
 export {
   cancelRecoveryEmail,

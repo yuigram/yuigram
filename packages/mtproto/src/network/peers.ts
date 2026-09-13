@@ -163,6 +163,32 @@ export function inputPeer(record: PeerRecord): TypeInputPeer {
  * cannot name a channel and the handler that cannot delete in one do not want
  * the same sentence.
  */
+/**
+ * The channel a resolved peer names, or nothing where it names something else.
+ *
+ * Several methods are split in two — one addressing a channel, one addressing
+ * everything else — and which to use is a property of the conversation rather
+ * than of the request. This is that question, asked once: reading it off an
+ * input peer rather than off a stored record, because by the time a call is
+ * being built the peer has already been resolved.
+ */
+export function channelFor(peer: TypeInputPeer): TypeInputChannel | undefined {
+  if (peer._ === 'inputPeerChannel') {
+    return { _: 'inputChannel', channel_id: peer.channel_id, access_hash: peer.access_hash }
+  }
+
+  if (peer._ === 'inputPeerChannelFromMessage') {
+    return {
+      _: 'inputChannelFromMessage',
+      peer: peer.peer,
+      msg_id: peer.msg_id,
+      channel_id: peer.channel_id,
+    }
+  }
+
+  return undefined
+}
+
 export function inputChannel(record: PeerRecord): TypeInputChannel {
   if (record.kind !== 'channel') {
     throw new PeerError(`${record.kind} ${record.id} is not a channel`)

@@ -170,6 +170,11 @@ describe('the entry point', () => {
   it('offers the walk over a list that arrives one page at a time', () => {
     expect(typeof yuigram.walkDialogs).toBe('function')
     expect(typeof yuigram.walkHistory).toBe('function')
+    expect(typeof yuigram.walkSearch).toBe('function')
+    expect(typeof yuigram.walkGlobalSearch).toBe('function')
+    expect(typeof yuigram.walkMembers).toBe('function')
+    expect(typeof yuigram.MemberView).toBe('function')
+    expect(typeof yuigram.readMember).toBe('function')
     expect(typeof yuigram.DialogView).toBe('function')
     expect(typeof yuigram.readDialog).toBe('function')
 

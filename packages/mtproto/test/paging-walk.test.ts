@@ -13,7 +13,14 @@
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
-import { type Paging, walkDialogs, walkHistory } from '../src/paging/walk.js'
+import {
+  type Paging,
+  walkDialogs,
+  walkGlobalSearch,
+  walkHistory,
+  walkMembers,
+  walkSearch,
+} from '../src/paging/walk.js'
 
 /** One dialog row, and the message that dates it. */
 function pageOf(ids: readonly number[], channel = 55n) {
@@ -42,7 +49,10 @@ function pageOf(ids: readonly number[], channel = 55n) {
 }
 
 /** A client answering from a script, recording what it was asked. */
-function fake(answers: readonly unknown[]): Paging & {
+function fake(
+  answers: readonly unknown[],
+  as?: TypeInputPeer,
+): Paging & {
   readonly asked: unknown[]
   readonly resolved: unknown[]
 } {
@@ -62,7 +72,8 @@ function fake(answers: readonly unknown[]): Paging & {
   }
 
   const api = {
-    messages: { getDialogs: next, getHistory: next },
+    messages: { getDialogs: next, getHistory: next, search: next, searchGlobal: next },
+    channels: { getParticipants: next },
   } as unknown as MtprotoApi
 
   return {
@@ -72,9 +83,17 @@ function fake(answers: readonly unknown[]): Paging & {
     resolve(peer) {
       resolved.push(peer)
 
-      return Promise.resolve({ _: 'inputPeerSelf' } as TypeInputPeer)
+      return Promise.resolve(as ?? ({ _: 'inputPeerSelf' } as TypeInputPeer))
     },
   }
+}
+
+/** The same, resolving every peer to one the caller chose. */
+function fakeWith(
+  as: TypeInputPeer,
+  answers: readonly unknown[],
+): Paging & { readonly asked: unknown[]; readonly resolved: unknown[] } {
+  return fake(answers, as)
 }
 
 describe('walking conversations', () => {
@@ -331,5 +350,241 @@ describe('the forms that mean there is no next page', () => {
 
     expect(seen).toEqual([1])
     expect(client.asked).toHaveLength(1)
+  })
+})
+
+describe('searching one conversation', () => {
+  const page = (ids: readonly number[]) => ({
+    messages: ids.map((id) => ({
+      _: 'message' as const,
+      id,
+      peer_id: { _: 'peerUser' as const, user_id: 7n },
+      message: `m${id}`,
+      date: 1_700_000_000 + id,
+    })),
+    chats: [],
+    users: [],
+    topics: [],
+  })
+
+  it('pages by message number, like history over the same conversation', async () => {
+    const client = fake([
+      { _: 'messages.messagesSlice', count: 4, ...page([9, 7]) },
+      { _: 'messages.messages', ...page([4]) },
+    ])
+    const seen = []
+
+    for await (const found of walkSearch(client, '@someone', 'thing', { pageSize: 2 })) {
+      seen.push(found.id)
+    }
+
+    expect(seen).toEqual([9, 7, 4])
+    expect((client.asked[0] as { q: string; offset_id: number }).q).toBe('thing')
+    expect((client.asked[1] as { offset_id: number }).offset_id).toBe(7)
+  })
+
+  it('does not treat a short page as the end, because a filter thins pages', async () => {
+    // A filtered search returns fewer than asked for without that meaning the
+    // conversation ran out. Only a cursor that stops advancing means that.
+    const client = fake([
+      { _: 'messages.messagesSlice', count: 9, ...page([9]) },
+      { _: 'messages.messagesSlice', count: 9, ...page([5]) },
+      { _: 'messages.messages', ...page([]) },
+    ])
+    const seen = []
+
+    for await (const found of walkSearch(client, '@someone', 'q', { pageSize: 5 })) {
+      seen.push(found.id)
+    }
+
+    expect(seen).toEqual([9, 5])
+    expect(client.asked).toHaveLength(3)
+  })
+
+  it('resolves a sender filter as well as the conversation', async () => {
+    const client = fake([{ _: 'messages.messages', ...page([1]) }])
+
+    for await (const _ of walkSearch(client, '@chat', 'q', { from: '@someone', topicId: 3 })) {
+      // walked for the side effect on the fake
+    }
+
+    expect(client.resolved).toEqual(['@chat', '@someone'])
+    expect(client.asked[0]).toMatchObject({ top_msg_id: 3 })
+    expect(client.asked[0]).toHaveProperty('from_id')
+  })
+
+  it('leaves the sender and topic off entirely when neither was given', async () => {
+    const client = fake([{ _: 'messages.messages', ...page([1]) }])
+
+    for await (const _ of walkSearch(client, '@chat', 'q')) {
+      // walked for the side effect on the fake
+    }
+
+    expect(client.asked[0]).not.toHaveProperty('from_id')
+    expect(client.asked[0]).not.toHaveProperty('top_msg_id')
+  })
+
+  it('searches every kind of message unless told to narrow it', () => {
+    // A filter nobody asked for would quietly return a different list, and the
+    // caller would have no way to tell it was narrowed.
+    const client = fake([{ _: 'messages.messages', ...page([1]) }])
+
+    return (async () => {
+      for await (const _ of walkSearch(client, '@chat', 'q')) {
+        // walked for the side effect on the fake
+      }
+
+      expect(client.asked[0]).toMatchObject({ filter: { _: 'inputMessagesFilterEmpty' } })
+    })()
+  })
+})
+
+describe('searching everywhere', () => {
+  const page = (ids: readonly number[], channel = 55n) => ({
+    messages: ids.map((id) => ({
+      _: 'message' as const,
+      id,
+      peer_id: { _: 'peerChannel' as const, channel_id: channel },
+      message: `m${id}`,
+      date: 1_700_000_000 + id,
+    })),
+    chats: [],
+    users: [],
+    topics: [],
+  })
+
+  it('carries the rate, the conversation and the number back', async () => {
+    // A message number means nothing across conversations, so all three have to
+    // agree or the next page starts somewhere else entirely.
+    const client = fake([
+      { _: 'messages.messagesSlice', count: 4, next_rate: 900, ...page([9, 7]) },
+      { _: 'messages.messagesSlice', count: 4, ...page([4]) },
+    ])
+    const seen = []
+
+    for await (const found of walkGlobalSearch(client, 'thing', { pageSize: 2 })) {
+      seen.push(found.id)
+    }
+
+    expect(seen).toEqual([9, 7, 4])
+
+    const second = client.asked[1] as { offset_rate: number; offset_id: number }
+
+    expect(second.offset_rate).toBe(900)
+    expect(second.offset_id).toBe(7)
+    // All three, because all three have to agree: a rate and a number without
+    // the conversation they belong to name a position in somebody else's list.
+    expect((client.asked[1] as { offset_peer: unknown }).offset_peer).toEqual({
+      _: 'inputPeerSelf',
+    })
+    expect(client.resolved).toEqual([{ kind: 'channel', id: 55n }])
+  })
+
+  it('starts from nowhere in particular', async () => {
+    const client = fake([{ _: 'messages.messages', ...page([1]) }])
+
+    for await (const _ of walkGlobalSearch(client, 'q')) {
+      // walked for the side effect on the fake
+    }
+
+    expect(client.asked[0]).toMatchObject({
+      offset_rate: 0,
+      offset_id: 0,
+      offset_peer: { _: 'inputPeerEmpty' },
+    })
+  })
+
+  it('stops where a page reports no rate to continue from', async () => {
+    // Without a rate there is nowhere to go next, however full the page looked.
+    const client = fake([{ _: 'messages.messagesSlice', count: 99, ...page([9, 8]) }])
+    const seen = []
+
+    for await (const found of walkGlobalSearch(client, 'q', { pageSize: 2 })) {
+      seen.push(found.id)
+    }
+
+    expect(seen).toEqual([9, 8])
+    expect(client.asked).toHaveLength(1)
+  })
+})
+
+describe('walking the members of a channel', () => {
+  const members = (ids: readonly number[]) => ({
+    count: 100,
+    participants: ids.map((id) => ({
+      _: 'channelParticipant' as const,
+      user_id: BigInt(id),
+      date: 1_700_000_000,
+    })),
+    chats: [],
+    users: [],
+  })
+
+  const asChannel = () =>
+    fakeWith({ _: 'inputPeerChannel', channel_id: 55n, access_hash: 900n }, [
+      { _: 'channels.channelParticipants', ...members([1, 2]) },
+      { _: 'channels.channelParticipants', ...members([3]) },
+      { _: 'channels.channelParticipants', ...members([]) },
+    ])
+
+  it('counts into the list rather than keying it', async () => {
+    // A third cursor policy: an offset of how many have been seen, not an
+    // identifier. That is what makes this list the least stable of the three.
+    const client = asChannel()
+    const seen = []
+
+    for await (const member of walkMembers(client, 'somewhere', { pageSize: 2 })) {
+      seen.push(member.peer?.id)
+    }
+
+    expect(seen).toEqual([1n, 2n, 3n])
+    expect((client.asked[0] as { offset: number }).offset).toBe(0)
+    expect((client.asked[1] as { offset: number }).offset).toBe(2)
+    expect((client.asked[2] as { offset: number }).offset).toBe(3)
+  })
+
+  it('asks for everyone recently active unless told otherwise', async () => {
+    const client = asChannel()
+
+    for await (const _ of walkMembers(client, 'somewhere', { limit: 1 })) {
+      // walked for the side effect on the fake
+    }
+
+    expect(client.asked[0]).toMatchObject({ filter: { _: 'channelParticipantsRecent' } })
+  })
+
+  it('carries the filter it was given', async () => {
+    const client = asChannel()
+
+    for await (const _ of walkMembers(client, 'somewhere', {
+      limit: 1,
+      filter: { _: 'channelParticipantsAdmins' },
+    })) {
+      // walked for the side effect on the fake
+    }
+
+    expect(client.asked[0]).toMatchObject({ filter: { _: 'channelParticipantsAdmins' } })
+  })
+
+  it('refuses a conversation that does not keep members as a list', async () => {
+    // A basic group carries its members in its full description instead, so
+    // asking this way is a call that would be refused.
+    const client = fake([])
+
+    await expect(async () => {
+      for await (const _ of walkMembers(client, '@someone')) {
+        // never reached
+      }
+    }).rejects.toThrow(/channel or supergroup/)
+  })
+
+  it('yields members read, not raw values', async () => {
+    const client = asChannel()
+
+    for await (const member of walkMembers(client, 'somewhere', { limit: 1 })) {
+      expect(member.standing).toBe('member')
+      expect(member.isUser).toBe(true)
+      expect(member.joinedAt).toBe(1_700_000_000)
+    }
   })
 })
