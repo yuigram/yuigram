@@ -2495,6 +2495,44 @@ describe('a call redirected to another datacenter', () => {
     await instance.dispose()
   })
 
+  it('repeats a send with the key it already carried, not a fresh one', async () => {
+    // Telegram deduplicates a send by its random identifier. A migration
+    // repeats the call at another datacenter, and drawing a new identifier for
+    // the second attempt would make the two look like two different messages —
+    // so a redirected send would arrive twice.
+    const sent: Array<{ dcId: number; randomId: unknown }> = []
+    const instance = harness({
+      api: (query, dcId) => {
+        const introduced = introduction(query)
+        if (introduced !== undefined) return introduced
+        if (query._ !== 'messages.sendMessage') return undefined
+
+        sent.push({ dcId, randomId: (query as { random_id?: unknown }).random_id })
+        if (dcId === 2) throw new TelegramError('USER_MIGRATE_4 (303)')
+
+        return { _: 'updateShortSentMessage', id: 55, pts: 1, pts_count: 1, date: 0 }
+      },
+    })
+
+    await instance.account.connect()
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 9n,
+      accessHash: 11n,
+      min: false,
+      usernames: [],
+    })
+
+    const answer = await instance.account.sendText({ kind: 'user', id: 9n }, 'hello')
+
+    expect(answer.id).toBe(55)
+    expect(sent.map((one) => one.dcId)).toEqual([2, 4])
+    expect(typeof sent[0]?.randomId).toBe('bigint')
+    expect(sent[1]?.randomId).toBe(sent[0]?.randomId)
+
+    await instance.dispose()
+  })
+
   it('raises a file redirection rather than following it', async () => {
     // A transfer follows its own, and routing a whole call to the datacenter
     // that holds one file is not what the redirection asked for.
