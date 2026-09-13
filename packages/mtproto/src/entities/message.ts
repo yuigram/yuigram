@@ -25,6 +25,12 @@
  * the message arrived with, which is the only thing that knows how to address
  * the conversation it belongs to.
  *
+ * Every field the three constructors carry has an accessor except `legacy`,
+ * which marks a message sent by a client old enough that its text needs
+ * re-fetching before its formatting can be trusted. That is an instruction to
+ * the code that fetches, not a fact about the conversation, and a reader acting
+ * on it could do nothing useful with the answer.
+ *
  * Timestamps stay as Telegram sends them, in Unix seconds. `docs/events.md` §5
  * records why: converting on every message for every reader is a cost paid by
  * everyone for the benefit of a few, and `new Date(seconds * 1000)` is one line
@@ -42,6 +48,8 @@ import type {
   TypeMessageReplies,
   TypeMessageReplyHeader,
   TypeReplyMarkup,
+  TypeRestrictionReason,
+  TypeSuggestedPost,
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
@@ -230,6 +238,31 @@ export class MessageView {
     return this.forwardedFrom !== undefined
   }
 
+  /**
+   * Whether a channel put it here rather than a person forwarding it.
+   *
+   * A post in a channel with a discussion group appears in that group as a
+   * forward the group did not make. The forward header names where the copy was
+   * saved from, which is what separates it from someone forwarding the post by
+   * hand — that carries no saved origin.
+   *
+   * The origin peer and the message number share a flag bit in the schema, so
+   * either answers for both and checking one is checking the pair.
+   */
+  get isAutomaticForward(): boolean {
+    return this.forwardedFrom?.saved_from_peer !== undefined
+  }
+
+  /**
+   * Whether forwarding it on is allowed.
+   *
+   * A service message and an empty one have nothing to forward, so the answer
+   * for both is no rather than the absence of a restriction.
+   */
+  get canBeForwarded(): boolean {
+    return this.raw._ === 'message' && this.raw.noforwards !== true
+  }
+
   /** What it answers, where it answers something. */
   get replyTo(): TypeMessageReplyHeader | undefined {
     return this.raw._ === 'messageEmpty' ? undefined : this.raw.reply_to
@@ -251,6 +284,53 @@ export class MessageView {
   /** Whether it answers another message. */
   get isReply(): boolean {
     return this.replyToMessageId !== undefined
+  }
+
+  /**
+   * The conversation the message it answers is in, where that is a different
+   * one.
+   *
+   * A reply normally points inside its own conversation and says nothing here.
+   * It is present when the answer crosses conversations — a comment on a
+   * channel post, read from the discussion group.
+   */
+  get replyToPeer(): PeerRef | undefined {
+    const header = this.replyTo
+
+    return header?._ === 'messageReplyHeader' ? peerRefOf(header.reply_to_peer_id) : undefined
+  }
+
+  /** The message at the top of the thread this one is in, where it is in one. */
+  get replyToTopId(): number | undefined {
+    const header = this.replyTo
+
+    return header?._ === 'messageReplyHeader' ? header.reply_to_top_id : undefined
+  }
+
+  /**
+   * The part of the answered message that was quoted, where a part was.
+   *
+   * Telegram sends the quoted text with the reply rather than only a range into
+   * the original, because the original may since have been edited.
+   */
+  get quote(): string | undefined {
+    const header = this.replyTo
+
+    return header?._ === 'messageReplyHeader' ? header.quote_text : undefined
+  }
+
+  /** The story it answers, where it answers one. */
+  get replyToStoryId(): number | undefined {
+    const header = this.replyTo
+
+    return header?._ === 'messageReplyStoryHeader' ? header.story_id : undefined
+  }
+
+  /** Whether it sits inside a forum topic rather than in the conversation at large. */
+  get isTopicMessage(): boolean {
+    const header = this.replyTo
+
+    return header?._ === 'messageReplyHeader' && header.forum_topic === true
   }
 
   /**
@@ -306,6 +386,98 @@ export class MessageView {
   /** The animation played when it arrived, where one was chosen. */
   get effectId(): bigint | undefined {
     return this.raw._ === 'message' ? this.raw.effect : undefined
+  }
+
+  /**
+   * Which conversation it is filed under in saved messages.
+   *
+   * Present when the message was read out of saved messages, where one dialog
+   * holds messages from many conversations and this is the one it came from.
+   */
+  get savedPeer(): PeerRef | undefined {
+    return this.raw._ === 'messageEmpty' ? undefined : peerRefOf(this.raw.saved_peer_id)
+  }
+
+  /** How many boosts the sender had applied to the conversation, where it counts them. */
+  get senderBoostCount(): number | undefined {
+    return this.raw._ === 'message' ? this.raw.from_boosts_applied : undefined
+  }
+
+  /** The business bot it was sent through, where it was sent through one. */
+  get viaBusinessBotId(): bigint | undefined {
+    return this.raw._ === 'message' ? this.raw.via_business_bot_id : undefined
+  }
+
+  /**
+   * Why it is withheld, and where.
+   *
+   * Each reason names a platform and a region. A client is expected to hide the
+   * message where a reason applies to it, which is a decision only the client
+   * can make.
+   */
+  get restrictions(): readonly TypeRestrictionReason[] | undefined {
+    return this.raw._ === 'message' ? this.raw.restriction_reason : undefined
+  }
+
+  /** The quick-reply shortcut it belongs to, where it was sent as part of one. */
+  get quickReplyShortcutId(): number | undefined {
+    return this.raw._ === 'message' ? this.raw.quick_reply_shortcut_id : undefined
+  }
+
+  /** What was paid to send it, in stars, where sending it cost something. */
+  get paidMessageStars(): bigint | undefined {
+    return this.raw._ === 'message' ? this.raw.paid_message_stars : undefined
+  }
+
+  /** The terms it was suggested under, where it is a suggested post. */
+  get suggestedPost(): TypeSuggestedPost | undefined {
+    return this.raw._ === 'message' ? this.raw.suggested_post : undefined
+  }
+
+  /**
+   * What a suggested post was paid in, where one was paid for.
+   *
+   * The schema carries this as two flags that are not both set. Reading them as
+   * one answer is the difference between asking what it was paid in and asking
+   * two questions whose combination has no meaning.
+   */
+  get suggestedPostPaidIn(): 'stars' | 'ton' | undefined {
+    if (this.raw._ !== 'message') return undefined
+    if (this.raw.paid_suggested_post_stars === true) return 'stars'
+
+    return this.raw.paid_suggested_post_ton === true ? 'ton' : undefined
+  }
+
+  /** How often a scheduled message repeats, in seconds, where it repeats. */
+  get scheduleRepeatPeriod(): number | undefined {
+    return this.raw._ === 'message' ? this.raw.schedule_repeat_period : undefined
+  }
+
+  /** Whether a video on it is still being processed and is not yet playable. */
+  get isVideoProcessing(): boolean {
+    return this.raw._ === 'message' ? this.raw.video_processing_pending === true : false
+  }
+
+  /** Until when delivery of it should be reported, where a report was paid for. */
+  get reportDeliveryUntil(): number | undefined {
+    return this.raw._ === 'message' ? this.raw.report_delivery_until_date : undefined
+  }
+
+  /** The language a summary of it was made from, where one was made. */
+  get summaryFromLanguage(): string | undefined {
+    return this.raw._ === 'message' ? this.raw.summary_from_language : undefined
+  }
+
+  /**
+   * Whether it can be reacted to, where the message says.
+   *
+   * Only a service message carries this. An ordinary message does not say —
+   * whether a reaction is allowed depends on the conversation's settings rather
+   * than on anything the message holds — so the answer there is `undefined`
+   * rather than a guess.
+   */
+  get reactionsArePossible(): boolean | undefined {
+    return this.raw._ === 'messageService' ? this.raw.reactions_are_possible === true : undefined
   }
 
   /**

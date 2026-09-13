@@ -369,3 +369,182 @@ describe('the shapes that are not the common one', () => {
     expect(new MessageView(direct).chat).toEqual({ kind: 'user', id: 12n })
   })
 })
+
+describe('what the reply header carries besides a number', () => {
+  const withQuote: Message = {
+    ...ORDINARY,
+    reply_to: {
+      _: 'messageReplyHeader',
+      reply_to_msg_id: 70,
+      reply_to_peer_id: { _: 'peerChannel', channel_id: 91n },
+      reply_to_top_id: 12,
+      quote_text: 'the part being answered',
+      forum_topic: true,
+    },
+  }
+
+  it('names the conversation an answer crosses into', () => {
+    expect(new MessageView(withQuote).replyToPeer).toEqual({ kind: 'channel', id: 91n })
+    expect(new MessageView(ORDINARY).replyToPeer).toBeUndefined()
+  })
+
+  it('names the thread the answer sits under', () => {
+    expect(new MessageView(withQuote).replyToTopId).toBe(12)
+    expect(new MessageView(ORDINARY).replyToTopId).toBeUndefined()
+  })
+
+  it('hands back the quoted part rather than a range into a message that may have changed', () => {
+    expect(new MessageView(withQuote).quote).toBe('the part being answered')
+    expect(new MessageView(ORDINARY).quote).toBeUndefined()
+  })
+
+  it('knows a message inside a forum topic', () => {
+    expect(new MessageView(withQuote).isTopicMessage).toBe(true)
+    expect(new MessageView(ORDINARY).isTopicMessage).toBe(false)
+    expect(new MessageView(EMPTY).isTopicMessage).toBe(false)
+  })
+
+  it('names the story an answer is to', () => {
+    const toStory: Message = {
+      ...ORDINARY,
+      reply_to: { _: 'messageReplyStoryHeader', peer: { _: 'peerUser', user_id: 8n }, story_id: 3 },
+    }
+
+    expect(new MessageView(toStory).replyToStoryId).toBe(3)
+    expect(new MessageView(ORDINARY).replyToStoryId).toBeUndefined()
+    // A reply to a story is not a reply to a message, and neither reading
+    // borrows the other's answer.
+    expect(new MessageView(toStory).replyToPeer).toBeUndefined()
+    expect(new MessageView(toStory).quote).toBeUndefined()
+  })
+})
+
+describe('how a message got here, and whether it can leave', () => {
+  it('separates a channel putting a post in its group from a person forwarding it', () => {
+    // Both carry a forward header. Only the automatic one names where the copy
+    // was saved from.
+    const automatic: Message = {
+      ...ORDINARY,
+      fwd_from: {
+        _: 'messageFwdHeader',
+        date: 1_699_000_000,
+        saved_from_peer: { _: 'peerChannel', channel_id: 55n },
+        saved_from_msg_id: 4,
+      },
+    }
+    const byHand: Message = {
+      ...ORDINARY,
+      fwd_from: { _: 'messageFwdHeader', date: 1_699_000_000 },
+    }
+
+    expect(new MessageView(automatic).isAutomaticForward).toBe(true)
+    expect(new MessageView(byHand).isAutomaticForward).toBe(false)
+    expect(new MessageView(ORDINARY).isAutomaticForward).toBe(false)
+  })
+
+  it('refuses forwarding for a protected message and for the forms with nothing to forward', () => {
+    const protectedMessage: Message = { ...ORDINARY, noforwards: true }
+
+    expect(new MessageView(ORDINARY).canBeForwarded).toBe(true)
+    expect(new MessageView(protectedMessage).canBeForwarded).toBe(false)
+    expect(new MessageView(SERVICE).canBeForwarded).toBe(false)
+    expect(new MessageView(EMPTY).canBeForwarded).toBe(false)
+  })
+})
+
+describe('the fields a message carries that a reader rarely needs but cannot reach otherwise', () => {
+  const loaded: Message = {
+    ...ORDINARY,
+    saved_peer_id: { _: 'peerUser', user_id: 31n },
+    from_boosts_applied: 4,
+    via_business_bot_id: 77n,
+    restriction_reason: [
+      { _: 'restrictionReason', platform: 'ios', reason: 'porn', text: 'hidden' },
+    ],
+    quick_reply_shortcut_id: 6,
+    paid_message_stars: 25n,
+    schedule_repeat_period: 86_400,
+    video_processing_pending: true,
+    report_delivery_until_date: 1_700_100_000,
+    summary_from_language: 'de',
+  }
+
+  it('answers each of them from the message alone', () => {
+    const message = new MessageView(loaded)
+
+    expect(message.savedPeer).toEqual({ kind: 'user', id: 31n })
+    expect(message.senderBoostCount).toBe(4)
+    expect(message.viaBusinessBotId).toBe(77n)
+    expect(message.restrictions).toBe(loaded.restriction_reason)
+    expect(message.quickReplyShortcutId).toBe(6)
+    expect(message.paidMessageStars).toBe(25n)
+    expect(message.scheduleRepeatPeriod).toBe(86_400)
+    expect(message.isVideoProcessing).toBe(true)
+    expect(message.reportDeliveryUntil).toBe(1_700_100_000)
+    expect(message.summaryFromLanguage).toBe('de')
+  })
+
+  it('says nothing where the message says nothing', () => {
+    const message = new MessageView(ORDINARY)
+
+    expect(message.savedPeer).toBeUndefined()
+    expect(message.senderBoostCount).toBeUndefined()
+    expect(message.viaBusinessBotId).toBeUndefined()
+    expect(message.restrictions).toBeUndefined()
+    expect(message.quickReplyShortcutId).toBeUndefined()
+    expect(message.paidMessageStars).toBeUndefined()
+    expect(message.scheduleRepeatPeriod).toBeUndefined()
+    expect(message.isVideoProcessing).toBe(false)
+    expect(message.reportDeliveryUntil).toBeUndefined()
+    expect(message.summaryFromLanguage).toBeUndefined()
+  })
+
+  it('says nothing for the forms that cannot carry any of them', () => {
+    // These are all on the ordinary constructor. The other two answer no rather
+    // than inheriting a default meant for a message that could have them.
+    for (const message of [new MessageView(SERVICE), new MessageView(EMPTY)]) {
+      expect(message.isVideoProcessing).toBe(false)
+      expect(message.senderBoostCount).toBeUndefined()
+      expect(message.quickReplyShortcutId).toBeUndefined()
+      expect(message.suggestedPost).toBeUndefined()
+      expect(message.suggestedPostPaidIn).toBeUndefined()
+      expect(message.restrictions).toBeUndefined()
+    }
+  })
+
+  it('files a service message under a saved conversation too', () => {
+    const saved: MessageService = { ...SERVICE, saved_peer_id: { _: 'peerChat', chat_id: 14n } }
+
+    expect(new MessageView(saved).savedPeer).toEqual({ kind: 'chat', id: 14n })
+  })
+
+  it('reads a suggested post and what it was paid in', () => {
+    const terms = { _: 'suggestedPost', schedule_date: 1_700_200_000 } as const
+    const inStars: Message = { ...ORDINARY, suggested_post: terms, paid_suggested_post_stars: true }
+    const inTon: Message = { ...ORDINARY, suggested_post: terms, paid_suggested_post_ton: true }
+
+    expect(new MessageView(inStars).suggestedPost).toBe(terms)
+    expect(new MessageView(inStars).suggestedPostPaidIn).toBe('stars')
+    expect(new MessageView(inTon).suggestedPostPaidIn).toBe('ton')
+    expect(new MessageView(ORDINARY).suggestedPost).toBeUndefined()
+    expect(new MessageView(ORDINARY).suggestedPostPaidIn).toBeUndefined()
+
+    // A message carrying some other optional structure is still not a
+    // suggested post.
+    const checked: Message = { ...ORDINARY, factcheck: { _: 'factCheck', hash: 3n } }
+
+    expect(new MessageView(checked).suggestedPost).toBeUndefined()
+  })
+
+  it('answers whether reactions are possible only where the message says', () => {
+    // The flag is on the service constructor alone. An ordinary message does
+    // not carry it, and answering false there would be a guess presented as a
+    // fact.
+    const open: MessageService = { ...SERVICE, reactions_are_possible: true }
+
+    expect(new MessageView(open).reactionsArePossible).toBe(true)
+    expect(new MessageView(SERVICE).reactionsArePossible).toBe(false)
+    expect(new MessageView(ORDINARY).reactionsArePossible).toBeUndefined()
+    expect(new MessageView(EMPTY).reactionsArePossible).toBeUndefined()
+  })
+})
