@@ -705,3 +705,85 @@ describe('the payload an event carries', () => {
     expect(event.date).toBeUndefined()
   })
 })
+
+describe('somebody joining, leaving or being promoted', () => {
+  it('reads every constructor Telegram kept for it as one kind', () => {
+    // Seven constructors for one question: Telegram kept the basic-group forms
+    // when it added the ones carrying a before and an after, and a handler
+    // watching membership wants all of them.
+    for (const name of [
+      'updateChatParticipant',
+      'updateChannelParticipant',
+      'updateChatParticipants',
+      'updateChatParticipantAdd',
+      'updateChatParticipantDelete',
+      'updateChatParticipantAdmin',
+      'updateChatParticipantRank',
+    ]) {
+      expect(UPDATE_EVENTS[name]).toBe('mtproto:membership')
+    }
+  })
+
+  it('names the conversation the change happened in', () => {
+    const inChannel = normalizeUpdate({
+      _: 'updateChannelParticipant',
+      channel_id: 55n,
+      date: 0,
+      actor_id: 9n,
+      user_id: 42n,
+    })
+    const inGroup = normalizeUpdate({
+      _: 'updateChatParticipant',
+      chat_id: 100n,
+      date: 0,
+      actor_id: 9n,
+      user_id: 42n,
+    })
+
+    expect(inChannel.kind).toBe('mtproto:membership')
+    expect(inChannel.chat).toEqual({ kind: 'channel', id: 55n })
+    expect(inGroup.chat).toEqual({ kind: 'chat', id: 100n })
+  })
+
+  it('says who made the change, not who it was about', () => {
+    // The member is the subject and the actor is the one responsible. Reading
+    // the member as the sender would attribute a removal to the person removed.
+    const event = normalizeUpdate({
+      _: 'updateChannelParticipant',
+      channel_id: 55n,
+      date: 0,
+      actor_id: 9n,
+      user_id: 42n,
+    })
+
+    expect(event.sender).toEqual({ kind: 'user', id: 9n })
+  })
+
+  it('leaves the actor unnamed where the constructor carries none', () => {
+    // The older forms say what changed without saying who changed it.
+    const event = normalizeUpdate({
+      _: 'updateChatParticipantAdd',
+      chat_id: 100n,
+      user_id: 42n,
+      inviter_id: 9n,
+      date: 0,
+      version: 1,
+    })
+
+    expect(event.kind).toBe('mtproto:membership')
+    expect(event.chat).toEqual({ kind: 'chat', id: 100n })
+    expect(event.sender).toBeUndefined()
+  })
+
+  it('does not read an actor off an update that is not about membership', () => {
+    // `actor_id` is read for any update carrying one, so a kind that happens to
+    // have the field must not start reporting a sender it never had.
+    const event = normalizeUpdate({
+      _: 'updateUserStatus',
+      user_id: 42n,
+      status: { _: 'userStatusOnline', expires: 0 },
+    })
+
+    expect(event.sender).toEqual({ kind: 'user', id: 42n })
+  })
+})

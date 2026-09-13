@@ -79,6 +79,11 @@ and each is the one Telegram actually specifies rather than one policy forced on
 `MemberView` reads somebody's standing, where two of the six constructors name a conversation
 rather than a person.
 
+**Membership changes arrive as events.** Somebody joining, leaving, being promoted or being
+restricted now reaches a handler as `mtproto:membership` rather than as a raw update — all seven
+constructors Telegram kept for the one question, naming the conversation it happened in and the
+account that made the change rather than the one it was about.
+
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather
 than leaving them to the caller. Both are async generators: nothing is requested until the loop

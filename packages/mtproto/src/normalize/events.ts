@@ -44,6 +44,7 @@ export const ACCOUNT_KINDS = [
   'mtproto:dialog_unpinned',
   'mtproto:folder',
   'mtproto:call',
+  'mtproto:membership',
   RAW_KIND,
 ] as const
 
@@ -82,6 +83,16 @@ export const UPDATE_EVENTS: Readonly<Record<string, MtprotoEventKind>> = {
   updateReadChannelInbox: 'mtproto:read_history',
   updateReadChannelOutbox: 'mtproto:read_history',
   updateDraftMessage: 'mtproto:draft',
+  // Somebody joining, leaving, being promoted or being restricted. Seven
+  // constructors for one question, because Telegram kept the basic-group forms
+  // when it added the ones carrying a before and an after.
+  updateChatParticipant: 'mtproto:membership',
+  updateChannelParticipant: 'mtproto:membership',
+  updateChatParticipants: 'mtproto:membership',
+  updateChatParticipantAdd: 'mtproto:membership',
+  updateChatParticipantDelete: 'mtproto:membership',
+  updateChatParticipantAdmin: 'mtproto:membership',
+  updateChatParticipantRank: 'mtproto:membership',
   updateDialogPinned: 'mtproto:dialog_pinned',
   updateFolderPeers: 'mtproto:folder',
   updatePhoneCall: 'mtproto:call',

@@ -228,7 +228,13 @@ function senderOf(update: TlValue): PeerRef | undefined {
     if (userId !== undefined) return { kind: 'user', id: userId }
   }
 
-  return undefined
+  // A membership change names who made it rather than who it is about: the
+  // member is the subject, and the actor is the one who promoted, removed or
+  // invited them. Reading `user_id` here would report the person affected as
+  // the person responsible.
+  const actor = readBigInt(update['actor_id'])
+
+  return actor === undefined ? undefined : { kind: 'user', id: actor }
 }
 
 /** Read a `Peer`, whichever of the three it is. */
