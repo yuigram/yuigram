@@ -127,6 +127,33 @@ describe('the entry point', () => {
     expect(message?.chat).toEqual({ kind: 'user', id: 2n })
   })
 
+  it('offers the join between what a message names and who the answer described', () => {
+    expect(typeof yuigram.UserView).toBe('function')
+    expect(typeof yuigram.ChatView).toBe('function')
+    expect(typeof yuigram.PeerIndex).toBe('function')
+    expect(typeof yuigram.readUser).toBe('function')
+    expect(typeof yuigram.readChat).toBe('function')
+    expect(typeof yuigram.readPeers).toBe('function')
+
+    const people = yuigram.readPeers({
+      users: [{ _: 'user', id: 2n, first_name: 'Ada' }],
+      chats: [
+        {
+          _: 'chat',
+          id: 3n,
+          title: 'Group',
+          photo: { _: 'chatPhotoEmpty' },
+          participants_count: 2,
+          date: 0,
+          version: 1,
+        },
+      ],
+    })
+
+    expect(people.name({ kind: 'user', id: 2n })).toBe('Ada')
+    expect(people.name({ kind: 'chat', id: 3n })).toBe('Group')
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)

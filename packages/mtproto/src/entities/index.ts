@@ -13,3 +13,13 @@
  */
 
 export { type MessageForm, MessageView, readMessage, sameMessage } from './message.js'
+export {
+  type ChatForm,
+  ChatView,
+  type PeerBearing,
+  PeerIndex,
+  readChat,
+  readPeers,
+  readUser,
+  UserView,
+} from './peer.js'

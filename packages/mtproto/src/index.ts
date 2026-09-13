@@ -15,8 +15,18 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
-export type { MessageForm } from './entities/index.js'
-export { MessageView, readMessage, sameMessage } from './entities/index.js'
+export type { ChatForm, MessageForm, PeerBearing } from './entities/index.js'
+export {
+  ChatView,
+  MessageView,
+  PeerIndex,
+  readChat,
+  readMessage,
+  readPeers,
+  readUser,
+  sameMessage,
+  UserView,
+} from './entities/index.js'
 export type {
   DownloadOutcome,
   DownloadRequest,
