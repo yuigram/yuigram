@@ -22,7 +22,7 @@ import { inputChannel, inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import type { NormalizedUpdate } from './normalize.js'
-import { type SentMessage, sentMessage } from './sent.js'
+import { randomId, type SentMessage, sentMessage } from './sent.js'
 
 /** Which of the two media a message can carry a file under. */
 type MediaKind = 'document' | 'photo'
@@ -53,16 +53,6 @@ export interface UpdateActions {
   edit(text: string): Promise<TlValue>
   delete(): Promise<TlValue>
   download(): Promise<Uint8Array>
-}
-
-/**
- * Read a signed 64-bit identifier out of randomness.
- *
- * Telegram deduplicates a send by this, so it has to differ between calls and
- * must not be a counter that starts again when the process does.
- */
-function randomId(random: (length: number) => Uint8Array): bigint {
-  return new DataView(random(8).buffer as ArrayBuffer).getBigInt64(0, true)
 }
 
 /**

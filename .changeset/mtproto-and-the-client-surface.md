@@ -52,6 +52,14 @@ on Bun, Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webh
 to serve. `docs/runtimes.md` has the matrix, says which cells were executed and which were only
 reasoned about, and records what MTProto would still need to run in a browser.
 
+**Saying something.** An account can now start a conversation rather than only answer one.
+`sendText`, `sendMedia`, `editMessage`, `deleteMessages`, `forwardMessages`, `react`,
+`pinMessage`, `readHistory`, `setTyping` and `getMessages` sit on `Account`, take a name or a
+reference, and accept formatted text as readily as plain — so a bold message is one call rather
+than a string and a list of ranges kept in step by hand. The deduplication key every send needs
+is drawn rather than left to the caller, and where Telegram splits a method in two for channels
+the right one is chosen from the conversation.
+
 **Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
 page at a time as one sequence, working out the offsets — three fields that have to agree — rather
 than leaving them to the caller. Both are async generators: nothing is requested until the loop

@@ -189,6 +189,21 @@ describe('the entry point', () => {
     expect(row?.unreadCount).toBe(1)
   })
 
+  it('offers the operations an account performs on a conversation of its choosing', () => {
+    // Answering an update already worked. Starting a conversation is what was
+    // missing, and it is the most-used thing an account does.
+    expect(typeof yuigram.sendText).toBe('function')
+    expect(typeof yuigram.sendMedia).toBe('function')
+    expect(typeof yuigram.editMessage).toBe('function')
+    expect(typeof yuigram.deleteMessages).toBe('function')
+    expect(typeof yuigram.forwardMessages).toBe('function')
+    expect(typeof yuigram.react).toBe('function')
+    expect(typeof yuigram.pinMessage).toBe('function')
+    expect(typeof yuigram.readHistory).toBe('function')
+    expect(typeof yuigram.setTyping).toBe('function')
+    expect(typeof yuigram.getMessages).toBe('function')
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)

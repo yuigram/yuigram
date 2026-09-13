@@ -49,6 +49,26 @@ export type { FormattedText, Markup } from './format/index.js'
 export { fromHtml, fromMarkdown, toHtml, toMarkdown } from './format/index.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
+export type {
+  EditOptions,
+  ForwardOptions,
+  MessageBody,
+  ReactionInput,
+  Sending,
+  SendOptions,
+} from './messaging/send.js'
+export {
+  deleteMessages,
+  editMessage,
+  forwardMessages,
+  getMessages,
+  pinMessage,
+  react,
+  readHistory,
+  sendMedia,
+  sendText,
+  setTyping,
+} from './messaging/send.js'
 export { inputChannel, inputPeerFromMessage } from './network/peers.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export type {

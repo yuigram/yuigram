@@ -57,6 +57,18 @@ const CARRIES_MESSAGE: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * A deduplication key for a send.
+ *
+ * Telegram matches a send to its answer by this and drops a repeat carrying one
+ * it has already seen, so it has to differ between calls and must not be a
+ * counter that starts again when the process does. It lives beside
+ * {@link sentMessage} because that is the thing which matches on it.
+ */
+export function randomId(random: (length: number) => Uint8Array): bigint {
+  return new DataView(random(8).buffer as ArrayBuffer).getBigInt64(0, true)
+}
+
+/**
  * Find the message a send produced in the answer it produced.
  *
  * The random number is the one the send carried. Telegram deduplicates by it

@@ -57,7 +57,31 @@ import type { DialogView } from './entities/dialog.js'
 import type { MessageView } from './entities/message.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
-import type { TypeInputPeer } from './generated/api/types/index.js'
+import type {
+  TypeInputMedia,
+  TypeInputPeer,
+  TypeSendMessageAction,
+} from './generated/api/types/index.js'
+import type {
+  EditOptions,
+  ForwardOptions,
+  MessageBody,
+  ReactionInput,
+  Sending,
+  SendOptions,
+} from './messaging/send.js'
+import {
+  deleteMessages,
+  editMessage,
+  forwardMessages,
+  getMessages,
+  pinMessage,
+  react,
+  readHistory,
+  sendMedia,
+  sendText,
+  setTyping,
+} from './messaging/send.js'
 import type { Connections } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration, DcDirectory } from './network/dc.js'
@@ -66,7 +90,7 @@ import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import type { PeerRef } from './normalize/index.js'
-import { type MtprotoContext, mtprotoContext } from './normalize/index.js'
+import { type MtprotoContext, mtprotoContext, type SentMessage } from './normalize/index.js'
 import type { WalkOptions } from './paging/walk.js'
 import { walkDialogs, walkHistory } from './paging/walk.js'
 import type { ClientInfo } from './session/connection.js'
@@ -671,6 +695,144 @@ export class Account<Ext = unknown> {
     options?: WalkOptions,
   ): AsyncGenerator<MessageView, void, undefined> {
     return walkHistory(this, peer, options)
+  }
+
+  /**
+   * What the operations below need from this account.
+   *
+   * Assembled rather than making the randomness public: it is the account's,
+   * and nothing outside should be drawing from it.
+   */
+  get #sending(): Sending {
+    return {
+      api: this.#api,
+      resolve: async (peer) => await this.resolve(peer),
+      random: this.#options.random ?? randomBytes,
+    }
+  }
+
+  /**
+   * Say something in a conversation.
+   *
+   * ```ts
+   * await account.sendText('@someone', 'hello')
+   * await account.sendText(chat, fromHtml`<b>hello</b>`, { replyTo: 42 })
+   * ```
+   *
+   * Takes formatted text as readily as plain, so writing a bold message is one
+   * call rather than a string and a list of ranges kept in step by hand.
+   */
+  async sendText(
+    peer: string | PeerRef,
+    body: MessageBody,
+    options?: SendOptions,
+  ): Promise<SentMessage> {
+    return await sendText(this.#sending, peer, body, options)
+  }
+
+  /**
+   * Send something that is not only text.
+   *
+   * The media comes from the helpers in this package — one already on Telegram,
+   * or one {@link Account.upload} put there first.
+   */
+  async sendMedia(
+    peer: string | PeerRef,
+    media: TypeInputMedia,
+    body?: MessageBody,
+    options?: SendOptions,
+  ): Promise<SentMessage> {
+    return await sendMedia(this.#sending, peer, media, body, options)
+  }
+
+  /** Change a message already sent. */
+  async editMessage(
+    peer: string | PeerRef,
+    id: number,
+    body?: MessageBody,
+    options?: EditOptions,
+  ): Promise<SentMessage> {
+    return await editMessage(this.#sending, peer, id, body, options)
+  }
+
+  /**
+   * Remove messages, for everybody unless told otherwise.
+   *
+   * Telegram addresses this differently for a channel than for anything else.
+   * Which of the two is a property of the conversation rather than of the
+   * request, so it is worked out here.
+   */
+  async deleteMessages(
+    peer: string | PeerRef,
+    ids: readonly number[],
+    options?: { readonly revoke?: boolean },
+  ): Promise<void> {
+    await deleteMessages(this.#sending, peer, ids, options)
+  }
+
+  /** Copy messages from one conversation into another. */
+  async forwardMessages(
+    request: {
+      readonly from: string | PeerRef
+      readonly to: string | PeerRef
+      readonly ids: readonly number[]
+    },
+    options?: ForwardOptions,
+  ): Promise<void> {
+    await forwardMessages(this.#sending, request, options)
+  }
+
+  /**
+   * React to a message, or take a reaction back.
+   *
+   * ```ts
+   * await account.react(chat, 42, '👍')
+   * await account.react(chat, 42, undefined)
+   * ```
+   */
+  async react(
+    peer: string | PeerRef,
+    id: number,
+    reaction: ReactionInput,
+    options?: { readonly big?: boolean },
+  ): Promise<void> {
+    await react(this.#sending, peer, id, reaction, options)
+  }
+
+  /** Pin a message in its conversation, or take the pin off. */
+  async pinMessage(
+    peer: string | PeerRef,
+    id: number,
+    options?: { readonly unpin?: boolean; readonly silent?: boolean; readonly bothSides?: boolean },
+  ): Promise<void> {
+    await pinMessage(this.#sending, peer, id, options)
+  }
+
+  /** Mark a conversation read, up to a message or up to the newest. */
+  async readHistory(peer: string | PeerRef, upTo?: number): Promise<void> {
+    await readHistory(this.#sending, peer, upTo)
+  }
+
+  /**
+   * Show that this account is doing something in a conversation.
+   *
+   * Typing unless told otherwise. The indicator lapses after a few seconds, so
+   * anything long-running says so again while it works.
+   */
+  async setTyping(
+    peer: string | PeerRef,
+    action?: TypeSendMessageAction,
+    options?: { readonly topicId?: number },
+  ): Promise<void> {
+    await setTyping(this.#sending, peer, action, options)
+  }
+
+  /** Fetch messages by number, read rather than raw. */
+  async getMessages(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<readonly MessageView[]> {
+    return await getMessages(this.#sending, peer, ids)
   }
 
   // ---------------------------------------------------------------------
