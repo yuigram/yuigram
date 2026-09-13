@@ -117,11 +117,13 @@ function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate 
 
   return {
     kind,
-    chat: peerOf(message?.peer_id),
+    chat: peerRefOf(message?.peer_id),
     // Outgoing messages carry no author: the account itself sent them, and the
     // account is not something an update needs to name.
     sender:
-      message === undefined || message._ === 'messageEmpty' ? undefined : peerOf(message.from_id),
+      message === undefined || message._ === 'messageEmpty'
+        ? undefined
+        : peerRefOf(message.from_id),
     message,
     messageIds: undefined,
     // Only an ordinary message carries text. A service message describes
@@ -187,14 +189,14 @@ function fromShortMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUp
  * to find them.
  */
 function chatOf(update: TlValue): PeerRef | undefined {
-  const direct = peerOf(update['peer'])
+  const direct = peerRefOf(update['peer'])
   if (direct !== undefined) return direct
 
   // A dialog names its peer through a wrapper, which also has a form standing
   // for a folder rather than a conversation.
   const dialog = asValue(update['peer'])
   if (dialog !== undefined) {
-    const inner = peerOf(dialog['peer'])
+    const inner = peerRefOf(dialog['peer'])
     if (inner !== undefined) return inner
   }
 
@@ -218,7 +220,7 @@ function chatOf(update: TlValue): PeerRef | undefined {
  * whoever the update happens to be about.
  */
 function senderOf(update: TlValue): PeerRef | undefined {
-  const from = peerOf(update['from_id'])
+  const from = peerRefOf(update['from_id'])
   if (from !== undefined) return from
 
   if (update._ === 'updateUserTyping' || update._ === 'updateUserStatus') {
@@ -230,7 +232,15 @@ function senderOf(update: TlValue): PeerRef | undefined {
 }
 
 /** Read a `Peer`, whichever of the three it is. */
-function peerOf(value: unknown): PeerRef | undefined {
+/**
+ * Which peer a `peerUser` / `peerChat` / `peerChannel` names.
+ *
+ * Absent rather than raised for anything else, because a reader asking what
+ * peer a field names is usually reading a field that may not be there. The
+ * raising form lives beside the reference builders, where naming nothing is a
+ * caller's mistake rather than an answer's shape.
+ */
+export function peerRefOf(value: unknown): PeerRef | undefined {
   const peer = asValue(value)
   if (peer === undefined) return undefined
 

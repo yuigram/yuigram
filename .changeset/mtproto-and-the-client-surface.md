@@ -30,6 +30,14 @@ from the message they arrived in, and delivery nodes behind an explicit opt-in �
 recognised by the address list rather than by whatever redirected to it, holds an authorization
 good for nothing but ranges, and is asked for nothing else.
 
+**Reading a message.** A message arrives as three constructors behind one union — ordinary,
+service, and an empty hole where one the account cannot see used to be — with most fields
+optional behind that. `readMessage` returns a view that answers the questions directly, over the
+value it was handed rather than a copy of it, so nothing is transformed on the way in and the
+message stays reachable as `raw`. The view reaches no account and no network: everything it
+answers is a function of the message alone, which is what makes it safe to build one from
+anything that arrived, on any account.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones

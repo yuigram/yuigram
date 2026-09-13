@@ -108,6 +108,25 @@ describe('the entry point', () => {
     expect(typeof yuigram.inputChannel).toBe('function')
   })
 
+  it('offers the reader that turns a message into questions it can answer', () => {
+    // A message arrives as three constructors behind a union, and reading one
+    // through a deep path is how this stayed out of the installed package.
+    expect(typeof yuigram.MessageView).toBe('function')
+    expect(typeof yuigram.readMessage).toBe('function')
+    expect(typeof yuigram.sameMessage).toBe('function')
+
+    const message = yuigram.readMessage({
+      _: 'message',
+      id: 1,
+      peer_id: { _: 'peerUser', user_id: 2n },
+      message: 'hi',
+      date: 0,
+    })
+
+    expect(message?.text).toBe('hi')
+    expect(message?.chat).toEqual({ kind: 'user', id: 2n })
+  })
+
   it('paces with the published Telegram limits by default', () => {
     expect(yuigram.DEFAULT_GLOBAL_PER_SECOND).toBe(30)
     expect(yuigram.DEFAULT_CHAT_PER_SECOND).toBe(1)
