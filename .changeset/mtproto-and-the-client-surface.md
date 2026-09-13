@@ -38,6 +38,12 @@ message stays reachable as `raw`. The view reaches no account and no network: ev
 answers is a function of the message alone, which is what makes it safe to build one from
 anything that arrived, on any account.
 
+**Formatting.** MTProto has no `parse_mode`: a message is plain text plus a list of ranges, and
+producing the ranges is the client's job. `fromHtml` and `fromMarkdown` read markup into text and
+entities, `toHtml` and `toMarkdown` write it back, and both parsers are in the package rather than
+in a dependency. Used as template tags they escape what is interpolated and leave the markup
+alone, so a user called `<b>` cannot format the message they appear in.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones

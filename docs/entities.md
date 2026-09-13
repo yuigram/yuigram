@@ -148,7 +148,47 @@ Where the schema asks a question badly, the view asks a better one rather than m
 
 ---
 
-## 4. What is not modelled yet
+## 4. Formatting
+
+A message's text and its formatting are separate things: the text is plain, and the ranges within
+it are a list of entities. The Bot API takes markup and a `parse_mode` and does this on the
+server; MTProto has no such field, so a client that wants bold text computes the ranges itself.
+
+`fromHtml` and `fromMarkdown` read markup into `{ text, entities }`; `toHtml` and `toMarkdown`
+write it back. Both are in this repository, with no dependency added.
+
+```ts
+const body = fromHtml`Hello, <b>${name}</b>`
+
+await account.call(sendMessage({ peer, ...body, random_id }))
+```
+
+Called as template tags they escape what is interpolated and leave the literal parts alone. The
+markup is written by the developer and the values come from strangers, and that is the order in
+which a user called `<b>` stops being able to format the message they appear in.
+
+Offsets are UTF-16 code units, which is what a JavaScript string index is, so
+`text.slice(offset, offset + length)` selects the range an entity covers with no conversion.
+
+Three decisions worth knowing:
+
+- **The Markdown dialect is MarkdownV2**, not the CommonMark-flavoured one the entity
+  documentation shows. Yuigram is one framework, and `md` should not mean `*bold*` on one client
+  and `**bold**` on another; text escaped for the Bot API side is safe here, and the reverse.
+- **Markup that is not quite markup stays in the text.** `2 < 3 and 4 > 3` is a message, an
+  unclosed tag runs to the end, and a marker that never closes is a character. Refusing any of
+  these would break messages that have nothing to do with formatting.
+- **A collapsed blockquote does not survive `toMarkdown`.** The marker for the collapsed form in
+  this dialect could not be confirmed against Telegram's documentation, and guessing would
+  produce messages that look right locally and wrong on a phone. `toHtml` keeps the flag.
+
+Entities the server finds on its own — mentions, hashtags, bare links, phone numbers, bank cards
+— are written as plain text in both directions, because marking them up changes nothing about
+the message.
+
+---
+
+## 5. What is not modelled yet
 
 Everything below is reachable through `raw` and through the generated method surface today.
 Listing it here is a statement of what has no reading layer, not of what is impossible.
@@ -158,15 +198,14 @@ Ordered by how often a program meets it.
 | Area | What it covers | Notes |
 | --- | --- | --- |
 | **Media** | The `MessageMedia` union: photos, documents and their audio/video/voice/sticker/animation specialisations, web pages, polls, contacts, locations and venues, dice, games, invoices, paid media, stories as media, to-do lists | The largest remaining group, and the one a message reader hits first. Sending media is already served by the input helpers in `files/media.ts`; this is the reading half. |
-| **Formatting** | `MessageEntity` and the offset arithmetic over UTF-16 code units that Telegram's offsets are measured in | Needs a parser and a serializer, both in-repo under the zero-dependency policy. |
-| **Conversation lists** | `Dialog`, `DraftMessage`, `ForumTopic` | Paging over these is a separate question — see §5. |
+| **Conversation lists** | `Dialog`, `DraftMessage`, `ForumTopic` | Paging over these is a separate question — see §6. |
 | **Membership** | `ChatMember`, admin and banned rights, invite links, bot info | Rights are two bitfield-like structures whose absent fields mean different things in each. |
 | **Reactions** | `MessageReactions`, per-reaction counts, who reacted | `MessageView.reactions` returns the raw structure today. |
 | **Full profiles** | `UserFull`, `ChatFull`, `ChannelFull` | Distinct from `User`/`Chat`: fetched deliberately, much larger, and carrying settings rather than identity. |
 | **Stories** | Stories, their views, interactive elements, stealth mode | Depends on the story methods, which are not surfaced. |
 | **Premium and payments** | Stars transactions, gifts, boosts, business accounts and connections | Same: the reading layer is worth building after the calls it reads the answers of. |
 
-### 4.1 Modelled differently, on purpose
+### 5.1 Modelled differently, on purpose
 
 These have no entity class and are not gaps.
 
@@ -179,7 +218,7 @@ These have no entity class and are not gaps.
 
 ---
 
-## 5. What the entity layer does not decide
+## 6. What the entity layer does not decide
 
 **Paging.** Iterating dialogs or history is not an entity question. `nextDialogs` advances an
 offset from an answer; whether Yuigram grows async iterators over that is a separate decision
@@ -194,7 +233,7 @@ again, and asking is a call.
 
 ---
 
-## 6. Adding an entity
+## 7. Adding an entity
 
 The pattern, in order:
 
