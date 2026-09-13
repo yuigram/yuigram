@@ -358,14 +358,11 @@ describe('writing markup back', () => {
     expect(toMarkdown(wrong)).toBe('short')
   })
 
-  it('writes a collapsed quote as an ordinary one in Markdown, and keeps it in HTML', () => {
-    // The dialect's marker for a collapsed quote could not be confirmed against
-    // Telegram's own documentation, and guessing would produce messages that
-    // look right here and wrong on a phone. HTML keeps the flag.
+  it('writes a collapsed quote with its expandability mark in both dialects', () => {
     const read = fromHtml('<blockquote expandable>said</blockquote>')
 
     expect(toHtml(read)).toBe('<blockquote expandable>said</blockquote>')
-    expect(toMarkdown(read)).toBe('>said')
+    expect(toMarkdown(read)).toBe('>said||')
   })
 })
 
@@ -464,11 +461,13 @@ describe('the cases where a near-miss reading is still plausible', () => {
 
   it('does not let a double underscore close an italic halfway', () => {
     // Reaching a `__` while looking for the `_` that closes an italic is the
-    // one place the two markers are genuinely ambiguous.
+    // one place the two markers are genuinely ambiguous. The italic runs to the
+    // final underscore; the `__` inside it is an empty underline and is
+    // consumed, which is what this dialect does with an empty pair.
     const read = fromMarkdown('_a__b_')
 
-    expect(read.text).toBe('a__b')
-    expect(shape(read.entities)).toEqual(['Italic@0+4'])
+    expect(read.text).toBe('ab')
+    expect(shape(read.entities)).toEqual(['Italic@0+2'])
   })
 
   it('does not let a marker inside a code span close a range around it', () => {
@@ -491,18 +490,219 @@ describe('the cases where a near-miss reading is still plausible', () => {
 })
 
 describe('markers with nothing between them', () => {
-  it('leaves them in the text rather than deleting them', () => {
-    // Consuming an empty pair would delete both markers from a message that
-    // meant to say them.
-    for (const source of ['a__b', 'a**b', 'a||b']) {
-      expect(fromMarkdown(source).text).toBe(source)
+  it('consumes them, because the dialect uses an empty pair as a separator', () => {
+    // `**` is an empty bold entity, and the dialect uses one to keep two
+    // adjacent blockquotes from reading as a single quote. A reader that kept
+    // the two characters would put them in the message.
+    expect(fromMarkdown('a__b').text).toBe('ab')
+    expect(fromMarkdown('a**b').text).toBe('ab')
+    expect(fromMarkdown('a__b').entities).toEqual([])
+  })
+
+  it('leaves a marker with no closing partner alone', () => {
+    // `||` here opens a spoiler that never closes, which is not a pair at all.
+    expect(fromMarkdown('a||b').text).toBe('a||b')
+  })
+
+  it('keeps such text intact when it is written rather than parsed', () => {
+    // The dialect requires these characters to be escaped in prose, and
+    // `toMarkdown` escapes them — so text saying `a__b` survives the trip even
+    // though markup saying `a__b` means something else.
+    for (const text of ['a__b', 'a**b', '2 * 3 = 6', 'pipes || here']) {
+      expect(fromMarkdown(toMarkdown({ text, entities: [] })).text).toBe(text)
     }
   })
 
   it('still reads a real pair that follows one', () => {
     const read = fromMarkdown('a__b and *bold*')
 
-    expect(read.text).toBe('a__b and bold')
-    expect(shape(read.entities)).toEqual(['Bold@9+4'])
+    expect(read.text).toBe('ab and bold')
+    expect(shape(read.entities)).toEqual(['Bold@7+4'])
+  })
+})
+
+describe('block quotations, ordinary and expandable', () => {
+  it('reads a run of quoted lines as one quote', () => {
+    const read = fromMarkdown('>first\n>second\n>third')
+
+    expect(read.text).toBe('first\nsecond\nthird')
+    expect(read.entities).toEqual([{ _: 'messageEntityBlockquote', offset: 0, length: 18 }])
+  })
+
+  it('reads a trailing mark as the expandable form', () => {
+    // The mark is not part of what the quote says, so it comes off the text.
+    const read = fromMarkdown('>hidden below||')
+
+    expect(read.text).toBe('hidden below')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 12, collapsed: true },
+    ])
+  })
+
+  it('marks the whole run expandable from a mark on its last line only', () => {
+    const read = fromMarkdown('>one\n>two\n>three||')
+
+    expect(read.text).toBe('one\ntwo\nthree')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 13, collapsed: true },
+    ])
+  })
+
+  it('separates two adjacent quotes with an empty bold entity', () => {
+    // Without the `**` the two runs are one quote. The empty entity contributes
+    // nothing to the message and exists only to break them apart.
+    const read = fromMarkdown('>first\n**>second')
+
+    expect(read.text).toBe('first\nsecond')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 5 },
+      { _: 'messageEntityBlockquote', offset: 6, length: 6 },
+    ])
+  })
+
+  it('runs a plain quote into an expandable one', () => {
+    const read = fromMarkdown('>plain\n**>expandable||')
+
+    expect(read.text).toBe('plain\nexpandable')
+    expect(read.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 5 },
+      { _: 'messageEntityBlockquote', offset: 6, length: 10, collapsed: true },
+    ])
+  })
+
+  it('separates three in a row', () => {
+    const read = fromMarkdown('>one\n**>two\n**>three||')
+
+    expect(shape(read.entities)).toEqual(['Blockquote@0+3', 'Blockquote@4+3', 'Blockquote@8+5'])
+    expect(read.entities[2]).toMatchObject({ collapsed: true })
+  })
+
+  it('does not merge two quotes separated by ordinary text', () => {
+    const read = fromMarkdown('>one\nbetween\n>two')
+
+    expect(read.text).toBe('one\nbetween\ntwo')
+    expect(shape(read.entities)).toEqual(['Blockquote@0+3', 'Blockquote@12+3'])
+  })
+
+  it('formats inside a quote', () => {
+    const read = fromMarkdown('>said *loudly* and `in code`')
+
+    expect(read.text).toBe('said loudly and in code')
+    expect(shape(read.entities)).toEqual(['Blockquote@0+23', 'Bold@5+6', 'Code@16+7'])
+  })
+
+  it('tells the expandability mark from a spoiler that ends the line', () => {
+    // `||` closes a spoiler too. A spoiler ending the last quoted line leaves
+    // two pipes; a quote also marked expandable leaves four.
+    const spoiler = fromMarkdown('>ends with ||shh||')
+    const both = fromMarkdown('>ends with ||shh||||')
+
+    expect(spoiler.text).toBe('ends with shh')
+    expect(spoiler.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 13 },
+      { _: 'messageEntitySpoiler', offset: 10, length: 3 },
+    ])
+
+    expect(both.text).toBe('ends with shh')
+    expect(both.entities).toEqual([
+      { _: 'messageEntityBlockquote', offset: 0, length: 13, collapsed: true },
+      { _: 'messageEntitySpoiler', offset: 10, length: 3 },
+    ])
+  })
+
+  it('does not read an escaped mark as expandability', () => {
+    const read = fromMarkdown('>ends with a pipe \\|\\|')
+
+    expect(read.text).toBe('ends with a pipe ||')
+    expect(read.entities).toEqual([{ _: 'messageEntityBlockquote', offset: 0, length: 19 }])
+  })
+
+  it('counts offsets in UTF-16 code units inside a quote', () => {
+    const read = fromMarkdown('>🎉 *after*||')
+
+    expect(read.text).toBe('🎉 after')
+    // The emoji is two code units, so the bold range starts at 3 and not at 2.
+    expect(shape(read.entities)).toEqual(['Blockquote@0+8', 'Bold@3+5'])
+    expect(read.text.slice(3, 8)).toBe('after')
+  })
+
+  it('writes both forms back, and reads them again unchanged', () => {
+    const sources = [
+      '>plain',
+      '>expandable||',
+      '>first\n**>second',
+      '>plain\n**>expandable||',
+      '>one\n**>two\n**>three||',
+      '>one\nbetween\n>two',
+      '>said *loudly*||',
+      '>ends with ||shh||||',
+    ]
+
+    for (const source of sources) {
+      const once = fromMarkdown(source)
+      const twice = fromMarkdown(toMarkdown(once))
+
+      expect(twice.text).toBe(once.text)
+      expect(twice.entities).toEqual(once.entities)
+    }
+  })
+
+  it('crosses between the two dialects without losing the flag', () => {
+    const fromMd = fromMarkdown('>plain\n**>hidden||')
+
+    expect(toHtml(fromMd)).toBe(
+      '<blockquote>plain</blockquote>\n<blockquote expandable>hidden</blockquote>',
+    )
+
+    const back = fromHtml(toHtml(fromMd))
+
+    expect(back.text).toBe(fromMd.text)
+    expect(back.entities).toEqual(fromMd.entities)
+    expect(toMarkdown(back)).toBe('>plain\n**>hidden||')
+  })
+
+  it('takes markup that opens a quote and never finishes it', () => {
+    // A lone `>` at the end, a mark with no quote, and a mark on a line that is
+    // not quoted at all. None of these should throw or eat the text.
+    expect(fromMarkdown('>').text).toBe('')
+    expect(fromMarkdown('text||').text).toBe('text||')
+    expect(fromMarkdown('>\n>').text).toBe('\n')
+    expect(fromMarkdown('||').text).toBe('||')
+  })
+})
+
+describe('quote shapes the dialect cannot express', () => {
+  it('puts the expandability mark on the quote that ended, before the next one opens', () => {
+    // Two quotes with nothing between them is not something the dialect can
+    // write — `**>` opens a quote only at the start of a line, and there is no
+    // line here to start. What it can still get right is whose mark is whose:
+    // the `||` belongs to the quote that just ended and has to precede the
+    // separator, or it reads as part of the one beginning.
+    const value: FormattedText = {
+      text: 'ab',
+      entities: [
+        { _: 'messageEntityBlockquote', offset: 0, length: 1, collapsed: true },
+        { _: 'messageEntityBlockquote', offset: 1, length: 1 },
+      ],
+    }
+
+    expect(toMarkdown(value)).toBe('>a||**>b')
+  })
+
+  it('writes the same pair in HTML, where it round-trips', () => {
+    // HTML has a closing tag, so the shape the other dialect cannot express is
+    // ordinary here.
+    const value: FormattedText = {
+      text: 'ab',
+      entities: [
+        { _: 'messageEntityBlockquote', offset: 0, length: 1, collapsed: true },
+        { _: 'messageEntityBlockquote', offset: 1, length: 1 },
+      ],
+    }
+
+    const written = toHtml(value)
+
+    expect(written).toBe('<blockquote expandable>a</blockquote><blockquote>b</blockquote>')
+    expect(fromHtml(written).entities).toEqual(value.entities)
   })
 })

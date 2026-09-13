@@ -42,7 +42,8 @@ anything that arrived, on any account.
 producing the ranges is the client's job. `fromHtml` and `fromMarkdown` read markup into text and
 entities, `toHtml` and `toMarkdown` write it back, and both parsers are in the package rather than
 in a dependency. Used as template tags they escape what is interpolated and leave the markup
-alone, so a user called `<b>` cannot format the message they appear in.
+alone, so a user called `<b>` cannot format the message they appear in. Block quotations are
+supported in both forms, expandable included, in both dialects and both directions.
 
 **Runtimes.** The Bot API subsystem now reaches no Node built-in at all: polling, webhooks,
 sending and files-by-`Blob` need nothing but `fetch`. One import of `node:crypto`, for the single

@@ -194,8 +194,13 @@ function takeLink(scan: Scan, markup: string, at: number): number | undefined {
  */
 function takeQuote(scan: Scan, markup: string, at: number): number | undefined {
   if (markup[at] !== '>') return undefined
-  // Only at the start of a line: a `>` mid-sentence is a greater-than sign.
-  if (at !== 0 && markup[at - 1] !== '\n') return undefined
+
+  // At the start of a line of the *message*, not of the markup. A `>` mid
+  // sentence is a greater-than sign; one that follows only markup contributing
+  // no text still opens a quote, which is what lets `**>` work — the `**` is an
+  // empty bold entity separating this quote from the one above it, and by the
+  // time it is read it has added nothing to the text.
+  if (scan.text !== '' && !scan.text.endsWith('\n')) return undefined
 
   const lines: string[] = []
   let index = at
@@ -215,12 +220,44 @@ function takeQuote(scan: Scan, markup: string, at: number): number | undefined {
     index = lineEnd + 1
   }
 
-  const inner = fromMarkdown(lines.join('\n'))
+  // A run ending with `||` is the collapsed form. The mark is not part of what
+  // the quote says, so it comes off the text rather than staying in it.
+  const { read: inner, marked } = readQuoteBody(lines.join('\n'))
   const offset = absorb(scan, inner)
 
-  scan.entities.push({ _: 'messageEntityBlockquote', offset, length: inner.text.length })
+  scan.entities.push(
+    marked
+      ? { _: 'messageEntityBlockquote', offset, length: inner.text.length, collapsed: true }
+      : { _: 'messageEntityBlockquote', offset, length: inner.text.length },
+  )
 
   return stop
+}
+
+/**
+ * Read a quote's body, and say whether the run was marked expandable.
+ *
+ * `||` also closes a spoiler, so a trailing pair is ambiguous by inspection:
+ * `>ends with ||shh||` closes a spoiler and `>hidden||` is a mark, and both end
+ * in exactly two pipes. Counting them cannot tell the two apart.
+ *
+ * What tells them apart is what the pair does. Reading the body twice — once
+ * whole, once without the final pair — answers it exactly: if dropping those
+ * two characters drops exactly `||` from the message and changes nothing else,
+ * they were text rather than markup, and text at the end of a quote is the
+ * mark. An escaped pipe never reaches this, because a body ending in an escape
+ * does not end in a pair to begin with.
+ */
+function readQuoteBody(body: string): { readonly read: FormattedText; readonly marked: boolean } {
+  const whole = fromMarkdown(body)
+
+  if (!body.endsWith('||')) return { read: whole, marked: false }
+
+  const shorter = fromMarkdown(body.slice(0, -2))
+
+  return `${shorter.text}||` === whole.text
+    ? { read: shorter, marked: true }
+    : { read: whole, marked: false }
 }
 
 /** Read a paired marker such as `*bold*`, where the content is markup too. */
@@ -232,14 +269,14 @@ function takePair(scan: Scan, markup: string, at: number): number | undefined {
     if (close === -1) continue
 
     const inner = fromMarkdown(markup.slice(at + marker.length, close))
-
-    // A pair with nothing between it formats nothing, and consuming it would
-    // delete both markers from a message that meant to say them: `a__b` is a
-    // word with two underscores in it, not an empty underline.
-    if (inner.text === '') continue
-
     const offset = absorb(scan, inner)
 
+    // A pair with nothing between it formats nothing, and the zero-length range
+    // is dropped later — but the markers are still consumed rather than left in
+    // the text. That is not a detail: the dialect separates two adjacent
+    // blockquotes with an empty bold entity, written `**`, and a reader that
+    // kept those two characters would put them in the message. Text meaning a
+    // literal `_` or `*` escapes it, which this dialect requires anyway.
     scan.entities.push({ _: kind, offset, length: inner.text.length } as TypeMessageEntity)
 
     return close + marker.length
@@ -400,20 +437,47 @@ function verbatimAt(value: FormattedText): readonly boolean[] {
   return flags
 }
 
-/** Which positions open a line that a quote covers, and so need a `>` in front. */
-function quotedLineStarts(value: FormattedText): ReadonlySet<number> {
-  const starts = new Set<number>()
+/** Where a quote puts a marker, and which one. */
+interface QuoteMarks {
+  /** Position of every line a quote covers, to the `>` (or `**>`) it opens with. */
+  readonly opens: ReadonlyMap<number, string>
+  /** Position where a collapsed quote ends, to its expandability mark. */
+  readonly marks: ReadonlyMap<number, string>
+}
 
-  for (const entity of value.entities) {
-    if (entity._ !== 'messageEntityBlockquote') continue
-    if (!usable(entity, value.text.length)) continue
+/**
+ * The markers every quote in this text needs.
+ *
+ * Three things, and only the first is obvious. Every line a quote covers opens
+ * with `>`. A collapsed quote ends with `||`. And a quote beginning where
+ * another just ended opens with `**>` instead — an empty bold entity, which
+ * contributes nothing to the message and exists only so the two do not read
+ * back as one quote.
+ */
+function quoteMarks(value: FormattedText): QuoteMarks {
+  const opens = new Map<number, string>()
+  const marks = new Map<number, string>()
+  const quotes = value.entities.filter(
+    (entity) => entity._ === 'messageEntityBlockquote' && usable(entity, value.text.length),
+  )
+  const ends = new Set(quotes.map((entity) => entity.offset + entity.length))
 
+  for (const entity of quotes) {
     for (let at = entity.offset; at < entity.offset + entity.length; at += 1) {
-      if (at === entity.offset || value.text[at - 1] === '\n') starts.add(at)
+      if (at === entity.offset || value.text[at - 1] === '\n') opens.set(at, '>')
+    }
+
+    // Adjacent either way round: ending exactly where this begins, or one
+    // character earlier with the newline that separates the lines between.
+    const abuts = ends.has(entity.offset) || ends.has(entity.offset - 1)
+
+    if (abuts) opens.set(entity.offset, '**>')
+    if (entity._ === 'messageEntityBlockquote' && entity.collapsed === true) {
+      marks.set(entity.offset + entity.length, '||')
     }
   }
 
-  return starts
+  return { opens, marks }
 }
 
 /**
@@ -424,14 +488,10 @@ function quotedLineStarts(value: FormattedText): ReadonlySet<number> {
  * which is what makes the result safe to pass back through
  * {@link fromMarkdown}.
  *
- * Two things do not survive the trip, both by choice rather than oversight.
- * Entities the server finds on its own — mentions, hashtags, bare links, phone
+ * One thing does not survive the trip, by choice rather than oversight. The
+ * entities the server finds on its own — mentions, hashtags, bare links, phone
  * numbers, bank cards — are written as plain text, because marking them up
- * would change nothing about the message. And a collapsed blockquote is written
- * as an ordinary one: this dialect's marker for the collapsed form is not
- * something the implementation could confirm against Telegram's own
- * documentation, and guessing at a marker would produce messages that look
- * right here and wrong on a phone. {@link toHtml} keeps the flag.
+ * would change nothing about the message.
  */
 export function toMarkdown(value: FormattedText): string {
   const opens = new Map<number, string[]>()
@@ -454,13 +514,16 @@ export function toMarkdown(value: FormattedText): string {
   }
 
   const verbatim = verbatimAt(value)
-  const quoted = quotedLineStarts(value)
+  const quotes = quoteMarks(value)
 
   let out = ''
 
   for (let at = 0; at <= value.text.length; at += 1) {
     out += (closes.get(at) ?? []).join('')
-    if (quoted.has(at)) out += '>'
+    // After the closing markers, so a spoiler ending the last quoted line
+    // closes before the mark that makes the quote expandable.
+    out += quotes.marks.get(at) ?? ''
+    out += quotes.opens.get(at) ?? ''
     out += (opens.get(at) ?? []).join('')
 
     if (at === value.text.length) break

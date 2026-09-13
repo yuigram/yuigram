@@ -180,9 +180,13 @@ Three decisions worth knowing:
 - **Markup that is not quite markup stays in the text.** `2 < 3 and 4 > 3` is a message, an
   unclosed tag runs to the end, and a marker that never closes is a character. Refusing any of
   these would break messages that have nothing to do with formatting.
-- **A collapsed blockquote does not survive `toMarkdown`.** The marker for the collapsed form in
-  this dialect could not be confirmed against Telegram's documentation, and guessing would
-  produce messages that look right locally and wrong on a phone. `toHtml` keeps the flag.
+- **Block quotations, in both forms.** A run of `>` lines is one quote. A run whose body ends in
+  `||` is the expandable form — the mark is not part of what the quote says, so it comes off the
+  text. Two quotes that touch are separated by `**`, an empty bold entity that contributes nothing
+  to the message and exists only so the two do not read back as one. Telling that trailing `||`
+  from a spoiler closing on the same line is done by reading the body twice, because counting
+  pipes cannot: `>ends with ||shh||` closes a spoiler and `>hidden||` is a mark, and both end in
+  exactly two.
 
 Entities the server finds on its own — mentions, hashtags, bare links, phone numbers, bank cards
 — are written as plain text in both directions, because marking them up changes nothing about
