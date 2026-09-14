@@ -53,6 +53,30 @@ Decisions that protect this:
 - **Subpath exports.** Webhook adapters, testing helpers and storage drivers are not in the
   main entry point, so importing `yuigram` does not parse express glue.
 
+### 2.1 Where this budget currently stands
+
+**Exceeded, and measured rather than estimated.** `startup/import` reports 100–120 ms on the
+machine these figures come from, against a budget of 100 ms. The budget is not being widened to
+match: a figure adjusted until it passes measures nothing.
+
+Two things have been established about it by alternating control — measuring the two trees in
+turn, twice, so that drift shows up as drift rather than as a difference between them.
+
+The exceedance itself is **environmental**. An earlier comparison measured 107/119 ms for one tree and
+104/117 ms for the other, with the orderings disagreeing about which was faster and the spread
+within a single measurement larger than the gap between them.
+
+Splitting the platform seams **did cost about 7 ms**, and that one is real: 107/107 ms against
+98/101 ms, the same direction both rounds. It is eight additional modules on the eager path —
+the crypto contract and its platform implementation, the IGE mode, the stream contract and the
+connector, the decompressor seam, and the byte-to-text helpers — each a file to read and parse.
+None of the portable implementations are among them: on a runtime with `node:crypto` the
+substituted modules are not reached at all, which the module graph confirms.
+
+That is the price of naming what the protocol needs rather than what one runtime provides, and it
+is recorded here rather than absorbed quietly. The way to get it back is to stop evaluating the
+protocol's public surface eagerly from the façade, which is a larger change than this seam.
+
 ---
 
 ## 3. Update processing
