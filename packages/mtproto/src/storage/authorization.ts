@@ -32,6 +32,7 @@
  */
 
 import { type KV, YuigramError } from '@yuigram/core'
+import { fromBase64, toBase64 } from '../crypto/encoding.js'
 
 /** Auth keys are 2048 bits. */
 const AUTH_KEY_SIZE = 256
@@ -189,7 +190,7 @@ function encodeKey(key: Uint8Array, what: string): string {
     throw new StorageError(`${what} must be ${AUTH_KEY_SIZE} bytes, received ${key.length}`)
   }
 
-  return Buffer.from(key).toString('base64')
+  return toBase64(key)
 }
 
 /**
@@ -207,7 +208,7 @@ function decodeKey(stored: unknown, what: string): Uint8Array | undefined {
     throw new StorageError(`${what} is ${stored.length} characters, far past a key`)
   }
 
-  const decoded = new Uint8Array(Buffer.from(stored, 'base64'))
+  const decoded = fromBase64(stored)
   if (decoded.length !== AUTH_KEY_SIZE) {
     throw new StorageError(`${what} decodes to ${decoded.length} bytes, not ${AUTH_KEY_SIZE}`)
   }

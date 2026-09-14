@@ -1,0 +1,19 @@
+{
+  "name": "@yuigram/browser-check",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs the framework in a real browser and reports what worked",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "serve": "tsx src/serve.ts",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

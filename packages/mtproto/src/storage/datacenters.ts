@@ -18,6 +18,7 @@
  */
 
 import { type KV, YuigramError } from '@yuigram/core'
+import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type { DcAddress, DcConfiguration } from '../network/dc.js'
 
 /** Where the configuration is kept. */
@@ -108,9 +109,7 @@ function encode(configuration: DcConfiguration): unknown {
         cdn: option.cdn,
         static: option.static,
         thisPortOnly: option.thisPortOnly,
-        ...(option.secret === undefined
-          ? {}
-          : { secret: Buffer.from(option.secret).toString('base64') }),
+        ...(option.secret === undefined ? {} : { secret: toBase64(option.secret) }),
       }),
     ),
   }
@@ -163,7 +162,7 @@ function decodeSecret(stored: unknown): Uint8Array | undefined {
     throw new DatacenterStorageError('a stored secret is not text')
   }
 
-  const decoded = new Uint8Array(Buffer.from(stored, 'base64'))
+  const decoded = fromBase64(stored)
   if (decoded.length === 0) {
     throw new DatacenterStorageError('a stored secret decodes to nothing')
   }

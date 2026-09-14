@@ -139,10 +139,42 @@ import { UpdateState } from './updates/state.js'
  */
 const MAX_MIGRATIONS = 5
 
+/**
+ * What to call the system this is running on.
+ *
+ * Telegram shows this to the person in their list of active sessions, so it
+ * should say something true. Every runtime names itself differently and a
+ * browser does not name itself at all, so what cannot be determined is reported
+ * as not determined rather than guessed at — and nothing about the page is read
+ * to fill the gap, because the server does not need it and the person did not
+ * offer it.
+ *
+ * Read through `globalThis` and never at module scope: `process` is simply
+ * absent in a browser, and naming it directly made importing this module throw
+ * before anything had a chance to run.
+ */
+function systemVersion(): string {
+  const runtime = globalThis as {
+    process?: { version?: string; versions?: { bun?: string } }
+    Deno?: { version?: { deno?: string } }
+  }
+
+  const bun = runtime.process?.versions?.bun
+  if (bun !== undefined) return `Bun ${bun}`
+
+  const deno = runtime.Deno?.version?.deno
+  if (deno !== undefined) return `Deno ${deno}`
+
+  const node = runtime.process?.version
+  if (node !== undefined) return `Node ${node}`
+
+  return 'web'
+}
+
 /** What the server is told about this client when nothing else is said. */
 const DEVICE: Omit<ClientInfo, 'apiId'> = {
   deviceModel: 'Yuigram',
-  systemVersion: process.version,
+  systemVersion: systemVersion(),
   appVersion: '0.0.0',
   systemLangCode: 'en',
   langPack: '',

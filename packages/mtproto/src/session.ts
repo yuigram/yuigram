@@ -34,6 +34,7 @@
  */
 
 import { SessionError } from '@yuigram/core'
+import { fromBase64, toBase64 } from './crypto/encoding.js'
 
 /** The only layout this build writes, and the only one it reads. */
 const VERSION = 0x01
@@ -101,7 +102,7 @@ export function encodeSession(session: PortableSession): string {
   payload[DC_AT] = session.dcId
   payload.set(session.authKey, KEY_AT)
 
-  return Buffer.from(payload).toString('base64')
+  return toBase64(payload)
 }
 
 /**
@@ -192,5 +193,5 @@ function decodeBase64(session: string): Uint8Array {
     throw new SessionError('a session ends with bits that are not part of it')
   }
 
-  return new Uint8Array(Buffer.from(session, 'base64'))
+  return fromBase64(session)
 }

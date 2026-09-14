@@ -14,6 +14,7 @@
 import { ValidationError } from '@yuigram/core'
 import { bitLength, modPow } from './bigint.js'
 import { bigIntToBytesBE } from './bytes.js'
+import { toHex } from './encoding.js'
 import { sha256 } from './hash.js'
 import { randomBigIntBelow } from './random.js'
 
@@ -197,7 +198,7 @@ export function validateDhParameters({ p, g }: DhParameters): void {
     )
   }
 
-  const digest = Buffer.from(sha256(bigIntToBytesBE(p, 256))).toString('hex')
+  const digest = toHex(sha256(bigIntToBytesBE(p, 256)))
   const remembered = validated.get(digest)
 
   if (remembered === undefined) {

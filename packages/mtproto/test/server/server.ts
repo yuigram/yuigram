@@ -429,6 +429,28 @@ export class MockServer {
   }
 
   /**
+   * Send a message the client never asked for, ready for the wire.
+   *
+   * `seal` produces the envelope; this puts it through the framing and the
+   * obfuscation the connection was opened with, which is what the client is
+   * actually reading. Nothing else can push to a client: a peer only ever
+   * answers, and an update is the one thing a datacenter says on its own.
+   *
+   * `undefined` when the connection has not opened or has no key yet, because
+   * there is nothing to send it under rather than because sending failed.
+   */
+  push(value: TlValue, options: { msgId?: bigint; seqNo?: number } = {}): Uint8Array | undefined {
+    const framing = this.#framing
+    if (framing === undefined) return undefined
+
+    try {
+      return this.#encrypt(framing.encode(this.seal(value, options)))
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * Seal a message body that is already encoded.
    *
    * For a case that needs a shape the writer would not produce from a value —
