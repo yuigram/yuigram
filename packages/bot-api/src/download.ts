@@ -15,6 +15,7 @@
 
 import { ConfigError, NetworkError, ValidationError } from '@yuigram/core'
 import type { RawApi } from './api.js'
+import { readFileStream, writeFileStream } from './files-node.js'
 import type { File, PhotoSize } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 
@@ -156,9 +157,7 @@ export async function downloadStream(
   const url = await getFileUrl(deps, target)
 
   if (deps.local === true) {
-    const { createReadStream } = await import('node:fs')
-    const { Readable } = await import('node:stream')
-    return Readable.toWeb(createReadStream(url)) as ReadableStream<Uint8Array>
+    return await readFileStream(url)
   }
 
   if (deps.client.fetchFile === undefined) {
@@ -211,12 +210,7 @@ export async function downloadToFile(
   path: string,
   target: DownloadTarget,
 ): Promise<void> {
-  const stream = await downloadStream(deps, target)
-  const { createWriteStream } = await import('node:fs')
-  const { Readable } = await import('node:stream')
-  const { pipeline } = await import('node:stream/promises')
-
-  await pipeline(Readable.fromWeb(stream), createWriteStream(path))
+  await writeFileStream(path, await downloadStream(deps, target))
 }
 
 /** Fetch a file's metadata without downloading it. */

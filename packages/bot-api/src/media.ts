@@ -30,6 +30,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
+import { readFileChunks } from './files-node.js'
 import { markSingleUse, type NamedFile } from './input-file.js'
 
 /** A stream of bytes, in either form the platform produces. */
@@ -71,12 +72,8 @@ export function path(
 }
 
 /** Stream a file's bytes, opening it on first read. */
-async function* readFile(filePath: string): AsyncGenerator<Uint8Array> {
-  const { createReadStream } = await import('node:fs')
-
-  for await (const chunk of createReadStream(filePath)) {
-    yield chunk as Uint8Array
-  }
+function readFile(filePath: string): AsyncGenerator<Uint8Array> {
+  return readFileChunks(filePath)
 }
 
 /**

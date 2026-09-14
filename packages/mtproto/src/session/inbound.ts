@@ -13,9 +13,9 @@
  * the structure from being a weapon lives here.
  */
 
-import { gunzipSync } from 'node:zlib'
 import { YuigramError } from '@yuigram/core'
 import { readObject, TlReader, type TlScope, type TlValue } from '../tl/index.js'
+import { gunzip } from './gunzip.js'
 
 /** `gzip_packed#3072cfa1 packed_data:bytes = Object` */
 const GZIP_PACKED_ID = 0x3072_cfa1
@@ -177,7 +177,7 @@ function inflate(body: Uint8Array, scope: TlScope): Uint8Array {
  */
 export function inflatePacked(packed: Uint8Array): Uint8Array {
   try {
-    return new Uint8Array(gunzipSync(packed, { maxOutputLength: MAX_INFLATED }))
+    return gunzip(packed, MAX_INFLATED)
   } catch (error) {
     throw new InboundError(`a compressed payload could not be read: ${describe(error)}`)
   }

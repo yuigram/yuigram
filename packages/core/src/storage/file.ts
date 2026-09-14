@@ -14,7 +14,7 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Logger } from '../log/logger.js'
+import type { FileOptions } from './file-options.js'
 import type { DescribedKV, KVInfo, SetOptions } from './types.js'
 
 interface Envelope<V> {
@@ -23,30 +23,6 @@ interface Envelope<V> {
   readonly value: V
   /** Epoch milliseconds at which this expires. */
   readonly expiresAt: number | null
-}
-
-/** Options for {@link file}. */
-export interface FileOptions {
-  /** Clock source, injectable so TTL behaviour is testable without waiting. */
-  readonly now?: () => number
-  /**
-   * Where a warning about the directory's permissions goes.
-   *
-   * The store says nothing without one. It is the caller's logger rather than
-   * one of this module's making, so a warning about session state lands
-   * wherever that application's records land and is redacted by whatever it
-   * redacts with.
-   */
-  readonly log?: Logger
-  /**
-   * How the store learns a path's permission bits.
-   *
-   * Injectable because the answer is not the same everywhere: a filesystem
-   * without POSIX modes reports whatever it likes, and the default declines to
-   * guess rather than warning every user on such a platform about a mode that
-   * means nothing. Returning `undefined` disables the check.
-   */
-  readonly permissions?: (path: string) => Promise<number | undefined>
 }
 
 /** Bits that let somebody other than the owner in. */
@@ -261,3 +237,5 @@ export function file<V = unknown>(directory: string, options: FileOptions = {}):
     },
   }
 }
+
+export type { FileOptions } from './file-options.js'

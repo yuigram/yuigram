@@ -31,7 +31,8 @@
   },
   "browser": {
     "./dist/crypto/backend.js": "./dist/crypto/backend.browser.js",
-    "./dist/network/connect.js": "./dist/network/connect.browser.js"
+    "./dist/network/connect.js": "./dist/network/connect.browser.js",
+    "./dist/session/gunzip.js": "./dist/session/gunzip.browser.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

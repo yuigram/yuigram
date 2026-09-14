@@ -30,6 +30,10 @@
       "default": "./dist/index.js"
     }
   },
+  "browser": {
+    "./dist/storage/file.js": "./dist/storage/file.browser.js",
+    "./dist/storage/encrypted.js": "./dist/storage/encrypted.browser.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

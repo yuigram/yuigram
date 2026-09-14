@@ -207,4 +207,90 @@ const botExcludesMtproto: Benchmark = {
   run: async () => await mtprotoIn('bundle/bot-mtproto', BOT_PROGRAM),
 }
 
-export const BUNDLE: readonly Benchmark[] = [botOnly, botExcludesMtproto, full]
+/**
+ * What a browser-targeted bundle reaches that a browser does not have.
+ *
+ * The package ships a second implementation of everything a browser lacks — the
+ * cryptography, the connector, the decompressor, the stores that need a
+ * filesystem — and lets the `browser` field in `package.json` choose between
+ * them. That choice is made by the bundler, invisibly, and it is exactly the
+ * sort of configuration that stops working without anything failing: the build
+ * still succeeds, and what breaks is a program in a browser reaching for a
+ * module that is not there.
+ *
+ * So it is counted. Every Node built-in in the graph, not only `node:crypto`: a
+ * bundle that reaches `node:fs` is just as broken and fails the same way. The
+ * budget is zero because a browser has none of them.
+ *
+ * `docs/runtimes.md` §4 records which substitution answers which built-in.
+ */
+async function builtinsIn(name: string, program: string): Promise<Measurement> {
+  let reached: string[]
+
+  try {
+    const result = await build({
+      stdin: { contents: program, resolveDir: DIST, sourcefile: `${name}.ts`, loader: 'js' },
+      bundle: true,
+      format: 'esm',
+      platform: 'browser',
+      write: false,
+      metafile: true,
+      logLevel: 'silent',
+    })
+
+    reached = Object.keys(result.metafile.inputs).filter((path) => path.startsWith('node:'))
+  } catch (error) {
+    // A failure to resolve is the same finding as a built-in in the graph, and
+    // is how esbuild reports one it cannot substitute. Reported as the count it
+    // is rather than as a crash, so the verdict line says what happened.
+    const message = error instanceof Error ? error.message : String(error)
+    const named = [...message.matchAll(/Could not resolve "(node:[^"]+)"/g)].map(
+      (match) => match[1] ?? '',
+    )
+
+    reached = named.length > 0 ? [...new Set(named)] : ['(the bundle did not build)']
+  }
+
+  return {
+    name,
+    value: reached.length,
+    unit: 'built-ins',
+    note:
+      reached.length === 0
+        ? 'the browser bundle reaches nothing a browser does not have'
+        : reached.join(', '),
+  }
+}
+
+/**
+ * A browser program: an account, a store a browser has, and a connector it can
+ * open. Every symbol is used, so the graph is what such a program really pulls.
+ */
+const BROWSER_PROGRAM = `
+import { Account, App, web } from './index.js'
+
+const app = new App({ storage: web({ storage: globalThis.localStorage }) })
+app.add(new Account({
+  apiId: 1,
+  apiHash: '',
+  keys: [],
+  storage: web({ storage: globalThis.localStorage }),
+  bootstrap: { thisDc: 2, testMode: false, options: [] },
+}))
+
+export default app
+`
+
+const browserReachesNoBuiltins: Benchmark = {
+  name: 'bundle/browser-builtins',
+  budget: 0,
+  source: SOURCE,
+  run: async () => await builtinsIn('bundle/browser-builtins', BROWSER_PROGRAM),
+}
+
+export const BUNDLE: readonly Benchmark[] = [
+  botOnly,
+  botExcludesMtproto,
+  full,
+  browserReachesNoBuiltins,
+]
