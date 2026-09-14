@@ -12,12 +12,12 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { AppClient } from '../src/app/index.js'
-import { App, AppError } from '../src/app/index.js'
+import { App, AppError } from '../src/app/app.js'
+import type { AppClient } from '../src/app/client.js'
 import { type Dispatchable, Dispatcher } from '../src/dispatch/dispatcher.js'
 import { LifecycleError } from '../src/lifecycle/lifecycle.js'
 import type { Middleware } from '../src/middleware/compose.js'
-import type { KV } from '../src/storage/index.js'
+import type { KV } from '../src/storage/types.js'
 
 interface Event extends Dispatchable {
   readonly kind: string

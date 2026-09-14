@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
-import { fromHtml } from '../src/format/index.js'
+import { fromHtml } from '../src/format/html.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
 import {
   answerCallback,

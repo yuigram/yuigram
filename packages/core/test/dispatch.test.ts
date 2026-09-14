@@ -9,7 +9,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { Dispatcher } from '../src/dispatch/dispatcher.js'
-import { defineAsyncFilter, defineFilter } from '../src/filter/index.js'
+import { defineAsyncFilter, defineFilter } from '../src/filter/define.js'
 import type { Middleware } from '../src/middleware/compose.js'
 
 interface Ctx {

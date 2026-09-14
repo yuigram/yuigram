@@ -27,7 +27,7 @@
 import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { POOL_LIMITS } from '../src/network/pools.js'
-import type { MtprotoContext } from '../src/normalize/index.js'
+import type { MtprotoContext } from '../src/normalize/context.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer } from './server/files.js'

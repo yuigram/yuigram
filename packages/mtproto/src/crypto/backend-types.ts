@@ -59,6 +59,31 @@ export function assertLength(value: Uint8Array, length: number, name: string): v
   }
 }
 
+/** AES block size, in bytes. */
+const BLOCK = 16
+
+/** AES-256 key size, in bytes. */
+const KEY_SIZE = 32
+
+/** IGE carries two chaining blocks, so the IV is twice a block. */
+const IV_SIZE = 32
+
+/** Reject inputs the mode cannot express before touching any key material. */
+export function checkIge(key: Uint8Array, iv: Uint8Array, data: Uint8Array): void {
+  if (key.length !== KEY_SIZE) {
+    throw new ValidationError(`an AES-IGE key must be ${KEY_SIZE} bytes, received ${key.length}`)
+  }
+  if (iv.length !== IV_SIZE) {
+    throw new ValidationError(`an AES-IGE iv must be ${IV_SIZE} bytes, received ${iv.length}`)
+  }
+  if (data.length === 0) throw new ValidationError('AES-IGE data must not be empty')
+  if (data.length % BLOCK !== 0) {
+    throw new ValidationError(
+      `AES-IGE data must be a multiple of ${BLOCK} bytes, received ${data.length}`,
+    )
+  }
+}
+
 /**
  * A counter-mode stream that keeps its place.
  *

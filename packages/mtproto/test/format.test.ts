@@ -10,8 +10,9 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { FormattedText } from '../src/format/index.js'
-import { fromHtml, fromMarkdown, toHtml, toMarkdown } from '../src/format/index.js'
+import { fromHtml, toHtml } from '../src/format/html.js'
+import { fromMarkdown, toMarkdown } from '../src/format/markdown.js'
+import type { FormattedText } from '../src/format/text.js'
 import type { TypeMessageEntity } from '../src/generated/api/types/index.js'
 
 /** An entity as a tuple, so a case reads as what it claims rather than as JSON. */

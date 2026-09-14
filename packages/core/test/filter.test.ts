@@ -18,7 +18,7 @@ import {
   not,
   or,
   some,
-} from '../src/filter/index.js'
+} from '../src/filter/define.js'
 
 interface Value {
   kind: string

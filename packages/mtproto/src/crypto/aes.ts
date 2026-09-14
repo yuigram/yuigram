@@ -31,8 +31,7 @@
  * hardware.
  */
 
-import { assertLength } from './backend-types.js'
-import { checkIge as checkIgeInputs } from './ige-mode.js'
+import { assertLength, checkIge as checkIgeInputs } from './backend-types.js'
 
 /** AES block size, in bytes. */
 const BLOCK = 16

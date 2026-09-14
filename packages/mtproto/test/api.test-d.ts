@@ -16,8 +16,9 @@ import type { MtprotoApi } from '../src/api.js'
 import { documentMedia, photoMedia, uploadedDocument, uploadedPhoto } from '../src/files/media.js'
 import type * as types from '../src/generated/api/types/index.js'
 import { inputChannel, inputPeerFromMessage } from '../src/network/peers.js'
-import type { DialogsOffset, MtprotoContext, SentMessage } from '../src/normalize/index.js'
-import { nextDialogs, sentMessage } from '../src/normalize/index.js'
+import type { MtprotoContext } from '../src/normalize/context.js'
+import { type DialogsOffset, nextDialogs } from '../src/normalize/paging.js'
+import { type SentMessage, sentMessage } from '../src/normalize/sent.js'
 import type { TlValue } from '../src/tl/index.js'
 
 declare const account: Account

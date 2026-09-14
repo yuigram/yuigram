@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { DialogView, readDialog } from '../src/entities/index.js'
+import { DialogView, readDialog } from '../src/entities/dialog.js'
 import type { Dialog, DialogFolder } from '../src/generated/api/types/index.js'
 
 const ROW: Dialog = {

@@ -63,7 +63,16 @@ import {
   registerText,
 } from './registration.js'
 import { anyUpdate, isRouter, type Router, type RouterThisClientCanHost } from './router.js'
-import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook/index.js'
+// Named directly rather than through the barrel beside it. The barrel also
+// re-exports the framework adapters, and a static edge to it makes every
+// program that imports a bot evaluate the express, fastify, Node and Fetch
+// glue — none of which is on this package's main entry point, and none of
+// which a program that never serves a webhook has any use for.
+import {
+  createWebhookHandler,
+  type WebhookHandler,
+  type WebhookOptions,
+} from './webhook/handler.js'
 
 /** Options accepted when building a client. */
 export interface BotOptions {

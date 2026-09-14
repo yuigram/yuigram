@@ -99,8 +99,9 @@ import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
-import type { PeerRef } from './normalize/index.js'
-import { type MtprotoContext, mtprotoContext, type SentMessage } from './normalize/index.js'
+import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
+import type { PeerRef } from './normalize/normalize.js'
+import type { SentMessage } from './normalize/sent.js'
 import type { MemberOptions, SearchOptions, WalkOptions } from './paging/walk.js'
 import {
   walkDialogs,

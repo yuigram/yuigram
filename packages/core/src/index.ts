@@ -9,35 +9,132 @@
  * The boundary is enforced by the layer-boundary invariant.
  */
 
-export * from './app/index.js'
-export * from './context/index.js'
-export * from './dispatch/index.js'
-export * from './errors/index.js'
+export { App, AppError, type AppOptions, type ClientFailure } from './app/app.js'
+export type { AppClient } from './app/client.js'
 export {
-  type AnyFilter,
-  type AsyncFilter,
+  type ContextContribution,
+  ContextExtender,
+  ContextKeyConflictError,
+  defineLazy,
+  type LazyOptions,
+} from './context/extend.js'
+export type {
+  BaseContext,
+  Context,
+  ContextActions,
+  Flavor,
+  UnifiedContext,
+} from './context/types.js'
+export {
+  type Dispatchable,
+  Dispatcher,
+  type DispatcherOptions,
+  type ErrorHandler,
+  type Handler,
+  type KindCoverage,
+  type OnOptions,
+  type Priority,
+  type UseOptions,
+} from './dispatch/dispatcher.js'
+export {
+  AuthError,
+  CancelledError,
+  ConfigError,
+  causeChain,
+  type ErrorOptions,
+  FloodError,
+  findCause,
+  NetworkError,
+  PeerError,
+  PluginConflictError,
+  PluginCycleError,
+  PluginDependencyError,
+  PluginError,
+  SessionError,
+  StorageError,
+  TelegramError,
+  ValidationError,
+  YuigramError,
+} from './errors/errors.js'
+export {
   and,
   type DefineOptions,
   defineAsyncFilter,
   defineFilter,
-  type ExtractBase,
-  type ExtractMod,
   every,
-  type Filter,
-  type FilterMatch,
-  type FilterMeta,
   isAsyncFilter,
   isFilter,
-  type Modify,
   not,
   or,
   some,
-} from './filter/index.js'
-export * from './hook/index.js'
-export * from './lifecycle/index.js'
-export * from './log/index.js'
-export * from './middleware/index.js'
-export * from './plugin/index.js'
-export * from './scheduler/index.js'
-export * from './session/index.js'
-export * from './storage/index.js'
+} from './filter/define.js'
+export type {
+  AnyFilter,
+  AsyncFilter,
+  ExtractBase,
+  ExtractMod,
+  Filter,
+  FilterMatch,
+  FilterMeta,
+  Modify,
+} from './filter/types.js'
+export type { Hook } from './hook/hook.js'
+export {
+  Lifecycle,
+  LifecycleError,
+  type LifecycleHooks,
+  type LifecycleState,
+  type StopContext,
+  type StopOptions,
+} from './lifecycle/lifecycle.js'
+export {
+  consoleSink,
+  createLogger,
+  LOG_LEVELS,
+  type LogFields,
+  type Logger,
+  type LoggerOptions,
+  type LogLevel,
+  type LogRecord,
+  type LogSink,
+  silentSink,
+} from './log/logger.js'
+export { isSensitiveKey, REDACTED, redact, redactString } from './log/redact.js'
+export {
+  compose,
+  type Middleware,
+  MiddlewareError,
+  type MiddlewareHost,
+  type Next,
+  run,
+  when,
+} from './middleware/compose.js'
+export {
+  definePlugin,
+  type InstalledPlugin,
+  type Plugin,
+  PluginRegistry,
+  resolveInstallOrder,
+} from './plugin/plugin.js'
+export {
+  createScheduler,
+  type DrainOptions,
+  type Scheduler,
+  type SchedulerOptions,
+} from './scheduler/scheduler.js'
+export {
+  createSession,
+  type SessionFlavor,
+  type SessionHandle,
+  type SessionHost,
+  type SessionKeyFn,
+  type SessionOptions,
+  session,
+  userChatKey,
+} from './session/session.js'
+export { namespaced, tiered } from './storage/compose.js'
+export { encrypted } from './storage/encrypted.js'
+export { type FileOptions, file } from './storage/file.js'
+export { type MemoryOptions, memory } from './storage/memory.js'
+export type { DescribedKV, KV, KVInfo, SetOptions } from './storage/types.js'
+export { type WebOptions, type WebStorageLike, web } from './storage/web.js'

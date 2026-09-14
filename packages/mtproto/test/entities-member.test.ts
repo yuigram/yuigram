@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { MemberView, readMember } from '../src/entities/index.js'
+import { MemberView, readMember } from '../src/entities/member.js'
 import type { TypeChannelParticipant } from '../src/generated/api/types/index.js'
 
 const RIGHTS = {

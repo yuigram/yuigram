@@ -12,14 +12,9 @@
 
 import { createLogger, silentSink } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
-import {
-  ACCOUNT_KINDS,
-  mtprotoContext,
-  normalizeUpdate,
-  RAW_KIND,
-  SHARED_KINDS,
-  UPDATE_EVENTS,
-} from '../src/normalize/index.js'
+import { mtprotoContext } from '../src/normalize/context.js'
+import { ACCOUNT_KINDS, RAW_KIND, SHARED_KINDS, UPDATE_EVENTS } from '../src/normalize/events.js'
+import { normalizeUpdate } from '../src/normalize/normalize.js'
 import type { TlValue } from '../src/tl/index.js'
 
 /** A logger that records nothing, so a case is about the event rather than the log. */

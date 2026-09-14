@@ -15,31 +15,20 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
-export type {
-  ChatForm,
-  DialogForm,
-  MediaKind,
-  MemberStanding,
-  MessageForm,
-  PeerBearing,
-} from './entities/index.js'
+export { type DialogForm, DialogView, readDialog } from './entities/dialog.js'
+export { type MediaKind, MediaView, readMedia } from './entities/media.js'
+export { type MemberStanding, MemberView, readMember } from './entities/member.js'
+export { type MessageForm, MessageView, readMessage, sameMessage } from './entities/message.js'
 export {
+  type ChatForm,
   ChatView,
-  DialogView,
-  MediaView,
-  MemberView,
-  MessageView,
+  type PeerBearing,
   PeerIndex,
   readChat,
-  readDialog,
-  readMedia,
-  readMember,
-  readMessage,
   readPeers,
   readUser,
-  sameMessage,
   UserView,
-} from './entities/index.js'
+} from './entities/peer.js'
 export type {
   DownloadOutcome,
   DownloadRequest,
@@ -56,8 +45,9 @@ export {
   uploadedPhoto,
 } from './files/media.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
-export type { FormattedText, Markup } from './format/index.js'
-export { fromHtml, fromMarkdown, toHtml, toMarkdown } from './format/index.js'
+export { fromHtml, toHtml } from './format/html.js'
+export { fromMarkdown, toMarkdown } from './format/markdown.js'
+export type { FormattedText, Markup } from './format/text.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type { BoundApi } from './here.js'
 export type {
@@ -90,15 +80,24 @@ export {
 } from './messaging/send.js'
 export { inputChannel, inputPeerFromMessage } from './network/peers.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
-export type {
-  DialogsOffset,
-  MtprotoContext,
-  MtprotoEventKind,
-  NormalizedUpdate,
-  PeerRef,
-  SentMessage,
-} from './normalize/index.js'
-export { nextDialogs, sentMessage } from './normalize/index.js'
+export {
+  type ContextOptions,
+  contextFor,
+  type MtprotoContext,
+  mtprotoContext,
+} from './normalize/context.js'
+export {
+  ACCOUNT_KINDS,
+  MESSAGE_UPDATES,
+  type MtprotoEventKind,
+  RAW_KIND,
+  SHARED_KINDS,
+  SHORT_MESSAGE_UPDATES,
+  UPDATE_EVENTS,
+} from './normalize/events.js'
+export { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize/normalize.js'
+export { type DialogsOffset, nextDialogs } from './normalize/paging.js'
+export { type SentMessage, sentMessage } from './normalize/sent.js'
 export type { MemberOptions, Paging, SearchOptions, WalkOptions } from './paging/walk.js'
 export {
   walkDialogs,

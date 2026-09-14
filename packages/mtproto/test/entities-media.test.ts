@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { MediaView, readMedia } from '../src/entities/index.js'
+import { MediaView, readMedia } from '../src/entities/media.js'
 import type {
   MessageMediaDocument,
   TypeDocumentAttribute,

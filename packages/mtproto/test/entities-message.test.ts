@@ -12,7 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { MessageView, readMessage, sameMessage } from '../src/entities/index.js'
+import { MessageView, readMessage, sameMessage } from '../src/entities/message.js'
 import type { Message, MessageEmpty, MessageService } from '../src/generated/api/types/index.js'
 
 const ORDINARY: Message = {

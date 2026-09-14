@@ -16,7 +16,7 @@ import {
   readPeers,
   readUser,
   UserView,
-} from '../src/entities/index.js'
+} from '../src/entities/peer.js'
 import type {
   Channel,
   ChannelForbidden,
