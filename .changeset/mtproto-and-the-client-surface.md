@@ -45,12 +45,30 @@ in a dependency. Used as template tags they escape what is interpolated and leav
 alone, so a user called `<b>` cannot format the message they appear in. Block quotations are
 supported in both forms, expandable included, in both dialects and both directions.
 
-**Runtimes.** The Bot API subsystem now reaches no Node built-in at all: polling, webhooks,
-sending and files-by-`Blob` need nothing but `fetch`. One import of `node:crypto`, for the single
-function comparing a webhook secret, had been keeping every bundle containing a bot from loading
-on Bun, Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webhook adapter exists
-to serve. `docs/runtimes.md` has the matrix, says which cells were executed and which were only
-reasoned about, and records what MTProto would still need to run in a browser.
+**Runtimes.** The Bot API subsystem reaches no Node built-in at all: polling, webhooks, sending
+and files-by-`Blob` need nothing but `fetch`. One import of `node:crypto`, for the single function
+comparing a webhook secret, had been keeping every bundle containing a bot from loading on Bun,
+Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webhook adapter exists to serve.
+
+**And MTProto runs in a browser.** Every module that reached for `node:crypto` now names one
+contract instead, and the `browser` field in each package chooses between two implementations of
+it: the platform's, which Node, Bun and Deno all provide, and one over nothing at all. The second
+needed AES-256, SHA-1, SHA-256, MD5, HMAC and DEFLATE written here, each checked against the
+values published with the standards that define them before being compared with the platform. A
+WebSocket connector stands in for the socket a browser does not have, `web()` is a store over
+`localStorage`, and stretching a password goes to `crypto.subtle` — the one primitive worth
+waiting for, and the reason the rest do not wait.
+
+A bundle that builds is not a program that runs, so `tools/browser` serves the framework to a real
+browser and answers the WebSocket it opens with the datacenter the test suite uses. Seventeen
+checks pass in Chrome: the key exchange completes, a temporary key is bound, an encrypted call is
+answered, an update is dispatched, and the session survives in the page's own storage. Running it
+found what the build could not — `process.version` read at module scope, `Buffer` on four live
+paths, and a five-second prime validation that wants a worker.
+
+`docs/runtimes.md` has the matrix broken down step by step, says which cells were executed and
+which were only reasoned about, and states plainly that Bun, Deno, the edge platforms and Telegram
+itself are still inference.
 
 **Saying something.** An account can now start a conversation rather than only answer one.
 `sendText`, `sendMedia`, `editMessage`, `deleteMessages`, `forwardMessages`, `react`,

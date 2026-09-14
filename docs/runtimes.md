@@ -19,7 +19,8 @@ not.
 | Storage — `memory()` | **run** | expected | expected | expected | expected |
 | Storage — `file()` | **run** | expected | expected³ | no | no |
 | Storage — `encrypted()` | **run** | expected | expected | no⁴ | no |
-| MTProto — accounts, in full | **run** | expected | expected | **no** | **no** |
+| Storage — `web()`, over `localStorage` | expected⁵ | expected | expected | no | **run** |
+| MTProto — accounts, in full | **run** | expected | expected | expected⁶ | **run**⁷ |
 
 ¹ Telegram's Bot API does not send CORS headers, so a browser page cannot call it directly. The
 code runs; the request is what the browser refuses. This matters for embedding Yuigram in a
@@ -30,9 +31,20 @@ is why webhooks exist.
 
 ³ Deno needs `--allow-read` and `--allow-write` for the directory in question.
 
-⁴ Needs `node:crypto`'s `scrypt` and `createCipheriv`. Some worker platforms provide a subset of
-`node:crypto` behind a compatibility flag; whether these particular functions are in it is a
-property of the platform rather than of this package, and is not claimed here.
+⁴ Needs `node:crypto`'s `scrypt` and `createCipheriv`. `crypto.subtle` offers no scrypt, so a
+browser is given a store that says so rather than one that writes an envelope a server could not
+open. Some worker platforms provide a subset of `node:crypto` behind a compatibility flag; whether
+these particular functions are in it is a property of the platform rather than of this package,
+and is not claimed here.
+
+⁵ The store works wherever a `Storage` is passed to it, which under Node means one supplied by the
+caller. The default reaches `localStorage` and says so when there is none.
+
+⁶ A worker resolves the same substitutions a browser does, and the bundle reaches no Node built-in.
+Nothing has been executed on one; §5 says what that leaves.
+
+⁷ Executed, and broken down step by step in §5. What needs an authorized session is marked there
+as not run rather than claimed.
 
 ---
 
@@ -40,7 +52,9 @@ property of the platform rather than of this package, and is not claimed here.
 
 The distinction is the point of this table, and it is not decoration.
 
-**run** — executed on this runtime, by the test suite. Node 22 is the only such runtime today.
+**run** — executed on this runtime. Node 22 by the test suite; a browser by `tools/browser`, which
+serves the framework to one and reports what it did. §5 breaks the browser column down step by
+step, because "it runs in a browser" is too coarse a claim to be worth much.
 
 **expected** — inferred from the complete list of platform APIs the code reaches, checked against
 what the runtime documents. It is a reasoned prediction, not a result. Bun and Deno are not
@@ -101,110 +115,167 @@ for a bot that sends a `Blob`.
 
 ---
 
-## 4. What MTProto would need elsewhere
+## 4. MTProto away from a server
 
 MTProto runs on Node, Bun and Deno because all three provide `node:crypto`, `node:net` and
-`node:zlib`. Workers and browsers provide none of the three, and the gap is not one change:
+`node:zlib`. A browser and an edge worker provide none of the three. That gap is now closed, by
+shipping a second implementation of everything the web platform does not have and letting the
+`browser` field in each `package.json` choose between them.
 
-| What it uses | Why the web platform is not a drop-in |
-| --- | --- |
-| AES-256-ECB, for the IGE mode Telegram encrypts with | WebCrypto has no ECB mode at all. It can be emulated a block at a time with AES-CBC and a zero IV, but WebCrypto is asynchronous, and a promise per 16 bytes is not a transport. |
-| SHA-1 and SHA-256 | `crypto.subtle.digest` exists and is asynchronous. The call sites are synchronous throughout the session layer. |
-| PBKDF2, for two-factor sign-in | `crypto.subtle.deriveBits` exists and is asynchronous. |
-| Random bytes | `crypto.getRandomValues` is synchronous and present everywhere. This one is already portable. |
-| Raw TCP | Browsers have no TCP at all. Telegram serves web clients over WebSocket, so this is a second transport rather than a shim. |
-| gzip, for compressed answers | `DecompressionStream('gzip')` exists and is asynchronous. |
+### 4.1 What a browser gets instead
 
-### 4.1 Every consumer, and what each one assumes
+| Published module | Substituted with | What the replacement is |
+| --- | --- | --- |
+| `@yuigram/mtproto` `crypto/backend.js` | `crypto/backend.browser.js` | AES-256 and the three digests in TypeScript; randomness from `crypto.getRandomValues`; PBKDF2 from `crypto.subtle` |
+| `@yuigram/mtproto` `network/connect.js` | `network/connect.browser.js` | A WebSocket connector rather than a TCP one |
+| `@yuigram/mtproto` `session/gunzip.js` | `session/gunzip.browser.js` | DEFLATE and the gzip wrapper in TypeScript, decompressing only |
+| `@yuigram/core` `storage/file.js` | `storage/file.browser.js` | An error naming what is missing. `web()` is the store a browser has |
+| `@yuigram/core` `storage/encrypted.js` | `storage/encrypted.browser.js` | An error. The envelope is keyed by scrypt, which `crypto.subtle` does not offer |
+| `@yuigram/bot-api` `files-node.js` | `files-node.browser.js` | An error for the two download paths that need a filesystem; the rest of a download is unchanged |
 
-The question is not which primitives exist. It is which call sites depend on getting an answer
-without waiting, because that is what a provider boundary would change. Traced over the current
-tree:
+The substitution is a build-time decision rather than a runtime probe. A probe would have to be
+asynchronous, would leave a `node:crypto` specifier in the bundle for a bundler to fail on, and
+would put a branch on a path that runs for every message.
 
-| Consumer | Primitive and mode | State and chunking | Synchronous today |
+**It is checked rather than asserted.** The `bundle/browser-builtins` benchmark bundles a program
+with an account in it for a browser and counts the Node built-ins in the graph. The budget is
+zero, and the build fails naming any that come back.
+
+### 4.2 Why the contract is synchronous
+
+The question was never which primitives exist. It was which call sites depend on getting an answer
+without waiting, because that is what an asynchronous boundary would change. Traced over the tree:
+
+| Consumer | Primitive and mode | State and chunking | Awaits |
 | --- | --- | --- | --- |
-| `message/encrypted.ts` | AES-256-IGE, both ways | Per message; key and IV derived per message, no state kept | yes |
-| `auth/handshake.ts` | AES-256-IGE, SHA-1, modular exponentiation, PQ factorization | Per handshake step | yes |
-| `auth/bind.ts` | AES-256-IGE encrypt | Once per temporary-key binding | yes |
-| `transport/obfuscation.ts` | AES-256-CTR | **Two long-lived cipher objects per connection**, advanced by every packet in both directions | yes |
-| `files/cdn.ts` | AES-256-CTR, SHA-256 | Counter derived from the chunk's offset; one call per chunk | yes |
-| `files/upload.ts` | MD5 | Accumulated over a whole file | yes |
-| `auth/password.ts`, `security/password.ts` | SRP, PBKDF2-HMAC-SHA512, modular exponentiation | Once per sign-in or password change | yes |
-| `auth/keys.ts` | SHA-1 (`node:crypto` directly) | Once per key fingerprint | yes |
+| `message/encrypted.ts` | AES-256-IGE, both ways | Per message; key and IV derived per message | no |
+| `auth/handshake.ts` | AES-256-IGE, SHA-1, modular exponentiation, PQ factorization | Per handshake step | no |
+| `auth/bind.ts` | AES-256-IGE encrypt | Once per temporary-key binding | no |
+| `transport/obfuscation.ts` | AES-256-CTR | **Two long-lived streams per connection**, advanced by every packet in both directions | no |
+| `files/cdn.ts` | AES-256-CTR, SHA-256 | Counter derived from the chunk's offset | no |
+| `files/upload.ts` | MD5 | Accumulated over a whole file | no |
+| `auth/keys.ts` | SHA-1 | Once per key fingerprint | no |
+| `session/inbound.ts` | gzip | In the middle of flattening a container | no |
+| `auth/password.ts`, `security/password.ts` | SRP, PBKDF2-HMAC-SHA512 | Once per sign-in or password change | **yes** |
 
-Seventeen call sites across seven modules, plus two that reach `node:crypto` without going through
-the crypto layer. **None of them awaits anything today.**
+Two rows decided it, and neither is the one that looks hardest.
 
-### 4.2 What that rules out
+**The transport obfuscation is a stream cipher, not per-message encryption.** It opens two counter
+streams when a connection opens and advances them with every packet, in both directions, for the
+life of the connection. `crypto.subtle` has no stateful cipher object: `encrypt` is one-shot. That
+much could be rebuilt — owning an explicit counter is a matter of keeping state, not of what the
+platform exposes — but it would mean an `await` per packet on the hot path, in a layer where
+ordering and backpressure are the whole job.
 
-Two of those rows decide the architecture, and neither is the one that looks hardest.
+**IGE needs the raw block cipher, and `crypto.subtle` exposes no way to encrypt a single block.**
+AES-ECB is absent from the standard. The usual workaround, a one-block AES-CBC with a zero IV, is
+asynchronous — a promise per sixteen bytes. So a block cipher has to be in the package regardless
+of what else is decided.
 
-**The transport obfuscation is a stream cipher, not per-message encryption.** It builds two
-`aes-256-ctr` objects when a connection opens and advances them with every packet, in both
-directions, for the life of the connection. WebCrypto has no stateful cipher object at all —
-`crypto.subtle.encrypt` is one-shot. Reproducing this against WebCrypto means computing the
-counter from the byte offset and awaiting a fresh one-shot call **per packet**, on the hot path,
-in a layer where ordering and backpressure are the whole job.
+Once it is there, deriving a message key through an awaited digest buys nothing and costs an
+`await` on every message. So everything is synchronous except the one primitive where waiting is
+both unavoidable and worth it.
 
-**IGE needs the raw block cipher, which WebCrypto does not expose.** AES-ECB is absent from the
-standard. The usual workaround — a single-block AES-CBC with a zero IV — is asynchronous, so it
-turns the per-message cipher into a promise per sixteen bytes.
+#### The decision, as a table
 
-So an asynchronous provider does not, by itself, supply what is missing. It supplies waiting, and
-the missing thing is a mode.
+| | Design A — synchronous contract, own AES | Design B — asynchronous contract over `crypto.subtle` |
+| --- | --- | --- |
+| IGE | Available: the block cipher is in the package | **Not available.** No single-block operation is exposed |
+| Stateful CTR | Available: the stream owns its counter | Available, by owning an explicit counter — but one `await` per packet |
+| Digests on the message path | Synchronous | `await` in the middle of building every message |
+| PBKDF2 | Delegated to the platform, asynchronous | Asynchronous |
+| Blast radius | One module per primitive | `await` pushed into the transport's packet path and the session's message path, where sequence-number ownership, concurrent sends and disposal-while-pending live |
+| Speed on a server | Native, unchanged | Native |
+| Speed in a browser | 13–20× slower than native | Native for what it can do, and it cannot do the two that matter |
+| Timing behaviour | Table-driven AES is not constant-time; stated in the module and not claimed otherwise | Native, and constant-time where the platform is |
 
-### 4.3 The decision
+Design A, then. Other mature MTProto clients make the same split, which is corroboration
+rather than a reason.
 
-**The provider contract is synchronous.** A browser implementation therefore needs a synchronous
-AES in the repository; WebCrypto can back only the paths where a single wait is already
-acceptable — PBKDF2 at sign-in, and one-shot hashing during the handshake.
+### 4.3 What it costs
 
-The alternative — making the boundary asynchronous — was rejected on the evidence above rather
-than on taste. It would push `await` into the transport's packet path and the session layer's
-message path, where packet ordering, sequence-number ownership, serialized use of a stateful
-cipher, concurrent sends, and disposal-while-pending all live. That is a large amount of risk
-bought in exchange for a mode WebCrypto still would not provide.
+Measured on the machine these figures come from, against `node:crypto` on the same input:
 
-What it costs was measured, not assumed. A compact AES-256 block cipher was written, checked
-against `node:crypto` on a known block, and timed against it:
+| | Portable | The platform | Ratio |
+| --- | --- | --- | --- |
+| AES-256, table-driven | 117 MiB/s | 1582 MiB/s | 13.5× |
+| SHA-256 | 115 MiB/s | 1910 MiB/s | 16.6× |
+| SHA-1 | 108 MiB/s | 2259 MiB/s | 20.9× |
+| MD5 | 436 MiB/s | 884 MiB/s | 2.0× |
 
-| | Throughput |
-| --- | --- |
-| The platform's AES-256 | 978 MiB/s |
-| A straightforward pure-JS AES-256 | 2.8 MiB/s |
+A 4 KiB message costs about 0.08 ms of cryptography in the portable path against about 0.005 ms
+natively. Messaging is unaffected. Bulk file transfer is where the difference becomes the limiting
+factor, and it is also the one place a wait is natural, because a download is already chunked and
+already waiting on the network.
 
-That implementation is **deliberately naive** — byte-wise state, an allocation per block — and a
-table-driven one is substantially faster, so the ratio is an upper bound on a naive approach
-rather than the cost of doing it well. Two things follow. Messaging is unaffected either way: a
-4 KB message costs about 1.4 ms even at the slow figure. Bulk file transfer is where it stops
-being acceptable, and it is also the one place a wait is natural, because a download is already
-chunked and already waiting on the network.
+**One figure is worse than the ratios suggest.** Validating the prime a datacenter publishes is a
+Miller-Rabin test on a 2048-bit number: native `BigInt` arithmetic in a browser, and about **five
+seconds**. The result is cached per prime, so it is paid once — but it is paid at the worst moment,
+on the first connection, and a page that appears to hang for five seconds is a page that looks
+broken. A worker is the obvious place to put it and nothing does that yet.
 
-Table-driven AES is also the point at which cache-timing behaviour has to be argued rather than
-assumed, and this document does not claim constant-time behaviour for anything not yet written.
+**Timing.** The portable AES is table-driven, and table lookups indexed by key-dependent bytes are
+the classic cache-timing side channel. The module says so. Nothing here claims constant-time
+behaviour, and passing tests would not establish it if it did.
 
-### 4.4 The next executable action
+---
 
-Introduce the synchronous provider seam over the seventeen call sites, backed on Node, Bun and
-Deno by exactly what they use today, so the change is behaviour-preserving and testable against
-the existing vectors. That seam is the prerequisite for every browser step after it, and it is
-the point at which a browser provider becomes an addition rather than a rewrite.
+## 5. What has actually been run
 
-Nothing here is started. It is recorded as the next architectural step rather than as a gap that
-could be closed in passing, and no package claims browser support meanwhile — one that advertised
-it while unable to open a connection would be worse than one that does not.
+The point of this document is the difference between run and expected, so the browser column is
+broken down rather than given a single mark.
 
-## 5. What is not verified
+| Step | Node 22 | Bun | Deno | Workers / Edge | Browser |
+| --- | --- | --- | --- | --- | --- |
+| The module graph loads | **run** | expected | expected | expected | **run** |
+| Crypto against published vectors | **run** | expected | expected | expected | **run** |
+| Both backends agree byte for byte | **run** | n/a | n/a | n/a | n/a |
+| Protocol over a fake transport | **run** | expected | expected | expected | n/a¹ |
+| A real socket carries bytes both ways | **run** | expected | expected | expected | **run** |
+| The key exchange completes over one | **run** | expected | expected | expected | **run** |
+| An account negotiates and binds a temporary key | **run** | expected | expected | expected | **run** |
+| An encrypted call is answered | **run** | expected | expected | expected | **run** |
+| An update is normalized and dispatched | **run** | expected | expected | expected | **run** |
+| The datacenter pushes one down the session | **run** | expected | expected | expected | **run** |
+| Updates ingested from the wire and routed | **run** | expected | expected | expected | **not run**² |
+| A session survives in storage | **run** | expected | expected | expected | **run** |
+| Stopping closes what was held | **run** | expected | expected | expected | **run** |
+| Against Telegram itself | **not run**³ | **not run**³ | **not run**³ | **not run**³ | **not run**³ |
 
-Stated plainly, so the table above is not read as more than it is:
+¹ The browser check talks to a datacenter over a real socket instead, which is a stronger claim
+than the same peer reached in-process.
+
+² An account ingests updates from a connection only once it is signed in — there is a place in the
+update stream to keep, and an account with no authorization has none. Signing in needs credentials
+this check does not have. The dispatch half is run in a browser; the ingestion half is not.
+
+³ No credentials. Nothing in this repository has been pointed at Telegram's production network.
+
+### 5.1 How the browser column was established
+
+`pnpm --filter @yuigram/browser-check serve` bundles the framework for a browser — with the
+substitutions the packages declare, read from their own `package.json` rather than written into
+the tool — serves it as a page, and answers the WebSocket the page opens with the same mock
+datacenter the test suite uses. Nothing in the page is mocked: the cryptography is the page's, the
+store is the origin's `localStorage`, and the connection is a real `WebSocket`.
+
+The page reports what it did rather than only whether it passed, because a check that silently did
+nothing would otherwise read as a pass. Seventeen checks, all passing in Chrome.
+
+Running it found three things the build could not: `process.version` read at module scope, which
+made importing the framework throw in a browser before anything could run; `Buffer` doing the hex
+and base64 on four live paths; and the five-second prime validation above.
+
+### 5.2 What is still inference
 
 - **Bun and Deno have not been executed against.** Neither is installed on the machine these
-  measurements come from. Their columns are inference from the API list.
-- **No worker or edge platform has been executed against.** The portability check approximates one
-  with a bare context; it is not Cloudflare, Deno Deploy or Vercel.
-- **No browser has been executed against.** The CORS note in the table is a property of Telegram's
-  servers, and is the reason a browser column is of limited interest for the Bot API anyway.
-- **The polling loop is not exercised off Node**, only bundled.
+  measurements come from. Their columns are inference from the API list, and the browser result
+  raises the confidence without replacing it: both provide `node:crypto`, so both take the
+  platform path rather than the one that was just exercised.
+- **No worker or edge platform has been executed against.** They resolve the same substitutions a
+  browser does, which is what the `bundle/browser-builtins` benchmark holds, but a bundle that
+  reaches nothing forbidden is not a program that ran.
+- **The long-polling loop is not exercised off Node**, only bundled.
 
-Closing any of these means running the suite on that runtime in continuous integration, which is
-the honest way to turn an "expected" into a "run".
+Closing any of these means running against that runtime in continuous integration, which is the
+honest way to turn an "expected" into a "run".
