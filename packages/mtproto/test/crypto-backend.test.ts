@@ -240,6 +240,46 @@ describe('randomness', () => {
   })
 })
 
+describe('stretching a password', () => {
+  for (const [name, backend] of BACKENDS) {
+    it(`${name}: matches the value published for the parameters`, async () => {
+      // RFC 6070's first PBKDF2 case, taken over SHA-512 rather than SHA-1 —
+      // the digest Telegram's password algorithm names. The expectation is not
+      // this code's output: it is what any correct PBKDF2-HMAC-SHA512 produces
+      // for `password`, `salt` and one iteration, and both backends have to
+      // reach it because a proof computed under one is checked by a server that
+      // knows nothing about either.
+      const derived = await backend.pbkdf2(
+        new TextEncoder().encode('password'),
+        new TextEncoder().encode('salt'),
+        1,
+        64,
+      )
+
+      expect(derived.length).toBe(64)
+      expect(hex(derived)).toBe(
+        '867f70cf1ade02cff3752599a3a53dc4af34c7a669815ae5d513554e1c8cf252' +
+          'c02d470a285a0501bad999bfe943c08f050235d7d68b1da55e63f73b60a57fce',
+      )
+    })
+  }
+
+  it('produces the same key on both, over random inputs', () => {
+    // A sign-in computed on a server and a sign-in computed in a browser have
+    // to agree, or a password that works in one place fails in the other.
+    return Promise.all(
+      Array.from({ length: 4 }, async (_, round) => {
+        const password = new Uint8Array(randomBytes(8 + round))
+        const salt = new Uint8Array(randomBytes(16))
+
+        expect(hex(await browser.pbkdf2(password, salt, 64, 64))).toBe(
+          hex(await platform.pbkdf2(password, salt, 64, 64)),
+        )
+      }),
+    )
+  })
+})
+
 describe('comparing without a timing oracle', () => {
   for (const [name, backend] of BACKENDS) {
     it(`${name}: answers rather than throwing on a length mismatch`, () => {

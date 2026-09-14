@@ -93,6 +93,76 @@ describe('what a real gzip writes', () => {
   })
 })
 
+describe('a header longer than the usual ten bytes', () => {
+  // `gzipSync` writes the shortest header there is, so nothing above ever
+  // exercises the optional fields the format allows. A compressor that wrote a
+  // filename — or a member produced by `gzip` on a file — would put the body
+  // somewhere else entirely, and an implementation that assumed ten bytes would
+  // start reading in the middle of it.
+  const body = (original: Uint8Array): Uint8Array => new Uint8Array(gzipSync(original)).subarray(10)
+
+  /** Build a member with whichever optional fields are asked for. */
+  function member(
+    original: Uint8Array,
+    extras: { name?: string; comment?: string; extra?: number[] },
+  ): Uint8Array {
+    const FEXTRA = 4
+    const FNAME = 8
+    const FCOMMENT = 16
+
+    let flags = 0
+    const optional: number[] = []
+
+    if (extras.extra !== undefined) {
+      flags |= FEXTRA
+      optional.push(extras.extra.length & 0xff, extras.extra.length >>> 8, ...extras.extra)
+    }
+    if (extras.name !== undefined) {
+      flags |= FNAME
+      optional.push(...[...new TextEncoder().encode(extras.name)], 0)
+    }
+    if (extras.comment !== undefined) {
+      flags |= FCOMMENT
+      optional.push(...[...new TextEncoder().encode(extras.comment)], 0)
+    }
+
+    const head = Uint8Array.from([0x1f, 0x8b, 8, flags, 0, 0, 0, 0, 0, 0xff, ...optional])
+    const rest = body(original)
+    const out = new Uint8Array(head.length + rest.length)
+    out.set(head, 0)
+    out.set(rest, head.length)
+
+    return out
+  }
+
+  it('reads a member carrying a filename', () => {
+    const original = utf8('named after the file it came from')
+
+    expect(text(gunzipPortable(member(original, { name: 'answer.bin' }), LIMIT))).toBe(
+      text(original),
+    )
+  })
+
+  it('reads a member carrying an extra field and a comment', () => {
+    const original = utf8('with everything the format allows')
+
+    expect(
+      text(
+        gunzipPortable(member(original, { extra: [1, 2, 3, 4], name: 'a', comment: 'why' }), LIMIT),
+      ),
+    ).toBe(text(original))
+  })
+
+  it('refuses a flag this build does not know', () => {
+    // Bit 5 and above are reserved. A member setting one is not a member this
+    // can read, and guessing where the body starts would produce rubbish.
+    const damaged = new Uint8Array(gzipSync('x'))
+    damaged[3] = 0x20
+
+    expect(() => gunzipPortable(damaged, LIMIT)).toThrow(/gzip flags/)
+  })
+})
+
 describe('a raw deflate stream', () => {
   it('reads back what the platform deflated', () => {
     // The gzip wrapper is not the compression. The protocol's own compressed
