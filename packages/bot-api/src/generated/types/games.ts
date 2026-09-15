@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Games
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { Animation, MessageEntity, PhotoSize, User } from './available-types.js'
 
