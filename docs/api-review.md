@@ -48,8 +48,8 @@ bot.on('callback_query', (ctx) => {
 })
 ```
 
-Both fail. The second is the interesting one, and the correction below explains why it is not
-quite the defect it first appears to be.
+Both fail. The second is the interesting one: as the next section shows, it is not quite the
+defect it first appears to be.
 
 The cause is structural. There is exactly one context type:
 
@@ -66,10 +66,9 @@ export interface Context extends BaseContext {
 One type serves twenty-six update kinds, so every field that is not universal must be optional.
 The developer then re-establishes at runtime what they already stated at registration time.
 
-### Correction to this diagnosis
+### What the schema actually declares
 
-Checking the schema sharpened the claim above, and it is worth recording rather than quietly
-editing.
+The claim above needs sharpening, because not every optional field is a defect.
 
 Telegram declares `Message.text` **optional** — a photo without a caption is a message with no
 text — and `CallbackQuery.data` optional too, since a game callback carries `game_short_name`
@@ -280,7 +279,7 @@ Yuigram must hold three client kinds, so it needs a vocabulary the reference nev
 
 ## 10. What is already right
 
-The review should not imply the current design is wholly wrong. Several decisions are sound and
+None of this implies the current design is wholly wrong. Several decisions are sound and
 should survive any redesign:
 
 - **Service-message promotion.** A member joining arrives as `chat_member_joined`, not as a
