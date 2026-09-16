@@ -267,10 +267,12 @@ change in the minor position and nothing between the two was published.
     over one transfer. See [mtproto.md](mtproto.md) §11
   - People: identity, profiles, contacts, blocking, presence and profile media, each resolving
     the people it names through the account's own peer store
-  - Still to come in this phase, largest first: conversation management (membership,
-    permissions, invite-link operations, creation, folders and dialog state), the forum and
-    story operations beside the two lists already walked, and the gift, boost and business
-    surfaces
+  - Conversations: membership and permissions, invite-link operations, management, creation
+    and deletion, lookup, and folders and dialog state — sixty operations, loaded when one is
+    called so a bot that never uses them pays nothing
+  - Still to come in this phase, largest first: the forum and story operations beside the four
+    lists already walked, the gift, boost and business surfaces, and a small number of
+    conversation operations that depend on a dialog cache this project does not keep
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`

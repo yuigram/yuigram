@@ -154,6 +154,24 @@ and passing a channel is refused here by name rather than by the server answerin
 about the request. The ones that edit a profile send only the fields they were given, because
 the method reads an absent field as "leave it" and an empty string as "clear it".
 
+**Conversations can be operated on, not only read from.** Sixty operations: adding, banning,
+restricting, kicking, promoting and ranking members; creating, editing, revoking and reading
+invite links, and deciding who gets in through one; renaming, describing, photographing, naming
+and colouring a conversation, and setting its slow mode, its message lifetime, its default
+permissions and its join rules; making and deleting groups, supergroups and channels; reading
+one or several, with everything Telegram will say; and folders, the archive, the unread mark and
+drafts.
+
+Telegram keeps basic groups and channels apart, so most of these are two calls and choosing
+between them is the operation's job — an operation that exists for only one kind says which it
+needed. Rights are taken as booleans and written as the protocol's true-or-absent flags; banning,
+restricting and unbanning are one call distinguished by what is in the set; a kick is two,
+because the protocol has no single one. Creating something reads it back out of its own answer,
+since the identifier and access hash arrive in the updates and there is no separate result.
+
+Answers carrying updates now reach the account, so a program that renames a channel sees the
+rename through its own handlers.
+
 **A file can be pulled as well as pushed.** `account.downloadIterable(request)` yields chunks in
 file order, and `break` stops the transfer behind it. `downloadTo` could not express that: a sink
 is called and cannot decline the next call, so a caller that had seen enough could only throw.
