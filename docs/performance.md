@@ -55,27 +55,67 @@ Decisions that protect this:
 
 ### 2.1 Where this budget currently stands
 
-**Exceeded, and measured rather than estimated.** `startup/import` reports 100–120 ms on the
-machine these figures come from, against a budget of 100 ms. The budget is not being widened to
-match: a figure adjusted until it passes measures nothing.
+**Exceeded. 105 ms against a budget of 100 ms** on the machine these figures come
+from. The budget is not being widened to match: a figure adjusted until it
+passes measures nothing.
 
-Two things have been established about it by alternating control — measuring the two trees in
-turn, twice, so that drift shows up as drift rather than as a difference between them.
+#### Where the time goes
 
-The exceedance itself is **environmental**. An earlier comparison measured 107/119 ms for one tree and
-104/117 ms for the other, with the orderings disagreeing about which was faster and the spread
-within a single measurement larger than the gap between them.
+Profiling a cold import settles what the prose above only assumed. Framework
+code accounts for **under two milliseconds** of it. The rest is Node resolving
+modules:
 
-Splitting the platform seams **did cost about 7 ms**, and that one is real: 107/107 ms against
-98/101 ms, the same direction both rounds. It is eight additional modules on the eager path —
-the crypto contract and its platform implementation, the IGE mode, the stream contract and the
-connector, the decompressor seam, and the byte-to-text helpers — each a file to read and parse.
-None of the portable implementations are among them: on a runtime with `node:crypto` the
-substituted modules are not reached at all, which the module graph confirms.
+| | |
+| --- | --- |
+| `internalModuleStat` | 16.9 ms |
+| `esm/utils` | 16.8 ms |
+| `getPackageScopeConfig` | 14.7 ms |
+| `package_json_reader`, `lstat`, `open`, `node:path`, `node:url`, `node:fs` | 31.6 ms |
+| every framework module's own evaluation, together | 1.7 ms |
 
-That is the price of naming what the protocol needs rather than what one runtime provides, and it
-is recorded here rather than absorbed quietly. The way to get it back is to stop evaluating the
-protocol's public surface eagerly from the façade, which is a larger change than this seam.
+Measured against a synthetic tree — a hundred trivial modules in one directory
+cost 29 ms to add — the per-module charge is about 0.3 ms at best and about
+0.4 ms across a tree as scattered as this one. **So the lever is how many
+modules there are, not how large they are**, which is the opposite of what
+"dominated by module parse" suggests.
+
+#### What was done about it
+
+The eager surface went from 118 modules to 101 by removing indirection that was
+doing no work: a barrel that dragged four webhook adapters into every program
+importing a bot, thirteen more in `@yuigram/core` and three in `@yuigram/mtproto`
+whose only job was to be re-exported by the package entry point, and one crypto
+module left with a single caller. Same exported names, same packages, nothing
+moved behind a dynamic import.
+
+#### The measurements
+
+Four alternating rounds, seven samples each, same machine and build settings,
+medians per round:
+
+| Tree | Round medians | Overall |
+| --- | --- | --- |
+| After this work | 105 / 104 / 106 / 107 | **105 ms** |
+| Before the platform-seam split | 109 / 110 / 111 / 111 | 110 ms |
+| With the seam split, before this work | 112 / 113 / 116 / 111 | 112 ms |
+
+Every round agrees on the ordering, so the 7 ms improvement and the 2 ms the
+seam split had cost are both real rather than drift. Individual samples spread
+from 96 to 129 ms, which is why medians of medians are reported rather than a
+best case.
+
+Absolute numbers move with the machine: the same pre-split tree measured 98–101
+ms earlier in the same week. **That does not rescue the gate** — what is
+enforced is 100 ms, and this tree does not meet it.
+
+#### What would close the remaining gap
+
+At roughly 0.4 ms a module, five milliseconds is about twelve more modules. The
+three that remain avoidable are worth about one. Beyond them the choices are to
+publish fewer, larger modules — which would cost the codec tables their lazy
+boundary and the Bot API bundle its exclusion of MTProto — or to move real work
+behind a dynamic import, which would move the cost somewhere nothing measures
+rather than remove it. Neither is worth the budget.
 
 ---
 
