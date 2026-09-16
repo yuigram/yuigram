@@ -122,14 +122,50 @@ including one where the machine was loaded enough to put all three trees between
 130 and 150 ms. **That is what makes the 7 ms attributable**: a comparison
 survives drift that an absolute number does not.
 
-#### What would close the remaining gap
+#### What closed the gap
 
-At roughly 0.4 ms a module, five milliseconds is about twelve more modules. The
-three that remain avoidable are worth about one. Beyond them the choices are to
-publish fewer, larger modules — which would cost the codec tables their lazy
-boundary and the Bot API bundle its exclusion of MTProto — or to move real work
-behind a dynamic import, which would move the cost somewhere nothing measures
-rather than remove it. Neither is worth the budget.
+The prose above concluded that "move real work behind a dynamic import would
+move the cost somewhere nothing measures rather than remove it", and dismissed
+it. That was too broad. It is true of work a program is going to do anyway —
+moving the codec tables out of the graph only defers what connecting will pay —
+and false of work most programs never do at all.
+
+Managing a two-factor password is the second kind. It reaches SRP, SRP reaches
+modular exponentiation, Miller-Rabin and the safe-prime table, and a bot has no
+password to manage. Seven modules of number theory were being resolved by every
+program that loaded the framework so that eight `async` functions could be
+called synchronously from the barrel, which none of them is. They are now loaded
+when one of the eight is called, which is the shape the codec tables, the
+sign-in steps and the download path already use.
+
+That took the eager graph from 102 modules to 95, and moved the distribution off
+the line:
+
+| Tree | Modules | Three consecutive medians | Sample range |
+| --- | --- | --- | --- |
+| Before the paged lists | 102 | 96.9 | 93–106 |
+| With them, before this | 104 | 103 / 97.7 / 101 | 89–124 |
+| After | 95 | 94.0 / 92.7 / 93.7 | 89–99 |
+
+The middle row is the one that matters for how the budget was being read: the
+same tree measured above and below 100 ms depending on the run, so a passing
+gate said nothing. The last row is the first time every individual sample has
+been under budget rather than the median alone.
+
+#### What is left
+
+At roughly 0.4 ms a module, the remaining headroom is about twelve modules. What
+is still eagerly resolved and need not be follows the same test as the password
+machinery — work most programs never do — and the candidates are the message
+formatters (`format/html`, `format/markdown`, `format/text`), which a program
+that sends plain text never touches, and the entity views, which a program that
+reads `raw` never constructs. Neither has been done: each is a public surface
+whose laziness would have to be arranged without changing a signature, and the
+budget is met without them.
+
+What is *not* worth doing is publishing fewer, larger modules. That would cost
+the codec tables their lazy boundary and the Bot API bundle its exclusion of
+MTProto, which are worth more than the milliseconds.
 
 ---
 
