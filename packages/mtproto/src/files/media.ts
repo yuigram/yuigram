@@ -282,7 +282,7 @@ export interface UploadedDocumentOptions {
    *
    * A label Telegram stores and shows, not a path. Nothing here touches a
    * filesystem, and a name that arrived from elsewhere is attacker-chosen —
-   * `docs/security.md` §6.
+   * `docs/security.md` §7.
    */
   readonly name?: string
   /**

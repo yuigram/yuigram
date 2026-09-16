@@ -485,12 +485,8 @@ async function run(): Promise<void> {
     })
 
     await check('normalizes and dispatches an update to a handler', async () => {
-      // Handed to the account rather than pushed down the socket. What an
-      // account ingests from a connection is gated on being signed in — there
-      // is a place in the update stream to keep, and an account with no
-      // authorization has none — and signing in needs credentials this check
-      // does not have. So the half that can be shown here is shown here: an
-      // update becomes an event and reaches a handler, in a browser.
+      // Handed to the account directly. This is the half after an update has
+      // arrived: it becomes an event and reaches a handler.
       await account.deliver({
         _: 'updateUserTyping',
         user_id: 42n,
@@ -502,15 +498,25 @@ async function run(): Promise<void> {
       return `normalized and dispatched: ${seen.join(', ')}`
     })
 
-    await check('carries an update down the encrypted session', async () => {
-      // The other half: the datacenter pushes a message the page never asked
-      // for, and it arrives. Whether the account then routes it to a handler is
-      // the check above; this one is about the session carrying it at all.
+    await check('receives an update the datacenter pushed down the session', async () => {
+      // The whole path, with nothing handed over: the datacenter seals an
+      // update under the session key, sends it down the socket this page
+      // opened, and the page decrypts it, judges it, normalizes it and reaches
+      // a handler. Everything before the handler is what the direct check
+      // above skips.
+      const before = seen.length
       const pushed = await fetch('/deliver', { method: 'POST' })
 
       expect(pushed.ok, `the datacenter could not push: ${await pushed.text()}`)
 
-      return 'the datacenter sealed an update under the session key and sent it'
+      const deadline = Date.now() + 10_000
+      while (seen.length === before && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+
+      expect(seen.length > before, 'nothing reached a handler over the wire')
+
+      return `decrypted, judged, normalized and dispatched: ${String(seen.at(-1))}`
     })
 
     await check('kept its session in the page’s own storage', async () => {

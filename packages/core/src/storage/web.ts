@@ -12,9 +12,18 @@
  *
  * **What it is not.** A browser gives every origin its own storage and nothing
  * else: anything running on the page can read this, including an injected
- * script. That is a property of the platform rather than of this store, and no
- * wrapper here changes it — `docs/security.md` §3 says what that means for
- * session keys and why the answer is not a passphrase kept beside them.
+ * script. An authorization key kept here is the account — not a token that can
+ * be scoped or revoked in isolation — so a script that can read this origin's
+ * storage can be the account until the key is revoked. That is a property of
+ * the platform rather than of this store, and the alternatives a browser offers
+ * have the same property: IndexedDB is origin-scoped and script-readable too.
+ * `docs/security.md` §3 says what follows from that and why the answer is not a
+ * passphrase kept beside the thing it protects.
+ *
+ * **One store per account.** The default prefix is the same for everyone, so
+ * `web()` called twice produces two stores over one place. Two accounts given
+ * those would overwrite each other's authorization keys silently. Pass a
+ * `prefix` per account, or wrap one store with `namespaced`.
  *
  * **Quota.** The limit is a few megabytes per origin and is enforced by
  * throwing. A session is kilobytes, so a program storing only that will never

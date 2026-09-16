@@ -201,6 +201,18 @@ export interface AccountOptions {
    * which is what makes a restart resume rather than start again. What is
    * stored is a position and nothing else: the updates themselves arrive again
    * from the difference the position is used to ask for.
+   *
+   * **One store per account.** The division here is by purpose, not by account,
+   * because before it signs in an account has no identity to divide by. Two
+   * accounts given the same store write to the same keys, and the second to
+   * reach a datacenter overwrites the first one's authorization for it — with
+   * no error, because neither key says who negotiated it. Give each account a
+   * store of its own, or an area of one: `namespaced(store, 'first:')`.
+   *
+   * This is easiest to reach by accident in a browser, where `web()` called
+   * twice with no arguments produces two stores over the same `localStorage`
+   * under the same prefix, which is one store. A path or a prefix is the whole
+   * of the fix.
    */
   readonly storage: KV<unknown>
   /**
@@ -528,7 +540,7 @@ export class Account<Ext = unknown> {
    * Fetch a file, handing each range to a sink in the order it belongs in.
    *
    * The destination is the caller's, always. A filename that arrived from
-   * Telegram is attacker-chosen — `docs/security.md` §6 — so nothing here turns
+   * Telegram is attacker-chosen — `docs/security.md` §7 — so nothing here turns
    * one into a path, and a caller writing to disk decides where.
    *
    * The sink is called with the offset each run of bytes starts at and in file

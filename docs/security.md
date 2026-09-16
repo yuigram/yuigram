@@ -157,7 +157,88 @@ for it before a single byte is handed to the caller — `mtproto.md` §11.
 
 ---
 
-## 6. Handling untrusted input
+## 6. The cipher a browser gets, and what it does not promise
+
+A browser has no AES. `crypto.subtle` cannot help with the two modes MTProto
+needs — it exposes no single-block operation, so IGE cannot be built on it, and
+its counter mode has no object that keeps its place — so the cipher is in the
+package, in TypeScript, and `docs/runtimes.md` §4.2 records why. This section is
+about what that costs, because it costs something real.
+
+### 6.1 The implementation is not constant-time
+
+The portable AES is table-driven: four 256-entry tables, indexed by bytes of the
+round state, which is a function of the key. **Where a table entry lands in the
+cache depends on the key**, and how long a lookup takes depends on where it
+landed. That is the classic cache-timing side channel against software AES, and
+it has been used to recover keys in practice.
+
+Nothing about the tests changes this. Every published vector can pass while the
+timing leaks, which is exactly why the surviving mutant in
+`crypto-backend.test.ts` — replacing the constant-time comparison with one that
+returns early — stays a survivor. No functional test can kill it, and killing it
+by other means would be the test asserting something it did not establish.
+
+What is and is not claimed:
+
+| | |
+| --- | --- |
+| The comparison in `constantTimeEqual` | Reads every byte and accumulates the differences with `\|`, so the work does not depend on where or whether two values differ. The **algorithm** is constant-time; whether the engine compiles it that way is not something this repository can establish, and is not claimed. |
+| The platform backend's comparison | `node:crypto`'s `timingSafeEqual`, which is the platform's own claim rather than this repository's. |
+| The portable AES | **Not constant-time, and not claimed to be.** Stated in the module and here. |
+| The portable digests | No key-dependent table indices; a digest has no key. Nothing to leak. |
+| `modPow` | Square-and-multiply, branching on exponent bits. The exponents it is used with — DH secrets, RSA public exponents — make this worth naming, and §6.3 says what follows. |
+
+### 6.2 Who can see the timing
+
+A cache-timing attack needs an observer that can measure the victim's cache
+behaviour. In a browser that means code running on the same machine, and the
+mitigations that followed Spectre are what stand between it and a usable clock:
+
+- `performance.now()` is coarsened, and the coarsening is per-context.
+- `SharedArrayBuffer` — the usual way to build a fine-grained timer — requires
+  cross-origin isolation, which a page must opt into with headers.
+- A page on a different origin cannot read this page's memory or its cache lines
+  directly; it has to infer them.
+
+That is a real obstacle rather than a guarantee. The honest statement is that
+**a browser is a hostile place to run software AES, and the mitigations are
+someone else's and can change**.
+
+### 6.3 What this means for a release
+
+The exposure is not the same everywhere, and the difference is worth being
+precise about:
+
+| Where | Cipher | Exposure |
+| --- | --- | --- |
+| Node, Bun, Deno | `node:crypto`, which is the platform's AES and uses the processor's own instructions | The platform's problem, and AES-NI is constant-time by construction |
+| A browser or worker | The portable AES | The side channel above, against whatever else the machine is running |
+
+So: **the portable cipher is a fit for a browser page the person running it
+controls, and is not a fit for a page that also runs untrusted code.** A page
+that embeds third-party scripts is a page where an attacker is already inside
+the origin — at which point they can read the authorization key straight out of
+storage (§3) and do not need a timing attack at all. That is the sharper point:
+in a browser, the side channel is not the weakest thing about holding a key.
+
+The alternatives, and why each was not taken:
+
+| | |
+| --- | --- |
+| A WebAssembly AES | Fast and closer to constant-time. It is a binary artifact to vendor and to trust, and this repository's dependency policy admits neither an npm runtime dependency nor a vendored blob. Not ruled out on merit — ruled out by a policy that would have to change first, deliberately. |
+| `crypto.subtle` for the block cipher | Cannot be done: it exposes no way to encrypt a single block, and IGE needs one. `docs/runtimes.md` §4.2. |
+| Refusing to run in a browser | What the package did before, and it makes the question moot by making the feature absent. |
+
+**Release position.** Browser support ships with this limitation stated, in the
+module, here, and in `docs/runtimes.md`. It is not a blocker for a page whose
+scripts are all the developer's own. A deployment that cannot make that
+statement about its page should run the account on a server and talk to it, and
+that is the recommendation rather than a footnote.
+
+---
+
+## 7. Handling untrusted input
 
 Every update is attacker-controlled. A user chooses their own display name, filename, caption
 and callback data.
@@ -179,7 +260,7 @@ straightforward privilege escalation.
 
 ---
 
-## 7. Account-ban exposure — a product-level risk
+## 8. Account-ban exposure — a product-level risk
 
 From `core.telegram.org/api/obtaining_api_id`: Telegram monitors unofficial client usage and
 states that accounts used for flooding, spamming or faking counters will be banned
@@ -204,7 +285,7 @@ wrappers.
 
 ---
 
-## 8. Supply chain
+## 9. Supply chain
 
 **Zero runtime dependencies** across core, `bot-api` and `mtproto`. Node's built-ins cover
 everything: `fetch`, `FormData` and `Blob` for the Bot API; `node:crypto` and native `BigInt`
@@ -245,7 +326,7 @@ is what makes it a responsible position rather than an assertion.
 
 ---
 
-## 9. Defaults
+## 10. Defaults
 
 Security defaults are the ones that actually take effect, so they are chosen conservatively:
 
@@ -262,7 +343,7 @@ Security defaults are the ones that actually take effect, so they are chosen con
 
 ---
 
-## 10. Pre-release checklist
+## 11. Pre-release checklist
 
 Checked before each release. An item is ticked only when a test holds it, not when it was
 looked at once. Where an item is a property of the code rather than of a single path — that no
