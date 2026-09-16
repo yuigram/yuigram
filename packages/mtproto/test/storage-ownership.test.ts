@@ -328,6 +328,20 @@ describe('the claim itself', () => {
     })
   })
 
+  it('refuses a claim that names a different account', async () => {
+    // An area's claim names the account whose area it is, and under the
+    // encoding above nothing else can write one there. The check is still made,
+    // because a claim that is never read is a claim that cannot be relied on —
+    // and a store is a file somebody can edit, or restore from a backup of a
+    // different account.
+    const backing = store()
+    await namespaced(backing, areaFor('alice')).set('claim', { name: 'bob' })
+
+    await expect(claimArea(backing, { name: 'alice', holder: run('one') })).rejects.toThrow(
+      /belongs to the account 'bob', not to 'alice'/,
+    )
+  })
+
   it('refuses a claim that is not a record', async () => {
     const backing = store()
     await namespaced(backing, areaFor('alice')).set('claim', 'mine')
