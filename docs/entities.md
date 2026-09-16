@@ -245,6 +245,33 @@ none of the three: nothing is requested until the loop asks for the next item, b
 the fetching, and `limit` is the caller's own answer. What it removes is the offset arithmetic,
 which is three fields that have to agree and the part a caller gets wrong.
 
+**Which policy a list is paged by** is the list's, not the layer's. Eighteen walks ship, using
+eight different ones, and they do not reduce to a shared helper without the helper being told which
+rule to apply:
+
+| Policy | Continued by | The end is | Walks |
+| --- | --- | --- | --- |
+| Message number | The oldest message of the page | The complete form, or a cursor that stopped moving | `history`, `search` |
+| Dialog offset | The last row's date, number and peer | The complete form | `dialogs` |
+| Rate, peer and number | The rate the answer gave, with the last message | No rate to continue from | `searchGlobal` |
+| Rate, peer and number, dated | The same, falling back to the last message's date | An empty page | `searchHashtag` |
+| Count into a live list | How many have been seen | An empty page, or the complete form | `members`, `profilePhotos` |
+| Opaque cursor | The exact string the server named | No cursor, or a cursor with an empty page | `reactions`, `boosts`, `starsTransactions`, `savedGifts`, `storyViewers` |
+| Several fields | The last entry's date and identifiers | An entry that carries none, or a cursor that stopped moving | `forumTopics`, `inviteLinks`, `inviteMembers` |
+| Identifier moving back | The oldest identifier of the page | A page that did not reach further back | `profileStories`, `chatEvents` |
+| State with a flag | The state, sent back as a continuation | The server saying there is no more | `allStories` |
+
+Two of those ends are easy to get wrong and invisible in what a walk yields, because an
+implementation that never terminates yields exactly the right items first. A server that names a
+cursor and returns nothing is a request that repeats forever. A last page that still carries a
+state is a list that starts again from where it ended. Both are tested by counting requests rather
+than by reading output.
+
+A walk yields a view where reading the value needs interpretation — a union whose constructor is
+most of the answer, or a peer that has to become a reference — and the generated value itself where
+it does not. A boost, a photo, a star transaction and a saved gift are flat records the schema
+already describes; wrapping them would be a second name for the same fields.
+
 **Links.** A message's `t.me` address needs the conversation's username, which the message does
 not carry. It belongs on the client or the context — whichever holds the peer — not on a view
 that reaches nothing.

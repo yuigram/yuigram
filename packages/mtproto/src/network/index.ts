@@ -79,6 +79,7 @@ export {
   signInAsBot,
   signInWithPassword,
 } from './signin.js'
+
 export type { ByteStream, Connector, StreamOptions } from './stream.js'
 export { connectTcp, type TcpOptions } from './tcp.js'
 export { connectWebSocket, type WebSocketOptions } from './websocket.js'

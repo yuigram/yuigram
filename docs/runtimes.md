@@ -239,6 +239,8 @@ broken down rather than given a single mark.
 | The datacenter pushes one down the session | **run** | expected | expected | expected | **run** |
 | Updates ingested from the wire and routed | **run** | expected | expected | expected | **not run**² |
 | A session survives in storage | **run** | expected | expected | expected | **run** |
+| Two accounts share one store without colliding | **run** | expected | expected | expected | **run** |
+| A second run of one account is refused | **run** | expected | expected | expected | **run** |
 | Stopping closes what was held | **run** | expected | expected | expected | **run** |
 | Against Telegram itself | **not run**³ | **not run**³ | **not run**³ | **not run**³ | **not run**³ |
 
@@ -251,6 +253,10 @@ this check does not have. The dispatch half is run in a browser; the ingestion h
 
 ³ No credentials. Nothing in this repository has been pointed at Telegram's production network.
 
+**Bun and Deno remain unexecuted.** Neither is installed on the machine this was developed on, so
+every mark in those columns is inference from what the code reaches rather than a run. The
+substitution table in §4.1 is what the inference rests on; §5.2 says what it does not cover.
+
 ### 5.1 How the browser column was established
 
 `pnpm --filter @yuigram/browser-check serve` bundles the framework for a browser — with the
@@ -260,7 +266,13 @@ datacenter the test suite uses. Nothing in the page is mocked: the cryptography 
 store is the origin's `localStorage`, and the connection is a real `WebSocket`.
 
 The page reports what it did rather than only whether it passed, because a check that silently did
-nothing would otherwise read as a pass. Seventeen checks, all passing in Chrome.
+nothing would otherwise read as a pass. Nineteen checks, all passing in Chrome.
+
+Two of those are about storage ownership, and they run against real `localStorage` rather than a
+stand-in. That matters here more than elsewhere: a browser gives an origin one store, so two
+accounts in a page share it whether or not they meant to, and what keeps them apart has to hold on
+the storage the page actually has. The page also checks that the account it ran holds its keys
+under its own area rather than at the root of the store.
 
 Running it found three things the build could not: `process.version` read at module scope, which
 made importing the framework throw in a browser before anything could run; `Buffer` doing the hex

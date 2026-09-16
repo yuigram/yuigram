@@ -118,17 +118,49 @@ pre-checkout answer is the last point at which a charge can still be refused. A 
 conversation, either: an inline query names no chat, and the event no longer invents a private
 one from whoever asked.
 
-**Walking a list.** `account.dialogs()` and `account.history(peer)` read a list that arrives one
-page at a time as one sequence, working out the offsets — three fields that have to agree — rather
-than leaving them to the caller. Both are async generators: nothing is requested until the loop
-asks for the next item, so breaking out stops the fetching and `limit` means what it says. A
-`DialogView` reads a row in a conversation list, which is this account's record about a
-conversation rather than the conversation itself.
+**Walking a list.** Eighteen lists that arrive one page at a time now read as one sequence:
+conversations, a conversation's messages, a search inside one and across all of them, members,
+forum topics, a channel's administration log, invite links and the people who came through them,
+who reacted to a message, profile photos, stories on a profile and across everyone an account
+follows, who saw a story, boosts, star transactions and saved gifts. Each is an async generator,
+so nothing is requested until the loop asks for the next item: breaking out stops the fetching and
+`limit` means what it says.
+
+Continuing them is the part a caller writing the loop gets wrong, and it is not one rule. Eight
+different ones are involved — a cursor only the server can produce, a count into a list that is
+changing while it is read, several fields that have to agree, an identifier that has to keep
+moving backwards, a state string sent back with a flag saying it is a continuation — and two of
+them end in ways that are invisible in what a walk yields: a server that names a cursor and
+returns nothing, and a last page that still carries a state. `docs/entities.md` §6 has the table.
+
+A walk yields a view where reading the value needs interpretation, and the value the schema
+describes where it does not.
 
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones
 that do not stay on the client that has them.
+
+**And several accounts can share one store.** Everything an account keeps now lives under
+`accounts:<name>:`, using the name it already takes — so two accounts pointed at one store no
+longer write over each other's authorization keys, which is what they used to do silently and
+what two default `web()` calls in a page did by construction. Areas separate two names; an
+account also records that it holds its area while it runs, so the same name opened twice is
+refused with the holder named rather than merged. Signing out clears through the area and cannot
+reach another account's keys.
+
+This changes the on-store layout. A store written before areas existed carries nothing saying
+which account it was, so it is refused rather than adopted under whichever name asks first, with
+the prefix it found and where to move it. `docs/storage.md` §4 has the layout and the migration.
+
+**Only one connection may move an account through the update stream.** A client holds several and
+they are indistinguishable on the wire; exactly one — the first main connection to the datacenter
+the account belongs to — is the stream, and a transfer connection, a cache node, a second main
+connection or one to another datacenter is not. Deduplication does not make them into update
+sources: it makes a second copy of a legitimate update harmless, which is a different problem.
+The same rule decides which `new_session_created` is worth chasing a gap for, so a download that
+opened eight connections no longer risks eight catch-ups. `docs/mtproto.md` §9.8 has the
+reasoning.
 
 **The client surface changed.** Registration now selects the context type, so a handler receives
 what its registration proved rather than the weakest case across every update kind. The renames

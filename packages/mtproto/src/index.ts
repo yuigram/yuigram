@@ -15,10 +15,26 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
+export {
+  ChatEventView,
+  ForumTopicView,
+  InviteImporterView,
+  InviteLinkView,
+  readForumTopic,
+} from './entities/chat.js'
 export { type DialogForm, DialogView, readDialog } from './entities/dialog.js'
 export { type MediaKind, MediaView, readMedia } from './entities/media.js'
 export { type MemberStanding, MemberView, readMember } from './entities/member.js'
-export { type MessageForm, MessageView, readMessage, sameMessage } from './entities/message.js'
+export {
+  type MessageForm,
+  MessageView,
+  type ReactionIdentity,
+  type ReactionKind,
+  ReactionView,
+  readMessage,
+  readReaction,
+  sameMessage,
+} from './entities/message.js'
 export {
   type ChatForm,
   ChatView,
@@ -29,6 +45,15 @@ export {
   readUser,
   UserView,
 } from './entities/peer.js'
+
+export {
+  PeerStoriesView,
+  readStory,
+  type StoryForm,
+  StoryView,
+  StoryViewerView,
+  type ViewerKind,
+} from './entities/story.js'
 export type {
   DownloadOutcome,
   DownloadRequest,
@@ -98,13 +123,42 @@ export {
 export { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize/normalize.js'
 export { type DialogsOffset, nextDialogs } from './normalize/paging.js'
 export { type SentMessage, sentMessage } from './normalize/sent.js'
-export type { MemberOptions, Paging, SearchOptions, WalkOptions } from './paging/walk.js'
+export type {
+  AllStoriesOptions,
+  BoostWalkOptions,
+  ChatEventOptions,
+  GiftWalkOptions,
+  ImporterWalkOptions,
+  InviteWalkOptions,
+  MemberOptions,
+  Paging,
+  ReactionWalkOptions,
+  SearchOptions,
+  StarsWalkOptions,
+  StoryWalkOptions,
+  TopicWalkOptions,
+  ViewerWalkOptions,
+  WalkOptions,
+} from './paging/walk.js'
 export {
+  walkAllStories,
+  walkBoosts,
+  walkChatEvents,
   walkDialogs,
+  walkForumTopics,
   walkGlobalSearch,
+  walkHashtagSearch,
   walkHistory,
+  walkInviteLinks,
+  walkInviteMembers,
   walkMembers,
+  walkProfilePhotos,
+  walkProfileStories,
+  walkReactions,
+  walkSavedGifts,
   walkSearch,
+  walkStarsTransactions,
+  walkStoryViewers,
 } from './paging/walk.js'
 export type { NewPassword, PasswordStatus, Securing } from './security/password.js'
 export {

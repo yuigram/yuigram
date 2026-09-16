@@ -194,6 +194,50 @@ describe('the entry point', () => {
     expect(row?.unreadCount).toBe(1)
   })
 
+  it('offers the rest of the walks, and what they yield', () => {
+    // The only test that checks what somebody actually receives from
+    // `npm install yuigram`. A walk exported from the subsystem and forgotten
+    // here is reachable from the package and from nothing a user writes.
+    const walks = [
+      yuigram.walkAllStories,
+      yuigram.walkBoosts,
+      yuigram.walkChatEvents,
+      yuigram.walkForumTopics,
+      yuigram.walkHashtagSearch,
+      yuigram.walkInviteLinks,
+      yuigram.walkInviteMembers,
+      yuigram.walkProfilePhotos,
+      yuigram.walkProfileStories,
+      yuigram.walkReactions,
+      yuigram.walkSavedGifts,
+      yuigram.walkStarsTransactions,
+      yuigram.walkStoryViewers,
+    ]
+    const views = [
+      yuigram.ChatEventView,
+      yuigram.ForumTopicView,
+      yuigram.InviteImporterView,
+      yuigram.InviteLinkView,
+      yuigram.PeerStoriesView,
+      yuigram.ReactionView,
+      yuigram.StoryView,
+      yuigram.StoryViewerView,
+    ]
+
+    expect(walks).toHaveLength(13)
+    expect(walks.filter((walk) => typeof walk !== 'function')).toEqual([])
+    expect(views.filter((view) => typeof view !== 'function')).toEqual([])
+
+    const topic = yuigram.readForumTopic({ _: 'forumTopicDeleted', id: 9 })
+    expect(topic?.isDeleted).toBe(true)
+    expect(topic?.title).toBeUndefined()
+
+    expect(yuigram.readReaction({ _: 'reactionEmoji', emoticon: '🔥' })).toEqual({
+      kind: 'emoji',
+      emoji: '🔥',
+    })
+  })
+
   it('offers the operations an account performs on a conversation of its choosing', () => {
     // Answering an update already worked. Starting a conversation is what was
     // missing, and it is the most-used thing an account does.

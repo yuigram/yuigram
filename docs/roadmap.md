@@ -260,6 +260,11 @@ change in the minor position and nothing between the two was published.
 
 - High-level MTProto surface: messages, chats, channels, users, dialogs — demand-driven,
   prioritized by feedback gathered since Phase 4
+  - Paged lists: eighteen walks over eight continuation policies, each yielding a view where the
+    value needs interpreting and the schema's own value where it does not. See
+    [entities.md](entities.md) §6
+- Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
+  merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
 - Throttling plugin; flood handling on both transports
 - Benchmark suite in CI with regression thresholds

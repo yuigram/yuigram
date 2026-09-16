@@ -33,6 +33,9 @@
     },
     {
       "path": "12-multiple-clients"
+    },
+    {
+      "path": "13-walking-lists"
     }
   ]
 }

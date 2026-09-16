@@ -27,6 +27,7 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 09 | [routers](09-routers) | Features as modules, each with its own scoped middleware |
 | 10 | [production](10-production) | Throttling, retry, rate limiting, concurrency, clean shutdown |
 | 12 | [multiple clients](12-multiple-clients) | A bot and several accounts in one application, each with its own store and connections |
+| 13 | [walking lists](13-walking-lists) | Paged lists as one sequence: history, members, topics, reactions, the admin log, stories |
 
 ## The gap at 11
 

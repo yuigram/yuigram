@@ -54,12 +54,23 @@ import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
+import type {
+  ChatEventView,
+  ForumTopicView,
+  InviteImporterView,
+  InviteLinkView,
+} from './entities/chat.js'
 import type { DialogView } from './entities/dialog.js'
 import type { MemberView } from './entities/member.js'
-import type { MessageView } from './entities/message.js'
+import type { MessageView, ReactionView } from './entities/message.js'
+import type { PeerStoriesView, StoryView, StoryViewerView } from './entities/story.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type {
+  Boost,
+  Photo,
+  SavedStarGift,
+  StarsTransaction,
   TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
@@ -104,15 +115,43 @@ import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
 import { isUpdateSource, UPDATE_CONTAINERS } from './normalize/events.js'
 import type { PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
-import type { MemberOptions, SearchOptions, WalkOptions } from './paging/walk.js'
-import {
-  walkDialogs,
-  walkGlobalSearch,
-  walkHistory,
-  walkMembers,
-  walkSearch,
+import type {
+  AllStoriesOptions,
+  BoostWalkOptions,
+  ChatEventOptions,
+  GiftWalkOptions,
+  ImporterWalkOptions,
+  InviteWalkOptions,
+  MemberOptions,
+  ReactionWalkOptions,
+  SearchOptions,
+  StarsWalkOptions,
+  StoryWalkOptions,
+  TopicWalkOptions,
+  ViewerWalkOptions,
+  WalkOptions,
 } from './paging/walk.js'
-import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
+import {
+  walkAllStories,
+  walkBoosts,
+  walkChatEvents,
+  walkDialogs,
+  walkForumTopics,
+  walkGlobalSearch,
+  walkHashtagSearch,
+  walkHistory,
+  walkInviteLinks,
+  walkInviteMembers,
+  walkMembers,
+  walkProfilePhotos,
+  walkProfileStories,
+  walkReactions,
+  walkSavedGifts,
+  walkSearch,
+  walkStarsTransactions,
+  walkStoryViewers,
+} from './paging/walk.js'
+import type { NewPassword, PasswordStatus, Securing } from './security/password.js'
 import {
   cancelRecoveryEmail,
   checkRecoveryCode,
@@ -122,7 +161,7 @@ import {
   requestPasswordRecovery,
   resendRecoveryEmail,
   setPassword,
-} from './security/index.js'
+} from './security/password.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
@@ -852,6 +891,243 @@ export class Account<Ext = unknown> {
     options?: MemberOptions,
   ): AsyncGenerator<MemberView, void, undefined> {
     return walkMembers(this, peer, options)
+  }
+
+  /**
+   * Walk the public posts carrying a hashtag, across every channel.
+   *
+   * ```ts
+   * for await (const post of account.searchHashtag('telegram', { limit: 50 })) {
+   *   console.log(post.chat, post.text)
+   * }
+   * ```
+   *
+   * Continued like the global search, because the results are spread the same
+   * way — but a page of this one may carry no rate to continue from without
+   * being the last, so the date of its last message is what continues it.
+   */
+  searchHashtag(
+    hashtag: string,
+    options?: WalkOptions,
+  ): AsyncGenerator<MessageView, void, undefined> {
+    return walkHashtagSearch(this, hashtag, options)
+  }
+
+  /**
+   * Walk the topics of a forum.
+   *
+   * ```ts
+   * for await (const topic of account.forumTopics('@forum')) {
+   *   console.log(topic.id, topic.title)
+   * }
+   * ```
+   *
+   * Continued by three fields that have to agree, one of which depends on how
+   * the forum is ordered — by when topics were created, or by activity. Which
+   * of those applies is in the answer rather than in the request.
+   */
+  forumTopics(
+    peer: string | PeerRef,
+    options?: TopicWalkOptions,
+  ): AsyncGenerator<ForumTopicView, void, undefined> {
+    return walkForumTopics(this, peer, options)
+  }
+
+  /**
+   * Walk a channel's administration log, newest first.
+   *
+   * ```ts
+   * for await (const event of account.chatEvents('@channel', { limit: 100 })) {
+   *   console.log(event.kind, event.userId)
+   * }
+   * ```
+   *
+   * Only somebody who can see the log may read it, which the server decides.
+   */
+  chatEvents(
+    peer: string | PeerRef,
+    options?: ChatEventOptions,
+  ): AsyncGenerator<ChatEventView, void, undefined> {
+    return walkChatEvents(this, peer, options)
+  }
+
+  /**
+   * Walk the invite links of a conversation.
+   *
+   * ```ts
+   * for await (const link of account.inviteLinks(chat)) {
+   *   if (!link.isRevoked) console.log(link.link, link.usage)
+   * }
+   * ```
+   *
+   * An invite link is a credential: whoever holds it can join what it opens.
+   * `docs/security.md` §2 says what follows about logging one.
+   */
+  inviteLinks(
+    peer: string | PeerRef,
+    options?: InviteWalkOptions,
+  ): AsyncGenerator<InviteLinkView, void, undefined> {
+    return walkInviteLinks(this, peer, options)
+  }
+
+  /**
+   * Walk the accounts that joined a conversation through an invite link.
+   *
+   * ```ts
+   * for await (const member of account.inviteMembers(chat, { link })) {
+   *   console.log(member.userId, member.date)
+   * }
+   * ```
+   */
+  inviteMembers(
+    peer: string | PeerRef,
+    options?: ImporterWalkOptions,
+  ): AsyncGenerator<InviteImporterView, void, undefined> {
+    return walkInviteMembers(this, peer, options)
+  }
+
+  /**
+   * Walk the accounts that reacted to a message.
+   *
+   * ```ts
+   * for await (const who of account.reactions(chat, 123, { limit: 50 })) {
+   *   console.log(who.peer, who.identity.emoji)
+   * }
+   * ```
+   *
+   * One entry per account per reaction, so somebody who reacted twice appears
+   * twice — which is what the list is rather than a duplicate.
+   */
+  reactions(
+    peer: string | PeerRef,
+    messageId: number,
+    options?: ReactionWalkOptions,
+  ): AsyncGenerator<ReactionView, void, undefined> {
+    return walkReactions(this, peer, messageId, options)
+  }
+
+  /**
+   * Walk somebody's profile photos, newest first.
+   *
+   * ```ts
+   * for await (const photo of account.profilePhotos('@someone')) {
+   *   console.log(photo.id)
+   * }
+   * ```
+   *
+   * Counted into rather than keyed, like the member list, with the same
+   * consequence: a photo added or removed mid-walk shifts every later position.
+   */
+  profilePhotos(
+    user: string | PeerRef,
+    options?: WalkOptions,
+  ): AsyncGenerator<Photo, void, undefined> {
+    return walkProfilePhotos(this, user, options)
+  }
+
+  /**
+   * Walk the stories on somebody's profile, newest first.
+   *
+   * ```ts
+   * for await (const story of account.profileStories('@someone')) {
+   *   console.log(story.id, story.caption)
+   * }
+   * ```
+   *
+   * Pass `archived` for this account's own archive. Somebody else's is refused
+   * by the server, which is where that rule belongs.
+   */
+  profileStories(
+    peer: string | PeerRef,
+    options?: StoryWalkOptions,
+  ): AsyncGenerator<StoryView, void, undefined> {
+    return walkProfileStories(this, peer, options)
+  }
+
+  /**
+   * Walk the stories of the accounts this one follows, one account at a time.
+   *
+   * ```ts
+   * for await (const entry of account.allStories()) {
+   *   console.log(entry.peer, entry.stories.length)
+   * }
+   * ```
+   *
+   * The only walk here with no page size to ask for: the server decides how
+   * much a page holds, and `limit` counts the accounts rather than the stories.
+   */
+  allStories(options?: AllStoriesOptions): AsyncGenerator<PeerStoriesView, void, undefined> {
+    return walkAllStories(this, options)
+  }
+
+  /**
+   * Walk the accounts that have seen a story.
+   *
+   * ```ts
+   * for await (const viewer of account.storyViewers('me', 7)) {
+   *   console.log(viewer.kind, viewer.peer)
+   * }
+   * ```
+   *
+   * Only the account that posted a story may read this.
+   */
+  storyViewers(
+    peer: string | PeerRef,
+    storyId: number,
+    options?: ViewerWalkOptions,
+  ): AsyncGenerator<StoryViewerView, void, undefined> {
+    return walkStoryViewers(this, peer, storyId, options)
+  }
+
+  /**
+   * Walk the boosts a channel has been given.
+   *
+   * ```ts
+   * for await (const boost of account.boosts('@channel')) {
+   *   console.log(boost.user_id, boost.expires)
+   * }
+   * ```
+   */
+  boosts(
+    peer: string | PeerRef,
+    options?: BoostWalkOptions,
+  ): AsyncGenerator<Boost, void, undefined> {
+    return walkBoosts(this, peer, options)
+  }
+
+  /**
+   * Walk an account's star transactions.
+   *
+   * ```ts
+   * for await (const entry of account.starsTransactions('me', { limit: 20 })) {
+   *   console.log(entry.id, entry.stars)
+   * }
+   * ```
+   *
+   * The balance the answer also carries is one value rather than a sequence, so
+   * it is read through `api.payments.getStarsTransactions` instead.
+   */
+  starsTransactions(
+    peer: string | PeerRef,
+    options?: StarsWalkOptions,
+  ): AsyncGenerator<StarsTransaction, void, undefined> {
+    return walkStarsTransactions(this, peer, options)
+  }
+
+  /**
+   * Walk the gifts an account is keeping.
+   *
+   * ```ts
+   * for await (const gift of account.savedGifts('me')) {
+   *   console.log(gift.date)
+   * }
+   * ```
+   */
+  savedGifts(
+    owner: string | PeerRef,
+    options?: GiftWalkOptions,
+  ): AsyncGenerator<SavedStarGift, void, undefined> {
+    return walkSavedGifts(this, owner, options)
   }
 
   /**

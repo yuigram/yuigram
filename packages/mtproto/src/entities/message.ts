@@ -43,9 +43,11 @@ import type {
   TypeMessageAction,
   TypeMessageEntity,
   TypeMessageFwdHeader,
+  TypeMessagePeerReaction,
   TypeMessageReactions,
   TypeMessageReplies,
   TypeMessageReplyHeader,
+  TypeReaction,
   TypeReplyMarkup,
   TypeRestrictionReason,
   TypeSuggestedPost,
@@ -537,4 +539,88 @@ export function sameMessage(left: MessageView, right: MessageView): boolean {
   if (here === undefined || there === undefined) return here === there
 
   return here.kind === there.kind && here.id === there.id
+}
+
+/**
+ * Reading one account's reaction to a message.
+ *
+ * Here because a reaction is to a message: what identifies one is the same
+ * union `MessageView` reads off `raw.reactions`, and a reader that had them in
+ * two places would look up the same three constructors twice.
+ *
+ * A reaction is either one of Telegram's own emoji, a custom emoji a premium
+ * account may use, or — on a paid post — a number of stars. Which of the three
+ * decides what identifies it, so a reader that assumed an emoji string would
+ * find nothing on the other two.
+ *
+ * ```
+ *   reactionEmoji       ──> emoticon
+ *   reactionCustomEmoji ──> document_id
+ *   reactionPaid        ──> neither: an amount of stars
+ * ```
+ *
+ * The peer is a reference rather than a user number: a channel posting as
+ * itself can react, and reading its number as a person's would name the wrong
+ * account.
+ */
+
+/** Which of the three kinds a reaction is. */
+export type ReactionKind = 'emoji' | 'custom' | 'paid' | 'none'
+
+/** What identifies a reaction, whichever kind it is. */
+export interface ReactionIdentity {
+  readonly kind: ReactionKind
+  /** The emoji, for one of Telegram's own. */
+  readonly emoji?: string
+  /** The document, for a custom one. */
+  readonly customEmojiId?: bigint
+}
+
+/** Read what identifies a reaction. */
+export function readReaction(value: TypeReaction | undefined): ReactionIdentity {
+  if (value === undefined || value._ === 'reactionEmpty') return { kind: 'none' }
+  if (value._ === 'reactionEmoji') return { kind: 'emoji', emoji: value.emoticon }
+  if (value._ === 'reactionCustomEmoji') return { kind: 'custom', customEmojiId: value.document_id }
+
+  return { kind: 'paid' }
+}
+
+/** One account's reaction to a message, read. */
+export class ReactionView {
+  /** The value this reads. Everything else is a function of it. */
+  readonly raw: TypeMessagePeerReaction
+
+  constructor(value: TypeMessagePeerReaction) {
+    this.raw = value
+  }
+
+  /** Who reacted. */
+  get peer(): PeerRef | undefined {
+    return peerRefOf(this.raw.peer_id)
+  }
+
+  /** When, in Unix seconds. */
+  get date(): number {
+    return this.raw.date
+  }
+
+  /** What they reacted with, whole. */
+  get reaction(): TypeReaction {
+    return this.raw.reaction
+  }
+
+  /** What identifies it, by kind. */
+  get identity(): ReactionIdentity {
+    return readReaction(this.raw.reaction)
+  }
+
+  /** Whether this account is the one that reacted. */
+  get isMine(): boolean {
+    return this.raw.my === true
+  }
+
+  /** Whether this account has not yet seen it. */
+  get isUnread(): boolean {
+    return this.raw.unread === true
+  }
 }

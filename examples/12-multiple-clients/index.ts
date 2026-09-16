@@ -61,11 +61,14 @@ const app = new App<AnyEventContext | MtprotoContext>({ storage: memory() })
 /**
  * An account, named and given a store of its own.
  *
- * **The store is per account, and that is not a convenience.** Everything an
- * account keeps — the keys it authorizes with, the peers it has learned, how
- * far it has read the update stream — is written under names the MTProto
- * subsystem owns, and those names are the same for every account. Two accounts
- * handed one store would write over each other's authorizations.
+ * **The name is what keeps two accounts apart.** Everything an account keeps —
+ * the keys it authorizes with, the peers it has learned, how far it has read
+ * the update stream — goes under `accounts:<name>:` in whatever store it was
+ * given, so accounts with different names can share one store safely and two
+ * with the same name are refused rather than silently merged. A store each, as
+ * below, is still the clearest arrangement when there is no reason to share
+ * one; a browser, where an origin has a single store, is the case where sharing
+ * is not optional.
  *
  * The container does not hand one out, because what it keeps for a client is
  * framework state rather than protocol state: `app.storageFor(client)` is that
