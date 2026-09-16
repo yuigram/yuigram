@@ -15,7 +15,7 @@
 import { chmod, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { App } from '@yuigram/core'
+import { App, processGuard } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { Account } from '../src/account.js'
 import { AuthKey } from '../src/message/auth-key.js'
@@ -117,6 +117,11 @@ function harness(options: { readonly name?: string } = {}): Harness {
     storage: storage.kv,
     keys: [],
     bootstrap: BOOTSTRAP,
+    // One per harness, because a harness is a program. The guard that ships is
+    // shared across a process, so a suite raising many accounts under one name
+    // would otherwise have each refuse the last — which is the guard working,
+    // and not what any case here is about.
+    storageGuard: processGuard(),
     ...(options.name === undefined ? {} : { name: options.name }),
     openChannel: async (channelOptions) => {
       const channel = fakeChannel(channelOptions, asked)

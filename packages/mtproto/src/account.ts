@@ -29,7 +29,7 @@
  * asked for values nobody needs.
  */
 
-import type { KV } from '@yuigram/core'
+import type { Guard, KV } from '@yuigram/core'
 import {
   createLogger,
   type Dispatchable,
@@ -166,7 +166,7 @@ import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
-import { areaFor, claimArea, releaseArea } from './storage/ownership.js'
+import { type AreaLease, areaFor, claimArea } from './storage/ownership.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
 import { type UpdateStore, updateStore } from './storage/updates.js'
 import type { TlValue } from './tl/index.js'
@@ -269,6 +269,21 @@ export interface AccountOptions {
    * behind, it is the wrong store, and no flag here makes it the right one.
    */
   readonly takeOverStorage?: boolean
+  /**
+   * What holds this account's name while it owns its storage area.
+   *
+   * Defaults to the strongest primitive the runtime offers: the Web Locks API
+   * in a browser, which excludes every page of the origin, and a registry over
+   * this process everywhere else. Supplied by a caller that has something
+   * better — a database advisory lock, a lock file — than the runtime knows
+   * about.
+   *
+   * Whatever is supplied must report its reach honestly. An account decides
+   * whether a claim left behind can be adopted without being asked from exactly
+   * that, and a guard claiming more than it excludes turns a refusal into two
+   * runs writing one area.
+   */
+  readonly storageGuard?: Guard
   /**
    * The server keys a first key exchange may be answered with.
    *
@@ -373,15 +388,25 @@ export class Account<Ext = unknown> {
    *
    * Everything an account keeps goes here rather than at the root, so two
    * accounts pointed at one store do not write to the same keys.
+   *
+   * Plain until this account opens and fenced afterwards. The unfenced view is
+   * what a closed account reads and writes through — exporting a session, and
+   * the peers it was built with — and the fenced one refuses writes the moment
+   * another run takes the area over. Everything downstream reaches it through
+   * {@link Account.#through}, so the swap reaches them without being passed
+   * around.
    */
-  readonly #area: KV<unknown>
+  #area: KV<unknown>
 
   /**
-   * What this run writes into the claim, once it has one.
+   * The area this run owns, for as long as it owns it.
    *
    * Absent until the account has opened, so that releasing before opening does
    * nothing rather than clearing somebody else's.
    */
+  #lease: AreaLease | undefined
+
+  /** What this run writes into the claim, distinguishing it from another. */
   #holder: string | undefined
 
   readonly #options: AccountOptions
@@ -413,7 +438,7 @@ export class Account<Ext = unknown> {
     this.#log = options.log ?? createLogger()
     this.#dispatcher = new Dispatcher<MtprotoContext & Ext>()
     this.#area = namespaced(options.storage, areaFor(this.name))
-    this.#peers = peerStore(namespaced(this.#area, 'peers:'))
+    this.#peers = peerStore(namespaced(this.#through(), 'peers:'))
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#open(),
       onStop: async () => {
@@ -1580,16 +1605,31 @@ export class Account<Ext = unknown> {
     await this.#invoke({ _: 'auth.logOut' })
 
     const datacenters = [...this.#reachable(network.datacenters.directory)]
-    const authorization = authorizationStore(namespaced(this.#area, 'auth:'))
 
     // Stopped before anything is removed, so nothing reaches for a key that is
     // about to be gone, and the network is down whether or not the store
     // co-operates.
     await this.stop()
 
-    for (const dcId of datacenters) await authorization.forget(dcId)
-    await this.#forgetArea('updates:')
-    await this.#forgetArea('peers:')
+    // Owned again for the removal. Stopping gave the area up, and erasing it
+    // without holding it is exactly the write this account refuses from
+    // anybody else — so the cleanup takes a lease of its own, and a run that
+    // took the area over in the window between is refused rather than erased.
+    const lease = await claimArea(this.#options.storage, {
+      name: this.name,
+      holder: `${String(Date.now().toString(36))}-${toHex(randomBytes(8))}`,
+      ...(this.#options.storageGuard === undefined ? {} : { guard: this.#options.storageGuard }),
+    })
+
+    try {
+      const authorization = authorizationStore(namespaced(lease.storage, 'auth:'))
+
+      for (const dcId of datacenters) await authorization.forget(dcId)
+      await this.#forgetArea(lease.storage, 'updates:')
+      await this.#forgetArea(lease.storage, 'peers:')
+    } finally {
+      await lease.release()
+    }
   }
 
   /**
@@ -1623,8 +1663,7 @@ export class Account<Ext = unknown> {
    * went. What stays behind belongs to an account that has signed out, and
    * somebody has to know it is still there.
    */
-  async #forgetArea(prefix: string): Promise<void> {
-    const storage = this.#area
+  async #forgetArea(storage: KV<unknown>, prefix: string): Promise<void> {
     if (this.#options.storage.clear === undefined) {
       this.#log.warn('this store cannot remove what the account signed out of', { area: prefix })
 
@@ -1799,6 +1838,20 @@ export class Account<Ext = unknown> {
    * second connection pays nothing for it.
    */
   async #open(): Promise<void> {
+    try {
+      await this.#build()
+    } catch (error) {
+      // The area is taken before anything else on the way up is read, so a
+      // start that fails after that point has already taken it. Giving it back
+      // here is what stops one bad start from holding the name for the life of
+      // the process — nothing above calls `stop` on a `start` that threw.
+      await this.#release()
+      throw error
+    }
+  }
+
+  /** Everything a start does once the area belongs to this run. */
+  async #build(): Promise<void> {
     const {
       API,
       CORE,
@@ -1816,12 +1869,29 @@ export class Account<Ext = unknown> {
     // finds the area already held says so rather than writing over whatever is
     // there, which is what two accounts sharing one store used to do.
     this.#holder = `${String(Date.now().toString(36))}-${toHex(randomBytes(8))}`
-    const storage = await claimArea(this.#options.storage, {
+    const lease = await claimArea(this.#options.storage, {
       name: this.name,
       holder: this.#holder,
       ...(this.#options.takeOverStorage === undefined
         ? {}
         : { takeOver: this.#options.takeOverStorage }),
+      ...(this.#options.storageGuard === undefined ? {} : { guard: this.#options.storageGuard }),
+    })
+
+    this.#lease = lease
+    // Everything this account writes from here goes through the lease, so a
+    // write that began before another run took the area over is refused rather
+    // than landing in an area this run no longer owns.
+    this.#area = lease.storage
+    const storage = lease.storage
+
+    // What the exclusion is actually worth, said once where somebody reading a
+    // log can see it. An origin-wide guard covers every page that can reach the
+    // store; a process-wide one covers this process and says nothing about
+    // another opened over the same directory.
+    this.#log.debug('this account holds its storage area', {
+      account: this.name,
+      exclusion: lease.scope,
     })
 
     await this.#seed(
@@ -2043,6 +2113,30 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * The area, read at the moment of each call rather than captured.
+   *
+   * Built once and handed to the peer store, which outlives the swap from the
+   * plain area to the leased one. Capturing the area instead would leave the
+   * peer store writing through a view that is not fenced, which is the one
+   * place an account writes most often.
+   */
+  #through(): KV<unknown> {
+    return {
+      get: (key) => this.#area.get(key),
+      set: (key, value, options) => this.#area.set(key, value, options),
+      delete: (key) => this.#area.delete(key),
+      has: async (key) =>
+        this.#area.has === undefined
+          ? (await this.#area.get(key)) !== undefined
+          : await this.#area.has(key),
+      clear: async (prefix) => {
+        await this.#area.clear?.(prefix)
+      },
+      keys: (prefix) => this.#area.keys?.(prefix) ?? noKeys(),
+    }
+  }
+
+  /**
    * Give up the claim on the area, if this run holds it.
    *
    * What is released is the right to be the account running against this
@@ -2052,13 +2146,18 @@ export class Account<Ext = unknown> {
    * not.
    */
   async #release(): Promise<void> {
-    const holder = this.#holder
-    if (holder === undefined) return
+    const lease = this.#lease
+    if (lease === undefined) return
 
+    this.#lease = undefined
     this.#holder = undefined
+    // Back to the unfenced view. A stopped account still answers `exportSession`
+    // and still holds the peers it learned, and neither is a write another run
+    // could collide with.
+    this.#area = namespaced(this.#options.storage, areaFor(this.name))
 
     try {
-      await releaseArea(this.#options.storage, this.name, holder)
+      await lease.release()
     } catch (error) {
       this.#log.warn('the claim on this storage could not be given up', { error })
     }
@@ -2240,6 +2339,11 @@ export class Account<Ext = unknown> {
 
     return this.#network
   }
+}
+
+/** Nothing, for a store that cannot enumerate its keys. */
+async function* noKeys(): AsyncIterable<string> {
+  // Deliberately yields nothing.
 }
 
 /** What an account's contexts are, for a caller naming the type. */

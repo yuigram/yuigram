@@ -237,22 +237,61 @@ signed in, and the first thing it needs a store for is the authorization that le
 in. It is encoded into the prefix, so an account called `a` and one called `a:b` cannot reach
 each other's keys.
 
-**A claim inside the area.** Areas separate two accounts only when they have different names.
-The same program started twice, or two `Account`s built from one configuration, still land on
-the same keys. So an account writes a claim while it is running and clears it when it stops,
-and one that finds another run's claim raises `StorageOwnershipError` naming the holder
-rather than writing over it.
+**A guard around taking one.** Areas separate two accounts only when they have different
+names. The same program started twice, two tabs of a page, or two `Account`s built from one
+configuration all land on the same keys — and a record written into the store cannot keep them
+apart by itself. Reading it, finding it free and writing your own is three steps, and two runs
+doing that together both read "free" before either writes. Both then start, both believe they
+own the area, and the store keeps whichever wrote last while both keep writing.
 
-The claim is **not a lock**. Nothing here can stop a write from a process that ignores it, and
-nothing here tries — what it does is turn silent corruption into a refusal. A run that ends
-without stopping leaves its claim behind, and the next run cannot tell that from a program
-running right now; `takeOverStorage: true` is how a caller that knows better says so. It
-cannot take a *different* account's area: that is not a stale claim, it is the wrong store.
+So the name is taken through a **guard** before anything is read or written, and the guard is
+whatever the environment actually provides:
 
-Cleanup is scoped the same way. `logOut()` removes what this account wrote, through its own
-area, so it cannot reach another account's keys or the application's own. Whether the store
-can remove in bulk at all is asked of the store the account was given, because a namespaced
-view always offers the method and quietly does nothing when what it wraps cannot.
+| Runtime | Primitive | What it excludes |
+| --- | --- | --- |
+| A browser page | `navigator.locks` (Web Locks API) | Every page, tab and worker of the origin — which is also everyone who can reach that origin's storage |
+| Everywhere else | A registry inside the process | Two `Account`s in this process, exactly. Nothing outside it |
+
+**The reach is reported, not assumed.** `AreaLease.scope` is `origin` or `process`, and nothing
+downstream may treat one as the other. A registry says nothing about a second process opened
+over the same directory, and claiming otherwise would be worse than not excluding at all,
+because a caller would stop being careful. A caller with a better primitive than the runtime
+advertises — a database advisory lock, a lock file — supplies it as `storageGuard`.
+
+**A lease that can be lost.** Holding the guard now is not holding it forever. The area an
+account is handed refuses every write the moment the lease is over, so a write begun before a
+takeover cannot land after one. Without that the exclusion the guard bought is spent between
+the check and the write. The fence covers `set`, `delete` and `clear`; reads are still
+answered, because what a superseded run reads is its own account's data and a diagnostic that
+cannot read is one nobody writes.
+
+**Crash recovery stays ordinary.** A page that closes takes its locks with it, and a process
+that dies takes its registry with it — so where the guard's reach covers everyone who could
+hold the area, being granted the name *is* the evidence that the previous run is gone, and the
+claim it left behind is adopted without anybody being asked. That covers a browser (origin
+reach) and an in-memory store (which cannot be reached from another process anyway).
+
+Where it does not — a directory or a database behind a process-wide guard — a claim naming
+another run may well be a live one, so the account refuses and says exactly that.
+`takeOverStorage: true` is how a caller who knows the other run is gone says so. It cannot take
+a *different* account's area: that is not a stale claim, it is the wrong store.
+
+**What is still not promised.** Nothing here stops a process that ignores all of it. A generic
+KV adapter has no compare-and-set and no lock, so what excludes two runs over one is the guard
+and nothing else — and outside a browser that is one process. That is a limitation, stated,
+rather than exclusivity implied.
+
+Cleanup is scoped the same way, and holds the area while it happens. `logOut()` stops the
+account first — so nothing reaches for a key about to go — and then takes a lease of its own
+for the removal, because erasing an area without holding it is exactly the write this account
+refuses from anybody else. A run that took the area over in that window is refused rather than
+erased. Whether the store can remove in bulk at all is asked of the store the account was
+given, because a namespaced view always offers the method and quietly does nothing when what it
+wraps cannot.
+
+A start that fails after taking the area gives it back. Nothing above calls `stop()` on a
+`start()` that threw, so without that one bad start would hold the name for the life of the
+process.
 
 This also covers browser defaults. `web()` is one place per origin, so two accounts in a page
 share it whether or not they meant to; what separates them is the area, not the store. Passing

@@ -19,7 +19,7 @@
  * any of the protocol.
  */
 
-import type { KV } from '@yuigram/core'
+import { type KV, processGuard } from '@yuigram/core'
 import { Account, type AccountOptions } from '../../src/account.js'
 import { serverRsaKey } from '../../src/auth/keys.js'
 import { REGISTRY as API } from '../../src/generated/api/registry.js'
@@ -273,6 +273,12 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     apiId: 10_000,
     apiHash: 'mock-api-hash',
     now: clock(),
+    // One per harness, because a harness is a program. The guard that ships is
+    // shared across a process — two `Account`s in one program must exclude each
+    // other — and a suite raising a hundred accounts called 'account' would
+    // otherwise have each refuse the last. A case about two contenders passes
+    // one guard to both, which is what makes them contenders.
+    storageGuard: processGuard(),
     ...rest,
     storage: storage ?? {
       get: async (name: string) => stored.get(name),

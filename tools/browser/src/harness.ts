@@ -60,6 +60,7 @@ interface PageElement {
 const page = globalThis as unknown as {
   readonly location: { protocol: string; host: string; hostname: string; port: string }
   readonly localStorage: PageStorage
+  readonly navigator?: { readonly locks?: { readonly request?: unknown } }
   readonly document: {
     getElementById(id: string): PageElement | null
     createElement(tag: string): PageElement
@@ -553,12 +554,18 @@ async function run(): Promise<void> {
       const shared = web({ prefix: 'browser-check:shared:' })
 
       const mine = await claimFor(shared, 'alice', 'run-one')
-      await mine.set('auth:dc2:key', 'alice-material')
+      await mine.storage.set('auth:dc2:key', 'alice-material')
       const theirs = await claimFor(shared, 'bob', 'run-two')
-      await theirs.set('auth:dc2:key', 'bob-material')
+      await theirs.storage.set('auth:dc2:key', 'bob-material')
 
-      expect((await mine.get('auth:dc2:key')) === 'alice-material', 'the first was overwritten')
-      expect((await theirs.get('auth:dc2:key')) === 'bob-material', 'the second was not written')
+      expect(
+        (await mine.storage.get('auth:dc2:key')) === 'alice-material',
+        'the first was overwritten',
+      )
+      expect(
+        (await theirs.storage.get('auth:dc2:key')) === 'bob-material',
+        'the second was not written',
+      )
 
       const written = Object.keys(page.localStorage).filter((key) =>
         key.startsWith('browser-check:shared:'),
@@ -567,6 +574,68 @@ async function run(): Promise<void> {
       return `${written.length} entries, ${String(
         written.filter((key) => key.includes(areaFor('alice'))).length,
       )} of them the first account's`
+    })
+
+    await check('excludes through the browser’s own lock, not a stored record', async () => {
+      // The substantive claim. A record written into `localStorage` cannot keep
+      // two tabs apart — reading it, finding it free and writing your own is
+      // three steps, and two tabs doing that together both read "free". The Web
+      // Locks API is the browser's own mutual exclusion and its reach is the
+      // origin, which is also exactly who can reach this store. A lease that
+      // reports `origin` is one that got it.
+      const shared = web({ prefix: 'browser-check:scope:' })
+      const lease = await claimFor(shared, 'carol', 'run-one')
+
+      expect(lease.scope === 'origin', `the lease reports '${lease.scope}'`)
+      expect(typeof page.navigator?.locks?.request === 'function', 'no lock manager here')
+
+      await lease.release()
+
+      return `held across the origin, released cleanly (scope '${lease.scope}')`
+    })
+
+    await check('lets a stopped run hand the account to the next one', async () => {
+      // A tab that closed releases its lock with the page, and a run that
+      // stopped releases it explicitly. Either way the next run gets the
+      // account without anybody confirming anything, which is what keeps crash
+      // recovery ordinary rather than a flag somebody has to know about.
+      const shared = web({ prefix: 'browser-check:handover:' })
+      const first = await claimFor(shared, 'dave', 'run-one')
+      await first.storage.set('auth:dc2:key', 'from the first run')
+      await first.release()
+
+      const second = await claimFor(shared, 'dave', 'run-two')
+
+      expect(
+        (await second.storage.get('auth:dc2:key')) === 'from the first run',
+        'the second run did not find what the first left',
+      )
+      await second.release()
+
+      return 'the second run took the account over and kept what was there'
+    })
+
+    await check('stops a superseded run from writing', async () => {
+      // The fence. Losing the lock is not enough on its own: a write begun
+      // before that must not land after it, or the exclusion is spent between
+      // the check and the write.
+      const shared = web({ prefix: 'browser-check:fence:' })
+      const superseded = await claimFor(shared, 'erin', 'run-one')
+      const taken = await claimArea(shared, { name: 'erin', holder: 'run-two', takeOver: true })
+
+      expect(!superseded.held, 'the superseded run still believes it holds the area')
+
+      let refused = false
+      try {
+        await superseded.storage.set('auth:dc2:key', 'too late')
+      } catch {
+        refused = true
+      }
+
+      expect(refused, 'a superseded run was allowed to write')
+      await taken.release()
+
+      return 'the superseded run was refused the write'
     })
 
     await check('refuses a second run of one account on a browser store', async () => {

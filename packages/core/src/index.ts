@@ -135,6 +135,15 @@ export {
 export { namespaced, tiered } from './storage/compose.js'
 export { encrypted } from './storage/encrypted.js'
 export { type FileOptions, file } from './storage/file.js'
+export {
+  type AcquireOptions,
+  defaultGuard,
+  type Guard,
+  type GuardHold,
+  type GuardScope,
+  processGuard,
+  webLocksGuard,
+} from './storage/guard.js'
 export { type MemoryOptions, memory } from './storage/memory.js'
 export type { DescribedKV, KV, KVInfo, SetOptions } from './storage/types.js'
 export { type WebOptions, type WebStorageLike, web } from './storage/web.js'
