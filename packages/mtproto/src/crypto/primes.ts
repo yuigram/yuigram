@@ -176,7 +176,7 @@ export function isSafePrime(p: bigint): boolean {
  * failure the check exists to prevent is accepting an unverified prime, and
  * nothing here accepts one.
  */
-export const VERIFIED_SAFE_PRIMES: readonly bigint[] = [
+export const VERIFIED_SAFE_PRIMES: readonly bigint[] = Object.freeze([
   // What Telegram's production servers offer. A client that did not recognise
   // it would repeat, on every fresh install, a computation whose answer has not
   // changed in years.
@@ -202,7 +202,7 @@ export const VERIFIED_SAFE_PRIMES: readonly bigint[] = [
       'E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF695581718' +
       '3995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF',
   ),
-]
+])
 
 /**
  * Outcomes of a completed full validation, keyed by the prime itself.

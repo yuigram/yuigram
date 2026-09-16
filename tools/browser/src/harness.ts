@@ -346,6 +346,22 @@ async function run(): Promise<void> {
 
   const ws = `${page.location.protocol === 'https:' ? 'wss' : 'ws'}://${page.location.host}/mtproto`
 
+  // How long the page goes without being able to do anything.
+  //
+  // A promise that takes three seconds and a three-second block are the same
+  // number and completely different experiences: one leaves the tab drawing and
+  // the other does not. So the exchange times each of its own synchronous
+  // steps, and the longest of them is what a rendering frame would have waited
+  // behind.
+  //
+  // Measured directly rather than through a timer or the long-task observer.
+  // A timer measures whatever the browser feels like doing with timers — a tab
+  // that is not in front has them throttled to about a second, which reads as a
+  // one-second block whatever the page is doing, including nothing. The
+  // observer is worse here: it attaches, reports itself supported, and then
+  // delivers nothing at all for a deliberate two-hundred-millisecond busy loop,
+  // so a zero from it would mean nothing.
+
   // The exchange, driven directly rather than through an account, because the
   // layer above retries a connection that fails and so turns a specific failure
   // into a silence. Here whatever it throws is what is reported.
@@ -371,6 +387,8 @@ async function run(): Promise<void> {
       stream.write(framing.encode(handshake.start()))
 
       let rounds = 0
+      let longest = 0
+      const steps: string[] = []
       for (;;) {
         arrived.push(await waitFor(inbox))
         const frame = framing.decode(arrived)
@@ -381,7 +399,11 @@ async function run(): Promise<void> {
         }
 
         rounds += 1
+        const at = Date.now()
         const next = handshake.receive(frame.bytes)
+        const took = Date.now() - at
+        longest = Math.max(longest, took)
+        steps.push(`${String(rounds)}:${String(took)}ms`)
         if (next === undefined) break
 
         stream.write(framing.encode(next))
@@ -389,7 +411,10 @@ async function run(): Promise<void> {
 
       expect(handshake.result !== undefined, 'the exchange produced no key')
 
-      return `${String(rounds)} rounds, and a key the datacenter agreed to`
+      return (
+        `${String(rounds)} rounds, a key the datacenter agreed to, ` +
+        `longest synchronous step ${String(longest)} ms [${steps.join(' ')}]`
+      )
     } finally {
       stream.close()
     }

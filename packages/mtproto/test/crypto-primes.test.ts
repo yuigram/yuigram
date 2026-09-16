@@ -216,6 +216,36 @@ describe('the primes the validator starts out knowing', () => {
     expect(() => validateDhParameters({ p: prime, g: 9n })).toThrow(ValidationError)
   })
 
+  it('cannot be added to by anything holding the exported list', () => {
+    // The list is what the validator starts out knowing. A consumer that could
+    // push to it could make the validator accept a composite without checking,
+    // which is the one thing this whole module exists to prevent.
+    expect(Object.isFrozen(VERIFIED_SAFE_PRIMES)).toBe(true)
+    expect(() => {
+      ;(VERIFIED_SAFE_PRIMES as bigint[]).push(9n)
+    }).toThrow()
+  })
+
+  it('keeps one prime’s verdict away from another’s', () => {
+    // The record of finished checks is shared by every account in a process.
+    // A rejection recorded for one prime must not reach a different one, and a
+    // prime that was accepted must not vouch for its neighbours.
+    const composite = (1n << 2047n) + 1n
+
+    expect(() => validateDhParameters({ p: composite, g: 3n })).toThrow(ValidationError)
+    // Recorded, and the second attempt must reach the same verdict rather than
+    // a cheaper one.
+    expect(() => validateDhParameters({ p: composite, g: 3n })).toThrow(ValidationError)
+
+    // A neighbour of the rejected value, and a neighbour of an accepted one.
+    expect(() => validateDhParameters({ p: composite + 2n, g: 3n })).toThrow(ValidationError)
+
+    const known = VERIFIED_SAFE_PRIMES[1] as bigint
+    expect(() => validateDhParameters({ p: known + 2n, g: 2n })).toThrow(ValidationError)
+    // And the known one still passes, so the rejections above did not poison it.
+    expect(() => validateDhParameters({ p: known, g: 2n })).not.toThrow()
+  }, 120_000)
+
   it('still refuses a composite that is not in the table', () => {
     // The shortening must not turn into "anything 2048 bits is fine". A number
     // built to pass the range and congruence checks and nothing else has to be
