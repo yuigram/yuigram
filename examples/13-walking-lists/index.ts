@@ -31,7 +31,7 @@
  * refusal comes from Telegram rather than from here.
  */
 
-import { Account, type MessageView, memory } from 'yuigram'
+import { Account, documentFile, type MessageView, memory } from 'yuigram'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
@@ -201,6 +201,83 @@ console.log('--- stories from the first 5 accounts that have any')
 
 for await (const entry of me.allStories({ limit: 5 })) {
   console.log(`  ${String(entry.peer?.id)}: ${entry.stories.length} stories`)
+}
+
+/**
+ * Who this account is, and who it knows.
+ *
+ * A walk reads a list; these read or change one thing. They are grouped here
+ * because they share the step that matters — turning something you named into a
+ * user the server will accept — and because the answers are harvested on the
+ * way back, so everybody mentioned can be addressed afterwards without another
+ * lookup.
+ */
+console.log('--- this account')
+
+const self = await me.me()
+console.log(`  ${self.id}: ${self.firstName ?? ''} ${self.username ?? '(no username)'}`)
+
+console.log('--- contacts')
+
+const contacts = await me.contacts()
+console.log(`  ${contacts.length} contacts`)
+
+for (const contact of contacts.slice(0, 5)) {
+  console.log(`  ${contact.id}: ${contact.firstName ?? '(no name)'}`)
+}
+
+/**
+ * Everything Telegram will say about one person.
+ *
+ * A heavier call than reading the user record, and limited more tightly — so it
+ * is worth making when the extra fields are wanted, and not in a loop over a
+ * member list.
+ */
+console.log(`--- ${target}`)
+
+try {
+  const full = await me.profile(target)
+  console.log(`  bio: ${full.bio ?? '(none)'}`)
+  console.log(`  chats in common: ${String(full.commonChats)}`)
+  console.log(`  blocked by this account: ${String(full.blocked)}`)
+} catch (error) {
+  // A conversation is not a person, and this says so by name rather than
+  // letting the server answer with something about the request instead.
+  console.log(`  not a person: ${error instanceof Error ? error.message : String(error)}`)
+}
+
+/**
+ * Pulling a file rather than being handed one.
+ *
+ * `download` returns the whole file and `downloadTo` pushes it at a sink. This
+ * is the third shape, and the only one where a consumer that has seen enough
+ * can simply stop: `break` ends the loop, and the transfer behind it stops
+ * asking for ranges rather than finishing into a queue nobody drains.
+ */
+let carrying: MessageView | undefined
+
+for await (const message of me.history(target, { limit: 20 })) {
+  if (message.raw._ === 'message' && message.raw.media?._ === 'messageMediaDocument') {
+    carrying = message
+    break
+  }
+}
+
+const document =
+  carrying?.raw._ === 'message' && carrying.raw.media?._ === 'messageMediaDocument'
+    ? carrying.raw.media.document
+    : undefined
+
+if (document?._ === 'document') {
+  console.log('--- the first kilobyte of the newest file')
+
+  let read = 0
+  for await (const chunk of me.downloadIterable(documentFile(document))) {
+    read += chunk.length
+    if (read >= 1024) break
+  }
+
+  console.log(`  read ${String(read)} bytes, then stopped asking`)
 }
 
 await me.stop()

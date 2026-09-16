@@ -175,6 +175,42 @@ export type { PortableSession } from './session.js'
 export { areaFor, StorageOwnershipError } from './storage/ownership.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type { TlValue } from './tl/index.js'
+export type {
+  BlockedPeer,
+  FullProfile,
+  ImportOutcome,
+  NewContact,
+  PhoneContact,
+  ProfileEdit,
+  Profiling,
+} from './users/profile.js'
+export {
+  addContact,
+  block,
+  commonChats,
+  deleteContacts,
+  deleteProfilePhotos,
+  editProfile,
+  findByPhone,
+  importContacts,
+  messageTtl,
+  peerSettings,
+  readBlocked,
+  readContacts,
+  readProfile,
+  readUsers,
+  savedMusic,
+  saveMusic,
+  setBirthday,
+  setCloseFriends,
+  setEmojiStatus,
+  setMessageTtl,
+  setOnline,
+  setProfilePhoto,
+  setUsername,
+  unblock,
+  whoAmI,
+} from './users/profile.js'
 
 /** Package name, used by diagnostics and error messages. */
 export const PACKAGE_NAME = '@yuigram/mtproto'

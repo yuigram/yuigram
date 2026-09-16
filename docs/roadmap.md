@@ -263,6 +263,14 @@ change in the minor position and nothing between the two was published.
   - Paged lists: eighteen walks over eight continuation policies, each yielding a view where the
     value needs interpreting and the schema's own value where it does not. See
     [entities.md](entities.md) §6
+  - Files: three receiving shapes — whole, pushed at a sink, and pulled as an async iterable —
+    over one transfer. See [mtproto.md](mtproto.md) §11
+  - People: identity, profiles, contacts, blocking, presence and profile media, each resolving
+    the people it names through the account's own peer store
+  - Still to come in this phase, largest first: conversation management (membership,
+    permissions, invite-link operations, creation, folders and dialog state), the forum and
+    story operations beside the two lists already walked, and the gift, boost and business
+    surfaces
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`

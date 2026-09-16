@@ -63,6 +63,7 @@ import type {
 import type { DialogView } from './entities/dialog.js'
 import type { MemberView } from './entities/member.js'
 import type { MessageView, ReactionView } from './entities/message.js'
+import type { ChatView, UserView } from './entities/peer.js'
 import type { PeerStoriesView, StoryView, StoryViewerView } from './entities/story.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
@@ -71,6 +72,7 @@ import type {
   Photo,
   SavedStarGift,
   StarsTransaction,
+  TypeEmojiStatus,
   TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
@@ -172,6 +174,35 @@ import { type UpdateStore, updateStore } from './storage/updates.js'
 import type { TlValue } from './tl/index.js'
 import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
+import type {
+  FullProfile,
+  ImportOutcome,
+  NewContact,
+  PhoneContact,
+  ProfileEdit,
+} from './users/profile.js'
+import {
+  addContact,
+  block,
+  commonChats,
+  deleteContacts,
+  deleteProfilePhotos,
+  editProfile,
+  findByPhone,
+  importContacts,
+  messageTtl,
+  readContacts,
+  readProfile,
+  readUsers,
+  setBirthday,
+  setCloseFriends,
+  setEmojiStatus,
+  setMessageTtl,
+  setOnline,
+  setUsername,
+  unblock,
+  whoAmI,
+} from './users/profile.js'
 
 /**
  * Redirections one call will follow.
@@ -1742,6 +1773,179 @@ export class Account<Ext = unknown> {
     await datacenters.adopt({ ...configuration, thisDc: dcId })
   }
 
+  // ---------------------------------------------------------------------
+  // People
+  // ---------------------------------------------------------------------
+
+  /**
+   * Read this account's own user.
+   *
+   * ```ts
+   * const me = await account.me()
+   * console.log(me.id, me.username)
+   * ```
+   *
+   * Works before this account has met anybody: it names itself rather than
+   * resolving a peer, so nothing is looked up.
+   */
+  async me(): Promise<UserView> {
+    return await whoAmI(this)
+  }
+
+  /**
+   * Read several users at once.
+   *
+   * ```ts
+   * const [a, b] = await account.users(['@one', '@two'])
+   * ```
+   *
+   * Each name is resolved first, by the same rules as {@link Account.resolve},
+   * and the read itself is a single call. A user Telegram declines to describe
+   * is left out rather than handed over as an empty one.
+   */
+  async users(peers: readonly (string | PeerRef)[]): Promise<UserView[]> {
+    return await readUsers(this, peers)
+  }
+
+  /**
+   * Read everything Telegram will say about one user.
+   *
+   * ```ts
+   * const full = await account.profile('@someone')
+   * console.log(full.bio, full.commonChats)
+   * ```
+   *
+   * A heavier call than {@link Account.users} and limited more tightly, so it
+   * is worth making only when the extra fields are wanted.
+   */
+  async profile(peer: string | PeerRef): Promise<FullProfile> {
+    return await readProfile(this, peer)
+  }
+
+  /**
+   * Find somebody by the phone number they signed up with.
+   *
+   * Only works for a number this account already has, or one whose owner has
+   * not hidden it. The server decides, and refuses otherwise.
+   */
+  async findByPhone(phone: string): Promise<UserView> {
+    return await findByPhone(this, phone)
+  }
+
+  /** The conversations this account and one other person are both in. */
+  async commonChats(
+    peer: string | PeerRef,
+    options?: { readonly limit?: number; readonly after?: bigint },
+  ): Promise<ChatView[]> {
+    return await commonChats(this, peer, options)
+  }
+
+  /**
+   * Change this account's own name or bio.
+   *
+   * ```ts
+   * await account.editProfile({ firstName: 'Yui', bio: 'building things' })
+   * ```
+   *
+   * Only what is named is sent. The method reads an absent field as "leave it"
+   * and an empty string as "clear it", so this does not fill in the rest.
+   */
+  async editProfile(edit: ProfileEdit): Promise<UserView> {
+    return await editProfile(this, edit)
+  }
+
+  /** Take a username, or give up the one this account has by passing nothing. */
+  async setUsername(username: string | undefined): Promise<UserView> {
+    return await setUsername(this, username)
+  }
+
+  /**
+   * Say whether this account is at the keyboard.
+   *
+   * Telegram treats an account that stops saying as offline after a few
+   * minutes, so a program that wants to appear online repeats this. How often
+   * is the caller's: nothing here puts it on a timer.
+   */
+  async setOnline(online: boolean): Promise<void> {
+    await setOnline(this, online)
+  }
+
+  /** Set the emoji shown beside this account's name, or clear it. */
+  async setEmojiStatus(status: TypeEmojiStatus | undefined): Promise<void> {
+    await setEmojiStatus(this, status)
+  }
+
+  /** Publish a birthday, with or without the year, or take it down. */
+  async setBirthday(
+    birthday: { readonly day: number; readonly month: number; readonly year?: number } | undefined,
+  ): Promise<void> {
+    await setBirthday(this, birthday)
+  }
+
+  /**
+   * Remove photos from this account's own profile.
+   *
+   * Takes the photos themselves, which is what {@link Account.profilePhotos}
+   * hands over. Answers with how many the server actually removed.
+   */
+  async deleteProfilePhotos(photos: readonly Photo[]): Promise<number> {
+    return await deleteProfilePhotos(this, photos)
+  }
+
+  /** How long messages live by default in new conversations. Zero means forever. */
+  async messageTtl(): Promise<number> {
+    return await messageTtl(this)
+  }
+
+  /** Set how long messages live by default in new conversations. */
+  async setMessageTtl(seconds: number): Promise<void> {
+    await setMessageTtl(this, seconds)
+  }
+
+  /**
+   * Read this account's contact list.
+   *
+   * Everybody in the answer is written down on the way back, so they can be
+   * addressed afterwards without another lookup.
+   */
+  async contacts(): Promise<UserView[]> {
+    return await readContacts(this)
+  }
+
+  /** Add somebody to this account's contacts. */
+  async addContact(contact: NewContact): Promise<void> {
+    await addContact(this, contact)
+  }
+
+  /**
+   * Add contacts by phone number.
+   *
+   * A number that belongs to nobody is absent from the result rather than an
+   * error. Numbers the server wants tried again come back separately, because
+   * when to retry is the caller's decision.
+   */
+  async importContacts(contacts: readonly PhoneContact[]): Promise<ImportOutcome> {
+    return await importContacts(this, contacts)
+  }
+
+  /** Remove people from this account's contacts. Not the same as blocking them. */
+  async deleteContacts(peers: readonly (string | PeerRef)[]): Promise<void> {
+    await deleteContacts(this, peers)
+  }
+
+  /**
+   * Stop hearing from somebody.
+   *
+   * Takes a peer rather than a person, because a channel can be blocked too.
+   * `storiesOnly` uses the separate list Telegram keeps for stories.
+   */
+  async block(
+    peer: string | PeerRef,
+    options?: { readonly storiesOnly?: boolean },
+  ): Promise<boolean> {
+    return await block(this, peer, options)
+  }
+
   /**
    * Fetch a file as chunks this caller pulls.
    *
@@ -1767,6 +1971,24 @@ export class Account<Ext = unknown> {
     const { downloadIterable } = await import('./files/download.js')
 
     yield* downloadIterable({ ...request, reach })
+  }
+
+  /** Undo {@link Account.block}, on whichever of the two lists. */
+  async unblock(
+    peer: string | PeerRef,
+    options?: { readonly storiesOnly?: boolean },
+  ): Promise<boolean> {
+    return await unblock(this, peer, options)
+  }
+
+  /**
+   * Replace the set of people who see this account's close-friends stories.
+   *
+   * Replaces rather than adds: the call takes the whole list, so sending one
+   * person removes everybody else.
+   */
+  async setCloseFriends(peers: readonly (string | PeerRef)[]): Promise<void> {
+    await setCloseFriends(this, peers)
   }
 
   // ---------------------------------------------------------------------

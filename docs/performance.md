@@ -53,7 +53,26 @@ Decisions that protect this:
 - **Subpath exports.** Webhook adapters, testing helpers and storage drivers are not in the
   main entry point, so importing `yuigram` does not parse express glue.
 
-### 2.1 Where this budget currently stands
+### 2.1 What the gate actually measures
+
+**The acceptance statistic is the median of seven samples**, each a fresh process timing one
+dynamic import of the built entry point. A further sample is taken first and discarded, because
+a file the operating system has never read costs a disk seek rather than a parse. The reported
+range is the minimum and maximum of the seven; it is *not* the acceptance criterion, and
+individual samples above 100 ms do not fail the gate.
+
+That distinction matters because the spread is wide and the machine moves it. Three consecutive
+runs of the current tree measured medians of **93.9, 94.0 and 97.2 ms**, with individual samples
+from **85 to 106 ms** — so the gate passes on the median while some samples exceed 100 ms. A run
+taken immediately after the full test suite, on the same tree and the same build, measured a
+median of 152 ms; a control build of the previous commit measured 97.4 ms in the same conditions
+as the 93.9 above. The absolute number is a property of the machine as much as of the code.
+
+**So the comparison carries the weight, and the eager module count is what the comparison is made
+of.** At roughly 0.4 ms a module the count predicts the medians better than any single timing
+does, and it does not drift.
+
+### 2.2 Where this budget currently stands
 
 **At the line, and the line moves with the machine.** Nine runs of the
 benchmark's own procedure on the same tree, in the order they were taken:
@@ -146,11 +165,23 @@ the line:
 | Before the paged lists | 102 | 96.9 | 93–106 |
 | With them, before this | 104 | 103 / 97.7 / 101 | 89–124 |
 | After | 95 | 94.0 / 92.7 / 93.7 | 89–99 |
+| Plus the exclusion guard and the people surface | 97 | 93.9 / 94.0 / 97.2 | 85–106 |
 
 The middle row is the one that matters for how the budget was being read: the
 same tree measured above and below 100 ms depending on the run, so a passing
-gate said nothing. The last row is the first time every individual sample has
-been under budget rather than the median alone.
+gate said nothing on its own.
+
+An earlier revision of this section claimed the last row put *every individual
+sample* under budget. That was true of the three runs measured at the time and
+is not a property that holds in general — later runs of the same tree produced
+samples from 85 to 106 ms. What can be said is what §2.1 says: the median is the
+statistic, it passes, and the sample range straddles the budget.
+
+The last row is the newest. Two modules were added to the eager graph — the storage guard and the
+people surface — which at 0.4 ms a module is about one millisecond, and the medians are
+indistinguishable from the row above measured in the same session. Neither the lazy codec
+boundary nor the Bot API bundle's exclusion of MTProto moved: `bundle/bot-mtproto` is still
+0 KB.
 
 #### What is left
 

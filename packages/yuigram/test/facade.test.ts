@@ -228,6 +228,37 @@ describe('the entry point', () => {
     expect(walks.filter((walk) => typeof walk !== 'function')).toEqual([])
     expect(views.filter((view) => typeof view !== 'function')).toEqual([])
 
+    const people = [
+      yuigram.whoAmI,
+      yuigram.readUsers,
+      yuigram.readProfile,
+      yuigram.findByPhone,
+      yuigram.commonChats,
+      yuigram.editProfile,
+      yuigram.setUsername,
+      yuigram.setOnline,
+      yuigram.setEmojiStatus,
+      yuigram.setBirthday,
+      yuigram.setProfilePhoto,
+      yuigram.deleteProfilePhotos,
+      yuigram.messageTtl,
+      yuigram.setMessageTtl,
+      yuigram.readContacts,
+      yuigram.addContact,
+      yuigram.importContacts,
+      yuigram.deleteContacts,
+      yuigram.block,
+      yuigram.unblock,
+      yuigram.readBlocked,
+      yuigram.peerSettings,
+      yuigram.setCloseFriends,
+      yuigram.savedMusic,
+      yuigram.saveMusic,
+    ]
+
+    expect(people).toHaveLength(25)
+    expect(people.filter((one) => typeof one !== 'function')).toEqual([])
+
     const topic = yuigram.readForumTopic({ _: 'forumTopicDeleted', id: 9 })
     expect(topic?.isDeleted).toBe(true)
     expect(topic?.title).toBeUndefined()

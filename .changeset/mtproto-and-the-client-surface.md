@@ -141,13 +141,35 @@ with its own credentials, store and connections, under shared middleware and cro
 handlers. Operations that mean the same thing on both transports are the same call; the ones
 that do not stay on the client that has them.
 
+**Who an account is, and who it knows.** `me`, `users`, `profile`, `findByPhone`,
+`commonChats`, `editProfile`, `setUsername`, `setOnline`, `setEmojiStatus`, `setBirthday`,
+`setProfilePhoto`, `deleteProfilePhotos`, `messageTtl`/`setMessageTtl`, `contacts`,
+`addContact`, `importContacts`, `deleteContacts`, `block`/`unblock`, `readBlocked`,
+`peerSettings`, `setCloseFriends`, `savedMusic` and `saveMusic`. Each resolves the people it
+names through the account's own peer store, so the answers are harvested on the way back and
+everybody mentioned can be addressed afterwards without a second lookup.
+
+Naming a person is not naming a peer — several of these take a user rather than a conversation,
+and passing a channel is refused here by name rather than by the server answering with something
+about the request. The ones that edit a profile send only the fields they were given, because
+the method reads an absent field as "leave it" and an empty string as "clear it".
+
+**A file can be pulled as well as pushed.** `account.downloadIterable(request)` yields chunks in
+file order, and `break` stops the transfer behind it. `downloadTo` could not express that: a sink
+is called and cannot decline the next call, so a caller that had seen enough could only throw.
+The loop is also the backpressure — nothing further is asked for until the chunk in hand has been
+taken. The ranges, retries, reference refresh and migration are the same implementation.
+
 **And several accounts can share one store.** Everything an account keeps now lives under
 `accounts:<name>:`, using the name it already takes — so two accounts pointed at one store no
 longer write over each other's authorization keys, which is what they used to do silently and
-what two default `web()` calls in a page did by construction. Areas separate two names; an
-account also records that it holds its area while it runs, so the same name opened twice is
-refused with the holder named rather than merged. Signing out clears through the area and cannot
-reach another account's keys.
+what two default `web()` calls in a page did by construction. Areas separate two names. For the same name opened twice
+— two tabs, one program started twice — the name is taken through whatever exclusive primitive
+the runtime has: `navigator.locks` in a browser, which covers every page of the origin and so
+covers everyone who can reach that origin's storage, and a registry over the process everywhere
+else. The reach is reported rather than assumed, and the area stops accepting writes the moment
+another run takes it, so a write begun before a takeover cannot land after one. Signing out holds
+the area while it clears, and cannot reach another account's keys.
 
 This changes the on-store layout. A store written before areas existed carries nothing saying
 which account it was, so it is refused rather than adopted under whichever name asks first, with

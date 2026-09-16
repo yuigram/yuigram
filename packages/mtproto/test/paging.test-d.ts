@@ -21,14 +21,18 @@ import type {
   InviteLinkView,
 } from '../src/entities/chat.js'
 import type { MessageView, ReactionView } from '../src/entities/message.js'
+import type { ChatView, UserView } from '../src/entities/peer.js'
 import type { PeerStoriesView, StoryView, StoryViewerView } from '../src/entities/story.js'
 import type {
   Boost,
   Photo,
   SavedStarGift,
   StarsTransaction,
+  TypeBirthday,
+  TypeEmojiStatus,
 } from '../src/generated/api/types/index.js'
 import type { AllStoriesOptions, WalkOptions } from '../src/paging/walk.js'
+import type { FullProfile, ImportOutcome } from '../src/users/profile.js'
 
 declare const account: Account
 
@@ -125,5 +129,58 @@ describe('what a walk takes', () => {
     // knob that does nothing.
     expectTypeOf<AllStoriesOptions>().toHaveProperty('limit')
     expectTypeOf<AllStoriesOptions>().not.toHaveProperty('pageSize')
+  })
+})
+
+describe('the people surface', () => {
+  it('hands back views rather than the schema’s own records', () => {
+    expectTypeOf(account.me()).toEqualTypeOf<Promise<UserView>>()
+    expectTypeOf(account.users(['@one'])).toEqualTypeOf<Promise<UserView[]>>()
+    expectTypeOf(account.contacts()).toEqualTypeOf<Promise<UserView[]>>()
+    expectTypeOf(account.commonChats('@one')).toEqualTypeOf<Promise<ChatView[]>>()
+  })
+
+  it('takes a peer the same way every other account method does', () => {
+    expectTypeOf(account.profile).parameter(0).toEqualTypeOf<Parameters<Account['history']>[0]>()
+    expectTypeOf(account.block).parameter(0).toEqualTypeOf<Parameters<Account['history']>[0]>()
+  })
+
+  it('spells "no value" as an absent one rather than an empty string', () => {
+    // `setUsername(undefined)` clears it, and a signature that only took a
+    // string would make clearing indistinguishable from a caller's bug.
+    expectTypeOf(account.setUsername).parameter(0).toEqualTypeOf<string | undefined>()
+    expectTypeOf(account.setEmojiStatus).parameter(0).toEqualTypeOf<TypeEmojiStatus | undefined>()
+  })
+
+  it('reports what a profile carries as optional where Telegram may omit it', () => {
+    expectTypeOf<FullProfile['bio']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<FullProfile['birthday']>().toEqualTypeOf<TypeBirthday | undefined>()
+    // Counts are always answered, so they are not optional.
+    expectTypeOf<FullProfile['commonChats']>().toEqualTypeOf<number>()
+    expectTypeOf<FullProfile['blocked']>().toEqualTypeOf<boolean>()
+  })
+
+  it('separates what was added from what has to be tried again', () => {
+    expectTypeOf<ImportOutcome['added']>().toEqualTypeOf<UserView[]>()
+    expectTypeOf<ImportOutcome['retry']>().toEqualTypeOf<bigint[]>()
+  })
+})
+
+describe('pulling a file', () => {
+  it('is a generator of chunks rather than a promise of the file', () => {
+    // The difference from `download`, which resolves with the whole thing, and
+    // from `downloadTo`, which resolves with an outcome.
+    expectTypeOf(account.downloadIterable({ dcId: 2, location: {} as never })).toEqualTypeOf<
+      AsyncGenerator<Uint8Array, void, undefined>
+    >()
+    expectTypeOf(account.downloadIterable({ dcId: 2, location: {} as never })).not.toMatchTypeOf<
+      Promise<unknown>
+    >()
+  })
+
+  it('takes the same request the other two shapes take', () => {
+    expectTypeOf(account.downloadIterable)
+      .parameter(0)
+      .toEqualTypeOf<Parameters<Account['download']>[0]>()
   })
 })
