@@ -19,6 +19,7 @@ import {
   isProbablePrime,
   isSafePrime,
   isValidDhPublicKey,
+  VERIFIED_SAFE_PRIMES,
   validateDhParameters,
   validateDhPublicKey,
 } from '../src/crypto/primes.js'
@@ -164,6 +165,65 @@ describe('validateDhParameters', () => {
 
     expect(() => validateDhParameters({ p: composite, g: 2n })).toThrow(/not a safe prime/)
   })
+})
+
+describe('the primes the validator starts out knowing', () => {
+  // `VERIFIED_SAFE_PRIMES` shortens the check for values that have already been
+  // checked. What makes that a record rather than an assertion is this: the
+  // full check, at the full round count, runs here against every entry. If one
+  // of them were not a safe prime, this fails — and nothing else in the suite
+  // would notice, because every other case would take the shortened path.
+  //
+  // It is slow on purpose. A hundred and twenty-eight Miller-Rabin rounds over
+  // a 2048-bit modulus is exactly the work the table exists to avoid repeating,
+  // and doing it somewhere is the whole point.
+  it('are all safe primes, checked in full', () => {
+    expect(VERIFIED_SAFE_PRIMES.length).toBeGreaterThan(0)
+
+    for (const prime of VERIFIED_SAFE_PRIMES) {
+      expect(isSafePrime(prime), prime.toString(16).slice(0, 16)).toBe(true)
+    }
+  }, 120_000)
+
+  it('are all 2048 bits, as the protocol requires', () => {
+    for (const prime of VERIFIED_SAFE_PRIMES) {
+      expect(prime.toString(2).length, prime.toString(16).slice(0, 16)).toBe(2048)
+    }
+  })
+
+  it('does not let a prime in the table skip the conditions that are not about primality', () => {
+    // The shortened path is only the primality test. Everything else — the bit
+    // length, the generator, the congruence that generator requires — still
+    // applies, so a table entry offered with a generator it does not satisfy is
+    // refused exactly as an unknown prime would be.
+    const [first] = VERIFIED_SAFE_PRIMES
+    expect(first).toBeDefined()
+
+    const prime = first as bigint
+    const refused: string[] = []
+
+    for (const g of [2n, 3n, 4n, 5n, 6n, 7n]) {
+      try {
+        validateDhParameters({ p: prime, g })
+      } catch {
+        refused.push(g.toString())
+      }
+    }
+
+    // Telegram's prime satisfies some generators and not others; what matters
+    // is that the congruence is still being applied to it at all.
+    expect(refused.length).toBeGreaterThan(0)
+    expect(() => validateDhParameters({ p: prime, g: 9n })).toThrow(ValidationError)
+  })
+
+  it('still refuses a composite that is not in the table', () => {
+    // The shortening must not turn into "anything 2048 bits is fine". A number
+    // built to pass the range and congruence checks and nothing else has to be
+    // caught by the primality test that the table entries skip.
+    const composite = (1n << 2047n) + 1n
+
+    expect(() => validateDhParameters({ p: composite, g: 3n })).toThrow(ValidationError)
+  }, 60_000)
 })
 
 describe('validateDhPublicKey', () => {
