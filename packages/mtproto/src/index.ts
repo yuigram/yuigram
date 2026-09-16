@@ -17,87 +17,15 @@ export {
 export type { MtprotoApi } from './api.js'
 export type { AdminRights, ChatKind, Chatting, Restrictions } from './chats/common.js'
 export type { Folder, NewFolder } from './chats/folders.js'
-export {
-  archiveChats,
-  createFolder,
-  deleteFolder,
-  editFolder,
-  markChatUnread,
-  readFolders,
-  saveDraft,
-  setFolderOrder,
-} from './chats/folders.js'
 export type {
   ChatlistPreview,
   InviteLinkEdit,
   InvitePreview,
   NewInviteLink,
 } from './chats/invites.js'
-export {
-  createInviteLink,
-  decideAllJoinRequests,
-  decideJoinRequest as decideInviteJoinRequest,
-  editInviteLink,
-  exportInviteLink,
-  joinByLink,
-  joinChatlist,
-  previewChatlist,
-  previewInvite,
-  primaryInviteLink,
-  readInviteLink,
-  revokeInviteLink,
-} from './chats/invites.js'
 export type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
-export {
-  createChannel,
-  createGroup,
-  createSupergroup,
-  deleteChannel,
-  deleteGroup,
-  deleteHistory,
-  deleteMemberHistory,
-} from './chats/lifecycle.js'
 export type { FullChat } from './chats/lookup.js'
-export {
-  fetchChat,
-  fetchChats,
-  fetchDialogs,
-  fetchFullChat,
-  messageAuthor,
-  previewChat,
-  similarChannels,
-} from './chats/lookup.js'
-export {
-  deleteChatPhoto,
-  reorderChatUsernames,
-  setChatColor,
-  setChatDefaultPermissions,
-  setChatDescription,
-  setChatPhoto,
-  setChatTitle,
-  setChatTtl,
-  setChatUsername,
-  setSlowMode,
-  toggleChatUsername,
-  toggleContentProtection,
-  toggleJoinRequests,
-  toggleJoinToSend,
-} from './chats/manage.js'
 export type { AddOptions, NotAdded } from './chats/members.js'
-export {
-  addMembers,
-  banMember,
-  creatorAfterLeave,
-  joinChat,
-  kickMember,
-  leaveChat,
-  readChatMember,
-  restrictMember,
-  setAdminRights,
-  setMemberRank,
-  transferOwnership,
-  unbanMember,
-} from './chats/members.js'
 export {
   ChatEventView,
   ForumTopicView,

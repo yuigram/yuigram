@@ -54,87 +54,15 @@ import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import type { AdminRights, Restrictions } from './chats/common.js'
 import type { Folder, NewFolder } from './chats/folders.js'
-import {
-  archiveChats,
-  createFolder,
-  deleteFolder,
-  editFolder,
-  markChatUnread,
-  readFolders,
-  saveDraft,
-  setFolderOrder,
-} from './chats/folders.js'
 import type {
   ChatlistPreview,
   InviteLinkEdit,
   InvitePreview,
   NewInviteLink,
 } from './chats/invites.js'
-import {
-  createInviteLink,
-  decideAllJoinRequests,
-  decideJoinRequest as decideInviteJoin,
-  editInviteLink,
-  exportInviteLink,
-  joinByLink,
-  joinChatlist,
-  previewChatlist,
-  previewInvite,
-  primaryInviteLink,
-  readInviteLink,
-  revokeInviteLink,
-} from './chats/invites.js'
 import type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
-import {
-  createChannel,
-  createGroup,
-  createSupergroup,
-  deleteChannel,
-  deleteGroup,
-  deleteHistory,
-  deleteMemberHistory,
-} from './chats/lifecycle.js'
 import type { FullChat } from './chats/lookup.js'
-import {
-  fetchChat,
-  fetchChats,
-  fetchDialogs,
-  fetchFullChat,
-  messageAuthor,
-  previewChat,
-  similarChannels,
-} from './chats/lookup.js'
-import {
-  deleteChatPhoto,
-  reorderChatUsernames,
-  setChatColor,
-  setChatDefaultPermissions,
-  setChatDescription,
-  setChatPhoto,
-  setChatTitle,
-  setChatTtl,
-  setChatUsername,
-  setSlowMode,
-  toggleChatUsername,
-  toggleContentProtection,
-  toggleJoinRequests,
-  toggleJoinToSend,
-} from './chats/manage.js'
 import type { AddOptions, NotAdded } from './chats/members.js'
-import {
-  addMembers,
-  banMember,
-  creatorAfterLeave,
-  joinChat,
-  kickMember,
-  leaveChat,
-  readChatMember,
-  restrictMember,
-  setAdminRights,
-  setMemberRank,
-  transferOwnership,
-  unbanMember,
-} from './chats/members.js'
 import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
 import type {
@@ -2245,7 +2173,7 @@ export class Account<Ext = unknown> {
     people: readonly (string | PeerRef)[],
     options?: AddOptions,
   ): Promise<NotAdded[]> {
-    return await addMembers(this, chat, people, options)
+    return await (await import('./chats/members.js')).addMembers(this, chat, people, options)
   }
 
   /** Bar somebody from a channel or supergroup. */
@@ -2254,12 +2182,12 @@ export class Account<Ext = unknown> {
     member: string | PeerRef,
     options?: { readonly until?: number },
   ): Promise<void> {
-    await banMember(this, chat, member, options)
+    await (await import('./chats/members.js')).banMember(this, chat, member, options)
   }
 
   /** Lift every restriction on somebody, letting them back in. */
   async unbanMember(chat: string | PeerRef, member: string | PeerRef): Promise<void> {
-    await unbanMember(this, chat, member)
+    await (await import('./chats/members.js')).unbanMember(this, chat, member)
   }
 
   /** Restrict what somebody may do, without removing them. */
@@ -2268,7 +2196,7 @@ export class Account<Ext = unknown> {
     member: string | PeerRef,
     restrictions: Restrictions,
   ): Promise<void> {
-    await restrictMember(this, chat, member, restrictions)
+    await (await import('./chats/members.js')).restrictMember(this, chat, member, restrictions)
   }
 
   /** Remove somebody without barring them from returning. */
@@ -2277,7 +2205,7 @@ export class Account<Ext = unknown> {
     member: string | PeerRef,
     options?: { readonly deleteHistory?: boolean },
   ): Promise<void> {
-    await kickMember(this, chat, member, options)
+    await (await import('./chats/members.js')).kickMember(this, chat, member, options)
   }
 
   /** Give somebody administrator rights; an empty record demotes them. */
@@ -2287,7 +2215,7 @@ export class Account<Ext = unknown> {
     rights: AdminRights,
     options?: { readonly rank?: string },
   ): Promise<void> {
-    await setAdminRights(this, chat, member, rights, options)
+    await (await import('./chats/members.js')).setAdminRights(this, chat, member, rights, options)
   }
 
   /** Set the title shown beside an administrator's name. */
@@ -2296,12 +2224,12 @@ export class Account<Ext = unknown> {
     member: string | PeerRef,
     rank: string | undefined,
   ): Promise<void> {
-    await setMemberRank(this, chat, member, rank)
+    await (await import('./chats/members.js')).setMemberRank(this, chat, member, rank)
   }
 
   /** Read one member's standing in a channel or supergroup. */
   async member(chat: string | PeerRef, member: string | PeerRef): Promise<MemberView | undefined> {
-    return await readChatMember(this, chat, member)
+    return await (await import('./chats/members.js')).readChatMember(this, chat, member)
   }
 
   /** Hand a conversation to somebody else, proving this account's password. */
@@ -2310,12 +2238,12 @@ export class Account<Ext = unknown> {
     to: string | PeerRef,
     password: string,
   ): Promise<void> {
-    await transferOwnership(this, chat, to, password)
+    await (await import('./chats/members.js')).transferOwnership(this, chat, to, password)
   }
 
   /** Join a channel or supergroup this account can already name. */
   async joinChat(chat: string | PeerRef): Promise<void> {
-    await joinChat(this, chat)
+    await (await import('./chats/members.js')).joinChat(this, chat)
   }
 
   /** Leave a conversation. */
@@ -2323,22 +2251,22 @@ export class Account<Ext = unknown> {
     chat: string | PeerRef,
     options?: { readonly deleteHistory?: boolean },
   ): Promise<void> {
-    await leaveChat(this, chat, options)
+    await (await import('./chats/members.js')).leaveChat(this, chat, options)
   }
 
   /** Who would own this conversation if this account left it. */
   async creatorAfterLeave(chat: string | PeerRef): Promise<bigint | undefined> {
-    return await creatorAfterLeave(this, chat)
+    return await (await import('./chats/members.js')).creatorAfterLeave(this, chat)
   }
 
   /** Make an additional invite link, with its own limits. */
   async createInviteLink(chat: string | PeerRef, options?: NewInviteLink): Promise<InviteLinkView> {
-    return await createInviteLink(this, chat, options)
+    return await (await import('./chats/invites.js')).createInviteLink(this, chat, options)
   }
 
   /** Replace the conversation's permanent link, withdrawing the old one. */
   async exportInviteLink(chat: string | PeerRef): Promise<InviteLinkView> {
-    return await exportInviteLink(this, chat)
+    return await (await import('./chats/invites.js')).exportInviteLink(this, chat)
   }
 
   /** Change a link's limits. Zero clears one rather than setting it. */
@@ -2347,7 +2275,7 @@ export class Account<Ext = unknown> {
     link: string | InviteLinkView,
     edit: InviteLinkEdit,
   ): Promise<InviteLinkView> {
-    return await editInviteLink(this, chat, link, edit)
+    return await (await import('./chats/invites.js')).editInviteLink(this, chat, link, edit)
   }
 
   /** Withdraw a link, and hand back the replacement where one was issued. */
@@ -2358,17 +2286,17 @@ export class Account<Ext = unknown> {
     readonly revoked: InviteLinkView
     readonly replacement: InviteLinkView | undefined
   }> {
-    return await revokeInviteLink(this, chat, link)
+    return await (await import('./chats/invites.js')).revokeInviteLink(this, chat, link)
   }
 
   /** Read one invite link by its text. */
   async inviteLink(chat: string | PeerRef, link: string): Promise<InviteLinkView> {
-    return await readInviteLink(this, chat, link)
+    return await (await import('./chats/invites.js')).readInviteLink(this, chat, link)
   }
 
   /** The conversation's permanent link, read rather than replaced. */
   async primaryInviteLink(chat: string | PeerRef): Promise<InviteLinkView | undefined> {
-    return await primaryInviteLink(this, chat)
+    return await (await import('./chats/invites.js')).primaryInviteLink(this, chat)
   }
 
   /** Let one person in through a link that needs approval, or turn them away. */
@@ -2377,7 +2305,7 @@ export class Account<Ext = unknown> {
     person: string | PeerRef,
     approve: boolean,
   ): Promise<void> {
-    await decideInviteJoin(this, chat, person, approve)
+    await (await import('./chats/invites.js')).decideJoinRequest(this, chat, person, approve)
   }
 
   /** Decide every pending request at once, optionally for one link. */
@@ -2386,37 +2314,37 @@ export class Account<Ext = unknown> {
     approve: boolean,
     options?: { readonly link?: string | InviteLinkView },
   ): Promise<void> {
-    await decideAllJoinRequests(this, chat, approve, options)
+    await (await import('./chats/invites.js')).decideAllJoinRequests(this, chat, approve, options)
   }
 
   /** Look at what an invite link opens, without joining it. */
   async previewInvite(hash: string): Promise<InvitePreview> {
-    return await previewInvite(this, hash)
+    return await (await import('./chats/invites.js')).previewInvite(this, hash)
   }
 
   /** Join by invite link. A link needing approval files a request instead. */
   async joinByLink(hash: string): Promise<void> {
-    await joinByLink(this, hash)
+    await (await import('./chats/invites.js')).joinByLink(this, hash)
   }
 
   /** Look at a shared folder link without joining it. */
   async previewChatlist(slug: string): Promise<ChatlistPreview> {
-    return await previewChatlist(this, slug)
+    return await (await import('./chats/invites.js')).previewChatlist(this, slug)
   }
 
   /** Join a shared folder, taking the conversations named. */
   async joinChatlist(slug: string, chats: readonly (string | PeerRef)[]): Promise<void> {
-    await joinChatlist(this, slug, chats)
+    await (await import('./chats/invites.js')).joinChatlist(this, slug, chats)
   }
 
   /** Rename a conversation. */
   async setChatTitle(chat: string | PeerRef, title: string): Promise<void> {
-    await setChatTitle(this, chat, title)
+    await (await import('./chats/manage.js')).setChatTitle(this, chat, title)
   }
 
   /** Change what a conversation says about itself. */
   async setChatDescription(chat: string | PeerRef, description: string | undefined): Promise<void> {
-    await setChatDescription(this, chat, description)
+    await (await import('./chats/manage.js')).setChatDescription(this, chat, description)
   }
 
   /** Put a picture on a conversation, from a file already uploaded. */
@@ -2428,17 +2356,17 @@ export class Account<Ext = unknown> {
       readonly videoStart?: number
     },
   ): Promise<void> {
-    await setChatPhoto(this, chat, options)
+    await (await import('./chats/manage.js')).setChatPhoto(this, chat, options)
   }
 
   /** Take the picture off a conversation. */
   async deleteChatPhoto(chat: string | PeerRef): Promise<void> {
-    await deleteChatPhoto(this, chat)
+    await (await import('./chats/manage.js')).deleteChatPhoto(this, chat)
   }
 
   /** Give a channel a public name, or take it away. */
   async setChatUsername(chat: string | PeerRef, username: string | undefined): Promise<void> {
-    await setChatUsername(this, chat, username)
+    await (await import('./chats/manage.js')).setChatUsername(this, chat, username)
   }
 
   /** Turn one of a conversation's additional usernames on or off. */
@@ -2447,17 +2375,17 @@ export class Account<Ext = unknown> {
     username: string,
     active: boolean,
   ): Promise<void> {
-    await toggleChatUsername(this, chat, username, active)
+    await (await import('./chats/manage.js')).toggleChatUsername(this, chat, username, active)
   }
 
   /** Put a conversation's usernames in a given order. */
   async reorderChatUsernames(chat: string | PeerRef, order: readonly string[]): Promise<void> {
-    await reorderChatUsernames(this, chat, order)
+    await (await import('./chats/manage.js')).reorderChatUsernames(this, chat, order)
   }
 
   /** How long messages live in one conversation. Zero turns it off. */
   async setChatTtl(chat: string | PeerRef, seconds: number): Promise<void> {
-    await setChatTtl(this, chat, seconds)
+    await (await import('./chats/manage.js')).setChatTtl(this, chat, seconds)
   }
 
   /** What everybody who is not an administrator may not do. */
@@ -2465,27 +2393,27 @@ export class Account<Ext = unknown> {
     chat: string | PeerRef,
     restrictions: Restrictions,
   ): Promise<void> {
-    await setChatDefaultPermissions(this, chat, restrictions)
+    await (await import('./chats/manage.js')).setChatDefaultPermissions(this, chat, restrictions)
   }
 
   /** How long a member must wait between messages. Zero turns it off. */
   async setSlowMode(chat: string | PeerRef, seconds: number): Promise<void> {
-    await setSlowMode(this, chat, seconds)
+    await (await import('./chats/manage.js')).setSlowMode(this, chat, seconds)
   }
 
   /** Hide the forward and copy buttons. Not a security control. */
   async toggleContentProtection(chat: string | PeerRef, enabled: boolean): Promise<void> {
-    await toggleContentProtection(this, chat, enabled)
+    await (await import('./chats/manage.js')).toggleContentProtection(this, chat, enabled)
   }
 
   /** Make joining need approval. */
   async toggleJoinRequests(chat: string | PeerRef, enabled: boolean): Promise<void> {
-    await toggleJoinRequests(this, chat, enabled)
+    await (await import('./chats/manage.js')).toggleJoinRequests(this, chat, enabled)
   }
 
   /** Require membership before somebody may write. */
   async toggleJoinToSend(chat: string | PeerRef, enabled: boolean): Promise<void> {
-    await toggleJoinToSend(this, chat, enabled)
+    await (await import('./chats/manage.js')).toggleJoinToSend(this, chat, enabled)
   }
 
   /** Set the accent colour a conversation is shown in. */
@@ -2494,87 +2422,87 @@ export class Account<Ext = unknown> {
     colour: TypePeerColor | undefined,
     options?: { readonly forProfile?: boolean },
   ): Promise<void> {
-    await setChatColor(this, chat, colour, options)
+    await (await import('./chats/manage.js')).setChatColor(this, chat, colour, options)
   }
 
   /** Make a basic group, which needs the people in it at creation. */
   async createGroup(chat: NewChat, people: readonly (string | PeerRef)[]): Promise<ChatView> {
-    return await createGroup(this, chat, people)
+    return await (await import('./chats/lifecycle.js')).createGroup(this, chat, people)
   }
 
   /** Make a supergroup, which starts empty. */
   async createSupergroup(chat: NewChat & { readonly forum?: boolean }): Promise<ChatView> {
-    return await createSupergroup(this, chat)
+    return await (await import('./chats/lifecycle.js')).createSupergroup(this, chat)
   }
 
   /** Make a broadcast channel. */
   async createChannel(chat: NewChat): Promise<ChatView> {
-    return await createChannel(this, chat)
+    return await (await import('./chats/lifecycle.js')).createChannel(this, chat)
   }
 
   /** Delete a channel or supergroup for everybody. Irreversible. */
   async deleteChannel(chat: string | PeerRef): Promise<void> {
-    await deleteChannel(this, chat)
+    await (await import('./chats/lifecycle.js')).deleteChannel(this, chat)
   }
 
   /** Delete a basic group for everybody. */
   async deleteGroup(chat: string | PeerRef): Promise<void> {
-    await deleteGroup(this, chat)
+    await (await import('./chats/lifecycle.js')).deleteGroup(this, chat)
   }
 
   /** Remove what was said in a conversation. */
   async deleteHistory(chat: string | PeerRef, options?: HistoryRemoval): Promise<void> {
-    await deleteHistory(this, chat, options)
+    await (await import('./chats/lifecycle.js')).deleteHistory(this, chat, options)
   }
 
   /** Remove everything one person said in a channel or supergroup. */
   async deleteMemberHistory(chat: string | PeerRef, member: string | PeerRef): Promise<void> {
-    await deleteMemberHistory(this, chat, member)
+    await (await import('./chats/lifecycle.js')).deleteMemberHistory(this, chat, member)
   }
 
   /** Read a conversation this account can name. */
   async chat(chat: string | PeerRef): Promise<ChatView> {
-    return await fetchChat(this, chat)
+    return await (await import('./chats/lookup.js')).fetchChat(this, chat)
   }
 
   /** Read several conversations, positionally, with a gap for each unknown one. */
   async chats(chats: readonly (string | PeerRef)[]): Promise<(ChatView | undefined)[]> {
-    return await fetchChats(this, chats)
+    return await (await import('./chats/lookup.js')).fetchChats(this, chats)
   }
 
   /** Read everything Telegram will say about a conversation. */
   async fullChat(chat: string | PeerRef): Promise<FullChat> {
-    return await fetchFullChat(this, chat)
+    return await (await import('./chats/lookup.js')).fetchFullChat(this, chat)
   }
 
   /** What a public conversation looks like from outside it. */
   async previewChat(username: string): Promise<ChatView | undefined> {
-    return await previewChat(this, username)
+    return await (await import('./chats/lookup.js')).previewChat(this, username)
   }
 
   /** Channels Telegram thinks are like this one. */
   async similarChannels(chat: string | PeerRef): Promise<ChatView[]> {
-    return await similarChannels(this, chat)
+    return await (await import('./chats/lookup.js')).similarChannels(this, chat)
   }
 
   /** Who wrote a post in a channel that signs its posts. */
   async messageAuthor(chat: string | PeerRef, messageId: number): Promise<UserView | undefined> {
-    return await messageAuthor(this, chat, messageId)
+    return await (await import('./chats/lookup.js')).messageAuthor(this, chat, messageId)
   }
 
   /** This account's own record about particular conversations. */
   async peerDialogs(chats: readonly (string | PeerRef)[]): Promise<DialogView[]> {
-    return await fetchDialogs(this, chats)
+    return await (await import('./chats/lookup.js')).fetchDialogs(this, chats)
   }
 
   /** Every folder this account has, in the order they are shown. */
   async folders(): Promise<Folder[]> {
-    return await readFolders(this)
+    return await (await import('./chats/folders.js')).readFolders(this)
   }
 
   /** Make a folder. The number is the caller's to choose. */
   async createFolder(folder: NewFolder): Promise<void> {
-    await createFolder(this, folder)
+    await (await import('./chats/folders.js')).createFolder(this, folder)
   }
 
   /** Change a folder, reading the current one first so nothing is dropped. */
@@ -2587,27 +2515,27 @@ export class Account<Ext = unknown> {
       readonly excluded?: readonly (string | PeerRef)[]
     },
   ): Promise<void> {
-    await editFolder(this, id, edit)
+    await (await import('./chats/folders.js')).editFolder(this, id, edit)
   }
 
   /** Remove a folder. The conversations in it are not affected. */
   async deleteFolder(id: number): Promise<void> {
-    await deleteFolder(this, id)
+    await (await import('./chats/folders.js')).deleteFolder(this, id)
   }
 
   /** Put the folders in a given order. */
   async setFolderOrder(order: readonly number[]): Promise<void> {
-    await setFolderOrder(this, order)
+    await (await import('./chats/folders.js')).setFolderOrder(this, order)
   }
 
   /** Move conversations into the archive, or back out of it. */
   async archiveChats(chats: readonly (string | PeerRef)[], archived: boolean): Promise<void> {
-    await archiveChats(this, chats, archived)
+    await (await import('./chats/folders.js')).archiveChats(this, chats, archived)
   }
 
   /** Mark a conversation as unread, or clear the mark. */
   async markChatUnread(chat: string | PeerRef, unread: boolean): Promise<void> {
-    await markChatUnread(this, chat, unread)
+    await (await import('./chats/folders.js')).markChatUnread(this, chat, unread)
   }
 
   /** Keep an unsent message against a conversation. */
@@ -2616,7 +2544,7 @@ export class Account<Ext = unknown> {
     text: string | undefined,
     options?: { readonly entities?: readonly TypeMessageEntity[]; readonly replyTo?: number },
   ): Promise<void> {
-    await saveDraft(this, chat, text, options)
+    await (await import('./chats/folders.js')).saveDraft(this, chat, text, options)
   }
 
   // ---------------------------------------------------------------------

@@ -176,6 +176,8 @@ the line:
 | With them, before this | 104 | 103 / 97.7 / 101 | 89–124 |
 | After | 95 | 94.0 / 92.7 / 93.7 | 89–99 |
 | Plus the exclusion guard and the people surface | 97 | 93.9 / 94.0 / 97.2 | 85–106 |
+| Plus the conversation family, statically imported | 104 | 103 / 103 / 104 | 96–114 |
+| The same, loaded when a conversation is operated on | 97 | 95.3 / 95.8 / 99.0 | 85–108 |
 
 The middle row is the one that matters for how the budget was being read: the
 same tree measured above and below 100 ms depending on the run, so a passing
@@ -192,6 +194,17 @@ people surface — which at 0.4 ms a module is about one millisecond, and the me
 indistinguishable from the row above measured in the same session. Neither the lazy codec
 boundary nor the Bot API bundle's exclusion of MTProto moved: `bundle/bot-mtproto` is still
 0 KB.
+
+The middle row is a regression this project caused and then removed. Sixty operations on
+conversations arrived in six modules, and importing them statically put all six on the eager path
+— seven modules, and the medians moved with them. They are now loaded when one of the operations
+is called, which is the test the section below sets out: work most programs never do is loaded
+when it is asked for. A bot that never renames a channel resolves none of it.
+
+That has one visible consequence. The operations are reachable as `account.<method>`, and no
+longer as free functions from the package entry — a static re-export would put the modules back on
+the eager path, which is the whole cost being avoided. Their types are still exported, because a
+type is erased.
 
 #### What is left
 
