@@ -93,7 +93,7 @@ import {
   sendText,
   setTyping,
 } from './messaging/send.js'
-import type { Connections } from './network/connections.js'
+import type { Connections, ManagedConnection } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration, DcDirectory } from './network/dc.js'
 import type { Callable } from './network/migration.js'
@@ -101,7 +101,7 @@ import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
-import { UPDATE_CONTAINERS } from './normalize/events.js'
+import { isUpdateSource, UPDATE_CONTAINERS } from './normalize/events.js'
 import type { PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type { MemberOptions, SearchOptions, WalkOptions } from './paging/walk.js'
@@ -112,7 +112,7 @@ import {
   walkMembers,
   walkSearch,
 } from './paging/walk.js'
-import type { NewPassword, PasswordStatus, Securing } from './security/password.js'
+import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 import {
   cancelRecoveryEmail,
   checkRecoveryCode,
@@ -122,7 +122,7 @@ import {
   requestPasswordRecovery,
   resendRecoveryEmail,
   setPassword,
-} from './security/password.js'
+} from './security/index.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
@@ -1578,6 +1578,17 @@ export class Account<Ext = unknown> {
       ...(this.#options.schedule === undefined ? {} : { schedule: this.#options.schedule }),
     })
 
+    /**
+     * Whether what arrived on a connection is this account's stream.
+     *
+     * `isUpdateSource` holds the rule and the reasons for it. Read here rather
+     * than captured, because which datacenter an account belongs to changes: a
+     * migration moves it, and the connection that becomes the stream is the one
+     * at the datacenter it moved to.
+     */
+    const primary = (origin: ManagedConnection): boolean =>
+      isUpdateSource(origin, datacenters.directory.thisDc)
+
     const connections = openConnections({
       datacenters,
       // What the server says without being asked. A connection reports every
@@ -1589,7 +1600,10 @@ export class Account<Ext = unknown> {
       // here would be dispatched to handlers as though Telegram had said
       // something. Only the seven constructors of the `Updates` type qualify,
       // and `UPDATE_CONTAINERS` is that list.
-      onEvent: (_origin, event) => {
+      onEvent: (origin, event) => {
+        // Nothing but the stream itself moves the account through the stream.
+        if (!primary(origin)) return
+
         if (event.kind === 'new-session' && event.gap) {
           // The server started a new session, so whatever it sent while none
           // existed was never delivered — but only an account that had a place

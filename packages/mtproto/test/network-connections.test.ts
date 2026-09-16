@@ -16,9 +16,10 @@ import { CancelledError, NetworkError, TelegramError, ValidationError } from '@y
 import { describe, expect, it } from 'vitest'
 import { AuthKey } from '../src/message/auth-key.js'
 import { AUTH_KEY_NOT_FOUND, type Channel, TransportError } from '../src/network/channel.js'
-import { openConnections } from '../src/network/connections.js'
+import { type Connections, openConnections } from '../src/network/connections.js'
 import type { ConnectOptions, Datacenters } from '../src/network/datacenters.js'
 import type { DcDirectory } from '../src/network/dc.js'
+import { isUpdateSource } from '../src/normalize/events.js'
 import type { SessionEvent } from '../src/session/dispatcher.js'
 import type { TlValue } from '../src/tl/index.js'
 
@@ -1326,5 +1327,61 @@ describe('a connection whose key is nearly finished', () => {
     advance((EXPIRES_AT + 3600) * 1000)
 
     expect(connection.spent).toBe(true)
+  })
+})
+
+/**
+ * Which connection may move an account through the update stream.
+ *
+ * `updates-wire.test.ts` proves the account is wired to this rule, with sealed
+ * traffic down a chosen connection. What it cannot reach is a connection
+ * identity a pool never builds — a transfer connection at the first slot, or a
+ * second main connection to one datacenter — because the pool numbers its slots
+ * so that neither occurs.
+ *
+ * That numbering is another module's, and a rule that held only because of it
+ * would stop holding the day it changed. `Connections.get` takes a purpose and a
+ * slot from whoever asks, so the identities are built here directly and each
+ * condition is violated on its own.
+ */
+describe('which connection is an account’s update stream', () => {
+  /** The connection a target names, from a live layer. */
+  const identity = (target: Parameters<Connections['get']>[0]) => harness().layer.get(target)
+
+  it('is the first main connection to the datacenter the account belongs to', () => {
+    expect(isUpdateSource(identity({ id: 2, purpose: 'main', slot: 0 }), 2)).toBe(true)
+    // And the default target is exactly that one.
+    expect(isUpdateSource(identity(undefined), 2)).toBe(true)
+  })
+
+  it('is not a connection opened for transfers, even at the first slot', () => {
+    // The pool numbers transfer slots away from zero, so this identity does not
+    // arise from it. It arises from `get`, which anything may call.
+    expect(isUpdateSource(identity({ id: 2, purpose: 'media', slot: 0 }), 2)).toBe(false)
+    expect(isUpdateSource(identity({ id: 2, purpose: 'cdn', slot: 0 }), 2)).toBe(false)
+  })
+
+  it('is not a second main connection to the same datacenter', () => {
+    // A second one carrying updates would be a second opinion about what has
+    // happened. The purpose is right and the slot is not.
+    expect(isUpdateSource(identity({ id: 2, purpose: 'main', slot: 1 }), 2)).toBe(false)
+  })
+
+  it('is not a main connection to a datacenter the account does not live at', () => {
+    expect(isUpdateSource(identity({ id: 4, purpose: 'main', slot: 0 }), 2)).toBe(false)
+  })
+
+  it('follows the account when it moves', () => {
+    // The home datacenter is an argument rather than something captured, so a
+    // migration changes which connection is the stream without anything being
+    // rebuilt: the one at datacenter 4 becomes it, and the one at 2 stops.
+    const home = identity({ id: 2, purpose: 'main', slot: 0 })
+    const elsewhere = identity({ id: 4, purpose: 'main', slot: 0 })
+
+    expect(isUpdateSource(home, 2)).toBe(true)
+    expect(isUpdateSource(elsewhere, 2)).toBe(false)
+
+    expect(isUpdateSource(home, 4)).toBe(false)
+    expect(isUpdateSource(elsewhere, 4)).toBe(true)
   })
 })

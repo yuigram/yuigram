@@ -16,11 +16,16 @@
  * key the handshake established. Nothing is faked past the socket.
  */
 
+import { TelegramError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { areaFor } from '../src/storage/ownership.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockConnection } from './server/datacenter.js'
+import { FileServer } from './server/files.js'
 import { mockAccount } from './support/mock-account.js'
+
+/** A transfer range, the size the protocol moves files in. */
+const PART = 512 * 1024
 
 /** An update the sequence does not gate on a position in the stream. */
 const typing = (userId: bigint): TlValue => ({
@@ -423,4 +428,301 @@ describe('an account that is going away', () => {
       await instance.dispose()
     }
   }, 30_000)
+})
+
+/**
+ * Which connection may move an account through the update stream.
+ *
+ * A client holds more than one connection, and they look alike on the wire: the
+ * same framing, the same envelope, the same key exchange. Only one of them is
+ * the account's update stream — the first main connection to the datacenter the
+ * account belongs to — and the rest are separate conversations that happen to
+ * be shaped the same.
+ *
+ * That distinction is a property of routing, so every case here delivers sealed
+ * bytes down a chosen connection rather than handing the account a value. A
+ * case that called `feed()` would prove the sequence works and say nothing about
+ * where an update is allowed to come from, which is what is being decided.
+ */
+describe('which connection may move an account through the stream', () => {
+  /** Seal on a chosen connection, rather than on whichever one can carry it. */
+  async function pushOn(connection: MockConnection, value: TlValue): Promise<void> {
+    const deadline = Date.now() + 5000
+
+    for (;;) {
+      if (connection.open()) {
+        const bytes = connection.peer.push(value)
+        if (bytes !== undefined) {
+          connection.push(bytes)
+
+          return
+        }
+      }
+
+      if (Date.now() > deadline) throw new Error('that connection never carried a session')
+
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+  }
+
+  /** Every typing event a handler saw, by sender. */
+  function watching(instance: ReturnType<typeof mockAccount>): bigint[] {
+    const seen: bigint[] = []
+    instance.account.on('mtproto:typing', (event) => {
+      if (event.sender !== undefined) seen.push(event.sender.id)
+    })
+
+    return seen
+  }
+
+  /** What a download asks for, so a transfer opens connections of its own. */
+  const fileAt = (server: FileServer, id: bigint) => {
+    const stored = server.add(id, { size: PART, dcId: 2 })
+
+    return {
+      dcId: 2,
+      size: PART,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: stored.fileId,
+        access_hash: 5n,
+        file_reference: stored.reference,
+        thumb_size: '',
+      },
+    } as const
+  }
+
+  it('does not take one from a connection to another datacenter', async () => {
+    // A main connection to a datacenter the account does not live at exists for
+    // a call that was redirected there. It carries no common box: a position
+    // advanced by it is a position `updates.getDifference` at the home
+    // datacenter would then contradict.
+    const instance = mockAccount()
+
+    try {
+      await instance.account.connect()
+      const seen = watching(instance)
+
+      await instance.account.api.call({ _: 'help.getConfig' })
+      await instance.account.reach(4).invoke({ _: 'ping', ping_id: 1n })
+
+      const elsewhere = instance.datacenter(4).connections.at(-1)
+      expect(elsewhere, 'no connection was opened to datacenter 4').toBeDefined()
+
+      await pushOn(elsewhere as MockConnection, typing(70n))
+      await settle(300)
+
+      expect(seen).toEqual([])
+
+      // The control, on the same account and in the same run: the home
+      // datacenter's connection still delivers, so this is about where the
+      // update came from rather than about a client that stopped listening.
+      await push(instance.datacenter(2), typing(71n))
+      await settle(300)
+
+      expect(seen).toEqual([71n])
+    } finally {
+      await instance.dispose()
+    }
+  }, 40_000)
+
+  it('does not take one from a transfer connection to its own datacenter', async () => {
+    // Same datacenter, same address, same key — and not the stream. A transfer
+    // connection exists to move bytes, and what arrives on it has no standing
+    // to say where the account is in a conversation it is not part of.
+    const home = new FileServer(2)
+    const instance = mockAccount({
+      api: (query) => (query._.startsWith('upload.') ? home.invoke(query) : undefined),
+    })
+
+    try {
+      await instance.account.connect()
+      const seen = watching(instance)
+
+      await instance.account.api.call({ _: 'help.getConfig' })
+      // The connection that carried that call, held before the download so it
+      // can be told apart from the ones the download opens.
+      const beforeTransfer = instance.datacenter(2).connections.length
+      const stream = instance.datacenter(2).connections.at(-1) as MockConnection
+
+      await instance.account.download(fileAt(home, 0x0f11_e0a1n))
+
+      // Identified by construction: everything opened after the call above was
+      // opened to carry the transfer.
+      const transfer = instance.datacenter(2).connections.slice(beforeTransfer)
+      expect(transfer.length, 'the download opened no connection of its own').toBeGreaterThan(0)
+
+      for (const connection of transfer) await pushOn(connection, typing(80n))
+      await settle(300)
+
+      expect(seen).toEqual([])
+
+      // And the one that is the stream still is.
+      await pushOn(stream, typing(81n))
+      await settle(300)
+
+      expect(seen).toEqual([81n])
+    } finally {
+      await instance.dispose()
+    }
+  }, 40_000)
+
+  it('does not chase a gap a transfer connection announced', async () => {
+    // A transfer connection gets a session of its own, and the server
+    // announcing a new one there says nothing about updates: none were going to
+    // be delivered on it. Chasing it would fetch a difference for every
+    // connection a download opened.
+    const home = new FileServer(2)
+    const asked: string[] = []
+    const instance = mockAccount({
+      // A position to be behind, so an account that did chase would have
+      // something to chase from.
+      stored: new Map<string, unknown>([
+        [
+          `${areaFor('account')}updates:state`,
+          { pts: 40, qts: 1, seq: 0, date: 1_700_000_000, channels: {} },
+        ],
+      ]),
+      api: (query) => {
+        asked.push(query._)
+        if (query._.startsWith('upload.')) return home.invoke(query)
+        if (query._ === 'updates.getState') {
+          return {
+            _: 'updates.state',
+            pts: 40,
+            qts: 1,
+            date: 1_700_000_000,
+            seq: 0,
+            unread_count: 0,
+          }
+        }
+        if (query._ === 'updates.getDifference') {
+          return { _: 'updates.differenceEmpty', date: 1_700_000_000, seq: 0 }
+        }
+
+        return undefined
+      },
+    })
+
+    try {
+      await instance.account.connect()
+      await instance.account.api.call({ _: 'help.getConfig' })
+      const beforeTransfer = instance.datacenter(2).connections.length
+
+      await instance.account.download(fileAt(home, 0x0f11_e0a2n))
+
+      const transfer = instance.datacenter(2).connections.slice(beforeTransfer)
+      expect(transfer.length).toBeGreaterThan(0)
+
+      // Twice on the same connection, which is what makes the second a
+      // replacement rather than a session starting.
+      for (const connection of transfer) {
+        const salt = connection.peer.salt ?? 0n
+        await pushOn(connection, {
+          _: 'new_session_created',
+          first_msg_id: 1n,
+          unique_id: 0x5555_5555_5555_5551n,
+          server_salt: salt,
+        })
+        await pushOn(connection, {
+          _: 'new_session_created',
+          first_msg_id: 1n,
+          unique_id: 0x5555_5555_5555_5552n,
+          server_salt: salt,
+        })
+      }
+      await settle(600)
+
+      expect(asked.filter((name) => name === 'updates.getDifference')).toEqual([])
+    } finally {
+      await instance.dispose()
+    }
+  }, 40_000)
+
+  it('stops taking the stream from a datacenter it has moved away from', async () => {
+    // A redirected sign-in moves the account, and the connection that was the
+    // stream is still open with a live session at the datacenter it left. What
+    // arrives there is no longer this account's stream, and what arrives at the
+    // datacenter it moved to is.
+    const instance = mockAccount({
+      api: (query, dcId) => {
+        if (query._ !== 'auth.sendCode') return undefined
+        if (dcId === 2) throw new TelegramError('PHONE_MIGRATE_4 (303)')
+
+        return {
+          _: 'auth.sentCode',
+          type: { _: 'auth.sentCodeTypeApp', length: 5 },
+          phone_code_hash: 'hash-of-the-code',
+          timeout: 60,
+        }
+      },
+    })
+
+    try {
+      await instance.account.connect()
+      const seen = watching(instance)
+
+      await instance.account.api.call({ _: 'help.getConfig' })
+      const left = instance.datacenter(2).connections.at(-1) as MockConnection
+
+      // Before the move, the connection at datacenter 2 is the stream.
+      await pushOn(left, typing(90n))
+      await settle(300)
+      expect(seen).toEqual([90n])
+
+      const state = await instance.account.sendCode('+70000000000')
+      expect(state.dcId).toBe(4)
+
+      // After it, the same connection is a conversation with a datacenter this
+      // account no longer belongs to.
+      await pushOn(left, typing(91n))
+      await settle(300)
+      expect(seen).toEqual([90n])
+
+      // And the datacenter it moved to is the stream now.
+      await push(instance.datacenter(4), typing(92n))
+      await settle(300)
+      expect(seen).toEqual([90n, 92n])
+    } finally {
+      await instance.dispose()
+    }
+  }, 40_000)
+
+  it('keeps two accounts apart when the traffic looks identical', async () => {
+    // Two accounts, one store, the same update sealed for each. Each must see
+    // its own and only its own: a sequence or a record of what has been
+    // dispatched that was shared would show one account the other's traffic, or
+    // suppress the second as a duplicate of the first.
+    const shared = new Map<string, unknown>()
+    const alice = mockAccount({ name: 'alice', stored: shared })
+    const bob = mockAccount({ name: 'bob', stored: shared })
+
+    try {
+      await alice.account.connect()
+      await bob.account.connect()
+      const hers = watching(alice)
+      const his = watching(bob)
+
+      await alice.account.api.call({ _: 'help.getConfig' })
+      await bob.account.api.call({ _: 'help.getConfig' })
+
+      // The same value, sealed separately for each account under its own key.
+      await push(alice.datacenter(2), typing(55n))
+      await settle(300)
+
+      expect(hers).toEqual([55n])
+      expect(his).toEqual([])
+
+      await push(bob.datacenter(2), typing(55n))
+      await settle(300)
+
+      // Not suppressed as something already seen: the record of what has been
+      // dispatched belongs to an account, not to the process.
+      expect(his).toEqual([55n])
+      expect(hers).toEqual([55n])
+    } finally {
+      await alice.dispose()
+      await bob.dispose()
+    }
+  }, 40_000)
 })

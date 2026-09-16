@@ -126,6 +126,16 @@ export interface ConnectionInvokeOptions extends InvokeOptions {
 export interface ManagedConnection {
   readonly dcId: number
   readonly purpose: DcPurpose
+  /**
+   * Which of several connections to one endpoint this is.
+   *
+   * Reported as well as asked for, because the identity of a connection is what
+   * decides whether what arrives on it belongs to the account: a datacenter's
+   * first main connection is the one carrying the update stream, and everything
+   * else at the same address is a second conversation that happens to look
+   * alike.
+   */
+  readonly slot: number
   readonly state: ConnectionState
   /**
    * How many calls are waiting for an answer on this connection.
@@ -195,14 +205,15 @@ export function openConnections(options: ConnectionsOptions): Connections {
 
       const id = target.id ?? options.datacenters.directory.thisDc
       const purpose = target.purpose ?? 'main'
-      const key = `${id}:${purpose}:${target.slot ?? 0}`
+      const slot = target.slot ?? 0
+      const key = `${id}:${purpose}:${slot}`
 
       const existing = connections.get(key)
       // A connection that was closed is finished. Handing it back would give a
       // caller something that will never connect again.
       if (existing !== undefined && existing.state !== 'closed') return existing
 
-      const created = new Logical(id, purpose, options)
+      const created = new Logical(id, purpose, slot, options)
       connections.set(key, created)
 
       return created
@@ -231,6 +242,7 @@ interface Attempt {
 class Logical implements ManagedConnection {
   readonly dcId: number
   readonly purpose: DcPurpose
+  readonly slot: number
   #inFlight = 0
 
   readonly #options: ConnectionsOptions
@@ -269,9 +281,10 @@ class Logical implements ManagedConnection {
   #readyAt = 0
   #waiters: Waiter[] = []
 
-  constructor(dcId: number, purpose: DcPurpose, options: ConnectionsOptions) {
+  constructor(dcId: number, purpose: DcPurpose, slot: number, options: ConnectionsOptions) {
     this.dcId = dcId
     this.purpose = purpose
+    this.slot = slot
     this.#options = options
     this.#base = options.backoff?.base ?? DEFAULT_BASE
     this.#cap = options.backoff?.cap ?? DEFAULT_CAP

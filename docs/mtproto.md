@@ -1774,7 +1774,46 @@ A page of dialogs has none of that. [bot-api-finalization.md](bot-api-finalizati
 rule this falls under — something stays outside core when shipping it means owning a policy — and
 a dialog iterator is policy from end to end.
 
-### 9.8 Testing
+### 9.8 Which connection is the update stream
+
+A client holds more than one connection, and on the wire they are indistinguishable: the same
+framing, the same envelope, the same key exchange, sealed under keys the same datacenter issued.
+Exactly one of them is the account's update stream, and deduplication does not make the rest into
+update sources — it makes a second copy of a *legitimate* update harmless, which is a different
+problem from a message that arrived somewhere it does not belong.
+
+**The rule.** Only the first main connection to the datacenter the account belongs to may move the
+account through the stream — dispatch an update, advance `pts`/`qts`/`seq`, or start a catch-up.
+
+It follows from where the state lives rather than from convention. The common box is a property of
+the account at its home datacenter, and `updates.getState` and `updates.getDifference` are answered
+there. A position advanced by anything else is a position the difference would then contradict.
+
+| Connection | Why it is not the stream |
+| --- | --- |
+| A transfer connection | Exists to move bytes. Its session is its own, and nothing that arrived on it has standing to say where the account is in a conversation it is not part of. |
+| A cache connection | Not Telegram. Its authorization is good for fetching ranges and nothing else, so treating what arrives there as the stream would let a cache decide the account's position. |
+| A second main connection | A second opinion about what has happened. The pool allows one for exactly that reason, and this is the same rule stated where it is relied on. |
+| A main connection elsewhere | A call being made where the account does not live — a redirected sign-in, a file or channel held at another datacenter. It carries no common box. |
+| A channel already replaced | Its connection has reconnected or been closed. Acting on what it reports would apply an update from a session that no longer exists. |
+
+Which datacenter an account belongs to is read when an event arrives rather than captured when the
+connections are built, because a migration moves it: after one, the connection at the datacenter the
+account moved to becomes the stream and the one it left stops being it, without anything being
+rebuilt.
+
+**`new_session_created` is subject to the same rule.** A transfer connection's session being
+replaced says nothing about updates — none were going to be delivered on it — so chasing it would
+fetch a difference for every connection a download opened. Only the stream's own replaced session
+means anything was missed, and only for an account that had a place in the stream to miss it from:
+one that has never run has nothing behind it, and asking for the difference from a position it
+invented would fetch a backlog it was never meant to see.
+
+**The no-dispatch index is the account's.** It is bounded (§9.5) and it is per account, not per
+process: two accounts in one program receiving the same update must each see it, and an index
+shared between them would suppress the second as a duplicate of the first.
+
+### 9.9 Testing
 
 This subsystem cannot be validated against the live network — the interesting cases are
 precisely the ones that occur rarely and unpredictably. It is therefore built against a

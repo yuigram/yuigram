@@ -18,6 +18,7 @@
  * not care, and one that does has the constructor in `raw`.
  */
 
+import type { DcPurpose } from '../network/dc.js'
 /** An update this build has no kind for, carried through rather than dropped. */
 export const RAW_KIND = 'mtproto:raw'
 
@@ -159,3 +160,66 @@ export const SHORT_MESSAGE_UPDATES: ReadonlySet<string> = new Set([
   'updateShortMessage',
   'updateShortChatMessage',
 ])
+
+/**
+ * Which connection an account's update stream arrives on.
+ *
+ * Here for the same reason `UPDATE_CONTAINERS` is: both answer "does this count
+ * as an update for this account", one by what the message is and the other by
+ * where it came from, and neither needs anything from the layers it judges.
+ *
+ * That last part is the constraint. `Account` reaches for this rule on the way
+ * up, and a static edge from there into the connection layer would pull the
+ * channel, the session and the codec tables into every program that loads the
+ * framework — including a bot that never speaks this protocol. So the
+ * connection is named structurally rather than imported. `eager-surfaces` holds
+ * that boundary.
+ */
+
+/** As much of a connection as the rule reads. */
+export interface ConnectionIdentity {
+  readonly dcId: number
+  readonly purpose: DcPurpose
+  readonly slot: number
+}
+
+/**
+ * Whether what arrives on a connection is an account's update stream.
+ *
+ * A client holds more than one connection, and on the wire they are
+ * indistinguishable: the same framing, the same envelope, the same key
+ * exchange, sealed under keys the same datacenter issued. Exactly one of them is
+ * the account's update stream, and this says which.
+ *
+ * It follows from where the state lives. The common box is a property of the
+ * account at the datacenter it belongs to, and `updates.getState` and
+ * `updates.getDifference` are answered there — so a position advanced by
+ * anything else is a position a difference fetched at home would contradict.
+ *
+ * Three conditions, each ruling out something different:
+ *
+ * - **the purpose.** A transfer connection exists to move bytes, and a delivery
+ *   node is not Telegram at all: its authorization is good for fetching ranges
+ *   and nothing else, so treating what arrives there as this account's stream
+ *   would let a cache decide where the account is in it.
+ * - **the slot.** A second connection at the same address is a second opinion
+ *   about what has happened. The pool allows one main connection for exactly
+ *   that reason, and this is the same rule stated where it is relied on rather
+ *   than inherited from how the pool happens to number its slots.
+ * - **the datacenter.** A main connection elsewhere is a call being made where
+ *   the account does not live — a redirected sign-in, a file or a channel held
+ *   at another datacenter. It carries no common box.
+ *
+ * The home datacenter is passed rather than read, because it changes: a
+ * migration moves it, and the connection that becomes the stream is the one at
+ * the datacenter the account moved to.
+ *
+ * Two of the three are redundant for the connections a pool builds, since it
+ * numbers transfer slots away from zero. They are not redundant for the layer:
+ * `Connections.get` takes a purpose and a slot from whoever asks, and a rule
+ * that held only because of another module's numbering would stop holding the
+ * day that numbering changed.
+ */
+export function isUpdateSource(connection: ConnectionIdentity, homeDcId: number): boolean {
+  return connection.purpose === 'main' && connection.slot === 0 && connection.dcId === homeDcId
+}
