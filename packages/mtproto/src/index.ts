@@ -118,6 +118,7 @@ export {
   setPassword,
 } from './security/password.js'
 export type { PortableSession } from './session.js'
+export { areaFor, StorageOwnershipError } from './storage/ownership.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type { TlValue } from './tl/index.js'
 

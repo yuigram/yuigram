@@ -52,6 +52,7 @@ import {
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
+import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
 import type { DialogView } from './entities/dialog.js'
 import type { MemberView } from './entities/member.js'
@@ -126,6 +127,7 @@ import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
+import { areaFor, claimArea, releaseArea } from './storage/ownership.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
 import { type UpdateStore, updateStore } from './storage/updates.js'
 import type { TlValue } from './tl/index.js'
@@ -215,6 +217,19 @@ export interface AccountOptions {
    * of the fix.
    */
   readonly storage: KV<unknown>
+  /**
+   * Take an area a previous run left open.
+   *
+   * An account records that it holds its area of the store while it is running,
+   * and gives that up when it stops. A run that ends without stopping — a
+   * crash, a process killed — leaves the record behind, and the next run cannot
+   * tell that from another program running right now. So it refuses, and this
+   * is how a caller that knows better says otherwise.
+   *
+   * It does not let one account take another's area. That is not a claim left
+   * behind, it is the wrong store, and no flag here makes it the right one.
+   */
+  readonly takeOverStorage?: boolean
   /**
    * The server keys a first key exchange may be answered with.
    *
@@ -314,6 +329,22 @@ export class Account<Ext = unknown> {
   /** What this client is called. */
   readonly name: string
 
+  /**
+   * This account's own area of the store it was given.
+   *
+   * Everything an account keeps goes here rather than at the root, so two
+   * accounts pointed at one store do not write to the same keys.
+   */
+  readonly #area: KV<unknown>
+
+  /**
+   * What this run writes into the claim, once it has one.
+   *
+   * Absent until the account has opened, so that releasing before opening does
+   * nothing rather than clearing somebody else's.
+   */
+  #holder: string | undefined
+
   readonly #options: AccountOptions
   readonly #log: Logger
   readonly #dispatcher: Dispatcher<MtprotoContext & Ext>
@@ -342,11 +373,15 @@ export class Account<Ext = unknown> {
     this.name = options.name ?? 'account'
     this.#log = options.log ?? createLogger()
     this.#dispatcher = new Dispatcher<MtprotoContext & Ext>()
-    this.#peers = peerStore(namespaced(options.storage, 'peers:'))
+    this.#area = namespaced(options.storage, areaFor(this.name))
+    this.#peers = peerStore(namespaced(this.#area, 'peers:'))
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#open(),
-      onStop: () => {
+      onStop: async () => {
         this.#close()
+        // After the network is down, so nothing can write to the area between
+        // giving up the claim and the last write landing.
+        await this.#release()
       },
     })
   }
@@ -439,7 +474,7 @@ export class Account<Ext = unknown> {
    * no connection, changes nothing, and gives the same answer twice.
    */
   async exportSession(): Promise<string> {
-    const storage = this.#options.storage
+    const storage = this.#area
     const authorization = authorizationStore(namespaced(storage, 'auth:'))
     const configuration = await datacenterStore(namespaced(storage, 'dcs:')).load()
     const dcId = configuration?.thisDc ?? this.#options.bootstrap.thisDc
@@ -1269,7 +1304,7 @@ export class Account<Ext = unknown> {
     await this.#invoke({ _: 'auth.logOut' })
 
     const datacenters = [...this.#reachable(network.datacenters.directory)]
-    const authorization = authorizationStore(namespaced(this.#options.storage, 'auth:'))
+    const authorization = authorizationStore(namespaced(this.#area, 'auth:'))
 
     // Stopped before anything is removed, so nothing reaches for a key that is
     // about to be gone, and the network is down whether or not the store
@@ -1302,18 +1337,19 @@ export class Account<Ext = unknown> {
    * Remove one of the areas this account divides its store into.
    *
    * Bulk removal is optional in the store interface — every store this project
-   * ships offers it, and one a caller wrote may not. Asked of the store itself
-   * rather than of the area: a namespaced view always offers the method and
-   * quietly does nothing when what it wraps cannot, which is the one answer
-   * nobody can act on.
+   * ships offers it, and one a caller wrote may not. Whether it can is asked of
+   * the store this account was given rather than of its area: a namespaced view
+   * always offers the method and quietly does nothing when what it wraps
+   * cannot, which is the one answer nobody can act on. The removal itself goes
+   * through the area, so signing this account out cannot reach another's.
    *
    * A store that cannot is reported rather than left to look as though the data
    * went. What stays behind belongs to an account that has signed out, and
    * somebody has to know it is still there.
    */
   async #forgetArea(prefix: string): Promise<void> {
-    const storage = this.#options.storage
-    if (storage.clear === undefined) {
+    const storage = this.#area
+    if (this.#options.storage.clear === undefined) {
       this.#log.warn('this store cannot remove what the account signed out of', { area: prefix })
 
       return
@@ -1499,7 +1535,18 @@ export class Account<Ext = unknown> {
     } = await import('./stack.js')
 
     const scope = new TlScope('api', [CORE, MTPROTO, API])
-    const storage = this.#options.storage
+
+    // Taken before anything is read from it or written to it. An account that
+    // finds the area already held says so rather than writing over whatever is
+    // there, which is what two accounts sharing one store used to do.
+    this.#holder = `${String(Date.now().toString(36))}-${toHex(randomBytes(8))}`
+    const storage = await claimArea(this.#options.storage, {
+      name: this.name,
+      holder: this.#holder,
+      ...(this.#options.takeOverStorage === undefined
+        ? {}
+        : { takeOver: this.#options.takeOverStorage }),
+    })
 
     await this.#seed(
       authorizationStore(namespaced(storage, 'auth:')),
@@ -1702,6 +1749,28 @@ export class Account<Ext = unknown> {
       await this.#remember()
     } catch (error) {
       this.#log.error('updates', { error })
+    }
+  }
+
+  /**
+   * Give up the claim on the area, if this run holds it.
+   *
+   * What is released is the right to be the account running against this
+   * storage, not what is in it: starting again resumes from what was left.
+   * Reported rather than thrown — an account on the way down has nowhere to
+   * throw, and a claim left behind is recoverable where a failed shutdown is
+   * not.
+   */
+  async #release(): Promise<void> {
+    const holder = this.#holder
+    if (holder === undefined) return
+
+    this.#holder = undefined
+
+    try {
+      await releaseArea(this.#options.storage, this.name, holder)
+    } catch (error) {
+      this.#log.warn('the claim on this storage could not be given up', { error })
     }
   }
 

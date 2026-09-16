@@ -28,10 +28,55 @@ import { REGISTRY as MTPROTO } from '../../src/generated/mtproto/registry.js'
 import type { StreamRequest } from '../../src/network/channel.js'
 import type { DcAddress, DcConfiguration } from '../../src/network/dc.js'
 import type { ByteStream } from '../../src/network/stream.js'
+import { areaFor } from '../../src/storage/ownership.js'
 import { TlScope, type TlValue } from '../../src/tl/index.js'
 import { MockDatacenter } from '../server/datacenter.js'
 import { createServerKey, type ServerKey } from '../server/keys.js'
 import type { Fault } from '../server/server.js'
+
+/**
+ * A view of the raw store showing one prefix, with the prefix taken off.
+ *
+ * Live rather than a copy: a case that looks at it after the account has
+ * written sees the write. It carries only the operations cases use.
+ */
+function scopedTo(raw: Map<string, unknown>, prefix: string): Map<string, unknown> {
+  const inside = (): [string, unknown][] =>
+    [...raw.entries()]
+      .filter(([name]) => name.startsWith(prefix))
+      .map(([name, value]) => [name.slice(prefix.length), value])
+
+  return {
+    get: (name: string) => raw.get(prefix + name),
+    set(name: string, value: unknown) {
+      raw.set(prefix + name, value)
+
+      return this as Map<string, unknown>
+    },
+    has: (name: string) => raw.has(prefix + name),
+    delete: (name: string) => raw.delete(prefix + name),
+    clear: () => {
+      for (const [name] of inside()) raw.delete(prefix + name)
+    },
+    get size() {
+      return inside().length
+    },
+    keys: () =>
+      inside()
+        .map(([name]) => name)
+        [Symbol.iterator](),
+    values: () =>
+      inside()
+        .map(([, value]) => value)
+        [Symbol.iterator](),
+    entries: () => inside()[Symbol.iterator](),
+    forEach(run: (value: unknown, name: string, map: Map<string, unknown>) => void) {
+      for (const [name, value] of inside()) run(value, name, this as Map<string, unknown>)
+    },
+    [Symbol.iterator]: () => inside()[Symbol.iterator](),
+    [Symbol.toStringTag]: 'Map',
+  } as Map<string, unknown>
+}
 
 /** The tables an account encodes and decodes with. */
 const SCOPE = new TlScope('account', [CORE, MTPROTO, API])
@@ -160,8 +205,17 @@ export interface MockAccount {
   readonly datacenters: ReadonlyMap<number, MockDatacenter>
   /** The datacenter with an identifier, for a case that wants to look at one. */
   datacenter(id: number): MockDatacenter
-  /** What was stored, so a case can see what survived. */
+  /**
+   * What this account stored, under the keys it thinks in.
+   *
+   * An account keeps everything inside an area of its own, so the raw store
+   * holds `accounts:<name>:auth:dc2:key` where the account wrote `auth:dc2:key`.
+   * A case asking what an account kept means the second, so that is what this
+   * shows; {@link MockAccount.rawStored} is the store as it really is.
+   */
   readonly stored: Map<string, unknown>
+  /** The store exactly as written, area prefixes and all. */
+  readonly rawStored: Map<string, unknown>
   /** Stop the account and let go of anything still held. */
   dispose(): Promise<void>
 }
@@ -276,7 +330,8 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
 
       return found
     },
-    stored,
+    stored: scopedTo(stored, areaFor(settings.name ?? 'account')),
+    rawStored: stored,
     async dispose() {
       await account.stop({ timeout: 100 })
     },

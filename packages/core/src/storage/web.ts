@@ -20,10 +20,13 @@
  * `docs/security.md` §3 says what follows from that and why the answer is not a
  * passphrase kept beside the thing it protects.
  *
- * **One store per account.** The default prefix is the same for everyone, so
- * `web()` called twice produces two stores over one place. Two accounts given
- * those would overwrite each other's authorization keys silently. Pass a
- * `prefix` per account, or wrap one store with `namespaced`.
+ * **One place per origin.** The default prefix is the same for everyone, so
+ * `web()` called twice produces two stores over the same place. What keeps two
+ * accounts in a page from writing to the same keys is not this store: an
+ * account keeps everything inside an area named after it, so two accounts with
+ * different names share this store safely, and two with the same name are
+ * refused rather than silently merged. A `prefix` still separates this store's
+ * keys from whatever else the application keeps at the origin.
  *
  * **Quota.** The limit is a few megabytes per origin and is enforced by
  * throwing. A session is kilobytes, so a program storing only that will never

@@ -17,6 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { areaFor } from '../src/storage/ownership.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockConnection } from './server/datacenter.js'
 import { mockAccount } from './support/mock-account.js'
@@ -344,8 +345,13 @@ describe('a session the server replaced', () => {
 
   it('is chased by an account that had a place in the stream', async () => {
     const asked: string[] = []
+    // Written where this account keeps it: inside its own area of the store,
+    // which is where it will look for it.
     const stored = new Map<string, unknown>([
-      ['updates:state', { pts: 40, qts: 1, seq: 0, date: 1_700_000_000, channels: {} }],
+      [
+        `${areaFor('account')}updates:state`,
+        { pts: 40, qts: 1, seq: 0, date: 1_700_000_000, channels: {} },
+      ],
     ])
 
     const instance = mockAccount({

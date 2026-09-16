@@ -16,6 +16,10 @@ import { Account } from '../src/account.js'
 import type { DcConfiguration } from '../src/network/dc.js'
 import { decodeSession, encodeSession } from '../src/session.js'
 import { datacenterStore } from '../src/storage/datacenters.js'
+import { areaFor } from '../src/storage/ownership.js'
+
+/** A key as the raw store holds it: inside the account's own area. */
+const inArea = (key: string, name = 'account'): string => `${areaFor(name)}${key}`
 
 /** A key of the right shape. Its content matters to nothing here. */
 const key = (seed: number): Uint8Array =>
@@ -42,9 +46,17 @@ const bootstrap = (testMode: boolean, thisDc = 2): DcConfiguration => ({
 })
 
 /** Every key a store currently holds, in order, so a case can read them. */
-async function held(storage: ReturnType<typeof memory>): Promise<string[]> {
+async function held(storage: ReturnType<typeof memory>, name = 'account'): Promise<string[]> {
+  // An account keeps everything inside an area of its own, so the raw store
+  // holds `accounts:<name>:auth:dc2:key` where the account wrote `auth:dc2:key`.
+  // These cases are about what the account keeps, so the area is taken off and
+  // anything outside it is not the account's.
+  const area = areaFor(name)
   const names: string[] = []
-  for await (const name of storage.keys?.() ?? []) names.push(name)
+
+  for await (const key of storage.keys?.() ?? []) {
+    if (key.startsWith(area)) names.push(key.slice(area.length))
+  }
 
   return names.toSorted()
 }
@@ -333,7 +345,7 @@ describe('what an imported session does to a store', () => {
 
     await account.connect()
 
-    expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(1)).toString('base64'))
     await account.stop()
   })
 
@@ -349,24 +361,24 @@ describe('what an imported session does to a store', () => {
     // belongs to whoever was there before. An account that kept it would reach
     // that datacenter as a stranger holding a stranger's key.
     const storage = memory()
-    await storage.set('auth:dc4:key', Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc4:key'), Buffer.from(key(99)).toString('base64'))
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
 
-    expect(await storage.get('auth:dc4:key')).toBeUndefined()
-    expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc4:key'))).toBeUndefined()
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(1)).toString('base64'))
     await account.stop()
   })
 
   it('replaces an authorization already held for its own datacenter', async () => {
     const storage = memory()
-    await storage.set('auth:dc2:key', Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(99)).toString('base64'))
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
 
-    expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(1)).toString('base64'))
     await account.stop()
   })
 
@@ -376,19 +388,19 @@ describe('what an imported session does to a store', () => {
     // datacenter named only there belongs to whoever was in this store before,
     // and this account can still reach it.
     const storage = memory()
-    await datacenterStore(namespaced(storage, 'dcs:')).save({
+    await datacenterStore(namespaced(storage, inArea('dcs:'))).save({
       thisDc: 2,
       testMode: false,
       options: [address(2), address(5)],
     })
-    await storage.set('auth:dc5:key', Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc5:key'), Buffer.from(key(99)).toString('base64'))
 
     // The bootstrap names 2 and 4. Nothing in it mentions 5.
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
 
-    expect(await storage.get('auth:dc5:key')).toBeUndefined()
-    expect(await storage.get('auth:dc2:key')).toBe(Buffer.from(key(1)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc5:key'))).toBeUndefined()
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(1)).toString('base64'))
     await account.stop()
   })
 
@@ -397,28 +409,28 @@ describe('what an imported session does to a store', () => {
     // untrusted data: one that names a datacenter its own list omits would
     // otherwise leave that key behind.
     const storage = memory()
-    await datacenterStore(namespaced(storage, 'dcs:')).save({
+    await datacenterStore(namespaced(storage, inArea('dcs:'))).save({
       thisDc: 6,
       testMode: false,
       options: [address(2)],
     })
-    await storage.set('auth:dc6:key', Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc6:key'), Buffer.from(key(99)).toString('base64'))
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
 
-    expect(await storage.get('auth:dc6:key')).toBeUndefined()
+    expect(await storage.get(inArea('auth:dc6:key'))).toBeUndefined()
     await account.stop()
   })
 
   it('still reaches a datacenter normally after clearing one', async () => {
     const storage = memory()
-    await datacenterStore(namespaced(storage, 'dcs:')).save({
+    await datacenterStore(namespaced(storage, inArea('dcs:'))).save({
       thisDc: 2,
       testMode: false,
       options: [address(2), address(5)],
     })
-    await storage.set('auth:dc5:key', Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc5:key'), Buffer.from(key(99)).toString('base64'))
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
@@ -431,12 +443,12 @@ describe('what an imported session does to a store', () => {
 
   it('leaves what does not belong to an authorization alone', async () => {
     const storage = memory()
-    await storage.set('peers:peer:user:7', { kind: 'user' })
+    await storage.set(inArea('peers:peer:user:7'), { kind: 'user' })
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()
 
-    expect(await storage.get('peers:peer:user:7')).toEqual({ kind: 'user' })
+    expect(await storage.get(inArea('peers:peer:user:7'))).toEqual({ kind: 'user' })
     await account.stop()
   })
 
@@ -448,10 +460,10 @@ describe('what an imported session does to a store', () => {
 
     await account.connect()
     await account.stop()
-    await storage.set('auth:dc4:key', Buffer.from(key(42)).toString('base64'))
+    await storage.set(inArea('auth:dc4:key'), Buffer.from(key(42)).toString('base64'))
     await account.connect()
 
-    expect(await storage.get('auth:dc4:key')).toBe(Buffer.from(key(42)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc4:key'))).toBe(Buffer.from(key(42)).toString('base64'))
     await account.stop()
   })
 })
@@ -465,7 +477,7 @@ describe('writing an account out', () => {
 
   it('needs no connection', async () => {
     const storage = memory()
-    await storage.set('auth:dc2:key', Buffer.from(key(1)).toString('base64'))
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(1)).toString('base64'))
     const account = new Account({ ...options(), storage })
 
     expect(account.connected).toBe(false)
@@ -474,7 +486,7 @@ describe('writing an account out', () => {
 
   it('gives the same answer twice', async () => {
     const storage = memory()
-    await storage.set('auth:dc2:key', Buffer.from(key(1)).toString('base64'))
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(1)).toString('base64'))
     const account = new Account({ ...options(), storage })
 
     expect(await account.exportSession()).toBe(await account.exportSession())
@@ -482,7 +494,7 @@ describe('writing an account out', () => {
 
   it('changes nothing by being asked', async () => {
     const storage = memory()
-    await storage.set('auth:dc2:key', Buffer.from(key(1)).toString('base64'))
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(1)).toString('base64'))
     const account = new Account({ ...options(), storage })
     const before = await held(storage)
 

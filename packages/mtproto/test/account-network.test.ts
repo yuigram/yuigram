@@ -559,6 +559,7 @@ describe('what an account writes down', () => {
       'auth:dc2:key',
       'auth:dc2:salt',
       'auth:dc2:temp0',
+      'claim',
     ])
     await instance.dispose()
   })
@@ -571,7 +572,7 @@ describe('what an account writes down', () => {
 
     // The same datacenters, still remembering this client, and the state the
     // first account left behind. Nothing else is carried over.
-    const second = harness({ datacenters: first.datacenters, stored: first.stored })
+    const second = harness({ datacenters: first.datacenters, stored: first.rawStored })
     const answer = await reach(second, 2, 7n)
 
     expect(first.datacenter(2).connections).toHaveLength(spent + 1)
@@ -693,6 +694,7 @@ describe('an account authorizing inside an application', () => {
       'auth:dc2:key',
       'auth:dc2:salt',
       'auth:dc2:temp0',
+      'claim',
     ])
     // None of which is anywhere near the application's store.
     expect([...shared.keys()]).toEqual(['app:greeting'])
@@ -796,6 +798,7 @@ describe('two accounts held by one application', () => {
       'auth:dc2:key',
       'auth:dc2:salt',
       'auth:dc2:temp0',
+      'claim',
     ])
     expect(alice.stored.get('auth:dc2:key')).not.toEqual(bob.stored.get('auth:dc2:key'))
     await app.stop()
@@ -954,6 +957,7 @@ describe('an account carried to another process', () => {
       'auth:dc2:key',
       'auth:dc2:salt',
       'auth:dc2:temp0',
+      'claim',
     ])
     expect(carried.stored).not.toBe(first.stored)
     await carried.account.stop()
@@ -1031,7 +1035,7 @@ describe('a datacenter an account cannot make sense of', () => {
     // The state of an account whose datacenters have since forgotten it: it
     // opens straight into encrypted traffic under a key that means nothing
     // there, and is hung up on rather than answered.
-    const stranded = harness({ stored: spent.stored })
+    const stranded = harness({ stored: spent.rawStored })
     await stranded.account.connect()
     const result = await outcome(stranded.account.reach(2).invoke({ _: 'ping', ping_id: 1n }))
 
@@ -1200,7 +1204,7 @@ describe('what an account learns from the answers it receives', () => {
       storage: {
         get: async (name: string) => kept.get(name),
         set: async (name: string, value: unknown) => {
-          if (name.startsWith('peers:')) throw new Error('the store is full')
+          if (name.includes('peers:')) throw new Error('the store is full')
           kept.set(name, value)
         },
         delete: async (name: string) => {
@@ -2149,13 +2153,15 @@ describe('a temporary key near the end of its life', () => {
     return record
   }
 
-  /** Whether a second account negotiated and vouched for a key of its own. */
+  /** Whether a second run negotiated and vouched for a key of its own. */
   async function resumeOver(instance: MockAccount) {
     const spent = instance.datacenter(2).connections.length
+    // The same account, started again over the store the first run left: the
+    // question is which stored key the second run is willing to open with.
     const second = harness({
-      name: 'second',
+      name: 'first',
       datacenters: instance.datacenters,
-      stored: instance.stored,
+      stored: instance.rawStored,
     })
     await second.account.connect()
     await second.account.reach(2).invoke({ _: 'ping', ping_id: 5n })
@@ -2978,7 +2984,7 @@ describe('where an account resumes the update stream', () => {
     await first.account.feed(message(2))
     await first.account.stop()
 
-    const second = harness({ datacenters: first.datacenters, stored: first.stored })
+    const second = harness({ datacenters: first.datacenters, stored: first.rawStored })
     await second.account.connect()
 
     // The next update in the sequence is the one after the position it resumed
@@ -3022,7 +3028,7 @@ describe('where an account resumes the update stream', () => {
       storage: {
         get: async (name: string) => kept.get(name),
         set: async (name: string, value: unknown) => {
-          if (name.startsWith('updates:')) throw new Error('the store is full')
+          if (name.includes('updates:')) throw new Error('the store is full')
           kept.set(name, value)
         },
         delete: async (name: string) => {
@@ -3053,7 +3059,7 @@ describe('where an account resumes the update stream', () => {
     await first.account.stop()
     first.stored.set('updates:state', { pts: -1, qts: 1, seq: 0, date: 0, channels: {} })
 
-    const second = harness({ datacenters: first.datacenters, stored: first.stored })
+    const second = harness({ datacenters: first.datacenters, stored: first.rawStored })
 
     await expect(second.account.connect()).rejects.toThrow(/no usable 'pts'/)
     await second.dispose()

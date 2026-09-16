@@ -21,6 +21,7 @@ import { Account } from '../src/account.js'
 import { AuthKey } from '../src/message/auth-key.js'
 import type { Channel, ChannelOptions } from '../src/network/channel.js'
 import type { DcConfiguration } from '../src/network/dc.js'
+import { areaFor } from '../src/storage/ownership.js'
 import type { TlValue } from '../src/tl/index.js'
 
 /** Key material of the right shape. Its content matters to nothing here. */
@@ -599,7 +600,7 @@ describe('what an account owns and what it delegates', () => {
     const keys = [...storage.entries.keys()]
 
     expect(held?.accessHash).toBe(9n)
-    expect(keys.some((key) => key.startsWith('peers:'))).toBe(true)
+    expect(keys.some((key) => key.startsWith(`${areaFor('account')}peers:`))).toBe(true)
   })
 
   it('writes nothing outside the prefix belonging to its owner', async () => {
@@ -611,11 +612,21 @@ describe('what an account owns and what it delegates', () => {
     await account.peers.save({ kind: 'user', id: 1n, accessHash: 2n, min: false, usernames: [] })
     await account.stop()
 
-    const known = ['auth:', 'dcs:', 'peers:']
+    // Every key an account causes is inside the area belonging to that account,
+    // and inside it under the prefix belonging to whichever part of the
+    // subsystem owns it. A key outside the area belongs to nothing and can be
+    // overwritten by any other account pointed at the same store.
+    const area = areaFor('account')
+    const known = ['auth:', 'dcs:', 'peers:', 'updates:', 'claim']
     const keys = [...storage.entries.keys()]
 
     expect(keys.length).toBeGreaterThan(0)
-    expect(keys.filter((key) => !known.some((prefix) => key.startsWith(prefix)))).toEqual([])
+    expect(keys.filter((key) => !key.startsWith(area))).toEqual([])
+    expect(
+      keys
+        .map((key) => key.slice(area.length))
+        .filter((rest) => !known.some((prefix) => rest.startsWith(prefix))),
+    ).toEqual([])
   })
 
   it('keeps one peer store rather than building another on each connection', async () => {
@@ -770,7 +781,9 @@ describe('an account held by an application that keeps its own state', () => {
 
     // Everything the account wrote is in the account's own store, under the
     // names the MTProto subsystem owns.
-    expect([...alice.storage.entries.keys()].some((key) => key.startsWith('peers:'))).toBe(true)
+    expect(
+      [...alice.storage.entries.keys()].some((key) => key.startsWith(`${areaFor('alice')}peers:`)),
+    ).toBe(true)
     // And none of it reached the application's.
     expect([...shared.entries.keys()]).toEqual(['app:greeting'])
   })

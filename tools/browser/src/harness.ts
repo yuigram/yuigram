@@ -19,11 +19,19 @@ import { Handshake } from '../../../packages/mtproto/src/auth/handshake.js'
 import { serverRsaKey } from '../../../packages/mtproto/src/auth/keys.js'
 import { backend } from '../../../packages/mtproto/src/crypto/backend.js'
 import { connectWebSocket } from '../../../packages/mtproto/src/network/websocket.js'
+import { claimArea } from '../../../packages/mtproto/src/storage/ownership.js'
 import {
   FrameBuffer,
   IntermediateFraming,
 } from '../../../packages/mtproto/src/transport/framing.js'
-import { Account, createLogger, memory, web } from '../../../packages/yuigram/src/index.js'
+import {
+  Account,
+  areaFor,
+  createLogger,
+  memory,
+  StorageOwnershipError,
+  web,
+} from '../../../packages/yuigram/src/index.js'
 
 /**
  * The browser globals this file uses, named here rather than pulled in wholesale.
@@ -526,7 +534,58 @@ async function run(): Promise<void> {
 
       expect(keys.length > 0, 'nothing about the account reached localStorage')
 
-      return `${keys.length} entries under 'browser-check:account:'`
+      // And under this account's own area of it, rather than at the root of the
+      // store. A browser store is one place per origin, so an account that
+      // wrote flat here would be overwritten by the next one to open.
+      const area = `browser-check:account:${areaFor('account')}`
+      const stray = keys.filter((key) => !key.startsWith(area))
+
+      expect(stray.length === 0, `wrote outside its area: ${stray.join(', ')}`)
+
+      return `${keys.length} entries, all under '${area}'`
+    })
+
+    await check('keeps two accounts apart in one browser store', async () => {
+      // The store a browser has is one place per origin, and two accounts in a
+      // page share it whether or not they meant to. Real `localStorage`, not a
+      // stand-in: what separates them has to hold on the storage the page
+      // actually has.
+      const shared = web({ prefix: 'browser-check:shared:' })
+
+      const mine = await claimFor(shared, 'alice', 'run-one')
+      await mine.set('auth:dc2:key', 'alice-material')
+      const theirs = await claimFor(shared, 'bob', 'run-two')
+      await theirs.set('auth:dc2:key', 'bob-material')
+
+      expect((await mine.get('auth:dc2:key')) === 'alice-material', 'the first was overwritten')
+      expect((await theirs.get('auth:dc2:key')) === 'bob-material', 'the second was not written')
+
+      const written = Object.keys(page.localStorage).filter((key) =>
+        key.startsWith('browser-check:shared:'),
+      )
+
+      return `${written.length} entries, ${String(
+        written.filter((key) => key.includes(areaFor('alice'))).length,
+      )} of them the first account's`
+    })
+
+    await check('refuses a second run of one account on a browser store', async () => {
+      // Two areas separate two names. They do nothing for one name opened
+      // twice, which is the same program started in two tabs — so that is
+      // refused rather than silently sharing one set of keys.
+      const shared = web({ prefix: 'browser-check:shared:' })
+      let refusal: string | undefined
+
+      try {
+        await claimFor(shared, 'alice', 'run-three')
+      } catch (error) {
+        expect(error instanceof StorageOwnershipError, `refused with ${String(error)}`)
+        refusal = (error as Error).message
+      }
+
+      expect(refusal !== undefined, 'a second run was allowed to take the area')
+
+      return `refused: ${String(refusal).slice(0, 80)}…`
     })
   } finally {
     await check('stops and lets go of what it held', async () => {
@@ -537,6 +596,11 @@ async function run(): Promise<void> {
   }
 
   report()
+}
+
+/** Take an account's area of a store, as an account itself does on the way up. */
+function claimFor(store: Parameters<typeof claimArea>[0], name: string, holder: string) {
+  return claimArea(store, { name, holder })
 }
 
 /** Put the results where a person and a machine can both read them. */

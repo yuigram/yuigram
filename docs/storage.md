@@ -208,6 +208,73 @@ two processes sharing one session file corrupt each other's message-id and salt 
 file driver takes an exclusive lock so the failure is immediate and explicit rather than
 intermittent and baffling.
 
+### Which account a store's contents belong to
+
+An account divides the store it is given by purpose — `auth:`, `dcs:`, `peers:`, `updates:` —
+and those names are the same for every account. Two accounts given one store therefore write
+to the same keys, and the second to reach a datacenter overwrites the first one's
+authorization for it. Nothing fails at the time. The symptom arrives later and somewhere
+else, as a sign-in demanded from an account that had already signed in.
+
+Two things prevent that, and both are needed.
+
+**An area per account.** Everything an account keeps lives under its own name:
+
+```
+store
+ └─ accounts:<name>:            one per account
+     ├─ claim                   who holds it, and whether it is running
+     ├─ auth:…                  authorizations
+     ├─ dcs:…                   the datacenter list
+     ├─ peers:…                 peers this account has seen
+     └─ updates:…               the place in the stream
+```
+
+The name is `Account`'s existing `name` option, which defaults to `'account'`. Nothing new is
+asked of a caller: it is chosen before anything is known about who will sign in, it is stable
+across a restart, and it is not a Telegram user id — an account has no user id until it has
+signed in, and the first thing it needs a store for is the authorization that lets it sign
+in. It is encoded into the prefix, so an account called `a` and one called `a:b` cannot reach
+each other's keys.
+
+**A claim inside the area.** Areas separate two accounts only when they have different names.
+The same program started twice, or two `Account`s built from one configuration, still land on
+the same keys. So an account writes a claim while it is running and clears it when it stops,
+and one that finds another run's claim raises `StorageOwnershipError` naming the holder
+rather than writing over it.
+
+The claim is **not a lock**. Nothing here can stop a write from a process that ignores it, and
+nothing here tries — what it does is turn silent corruption into a refusal. A run that ends
+without stopping leaves its claim behind, and the next run cannot tell that from a program
+running right now; `takeOverStorage: true` is how a caller that knows better says so. It
+cannot take a *different* account's area: that is not a stale claim, it is the wrong store.
+
+Cleanup is scoped the same way. `logOut()` removes what this account wrote, through its own
+area, so it cannot reach another account's keys or the application's own. Whether the store
+can remove in bulk at all is asked of the store the account was given, because a namespaced
+view always offers the method and quietly does nothing when what it wraps cannot.
+
+This also covers browser defaults. `web()` is one place per origin, so two accounts in a page
+share it whether or not they meant to; what separates them is the area, not the store. Passing
+a different `prefix` per account still works and is no longer required.
+
+### Compatibility
+
+The on-store layout changed. An account written before areas existed left `auth:`, `dcs:`,
+`peers:` and `updates:` at the root of its store, and there is nothing in such a store saying
+which account they were. They are **not** adopted under whichever name happens to ask first —
+that would hand one account another's authorization, which is the failure the areas exist to
+prevent. Opening over such a store raises `StorageOwnershipError` naming the prefix it found:
+
+> this storage holds an account written before accounts had areas, and there is nothing in it
+> saying which account that was — so it is not being given to 'account'. Point this account at
+> a store of its own, or move the existing 'auth:' keys under 'accounts:account:' to say they
+> are its.
+
+Moving those keys under `areaFor(name)` — exported for exactly this — adopts them. An account
+whose store is untouched is unaffected: a fresh store claims its area on the way up and
+nothing has to be migrated.
+
 ---
 
 ## 5. Failure policy
