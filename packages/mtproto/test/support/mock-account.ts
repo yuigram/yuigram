@@ -317,11 +317,16 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     // Recorded duties are actually run: a connection only acts when its clock
     // is driven, so a scheduler that recorded and never fired would test an
     // account that never sends anything.
+    //
+    // A case may supply its own — one that records rather than fires — for a
+    // property about *when* something is arranged rather than about what it
+    // does. Spread after this so the case's wins, which the others do too.
     schedule: (run: () => void, delay: number) => {
       const timer = setTimeout(run, delay)
 
       return () => clearTimeout(timer)
     },
+    ...(rest.schedule === undefined ? {} : { schedule: rest.schedule }),
   } satisfies AccountOptions
 
   const account =

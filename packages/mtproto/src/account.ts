@@ -530,6 +530,9 @@ export class Account<Ext = unknown> {
   /** What this run writes into the claim, distinguishing it from another. */
   #holder: string | undefined
 
+  /** How to stop saying this account is online, while it is saying so. */
+  #stopPresence: (() => void) | undefined
+
   /**
    * Which user this account is, once it has found out.
    *
@@ -572,6 +575,7 @@ export class Account<Ext = unknown> {
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#open(),
       onStop: async () => {
+        this.#stopPresence?.()
         this.#close()
         // After the network is down, so nothing can write to the area between
         // giving up the claim and the last write landing.
@@ -2052,14 +2056,62 @@ export class Account<Ext = unknown> {
   }
 
   /**
-   * Say whether this account is at the keyboard.
+   * Say once whether this account is at the keyboard.
    *
-   * Telegram treats an account that stops saying as offline after a few
-   * minutes, so a program that wants to appear online repeats this. How often
-   * is the caller's: nothing here puts it on a timer.
+   * One call. Telegram treats an account that stops saying as offline after a
+   * few minutes, so a program that wants to *stay* online repeats it —
+   * {@link Account.stayOnline} is the managed form that does the repeating.
    */
   async setOnline(online: boolean): Promise<void> {
     await setOnline(this, online)
+  }
+
+  /**
+   * Keep saying this account is at the keyboard until told to stop.
+   *
+   * ```ts
+   * const stop = account.stayOnline()
+   * …
+   * stop()
+   * ```
+   *
+   * Telegram forgets within a few minutes, so appearing online is a repeated
+   * statement rather than a state. The interval is inside the protocol's own
+   * margin: four minutes against the five Telegram allows.
+   *
+   * The timer is the account's, so stopping the account stops it. Calling this
+   * twice replaces the first — an account has one presence, and two timers
+   * would double the calls to say the same thing.
+   *
+   * A refused call is logged and the next one happens on schedule. Presence is
+   * worth nothing and must not take an account down.
+   */
+  stayOnline(): () => void {
+    this.#stopPresence?.()
+
+    const later = this.#options.schedule ?? defaultSchedule
+    let cancel: (() => void) | undefined
+
+    const repeat = (): void => {
+      this.#lifecycle.track(
+        setOnline(this, true).catch((error: unknown) => {
+          this.#log.warn('could not say this account is online', { error })
+        }),
+      )
+      cancel = later(repeat, PRESENCE_INTERVAL)
+    }
+
+    repeat()
+
+    const stop = (): void => {
+      cancel?.()
+      cancel = undefined
+      if (this.#stopPresence === stop) this.#stopPresence = undefined
+    }
+
+    this.#stopPresence = stop
+
+    return stop
   }
 
   /** Set the emoji shown beside this account's name, or clear it. */
@@ -3165,6 +3217,21 @@ export class Account<Ext = unknown> {
 
     return this.#network
   }
+}
+
+/**
+ * How often an account repeats that it is online, in milliseconds.
+ *
+ * Telegram forgets after about five minutes, so four is inside the margin
+ * without being wasteful.
+ */
+const PRESENCE_INTERVAL = 240_000
+
+/** Timers, where a caller supplied none. */
+const defaultSchedule = (run: () => void, delayMs: number): (() => void) => {
+  const timer = setTimeout(run, delayMs)
+
+  return () => clearTimeout(timer)
 }
 
 /** Where an account writes down which user it is. */

@@ -2241,6 +2241,106 @@ describe('a temporary key near the end of its life', () => {
  * a redirected sign-in says the account lives, because the next call would
  * otherwise return to the datacenter this one was just told to leave.
  */
+describe('saying an account is at the keyboard', () => {
+  /** Let the calls the presence timer started actually travel. */
+  const settleCalls = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 60))
+
+  /**
+   * A scheduler that records the presence timer and runs everything else.
+   *
+   * The connection layer needs its own timers to fire or nothing reaches a
+   * datacenter, so only the interval presence uses is held back — which is what
+   * lets a case decide when the next "I am here" happens.
+   */
+  function recordingPresence() {
+    const held: { run: () => void; cancelled: boolean }[] = []
+
+    const schedule = (run: () => void, delay: number): (() => void) => {
+      if (delay !== 240_000) {
+        const timer = setTimeout(run, delay)
+
+        return () => clearTimeout(timer)
+      }
+
+      const entry = { run, cancelled: false }
+      held.push(entry)
+
+      return () => {
+        entry.cancelled = true
+      }
+    }
+
+    return { held, schedule }
+  }
+
+  it('repeats that it is online until told to stop', async () => {
+    // Appearing online is a repeated statement rather than a state: Telegram
+    // forgets within minutes. One call says it once; this keeps saying it.
+    const presence = recordingPresence()
+    const asked: TlValue[] = []
+    const instance = harness({
+      schedule: presence.schedule,
+      api: (query) => {
+        asked.push(query)
+
+        return undefined
+      },
+    })
+    // Reached first, so the exchange is behind us and a call travels at once.
+    await reach(instance)
+
+    const said = () => asked.filter((one) => one._ === 'account.updateStatus').length
+    const stop = instance.account.stayOnline()
+    await settleCalls()
+
+    expect(said()).toBe(1)
+    expect(presence.held).toHaveLength(1)
+
+    // The scheduled turn says it again.
+    presence.held[0]?.run()
+    await settleCalls()
+    expect(said()).toBe(2)
+
+    // The one still pending is cancelled. The one that already fired is not
+    // pending and was never cancelled, which is the difference.
+    stop()
+    expect(presence.held).toHaveLength(2)
+    expect(presence.held.at(-1)?.cancelled).toBe(true)
+    await instance.dispose()
+  })
+
+  it('keeps one presence rather than two', async () => {
+    // An account has one presence. A second timer would double the calls to
+    // say the same thing.
+    const presence = recordingPresence()
+    const instance = harness({ schedule: presence.schedule })
+    await reach(instance)
+
+    instance.account.stayOnline()
+    await settleCalls()
+    const [first] = presence.held
+
+    instance.account.stayOnline()
+    await settleCalls()
+
+    expect(first?.cancelled).toBe(true)
+    expect(presence.held.filter((timer) => !timer.cancelled)).toHaveLength(1)
+    await instance.dispose()
+  })
+
+  it('stops saying so when the account stops', async () => {
+    const presence = recordingPresence()
+    const instance = harness({ schedule: presence.schedule })
+    await reach(instance)
+
+    instance.account.stayOnline()
+    await settleCalls()
+    await instance.account.stop()
+
+    expect(presence.held.every((timer) => timer.cancelled)).toBe(true)
+  })
+})
+
 describe('an account signing in', () => {
   const PHONE = '+70000000000'
 
