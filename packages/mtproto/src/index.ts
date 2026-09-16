@@ -160,7 +160,7 @@ export {
   walkStarsTransactions,
   walkStoryViewers,
 } from './paging/walk.js'
-export type { NewPassword, PasswordStatus, Securing } from './security/password.js'
+export type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 export {
   cancelRecoveryEmail,
   checkRecoveryCode,
@@ -170,7 +170,7 @@ export {
   requestPasswordRecovery,
   resendRecoveryEmail,
   setPassword,
-} from './security/password.js'
+} from './security/index.js'
 export type { PortableSession } from './session.js'
 export { areaFor, StorageOwnershipError } from './storage/ownership.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'

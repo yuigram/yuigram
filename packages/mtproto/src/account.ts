@@ -151,7 +151,7 @@ import {
   walkStarsTransactions,
   walkStoryViewers,
 } from './paging/walk.js'
-import type { NewPassword, PasswordStatus, Securing } from './security/password.js'
+import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 import {
   cancelRecoveryEmail,
   checkRecoveryCode,
@@ -161,7 +161,7 @@ import {
   requestPasswordRecovery,
   resendRecoveryEmail,
   setPassword,
-} from './security/password.js'
+} from './security/index.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
