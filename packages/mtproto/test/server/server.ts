@@ -451,6 +451,24 @@ export class MockServer {
   }
 
   /**
+   * Send a compressed message the client never asked for, ready for the wire.
+   *
+   * What a server does with a container large enough to be worth compressing.
+   * The layer above the session should not be able to tell, which is only
+   * checkable if something can produce one.
+   */
+  pushCompressed(value: TlValue, options: { msgId?: bigint } = {}): Uint8Array | undefined {
+    const framing = this.#framing
+    if (framing === undefined) return undefined
+
+    try {
+      return this.#encrypt(framing.encode(this.sealCompressed(value, options)))
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * Seal a message body that is already encoded.
    *
    * For a case that needs a shape the writer would not produce from a value —

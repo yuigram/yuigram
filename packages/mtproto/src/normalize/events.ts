@@ -118,6 +118,34 @@ export const UPDATE_EVENTS: Readonly<Record<string, MtprotoEventKind>> = {
   updatePhoneCall: 'mtproto:call',
 }
 
+/**
+ * What the server sends when it is telling the client something.
+ *
+ * Every one of the seven constructors of the `Updates` type, written out. The
+ * stream carries these and only these: a bare `Update` never arrives at the top
+ * level, it arrives inside one of them.
+ *
+ * Named so that the layer taking messages off a connection can tell an update
+ * from everything else that arrives unasked — a pong, an acknowledgement, an
+ * answer to a call nobody is waiting for any more. The sequence treats anything
+ * it is handed as an update, so handing it one of those would dispatch a
+ * transport message to a handler as though Telegram had said something.
+ */
+export const UPDATE_CONTAINERS: ReadonlySet<string> = new Set([
+  'updates',
+  'updatesCombined',
+  'updateShort',
+  'updateShortMessage',
+  'updateShortChatMessage',
+  // The answer to a send rather than a stream item, so it arrives as a result.
+  // Listed because it is one of the seven, and because a server is free to send
+  // one where the client did not expect it.
+  'updateShortSentMessage',
+  // Not an update at all: the server saying it has stopped keeping the stream
+  // and the client must ask what it missed.
+  'updatesTooLong',
+])
+
 /** Constructors whose payload is a `Message` under a `message` field. */
 export const MESSAGE_UPDATES: ReadonlySet<string> = new Set([
   'updateNewMessage',

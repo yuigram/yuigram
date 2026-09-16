@@ -63,6 +63,18 @@ export interface MockConnection {
   open(): boolean
   /** End it the way a peer that vanished ends one. */
   fail(error: Error): void
+  /**
+   * Say something the client did not ask for.
+   *
+   * A datacenter answers, and it also speaks: an update arrives because the
+   * server sent it, not because anything requested it. Without this a case can
+   * only reach the client by handing it a value directly, which skips the
+   * decryption, the framing and the sequence — the parts most worth exercising.
+   *
+   * The bytes are whatever the peer sealed, and they arrive the way bytes from
+   * a socket arrive.
+   */
+  push(bytes: Uint8Array): void
 }
 
 /**
@@ -141,7 +153,7 @@ export class MockDatacenter {
     })
 
     const wire = stream(peer)
-    this.connections.push({ peer, open: wire.isOpen, fail: wire.fail })
+    this.connections.push({ peer, open: wire.isOpen, fail: wire.fail, push: wire.push })
 
     return wire.attach(request)
   }
@@ -225,6 +237,12 @@ function stream(peer: MockServer) {
     fail(error: Error) {
       open = false
       onClose(error)
+    },
+    push(bytes: Uint8Array) {
+      // Delivered the way the socket delivers: on a later turn, so a case
+      // cannot accidentally depend on an update arriving inside the call that
+      // sent it.
+      if (open) queueMicrotask(() => open && onData(bytes))
     },
     attach(request: StreamRequest): ByteStream {
       onData = request.onData

@@ -100,6 +100,7 @@ import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
+import { UPDATE_CONTAINERS } from './normalize/events.js'
 import type { PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type { MemberOptions, SearchOptions, WalkOptions } from './paging/walk.js'
@@ -1520,6 +1521,35 @@ export class Account<Ext = unknown> {
 
     const connections = openConnections({
       datacenters,
+      // What the server says without being asked. A connection reports every
+      // message the session layer had no rule for, and among them are the
+      // updates — which is the only way they reach an account at all.
+      //
+      // Filtered rather than forwarded wholesale: the sequence treats anything
+      // it is handed as an update, so a pong or an acknowledgement passed on
+      // here would be dispatched to handlers as though Telegram had said
+      // something. Only the seven constructors of the `Updates` type qualify,
+      // and `UPDATE_CONTAINERS` is that list.
+      onEvent: (_origin, event) => {
+        if (event.kind === 'new-session' && event.gap) {
+          // The server started a new session, so whatever it sent while none
+          // existed was never delivered — but only an account that had a place
+          // in the stream can have lost anything. One that has never run has
+          // nothing behind it, and asking for the difference from a position it
+          // invented would fetch a backlog it was never meant to see.
+          if (resumed !== undefined) this.#lifecycle.track(this.#catchUp())
+
+          return
+        }
+
+        if (event.kind !== 'message') return
+        if (!UPDATE_CONTAINERS.has(event.message.value._)) return
+
+        // Not awaited, and tracked so that a shutdown waits for it: holding the
+        // connection while a handler runs would make one slow handler a gap in
+        // the stream.
+        this.#lifecycle.track(this.feed(event.message.value))
+      },
       ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
       ...(this.#options.random === undefined ? {} : { random: this.#options.random }),
       ...(this.#options.schedule === undefined ? {} : { schedule: this.#options.schedule }),
@@ -1644,6 +1674,23 @@ export class Account<Ext = unknown> {
     await this.#surrounding(context, async () => {
       await this.#dispatcher.dispatch(context)
     })
+  }
+
+  /**
+   * Ask what was missed while there was no session.
+   *
+   * Reported rather than thrown: this runs off the back of a connection event,
+   * so there is nobody to throw to, and an account that cannot catch up is
+   * still an account that works — it has simply missed something, which the
+   * next gap it notices will also close.
+   */
+  async #catchUp(): Promise<void> {
+    try {
+      await this.#require().updates.recover()
+      await this.#remember()
+    } catch (error) {
+      this.#log.error('updates', { error })
+    }
   }
 
   /** Take whatever the connection reported, for the sequence to judge. */
