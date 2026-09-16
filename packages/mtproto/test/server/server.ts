@@ -290,6 +290,19 @@ export class MockServer {
     })
   }
 
+  /**
+   * The salt this peer currently accepts.
+   *
+   * A case that announces a new session has to name a salt the peer will go on
+   * accepting; naming another makes the peer refuse the client's next message,
+   * which is a different thing from the one being tested.
+   */
+  get salt(): bigint | undefined {
+    const adopted = this.#adopted?.serverSalt
+
+    return this.#salt ?? (adopted === undefined ? undefined : readInt64LE(adopted))
+  }
+
   /** The public half of the key this peer offers. */
   get key(): ServerKey {
     return this.#key

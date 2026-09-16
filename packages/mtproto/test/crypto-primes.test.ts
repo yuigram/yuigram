@@ -227,24 +227,27 @@ describe('the primes the validator starts out knowing', () => {
   })
 
   it('keeps one prime’s verdict away from another’s', () => {
-    // The record of finished checks is shared by every account in a process.
-    // A rejection recorded for one prime must not reach a different one, and a
-    // prime that was accepted must not vouch for its neighbours.
+    // Generator 4 places no congruence on the prime, so these reach the
+    // primality test rather than being turned away before it. With any other
+    // generator a composite is refused for the wrong reason and the record of
+    // finished checks is never consulted — which is what made an earlier
+    // version of this case pass without testing what it names.
     const composite = (1n << 2047n) + 1n
 
-    expect(() => validateDhParameters({ p: composite, g: 3n })).toThrow(ValidationError)
-    // Recorded, and the second attempt must reach the same verdict rather than
-    // a cheaper one.
-    expect(() => validateDhParameters({ p: composite, g: 3n })).toThrow(ValidationError)
+    expect(() => validateDhParameters({ p: composite, g: 4n })).toThrow(ValidationError)
+    // Again, so the recorded verdict is the thing being read. A rejection that
+    // turned into an acceptance on the second attempt would let a composite
+    // through to a second account in the same process.
+    expect(() => validateDhParameters({ p: composite, g: 4n })).toThrow(ValidationError)
 
     // A neighbour of the rejected value, and a neighbour of an accepted one.
-    expect(() => validateDhParameters({ p: composite + 2n, g: 3n })).toThrow(ValidationError)
+    expect(() => validateDhParameters({ p: composite + 2n, g: 4n })).toThrow(ValidationError)
 
     const known = VERIFIED_SAFE_PRIMES[1] as bigint
-    expect(() => validateDhParameters({ p: known + 2n, g: 2n })).toThrow(ValidationError)
+    expect(() => validateDhParameters({ p: known + 2n, g: 4n })).toThrow(ValidationError)
     // And the known one still passes, so the rejections above did not poison it.
     expect(() => validateDhParameters({ p: known, g: 2n })).not.toThrow()
-  }, 120_000)
+  }, 180_000)
 
   it('still refuses a composite that is not in the table', () => {
     // The shortening must not turn into "anything 2048 bits is fine". A number

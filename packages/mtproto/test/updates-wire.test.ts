@@ -228,10 +228,17 @@ describe('an update the datacenter sends', () => {
 })
 
 describe('what the stream does not deliver to handlers', () => {
-  it('ignores the transport messages that arrive unasked', async () => {
-    // A pong, an acknowledgement and an answer nobody is waiting for all reach
-    // the same place an update does. The sequence treats whatever it is handed
-    // as an update, so anything passed on that is not one becomes an event.
+  it('ignores an answer nobody is waiting for', async () => {
+    // A result naming a request no longer in flight — one that was withdrawn,
+    // or that timed out while the server was still working on it — is reported
+    // upward rather than dropped, because the layer above may want to know. It
+    // is not an update, and the sequence treats whatever it is handed as one,
+    // so it must not be handed this.
+    //
+    // A pong or an acknowledgement would not do here: the session layer turns
+    // those into events of their own and they never arrive as a message at all,
+    // which is what made an earlier version of this case pass without testing
+    // anything.
     const instance = mockAccount()
     const seen: string[] = []
 
@@ -242,11 +249,142 @@ describe('what the stream does not deliver to handlers', () => {
       })
       await instance.account.api.call({ _: 'help.getConfig' })
 
-      await push(instance.datacenter(2), { _: 'pong', msg_id: 1n, ping_id: 1n })
-      await push(instance.datacenter(2), { _: 'msgs_ack', msg_ids: [1n] })
+      await push(instance.datacenter(2), {
+        _: 'rpc_result',
+        req_msg_id: 0x7fff_ffff_0000_0000n,
+        result: { _: 'boolTrue' },
+      })
       await settle()
 
       expect(seen).toEqual([])
+    } finally {
+      await instance.dispose()
+    }
+  }, 30_000)
+
+  it('ignores a service message that is not an update', async () => {
+    const instance = mockAccount()
+    const seen: string[] = []
+
+    try {
+      await instance.account.connect()
+      instance.account.on('mtproto:raw', (event) => {
+        seen.push(event.raw._)
+      })
+      await instance.account.api.call({ _: 'help.getConfig' })
+
+      await push(instance.datacenter(2), {
+        _: 'msg_detailed_info',
+        msg_id: 1n,
+        answer_msg_id: 2n,
+        bytes: 16,
+        status: 0,
+      })
+      await settle()
+
+      expect(seen).toEqual([])
+    } finally {
+      await instance.dispose()
+    }
+  }, 30_000)
+})
+
+describe('a session the server replaced', () => {
+  /**
+   * Announce a session on whichever connection can carry it.
+   *
+   * Two announcements on one connection mean a gap: the first is just the
+   * session starting. The salt announced is the one the peer already accepts,
+   * because naming another makes it refuse the client's next message — which
+   * ends the connection for a reason that has nothing to do with the gap.
+   */
+  const announce = async (
+    datacenter: { readonly connections: readonly MockConnection[] },
+    uniqueId: bigint,
+  ): Promise<void> => {
+    const { connection, bytes } = await sealOn(datacenter, { _: 'msgs_ack', msg_ids: [] })
+    void bytes
+
+    const salt = connection.peer.salt
+    const announced = connection.peer.push({
+      _: 'new_session_created',
+      first_msg_id: 1n,
+      unique_id: uniqueId,
+      server_salt: salt ?? 0n,
+    })
+
+    if (announced !== undefined) connection.push(announced)
+  }
+
+  it('is not chased by an account that has never run', async () => {
+    // Nothing is behind an account with no place in the stream, so asking for
+    // the difference would fetch a backlog it was never meant to see.
+    const asked: string[] = []
+    const instance = mockAccount({
+      api: (query) => {
+        asked.push(query._)
+
+        return undefined
+      },
+    })
+
+    try {
+      await instance.account.connect()
+      await instance.account.api.call({ _: 'help.getConfig' })
+
+      await announce(instance.datacenter(2), 0x1111_1111_1111_1111n)
+      await announce(instance.datacenter(2), 0x2222_2222_2222_2222n)
+      await settle(400)
+
+      expect(asked.filter((name) => name.startsWith('updates.'))).toEqual([])
+    } finally {
+      await instance.dispose()
+    }
+  }, 30_000)
+
+  it('is chased by an account that had a place in the stream', async () => {
+    const asked: string[] = []
+    const stored = new Map<string, unknown>([
+      ['updates:state', { pts: 40, qts: 1, seq: 0, date: 1_700_000_000, channels: {} }],
+    ])
+
+    const instance = mockAccount({
+      stored,
+      api: (query) => {
+        asked.push(query._)
+        if (query._ === 'updates.getState') {
+          return {
+            _: 'updates.state',
+            pts: 40,
+            qts: 1,
+            date: 1_700_000_000,
+            seq: 0,
+            unread_count: 0,
+          }
+        }
+        if (query._ === 'updates.getDifference') {
+          return { _: 'updates.differenceEmpty', date: 1_700_000_000, seq: 0 }
+        }
+
+        return undefined
+      },
+    })
+
+    try {
+      await instance.account.connect()
+      await instance.account.api.call({ _: 'help.getConfig' })
+
+      await announce(instance.datacenter(2), 0x3333_3333_3333_3333n)
+      await announce(instance.datacenter(2), 0x4444_4444_4444_4444n)
+      await settle(600)
+
+      // Counted rather than merely observed: a client that chased a gap on
+      // every fresh session, rather than only on one that replaced another,
+      // would fetch a difference twice here and ask the server for a backlog
+      // every time it reconnected.
+      const differences = asked.filter((name) => name === 'updates.getDifference').length
+
+      expect(differences).toBe(1)
     } finally {
       await instance.dispose()
     }
