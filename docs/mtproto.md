@@ -1936,6 +1936,34 @@ all — two of them would fill the smaller allowance and leave nothing for what 
 The measure is the length the caller stated, so it applies equally to a file fetched whole, one
 handed over range by range, and one an event fetches for itself.
 
+### The three shapes a fetch comes in
+
+One transfer, three ways of receiving it. They are not interchangeable and the difference is who
+decides when the next range is asked for.
+
+| Shape | Who drives | Stopping early |
+| --- | --- | --- |
+| `download(request)` | the transfer; the caller waits | not possible: the whole file is the result |
+| `downloadTo(request, write)` | the transfer, pushing at a sink | only by throwing, which is an error path |
+| `downloadIterable(request)` | the caller, pulling | `break` |
+
+The third exists because the second cannot express it. A sink is *called*; it has no way to
+decline the next call. A caller that has seen enough — the first frame of a video, the header of
+an archive, the first match in a log — can only throw, which turns an ordinary early exit into a
+failure it then has to recognise and swallow. Pulling makes `break` the answer, and it is the
+same word a caller would use for any other sequence.
+
+Backpressure falls out of the same inversion rather than being an option. The sink the iterable
+hands to the transfer does not resolve until the consumer has taken the chunk, and the transfer
+awaits its sink — so a consumer that stops asking stops the fetching, and at most one handed-over
+chunk waits at a time. Leaving the loop abandons the transfer, because a generator that is
+returned early runs its `finally`: without that, breaking out would leave ranges being fetched
+for a file nobody is reading, against an account Telegram is willing to limit.
+
+Everything else is shared. The ranges, the alignment, the retries, the reference refresh, the
+delivery-node opt-in, the concurrency and the migration are one implementation; the iterable is a
+handover on top of it rather than a second transfer.
+
 ### CDN
 
 `upload.getFile` may return `upload.fileCdnRedirect { dc_id, file_token, encryption_key,

@@ -272,6 +272,25 @@ most of the answer, or a peer that has to become a reference — and the generat
 it does not. A boost, a photo, a star transaction and a saved gift are flat records the schema
 already describes; wrapping them would be a second name for the same fields.
 
+**A record is only acceptable while it preserves the capability**, which is a stronger test than
+"the fields are all there". For the four above:
+
+| Yielded | What a caller needs to be able to do | How |
+| --- | --- | --- |
+| `Photo` | fetch the bytes; send it on without re-uploading | `photoFile(photo)` into `download`; `photoMedia(photo)` into a send |
+| `Boost` | say who boosted | `user_id` plus the peer the answer carried, harvested on the way back |
+| `StarsTransaction` | direction, amount, counterparty | flags and `peer` on the record |
+| `SavedStarGift` | what it is, who sent it, when | `gift`, `from_id`, `date` on the record |
+
+The peers are the part that would be easy to lose. Every walk goes out through the account, so
+every user and chat an answer described is written down before the walk yields — which is why a
+number read off one of these records is enough for `account.resolve({ kind, id })` afterwards,
+with no second lookup and no per-answer index to carry around.
+
+Two things the reference's richer photo type offers are **not** reproduced and are not planned: a
+single opaque `fileId` string, which is a Bot API concept this transport does not use, and typed
+selection of one thumbnail size, which is `photo.sizes` on the record.
+
 **Links.** A message's `t.me` address needs the conversation's username, which the message does
 not carry. It belongs on the client or the context — whichever holds the peer — not on a view
 that reaches nothing.

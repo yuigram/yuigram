@@ -13,7 +13,7 @@
 
 import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
-import { download, downloadTo } from '../src/files/download.js'
+import { download, downloadIterable, downloadTo } from '../src/files/download.js'
 import { isUsableRange } from '../src/files/geometry.js'
 import { MigrationError } from '../src/session/dispatcher.js'
 import type { TlValue } from '../src/tl/index.js'
@@ -1060,5 +1060,178 @@ describe('a datacenter that says the file lives elsewhere', () => {
     ).rejects.toThrow(/redirected more than/)
 
     expect(asked).toBeLessThanOrEqual(20)
+  })
+})
+
+/**
+ * Pulling a file rather than being pushed one.
+ *
+ * `downloadTo` hands each range to a sink, which covers a consumer that always
+ * wants the whole file. What it cannot express is a consumer that stops: a sink
+ * is called, and declining the next call means throwing, which turns an
+ * ordinary early exit into a failure. These are the properties that difference
+ * is about, so every case here judges what the datacenter was *asked for* as
+ * well as what arrived — a bridge that fetched ahead would yield the right
+ * bytes and still spend the requests a caller had decided against.
+ */
+describe('fetching a file as chunks the caller pulls', () => {
+  it('yields the whole file, in order', async () => {
+    const { location, reach } = holding(3 * MB)
+    const chunks: Uint8Array[] = []
+
+    for await (const chunk of downloadIterable({ location, reach, dcId: 2, size: 3 * MB })) {
+      chunks.push(chunk)
+    }
+
+    expect(chunks.length).toBeGreaterThan(1)
+    expectSameBytes(Buffer.concat(chunks), contentOf(FILE, 0, 3 * MB))
+  })
+
+  it('stops asking for ranges once the caller stops reading', async () => {
+    // The reason this exists. A consumer that has seen enough writes `break`,
+    // and the transfer behind it has to stop — not finish quietly into a queue
+    // nobody drains.
+    const { server, location, reach } = holding(8 * MB)
+
+    for await (const chunk of downloadIterable({
+      location,
+      reach,
+      dcId: 2,
+      size: 8 * MB,
+      concurrency: 1,
+    })) {
+      void chunk
+      break
+    }
+
+    // Settle, so a transfer that kept going has time to prove it.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // A file this size is many ranges. Only the ones needed to produce the
+    // chunk that was read may have been asked for.
+    expect(ranges(server).length).toBeLessThanOrEqual(2)
+  })
+
+  it('does not run ahead of a caller that is slow', async () => {
+    // Backpressure, which is the other half of the same property: the transfer
+    // awaits its sink, and the sink does not resolve until the chunk is taken.
+    const { server, location, reach } = holding(8 * MB)
+    const seen: number[] = []
+
+    for await (const chunk of downloadIterable({
+      location,
+      reach,
+      dcId: 2,
+      size: 8 * MB,
+      concurrency: 1,
+    })) {
+      seen.push(chunk.length)
+      // How far the datacenter has been asked, measured while the consumer is
+      // deliberately not asking for more.
+      await new Promise((resolve) => setTimeout(resolve, 5))
+
+      if (seen.length === 2) {
+        expect(ranges(server).length).toBeLessThanOrEqual(seen.length + 1)
+        break
+      }
+    }
+  })
+
+  it('reaches the end of a file whose length nobody stated', async () => {
+    const { location, reach } = holding(300 * KB)
+    const chunks: Uint8Array[] = []
+
+    for await (const chunk of downloadIterable({ location, reach, dcId: 2 })) chunks.push(chunk)
+
+    expectSameBytes(Buffer.concat(chunks), contentOf(FILE, 0, 300 * KB))
+  })
+
+  it('yields only the span that was asked for', async () => {
+    const { location, reach } = holding(2 * MB)
+    const chunks: Uint8Array[] = []
+
+    for await (const chunk of downloadIterable({
+      location,
+      reach,
+      dcId: 2,
+      size: 2 * MB,
+      offset: 512 * KB,
+      length: 256 * KB,
+    })) {
+      chunks.push(chunk)
+    }
+
+    expectSameBytes(Buffer.concat(chunks), contentOf(FILE, 512 * KB, 256 * KB))
+  })
+
+  it('lets a failure out of the loop rather than ending it quietly', async () => {
+    // A sequence that ended on an error would look like the end of the file,
+    // and a caller concatenating chunks would write a truncated one.
+    const { location } = holding(2 * MB)
+    let asked = 0
+
+    await expect(
+      (async () => {
+        for await (const chunk of downloadIterable({
+          location,
+          dcId: 2,
+          size: 2 * MB,
+          concurrency: 1,
+          reach: () => ({
+            invoke: (query: TlValue) => {
+              asked += 1
+              // The first range arrives whole, so the sequence has started and
+              // a caller concatenating chunks has something. The next is
+              // refused, which must reach the loop rather than end it.
+              if (asked > 1) throw new ValidationError('this range is refused')
+
+              return Promise.resolve({
+                _: 'upload.file',
+                type: { _: 'storage.filePartial' },
+                mtime: 0,
+                bytes: contentOf(FILE, Number(query['offset'] as bigint), query['limit'] as number),
+              })
+            },
+          }),
+        })) {
+          void chunk
+        }
+      })(),
+    ).rejects.toThrow(/this range is refused/)
+  })
+
+  it('stops when the signal it was given is aborted', async () => {
+    const { location, reach } = holding(8 * MB)
+    const stopping = new AbortController()
+
+    await expect(
+      (async () => {
+        for await (const chunk of downloadIterable({
+          location,
+          reach,
+          dcId: 2,
+          size: 8 * MB,
+          signal: stopping.signal,
+          concurrency: 1,
+        })) {
+          void chunk
+          stopping.abort()
+        }
+      })(),
+    ).rejects.toThrow(CancelledError)
+  })
+
+  it('follows a redirection the way the pushed form does', async () => {
+    // The transfer is the same one, so this is a check that nothing about the
+    // handover bypassed it rather than a second test of migration.
+    const { location, reach, media } = split(MB)
+    const chunks: Uint8Array[] = []
+
+    for await (const chunk of downloadIterable({ location, reach, dcId: 2, size: MB })) {
+      chunks.push(chunk)
+    }
+
+    expectSameBytes(Buffer.concat(chunks), contentOf(FILE, 0, MB))
+    expect(media.asked.length).toBeGreaterThan(0)
   })
 })

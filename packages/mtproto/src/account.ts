@@ -1742,6 +1742,33 @@ export class Account<Ext = unknown> {
     await datacenters.adopt({ ...configuration, thisDc: dcId })
   }
 
+  /**
+   * Fetch a file as chunks this caller pulls.
+   *
+   * ```ts
+   * for await (const chunk of account.downloadIterable(request)) {
+   *   if (enough(chunk)) break
+   * }
+   * ```
+   *
+   * The same transfer {@link Account.downloadTo} runs, inverted. A sink is
+   * called and cannot decline the next call, so a caller that has seen enough
+   * can only throw; pulling makes `break` the answer. Leaving the loop stops
+   * the fetching, and the loop is the backpressure — nothing further is asked
+   * for until the chunk in hand has been taken.
+   */
+  downloadIterable(request: DownloadRequest): AsyncGenerator<Uint8Array, void, undefined> {
+    return this.#pulling(request)
+  }
+
+  /** The generator {@link Account.downloadIterable} hands back. */
+  async *#pulling(request: DownloadRequest): AsyncGenerator<Uint8Array, void, undefined> {
+    const reach = this.#transfers(await this.#allowance(request))
+    const { downloadIterable } = await import('./files/download.js')
+
+    yield* downloadIterable({ ...request, reach })
+  }
+
   // ---------------------------------------------------------------------
   // Registration
   // ---------------------------------------------------------------------

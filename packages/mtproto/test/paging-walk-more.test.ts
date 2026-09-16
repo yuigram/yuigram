@@ -19,7 +19,8 @@
 
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
-import type { TypeInputPeer } from '../src/generated/api/types/index.js'
+import { photoFile, photoMedia } from '../src/files/media.js'
+import type { Photo, TypeInputPeer } from '../src/generated/api/types/index.js'
 import {
   type Paging,
   walkAllStories,
@@ -1013,7 +1014,9 @@ const photo = (id: bigint) => ({
   access_hash: 1n,
   file_reference: Uint8Array.of(1),
   date: 1_700_000_000,
-  sizes: [],
+  // A size that has to be fetched, which is what makes a photo downloadable:
+  // the stripped and inline forms arrive with the message and name no file.
+  sizes: [{ _: 'photoSize' as const, type: 'x', w: 800, h: 600, size: 51_200 }],
   dc_id: 2,
 })
 
@@ -1079,4 +1082,50 @@ const importer = (id: bigint, date: number) => ({
   _: 'chatInviteImporter' as const,
   user_id: id,
   date,
+})
+
+describe('what a caller can do with what a walk yielded', () => {
+  it('turns a walked photo into a download and into a resend', async () => {
+    // The check behind yielding the schema's own record rather than a view. A
+    // raw record is only acceptable while it preserves the capability, and for
+    // a photo the capability is these two: fetching the bytes, and sending it
+    // somewhere else without uploading it again. Both are one call on the
+    // record, so the view would have been a second name for them.
+    const client = fake(
+      [{ _: 'photos.photosSlice', count: 1, photos: [photo(42n)], users: [] }],
+      USER,
+    )
+
+    const [first] = await drain(walkProfilePhotos(client, 'someone', { limit: 1 }))
+    expect(first).toBeDefined()
+
+    const request = photoFile(first as Photo)
+    expect(request.dcId).toBe(2)
+    expect(request.location).toMatchObject({ _: 'inputPhotoFileLocation', id: 42n })
+
+    const resend = photoMedia(first as Photo)
+    expect(resend).toMatchObject({ _: 'inputMediaPhoto' })
+    expect((resend as { id: { id: bigint } }).id.id).toBe(42n)
+  })
+
+  it('names the peer of a boost in a form the account can resolve', async () => {
+    // The other half of the same question. A boost names a user by number, and
+    // the answer that carried it carried the user — which an account harvests
+    // on the way through, so the number is enough afterwards.
+    const client = fake([
+      {
+        _: 'premium.boostsList',
+        count: 1,
+        boosts: [{ ...boost('b1'), user_id: 77n }],
+        users: [{ _: 'user', id: 77n, access_hash: 9n }],
+      },
+      { _: 'premium.boostsList', count: 1, boosts: [], users: [] },
+    ])
+
+    const [one] = await drain(walkBoosts(client, 'channel'))
+
+    expect(one?.user_id).toBe(77n)
+    // Which is the shape `Account.resolve` takes.
+    expect({ kind: 'user' as const, id: one?.user_id }).toEqual({ kind: 'user', id: 77n })
+  })
 })

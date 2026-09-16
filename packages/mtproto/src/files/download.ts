@@ -578,3 +578,132 @@ function readFile(answer: TlValue): Uint8Array {
 
   return bytes
 }
+
+/**
+ * Fetch a file as a sequence of chunks the caller pulls.
+ *
+ * {@link downloadTo} is the same transfer pushed at a sink, and the two are not
+ * interchangeable. A sink is called; it cannot decline the next call. A caller
+ * that has seen enough — the first frame of a video, the header of an archive,
+ * the first match in a log — has no way to say so except by throwing, which
+ * turns an ordinary early exit into a failure it then has to recognise and
+ * swallow. Pulling inverts that: `break` is the answer, and it is the same word
+ * a caller would use for any other sequence.
+ *
+ * ```ts
+ * for await (const chunk of downloadIterable({ ...request })) {
+ *   if (looksLikeWhatIWanted(chunk)) break
+ * }
+ * ```
+ *
+ * **The transfer is the same one.** This is a bridge rather than a second
+ * implementation: the ranges, the alignment, the retries, the reference
+ * refresh, the delivery-node opt-in and the concurrency are all
+ * {@link downloadTo}'s, and what is added is the handover.
+ *
+ * **Backpressure comes out of the handover rather than from an option.** The
+ * sink this hands to the transfer does not resolve until the consumer has taken
+ * the chunk, and the transfer awaits its sink — so a consumer that stops asking
+ * stops the fetching, and at most one handed-over chunk is waiting at a time.
+ * That is why there is no throttle to configure: the loop *is* the throttle.
+ *
+ * **Leaving the loop stops the download.** A generator that is returned early
+ * runs its `finally`, which abandons the transfer. Without that, breaking out
+ * would leave ranges being fetched for a file nobody is reading, against an
+ * account Telegram is willing to limit.
+ */
+export async function* downloadIterable(
+  options: DownloadOptions,
+): AsyncGenerator<Uint8Array, void, undefined> {
+  // Chained to whatever the caller passed, so both a caller's signal and
+  // leaving the loop stop the same transfer.
+  const abandon = new AbortController()
+  const outer = options.signal
+  const relay = (): void => abandon.abort(outer?.reason)
+  outer?.addEventListener('abort', relay, { once: true })
+  if (outer?.aborted === true) abandon.abort(outer.reason)
+
+  /** One chunk waiting to be taken, and the two sides waiting on each other. */
+  let handover: { bytes: Uint8Array; taken: () => void } | undefined
+  /**
+   * The transfer's way out of the chunk currently being yielded.
+   *
+   * Held apart from {@link handover} because a consumer that leaves the loop
+   * does so *during* the yield: the chunk has been taken but the transfer has
+   * not been let go, and without this the generator's `finally` would wait for
+   * a transfer parked on a promise nobody can resolve.
+   */
+  let parked: (() => void) | undefined
+  let wake: (() => void) | undefined
+  let finished = false
+  let failed: unknown
+
+  const arrived = (): Promise<void> =>
+    new Promise<void>((resolve) => {
+      wake = resolve
+    })
+
+  const nudge = (): void => {
+    const resume = wake
+    wake = undefined
+    resume?.()
+  }
+
+  const running = downloadTo({
+    ...options,
+    signal: abandon.signal,
+    write: async (bytes) => {
+      if (abandon.signal.aborted) return
+
+      // Resolves once the consumer has taken this chunk. The transfer awaits
+      // its sink, so nothing further is fetched until then.
+      await new Promise<void>((taken) => {
+        handover = { bytes, taken }
+        nudge()
+      })
+    },
+  }).then(
+    () => {
+      finished = true
+      nudge()
+    },
+    (error: unknown) => {
+      failed = error
+      finished = true
+      nudge()
+    },
+  )
+
+  try {
+    for (;;) {
+      while (handover === undefined && !finished) await arrived()
+
+      const ready = handover
+      if (ready === undefined) break
+
+      handover = undefined
+      parked = ready.taken
+      // Let the transfer go on only after the consumer has this chunk, so a
+      // consumer that never comes back never causes another range to be asked
+      // for.
+      yield ready.bytes
+      parked = undefined
+      ready.taken()
+    }
+
+    // A failure the transfer reported is the caller's, not something to be
+    // swallowed because the sequence happened to end at the same moment.
+    if (failed !== undefined) throw failed
+  } finally {
+    outer?.removeEventListener('abort', relay)
+    abandon.abort()
+    // Released so a transfer suspended on a chunk can observe the abort and
+    // unwind rather than staying parked forever — both the one being yielded
+    // when the caller left the loop, and one that arrived and was never taken.
+    parked?.()
+    handover?.taken()
+    // The transfer's own failure has either been rethrown above or is the abort
+    // this block just caused, and neither is worth reporting twice.
+    await running.catch(() => undefined)
+  }
+}
