@@ -849,7 +849,7 @@ describe('a write admitted before ownership changed', () => {
     const first = await claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
 
     gate.hold()
-    const writing = first.storage.set('auth:dc2:key', 'from the first run')
+    void first.storage.set('auth:dc2:key', 'from the first run')
     await settle()
     expect(gate.suspended).toBe(1)
 

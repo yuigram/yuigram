@@ -1227,7 +1227,8 @@ describe('what a walked boost, transaction and gift are good for', () => {
     // reader that assumed otherwise would read a fragment withdrawal as a
     // person.
     expect(incoming?.peer._).toBe('starsTransactionPeerFragment')
-    expect(peerRefOf((outgoing?.peer as { peer?: unknown }).peer)).toEqual({
+    const counterparty = outgoing?.peer as { peer?: unknown } | undefined
+    expect(peerRefOf(counterparty?.peer)).toEqual({
       kind: 'user',
       id: 7n,
     })

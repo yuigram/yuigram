@@ -460,7 +460,7 @@ describe('choosing a size of a photo', () => {
     const whole = photoFile(photo)
 
     expect(small.size).toBeLessThan(whole.size ?? Number.POSITIVE_INFINITY)
-    expect((whole.location as { thumb_size: string }).thumb_size).toBe('y')
+    expect((whole.location as unknown as { thumb_size: string }).thumb_size).toBe('y')
   })
 
   it('refuses a size that arrived with the message', () => {

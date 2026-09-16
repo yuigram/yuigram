@@ -41,7 +41,6 @@ import type {
   TypeInputPeer,
   TypeInputUser,
   TypePeerSettings,
-  TypePhoto,
   TypeUser,
 } from '../generated/api/types/index.js'
 import { userFor } from '../network/peers.js'

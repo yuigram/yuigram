@@ -614,6 +614,9 @@ describe('asking what this account already knows', () => {
     accessHash: 77n,
     usernames: ['ann'],
     phone: '70000000000',
+    // A complete record: one harvested from a reduced mention would be
+    // marked, and a reduced hash is not one this account can address with.
+    min: false,
   }
 
   it('reaches no network, which is what separates it from resolving', async () => {
