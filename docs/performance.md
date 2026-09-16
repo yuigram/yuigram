@@ -61,12 +61,22 @@ a file the operating system has never read costs a disk seek rather than a parse
 range is the minimum and maximum of the seven; it is *not* the acceptance criterion, and
 individual samples above 100 ms do not fail the gate.
 
-That distinction matters because the spread is wide and the machine moves it. Three consecutive
-runs of the current tree measured medians of **93.9, 94.0 and 97.2 ms**, with individual samples
-from **85 to 106 ms** — so the gate passes on the median while some samples exceed 100 ms. A run
-taken immediately after the full test suite, on the same tree and the same build, measured a
-median of 152 ms; a control build of the previous commit measured 97.4 ms in the same conditions
-as the 93.9 above. The absolute number is a property of the machine as much as of the code.
+That distinction matters because the spread is wide and the machine moves it more than the code
+does. Eleven runs of one tree, one build, one session:
+
+```
+quiet machine   92.3  93.9  94.0  97.1  97.2          ms  (median per run)
+after the suite  106   111   120   132   132   152     ms
+```
+
+Individual samples across those runs ran from **85 to 163 ms**. A control build of the previous
+commit, measured back to back with the 93.9 above, gave 97.4 and 93.7 — and differs from the
+current tree by two eager modules, about a millisecond.
+
+**So the honest verdict is the one this section has carried since the budget was set: met on a
+quiet machine, and not reliably.** It is not being widened to make that go away, and a run that
+passes is not evidence on its own. What the code did is the two-module comparison; what the
+timings did is mostly weather.
 
 **So the comparison carries the weight, and the eager module count is what the comparison is made
 of.** At roughly 0.4 ms a module the count predicts the medians better than any single timing
