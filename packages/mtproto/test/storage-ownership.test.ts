@@ -783,3 +783,168 @@ describe('a store that offers no way to take a name', () => {
     expect(raw.get(`${areaFor('alice')}claim`)).toEqual({ name: 'alice', holder: run('one') })
   })
 })
+
+/**
+ * A write that was admitted before ownership changed.
+ *
+ * Reading the lease before calling the adapter decides whether a write may
+ * *start*. It says nothing about one already in flight: the adapter is
+ * asynchronous, so between admission and the underlying mutation there is a
+ * window, and a takeover inside that window would have the old run's bytes land
+ * in an area a new run is keeping.
+ *
+ * So the interleaving is chosen rather than hoped for: admit a write, suspend
+ * it inside the adapter, change ownership, then let it finish.
+ */
+describe('a write admitted before ownership changed', () => {
+  /** A store whose writes can be suspended after admission. */
+  function suspendable(raw = new Map<string, unknown>()) {
+    const waiting: Array<() => void> = []
+    let holdWrites = false
+
+    return {
+      raw,
+      hold() {
+        holdWrites = true
+      },
+      get suspended() {
+        return waiting.length
+      },
+      releaseAll() {
+        holdWrites = false
+        for (const resume of waiting.splice(0)) resume()
+      },
+      store: {
+        get: (key: string) => Promise.resolve(raw.get(key)),
+        async set(key: string, value: unknown) {
+          // Only the account's own data is suspended. Holding the claim write
+          // too would suspend `release` and `claimArea` themselves, and the
+          // case would pass because ownership never changed rather than
+          // because a write was drained.
+          if (holdWrites && !key.endsWith('claim')) {
+            await new Promise<void>((resume) => waiting.push(resume))
+          }
+
+          raw.set(key, value)
+        },
+        delete: (key: string) => {
+          raw.delete(key)
+
+          return Promise.resolve()
+        },
+        async *keys(prefix?: string) {
+          for (const key of [...raw.keys()]) {
+            if (key.startsWith(prefix ?? '')) yield key
+          }
+        },
+      },
+    }
+  }
+
+  it('finishes before an orderly release hands the area on', async () => {
+    // The guarantee. Releasing waits for what it admitted, so a successor
+    // cannot begin while an earlier run's write is still in the adapter.
+    const gate = suspendable()
+    const guard = aProcess()
+    const first = await claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
+
+    gate.hold()
+    const writing = first.storage.set('auth:dc2:key', 'from the first run')
+    await settle()
+    expect(gate.suspended).toBe(1)
+
+    // Release begins while the write is suspended, and must not complete.
+    let releaseDone = false
+    const releasing = first.release().then(() => {
+      releaseDone = true
+    })
+    await settle()
+    expect(releaseDone).toBe(false)
+
+    gate.releaseAll()
+    await releasing
+    expect(releaseDone).toBe(true)
+
+    // Only now can a successor have the area, and what it finds is settled.
+    const second = await claimArea(gate.store, { name: 'alice', holder: run('two'), guard })
+    expect(await second.storage.get('auth:dc2:key')).toBe('from the first run')
+  })
+
+  it('does not let a takeover begin while an admitted write is in flight', async () => {
+    // The harder case: a successor that does not wait for the old run to stop.
+    // Within one process the guard can see the run it is superseding, so the
+    // steal waits for what that run already admitted.
+    const gate = suspendable()
+    const guard = aProcess()
+    const first = await claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
+
+    gate.hold()
+    const writing = first.storage.set('auth:dc2:key', 'from the first run')
+    await settle()
+
+    let taken = false
+    const taking = claimArea(gate.store, {
+      name: 'alice',
+      holder: run('two'),
+      takeOver: true,
+      guard,
+    }).then((lease) => {
+      taken = true
+
+      return lease
+    })
+
+    await settle()
+    expect(taken).toBe(false)
+
+    gate.releaseAll()
+    await writing
+    const second = await taking
+
+    // The successor's own write is the last one, because the earlier one had
+    // already landed before it was allowed to start.
+    await second.storage.set('auth:dc2:key', 'from the second run')
+    expect(gate.raw.get(`${areaFor('alice')}auth:dc2:key`)).toBe('from the second run')
+  })
+
+  it('refuses a write the superseded run had not yet begun', async () => {
+    // Draining covers what was admitted. Anything the old run tries afterwards
+    // is refused, which is the part the lease check does establish.
+    const gate = suspendable()
+    const guard = aProcess()
+    const first = await claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
+    await claimArea(gate.store, { name: 'alice', holder: run('two'), takeOver: true, guard })
+
+    await expect(first.storage.set('auth:dc2:key', 'too late')).rejects.toThrow(
+      /no longer owns the storage/,
+    )
+  })
+
+  it('does not let a drained release clear the successor’s claim', async () => {
+    // The release drains and only then decides whether to clear. By that point
+    // it may have been superseded, and clearing would free an area in use.
+    const gate = suspendable()
+    const guard = aProcess()
+    const first = await claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
+
+    gate.hold()
+    const writing = first.storage.set('peers:one', 'x')
+    await settle()
+
+    const releasing = first.release()
+    const taking = claimArea(gate.store, {
+      name: 'alice',
+      holder: run('two'),
+      takeOver: true,
+      guard,
+    })
+
+    gate.releaseAll()
+    await writing
+    await releasing
+    const second = await taking
+
+    expect(second.held).toBe(true)
+    expect(gate.raw.get(`${areaFor('alice')}claim`)).toMatchObject({ holder: run('two') })
+  })
+})

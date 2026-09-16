@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
 import { photoFile, photoMedia } from '../src/files/media.js'
 import type { Photo, TypeInputPeer } from '../src/generated/api/types/index.js'
+import { peerRefOf } from '../src/normalize/normalize.js'
 import {
   type Paging,
   walkAllStories,
@@ -1127,5 +1128,146 @@ describe('what a caller can do with what a walk yielded', () => {
     expect(one?.user_id).toBe(77n)
     // Which is the shape `Account.resolve` takes.
     expect({ kind: 'user' as const, id: one?.user_id }).toEqual({ kind: 'user', id: 77n })
+  })
+})
+
+/**
+ * What a caller can do with the three records the walks hand over raw.
+ *
+ * A photo's capability was checked separately, and checking one record says
+ * nothing about the others: each carries a different shape and loses a
+ * different thing if it is wrong. The test for each is the same question —
+ * can a caller do what the record exists for, without a second lookup.
+ */
+describe('what a walked boost, transaction and gift are good for', () => {
+  it('names a booster in the form the account resolves, and says where it came from', async () => {
+    // A boost is a person and an origin. The person is a bare number on the
+    // record and the answer that carried it carried the user, which an account
+    // harvests — so the number is enough afterwards.
+    const client = fake([
+      {
+        _: 'premium.boostsList',
+        count: 3,
+        boosts: [
+          { _: 'boost', id: 'plain', user_id: 7n, date: 1, expires: 2 },
+          { _: 'boost', id: 'gifted', gift: true, user_id: 8n, date: 1, expires: 2 },
+          {
+            _: 'boost',
+            id: 'won',
+            giveaway: true,
+            user_id: 9n,
+            giveaway_msg_id: 55,
+            date: 1,
+            expires: 2,
+          },
+        ],
+        users: [
+          { _: 'user', id: 7n, access_hash: 1n },
+          { _: 'user', id: 8n, access_hash: 2n },
+          { _: 'user', id: 9n, access_hash: 3n },
+        ],
+      },
+      { _: 'premium.boostsList', count: 3, boosts: [], users: [] },
+    ])
+
+    const boosts = await drain(walkBoosts(client, 'channel'))
+
+    expect(boosts.map((one) => one.user_id)).toEqual([7n, 8n, 9n])
+    // Where it came from is two flags, both present and both readable.
+    expect(boosts.map((one) => one.gift ?? false)).toEqual([false, true, false])
+    expect(boosts.map((one) => one.giveaway ?? false)).toEqual([false, false, true])
+    // The giveaway names the message it was won in, which is what a caller
+    // would follow to show it.
+    expect(boosts[2]?.giveaway_msg_id).toBe(55)
+  })
+
+  it('carries a transaction’s direction in its amount, and its kind in its flags', async () => {
+    // There is no `direction` field: an outgoing transaction is a negative
+    // amount. A reader that assumed a flag would call every transaction
+    // incoming.
+    const client = fake([
+      {
+        _: 'payments.starsStatus',
+        balance: { _: 'starsAmount', amount: 100n, nanos: 0 },
+        history: [
+          {
+            _: 'starsTransaction',
+            id: 'in',
+            amount: { _: 'starsAmount', amount: 50n, nanos: 0 },
+            date: 1,
+            peer: { _: 'starsTransactionPeerFragment' },
+          },
+          {
+            _: 'starsTransaction',
+            id: 'out',
+            refund: true,
+            amount: { _: 'starsAmount', amount: -25n, nanos: 0 },
+            date: 2,
+            peer: { _: 'starsTransactionPeer', peer: { _: 'peerUser', user_id: 7n } },
+          },
+        ],
+        chats: [],
+        users: [{ _: 'user', id: 7n, access_hash: 1n }],
+      },
+      {
+        _: 'payments.starsStatus',
+        balance: { _: 'starsAmount', amount: 100n, nanos: 0 },
+        history: [],
+        chats: [],
+        users: [],
+      },
+    ])
+
+    const [incoming, outgoing] = await drain(walkStarsTransactions(client, 'me'))
+
+    expect(incoming?.amount.amount).toBe(50n)
+    expect(outgoing?.amount.amount).toBe(-25n)
+    expect(outgoing?.refund).toBe(true)
+    // The counterparty is a union: only one of its forms names a peer, and a
+    // reader that assumed otherwise would read a fragment withdrawal as a
+    // person.
+    expect(incoming?.peer._).toBe('starsTransactionPeerFragment')
+    expect(peerRefOf((outgoing?.peer as { peer?: unknown }).peer)).toEqual({
+      kind: 'user',
+      id: 7n,
+    })
+  })
+
+  it('names a gift’s sender as a peer, because it need not be a person', async () => {
+    // `from_id` is a peer union. A channel can send a gift, and reading its
+    // number as a user id would name a different account entirely.
+    const client = fake([
+      {
+        _: 'payments.savedStarGifts',
+        count: 2,
+        gifts: [
+          {
+            _: 'savedStarGift',
+            from_id: { _: 'peerChannel', channel_id: 10n },
+            date: 1,
+            gift: { _: 'starGift', id: 1n },
+            msg_id: 5,
+          },
+          {
+            _: 'savedStarGift',
+            name_hidden: true,
+            date: 2,
+            gift: { _: 'starGift', id: 2n },
+          },
+        ],
+        chats: [{ _: 'channel', id: 10n, access_hash: 4n, title: 'a channel' }],
+        users: [],
+      },
+      { _: 'payments.savedStarGifts', count: 2, gifts: [], chats: [], users: [] },
+    ])
+
+    const [fromChannel, anonymous] = await drain(walkSavedGifts(client, 'me'))
+
+    expect(peerRefOf(fromChannel?.from_id)).toEqual({ kind: 'channel', id: 10n })
+    expect(fromChannel?.msg_id).toBe(5)
+    // An anonymous gift names nobody, which is a state rather than a gap: the
+    // sender chose it, and a reader has to be able to tell.
+    expect(anonymous?.from_id).toBeUndefined()
+    expect(anonymous?.name_hidden).toBe(true)
   })
 })

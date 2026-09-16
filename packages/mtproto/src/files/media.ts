@@ -334,3 +334,146 @@ export function uploadedDocument(
     attributes: [...named, ...(options.attributes ?? [])],
   }
 }
+
+/**
+ * One size of a photo, reduced to what choosing between them needs.
+ *
+ * `type` is Telegram's own single-letter name for the size — `s`, `m`, `x`,
+ * `y`, `w` for the fetchable ones, `i` and `a`–`c` for the ones that arrive
+ * with the message. It is what a caller names when it wants a particular size
+ * rather than the largest, and what the download location carries.
+ */
+export interface PhotoThumbnail {
+  /** Telegram's name for this size. */
+  readonly type: string
+  /** Pixels across, where the size states them. */
+  readonly width: number | undefined
+  /** Pixels down, where the size states them. */
+  readonly height: number | undefined
+  /**
+   * How many bytes fetching it costs, where that is known.
+   *
+   * Absent for a size that arrived with the message: there is nothing to fetch,
+   * so there is no cost to state.
+   */
+  readonly bytes: number | undefined
+  /**
+   * Whether this size has to be asked for.
+   *
+   * False for the ones that came with the message — a stripped preview, a
+   * cached blob, a vector outline. Those carry their own content and name no
+   * file, so {@link thumbnailFile} refuses them rather than building a location
+   * a datacenter would reject.
+   */
+  readonly fetchable: boolean
+  /** The size as the schema describes it, for a field this does not name. */
+  readonly raw: TypePhotoSize
+}
+
+/**
+ * Every size a photo offers, largest first among the ones worth fetching.
+ *
+ * ```ts
+ * const sizes = thumbnails(photo)
+ * const small = sizes.find((size) => size.type === 's')
+ * ```
+ *
+ * Ordered so that the first fetchable entry is the one {@link photoFile} would
+ * have chosen, and the ones that arrived with the message come last — a caller
+ * scanning for something to download finds it without filtering first.
+ */
+export function thumbnails(photo: TypePhoto): PhotoThumbnail[] {
+  if (photo._ !== 'photo') return []
+
+  const described = photo.sizes.map((size) => describe(size))
+
+  return described.sort((left, right) => {
+    if (left.fetchable !== right.fetchable) return left.fetchable ? -1 : 1
+
+    return weigh(right) - weigh(left)
+  })
+}
+
+/**
+ * One named size of a photo, or nothing where it offers none.
+ *
+ * ```ts
+ * const preview = thumbnail(photo, 's')
+ * ```
+ *
+ * Telegram decides which sizes a photo has, and the set differs between photos
+ * — so this answers nothing rather than throwing, and a caller that needs some
+ * size falls back to {@link photoFile}, which takes the largest there is.
+ */
+export function thumbnail(photo: TypePhoto, type: string): PhotoThumbnail | undefined {
+  return thumbnails(photo).find((size) => size.type === type)
+}
+
+/**
+ * Fetch one named size rather than the largest.
+ *
+ * ```ts
+ * const bytes = await account.download(thumbnailFile(photo, 's'))
+ * ```
+ *
+ * The location is the same one {@link photoFile} builds, with the size's own
+ * name in it — that field is what a datacenter reads to decide which rendering
+ * to serve, so naming a size is the whole difference between the two.
+ *
+ * Refuses a size that arrived with the message. Those carry their content
+ * inside the message and name no file: asking for one would be asking a
+ * datacenter for something it was never given.
+ */
+export function thumbnailFile(photo: TypePhoto, type: string): DownloadRequest {
+  if (photo._ !== 'photo') {
+    throw new ValidationError('an empty photo names no file to fetch')
+  }
+
+  const size = thumbnail(photo, type)
+  if (size === undefined) {
+    const offered = thumbnails(photo)
+      .map((one) => one.type)
+      .join(', ')
+
+    throw new ValidationError(
+      `photo ${photo.id} has no size '${type}'; it offers ${offered === '' ? 'none' : offered}`,
+    )
+  }
+
+  if (!size.fetchable) {
+    throw new ValidationError(
+      `the '${type}' size of photo ${photo.id} arrived with the message and names no file to fetch`,
+    )
+  }
+
+  return {
+    dcId: photo.dc_id,
+    ...(size.bytes === undefined ? {} : { size: size.bytes }),
+    location: {
+      _: 'inputPhotoFileLocation',
+      id: photo.id,
+      access_hash: photo.access_hash,
+      file_reference: photo.file_reference,
+      thumb_size: size.type,
+    },
+  }
+}
+
+/** Read one size into the shape a caller chooses between. */
+function describe(size: TypePhotoSize): PhotoThumbnail {
+  const usable = fetchable(size)
+  const measured = size as { w?: number; h?: number }
+
+  return {
+    type: (size as { type?: string }).type ?? '',
+    width: measured.w,
+    height: measured.h,
+    bytes: usable?.bytes,
+    fetchable: usable !== undefined,
+    raw: size,
+  }
+}
+
+/** How a size ranks against another of the same kind. */
+const weigh = (size: PhotoThumbnail) =>
+  size.bytes !== undefined && size.bytes > 0 ? size.bytes : (size.width ?? 0) * (size.height ?? 0)

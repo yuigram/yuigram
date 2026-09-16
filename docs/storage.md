@@ -258,12 +258,34 @@ over the same directory, and claiming otherwise would be worse than not excludin
 because a caller would stop being careful. A caller with a better primitive than the runtime
 advertises — a database advisory lock, a lock file — supplies it as `storageGuard`.
 
-**A lease that can be lost.** Holding the guard now is not holding it forever. The area an
-account is handed refuses every write the moment the lease is over, so a write begun before a
-takeover cannot land after one. Without that the exclusion the guard bought is spent between
-the check and the write. The fence covers `set`, `delete` and `clear`; reads are still
-answered, because what a superseded run reads is its own account's data and a diagnostic that
-cannot read is one nobody writes.
+**A lease that can be lost, and admitted work that finishes first.** Holding the guard now is
+not holding it forever, and two different things have to be true for that to be safe.
+
+The first is a fence: the area refuses `set`, `delete` and `clear` the moment the lease is over,
+so a run that has been superseded cannot *start* anything further. Reads are still answered —
+what a superseded run reads is its own account's data, and a diagnostic that cannot read is one
+nobody writes.
+
+The second is a drain, and the fence alone does not give it. Reading the lease decides whether a
+write may start; it says nothing about one already inside the adapter. An adapter is
+asynchronous, so between admission and the mutation there is a window, and a takeover landing in
+that window would have the old run's bytes written into an area a new run is keeping. So the
+area counts what it has admitted, and **ownership does not transfer while that count is above
+zero**: an orderly release waits for it, and a take-over waits for it wherever the guard can see
+the run it is superseding.
+
+| | Fence (refuse to start) | Drain (finish before handing on) |
+| --- | --- | --- |
+| Orderly release, any runtime | ✓ | ✓ |
+| Take-over inside one process | ✓ | ✓ |
+| Take-over from another page of an origin | ✓ | ✗ — the steal happens in the other page |
+| Take-over from another process | ✓ | ✗ — nothing here can see it |
+
+The rows marked ✗ are the honest limit rather than an oversight. A generic key-value adapter has
+no way to cancel or fence a write already handed to it, and this does not pretend otherwise: what
+it offers there is the refusal, which narrows the window without closing it. Closing it needs a
+store that can fence at its own mutation boundary — a conditional write, an advisory lock — and a
+caller with one supplies it as `storageGuard`.
 
 **Crash recovery stays ordinary.** A page that closes takes its locks with it, and a process
 that dies takes its registry with it — so where the guard's reach covers everyone who could

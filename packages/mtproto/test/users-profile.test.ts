@@ -12,10 +12,12 @@
  * the reserved test range.
  */
 
-import { PeerError, ValidationError } from '@yuigram/core'
+import { PeerError, TelegramError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
+import type { PeerRef } from '../src/normalize/normalize.js'
+import type { PeerRecord, PeerStore } from '../src/storage/peers.js'
 import {
   addContact,
   block,
@@ -25,17 +27,22 @@ import {
   editProfile,
   findByPhone,
   importContacts,
+  knows,
   messageTtl,
+  myUsername,
   type Profiling,
   peerSettings,
+  profilePhoto,
   readBlocked,
   readContacts,
   readProfile,
   readUsers,
+  resolveMany,
   savedMusic,
   saveMusic,
   setBirthday,
   setCloseFriends,
+  setContactNote,
   setEmojiStatus,
   setMessageTtl,
   setOnline,
@@ -96,6 +103,7 @@ function fake(
       unblock: next,
       editCloseFriends: next,
       getBlocked: next,
+      updateContactNote: next,
     },
     messages: {
       getCommonChats: next,
@@ -103,7 +111,7 @@ function fake(
       getPeerSettings: next,
       setDefaultHistoryTTL: next,
     },
-    photos: { deletePhotos: next, uploadProfilePhoto: next },
+    photos: { deletePhotos: next, getUserPhotos: next, uploadProfilePhoto: next },
     users: { getUsers: next, getFullUser: next, getSavedMusic: next },
   } as unknown as MtprotoApi
 
@@ -546,4 +554,221 @@ describe('the rest of the people surface', () => {
     expect(client.asked[0]).toEqual({ id: track })
     expect(client.asked[1]).toMatchObject({ unsave: true })
   })
+})
+
+describe('the capabilities a one-line composition did not preserve', () => {
+  it('fetches one named photo rather than whichever is newest', async () => {
+    // Taking the first of the photo walk gives the current photo. This names
+    // one, which is what a stored identifier refers to — and the request is
+    // the protocol's own way of asking for exactly that: start one before the
+    // list, take a single entry at or below the identifier.
+    const client = fake([{ _: 'photos.photos', photos: [aPhoto(42n)], users: [] }])
+
+    const photo = await profilePhoto(client, '@someone', 42n)
+
+    expect(photo?.id).toBe(42n)
+    expect(client.asked[0]).toMatchObject({ offset: -1, limit: 1, max_id: 42n })
+  })
+
+  it('answers nothing for a photo this account cannot see', async () => {
+    const client = fake([{ _: 'photos.photos', photos: [], users: [] }])
+
+    expect(await profilePhoto(client, '@someone', 42n)).toBeUndefined()
+  })
+
+  it('sets and clears a contact note through the method that carries one', async () => {
+    // The client-facing name and the protocol's differ, which is why an earlier
+    // search for it came up empty: the call is `contacts.updateContactNote`.
+    const client = fake([true, true])
+
+    await setContactNote(client, '@someone', 'met at the conference')
+    await setContactNote(client, '@someone', undefined)
+
+    expect(client.asked[0]).toMatchObject({
+      note: { _: 'textWithEntities', text: 'met at the conference', entities: [] },
+    })
+    // Clearing is empty text rather than an absent field: the protocol has no
+    // way to say "leave it", so "no note" and "an empty note" are one state.
+    expect(client.asked[1]).toMatchObject({ note: { _: 'textWithEntities', text: '' } })
+  })
+})
+
+describe('asking what this account already knows', () => {
+  /** A store holding whatever a case puts in it. */
+  function knownPeers(records: readonly PeerRecord[] = []): PeerStore {
+    const byId = new Map(records.map((record) => [`${record.kind}:${record.id}`, record]))
+
+    return {
+      byId: (kind, id) => Promise.resolve(byId.get(`${kind}:${id}`)),
+      byUsername: (name) =>
+        Promise.resolve(records.find((record) => record.usernames.includes(name.toLowerCase()))),
+      byPhone: (phone) => Promise.resolve(records.find((record) => record.phone === phone)),
+      save: () => Promise.resolve(true),
+      forget: () => Promise.resolve(),
+    }
+  }
+
+  const ann: PeerRecord = {
+    kind: 'user',
+    id: 7n,
+    accessHash: 77n,
+    usernames: ['ann'],
+    phone: '70000000000',
+  }
+
+  it('reaches no network, which is what separates it from resolving', async () => {
+    // `resolve` goes and asks when it has to. A caller deciding whether an
+    // operation is free cannot learn that by catching a failure from it.
+    const peers = knownPeers([ann])
+
+    expect(await knows(peers, '@ann')).toBe(true)
+    expect(await knows(peers, { kind: 'user', id: 7n })).toBe(true)
+    expect(await knows(peers, '@nobody')).toBe(false)
+    expect(await knows(peers, { kind: 'channel', id: 7n })).toBe(false)
+  })
+
+  it('reads a name the way a user would write it', async () => {
+    const peers = knownPeers([ann])
+
+    expect(await knows(peers, 'ann')).toBe(true)
+    expect(await knows(peers, '@ann')).toBe(true)
+    expect(await knows(peers, '+70000000000')).toBe(true)
+    expect(await knows(peers, '70000000000')).toBe(true)
+    expect(await knows(peers, '')).toBe(false)
+  })
+
+  it('always knows itself', async () => {
+    // An account can name itself before it has met anybody, because naming
+    // itself needs no access hash.
+    const peers = knownPeers()
+
+    expect(await knows(peers, 'me')).toBe(true)
+    expect(await knows(peers, 'self')).toBe(true)
+  })
+
+  it('reads the username from what was written down, not from a call', async () => {
+    const peers = knownPeers([{ ...ann, usernames: ['ann', 'annie'] }])
+
+    // The first is the primary; the rest are additional names.
+    expect(await myUsername(peers, 7n)).toBe('ann')
+    // Nothing until this account has read itself, which is the honest answer
+    // for a question about local state.
+    expect(await myUsername(peers, undefined)).toBeUndefined()
+    expect(await myUsername(peers, 9n)).toBeUndefined()
+  })
+})
+
+describe('resolving several peers at once', () => {
+  it('answers positionally, with a gap where one could not be named', async () => {
+    // A shorter list would shift every later entry onto the wrong name, which
+    // is worse than saying nothing about one position.
+    const client = resolving({ '@ann': ANN })
+
+    const found = await resolveMany(client, ['@ann', '@nobody', '@ann'])
+
+    expect(found).toEqual([ANN, undefined, ANN])
+  })
+
+  it('resolves each distinct peer once', async () => {
+    // A caller assembling a list from messages has duplicates by construction.
+    const client = resolving({ '@ann': ANN, '@bo': CHANNEL })
+
+    await resolveMany(client, ['@ann', '@bo', '@ann', '@bo', '@ann'])
+
+    expect(client.resolved).toEqual(['@ann', '@bo'])
+  })
+
+  it('tells a reference from a name when deciding what is the same peer', async () => {
+    const client = resolving({ '@ann': ANN })
+
+    await resolveMany(client, [
+      { kind: 'user', id: 7n },
+      { kind: 'user', id: 7n },
+      { kind: 'channel', id: 7n },
+    ])
+
+    expect(client.resolved).toHaveLength(2)
+  })
+
+  it('never has more than eight in flight', async () => {
+    // Resolving a name this account has not seen is a request. Thirty at once
+    // would be thirty requests against an account Telegram is willing to limit,
+    // so the peak is what this measures rather than the total.
+    const client = resolving({}, { slow: true })
+
+    const found = await resolveMany(
+      client,
+      Array.from({ length: 30 }, (_, index) => `@user${String(index)}`),
+    )
+
+    expect(found).toHaveLength(30)
+    expect(client.peak).toBe(8)
+  })
+
+  it('lets anything that is not "cannot name it" out', async () => {
+    // Swallowing a flood wait would turn a failure into an absence, and a
+    // retry into a gap in whatever the caller was assembling.
+    const client: Profiling = {
+      api: {} as unknown as MtprotoApi,
+      resolve: () => Promise.reject(new TelegramError('FLOOD_WAIT_30 (420)')),
+    }
+
+    await expect(resolveMany(client, ['@ann'])).rejects.toThrow(TelegramError)
+  })
+
+  it('asks nothing for an empty list', async () => {
+    const client = resolving({})
+
+    expect(await resolveMany(client, [])).toEqual([])
+    expect(client.resolved).toEqual([])
+  })
+})
+
+/** A client that resolves only the names it was given, recording each. */
+function resolving(
+  known: Record<string, TypeInputPeer>,
+  options: { readonly slow?: boolean } = {},
+) {
+  const resolved: (string | PeerRef)[] = []
+  let inFlight = 0
+  let peak = 0
+
+  return {
+    api: {} as unknown as MtprotoApi,
+    resolved,
+    get peak() {
+      return peak
+    },
+    async resolve(peer: string | PeerRef) {
+      resolved.push(peer)
+      inFlight += 1
+      peak = Math.max(peak, inFlight)
+
+      try {
+        // Long enough that every worker that can start has started, so the
+        // peak is the ceiling rather than a race.
+        if (options.slow === true) {
+          await new Promise((resume) => setTimeout(resume, 5))
+        }
+
+        const found = typeof peer === 'string' ? known[peer] : undefined
+        if (found === undefined) throw new PeerError(`this account has not seen ${String(peer)}`)
+
+        return found
+      } finally {
+        inFlight -= 1
+      }
+    },
+  }
+}
+
+/** A photo with one size worth fetching. */
+const aPhoto = (id: bigint) => ({
+  _: 'photo' as const,
+  id,
+  access_hash: 1n,
+  file_reference: Uint8Array.of(1),
+  date: 1_700_000_000,
+  sizes: [{ _: 'photoSize' as const, type: 'x', w: 800, h: 600, size: 51_200 }],
+  dc_id: 2,
 })

@@ -15,6 +15,9 @@ import {
   documentMedia,
   photoFile,
   photoMedia,
+  thumbnail,
+  thumbnailFile,
+  thumbnails,
   uploadedDocument,
   uploadedPhoto,
 } from '../src/files/media.js'
@@ -386,5 +389,97 @@ describe('a descriptor on the wire', () => {
     const back = roundTrip(documentMedia(DOCUMENT))['id'] as TlValue
 
     expect([...(back['file_reference'] as Uint8Array)]).toEqual([...REFERENCE])
+  })
+})
+
+/**
+ * Choosing which rendering of a photo to fetch.
+ *
+ * `photoFile` takes the largest, which is what a caller wanting the picture
+ * means. What it cannot express is a caller wanting a *particular* size — a
+ * list thumbnail, a preview beside a name — and fetching the full-size image to
+ * scale it down is bytes nobody asked for.
+ *
+ * The distinction that matters is which sizes name a file at all. Some arrive
+ * inside the message and describe their own content; asking a datacenter for
+ * one is asking for something it was never given.
+ */
+describe('choosing a size of a photo', () => {
+  /** A photo offering the mix a real one does. */
+  const photo = {
+    _: 'photo' as const,
+    id: 42n,
+    access_hash: 5n,
+    file_reference: Uint8Array.of(9),
+    date: 1_700_000_000,
+    dc_id: 2,
+    sizes: [
+      { _: 'photoStrippedSize' as const, type: 'i', bytes: Uint8Array.of(1, 2, 3) },
+      { _: 'photoSize' as const, type: 's', w: 90, h: 67, size: 1_200 },
+      { _: 'photoSize' as const, type: 'y', w: 1280, h: 960, size: 120_000 },
+      { _: 'photoSize' as const, type: 'm', w: 320, h: 240, size: 12_000 },
+    ],
+  }
+
+  it('lists what is worth fetching first, largest first', async () => {
+    const sizes = thumbnails(photo)
+
+    expect(sizes.map((one) => one.type)).toEqual(['y', 'm', 's', 'i'])
+    expect(sizes.map((one) => one.fetchable)).toEqual([true, true, true, false])
+  })
+
+  it('reports the measurements a size states, and nothing it does not', () => {
+    const [largest] = thumbnails(photo)
+
+    expect(largest).toMatchObject({ type: 'y', width: 1280, height: 960, bytes: 120_000 })
+
+    const stripped = thumbnail(photo, 'i')
+    expect(stripped?.fetchable).toBe(false)
+    // A stripped preview states no measurements and no length: it is bytes in
+    // the message rather than a rendering with a size.
+    expect(stripped?.bytes).toBeUndefined()
+  })
+
+  it('builds a location naming the size, which is what the datacenter reads', () => {
+    const request = thumbnailFile(photo, 's')
+
+    expect(request.dcId).toBe(2)
+    expect(request.size).toBe(1_200)
+    expect(request.location).toMatchObject({
+      _: 'inputPhotoFileLocation',
+      id: 42n,
+      access_hash: 5n,
+      thumb_size: 's',
+    })
+  })
+
+  it('fetches the small one rather than the whole picture', () => {
+    // The point of naming a size: the request is two orders of magnitude
+    // smaller than the one `photoFile` would make.
+    const small = thumbnailFile(photo, 's')
+    const whole = photoFile(photo)
+
+    expect(small.size).toBeLessThan(whole.size ?? Number.POSITIVE_INFINITY)
+    expect((whole.location as { thumb_size: string }).thumb_size).toBe('y')
+  })
+
+  it('refuses a size that arrived with the message', () => {
+    expect(() => thumbnailFile(photo, 'i')).toThrow(/arrived with the message/)
+  })
+
+  it('says which sizes there are when asked for one there is not', () => {
+    expect(() => thumbnailFile(photo, 'z')).toThrow(/has no size 'z'/)
+    expect(() => thumbnailFile(photo, 'z')).toThrow(/y, m, s, i/)
+  })
+
+  it('answers nothing rather than throwing when merely asked whether a size exists', () => {
+    // Telegram decides which sizes a photo has and the set differs, so a
+    // caller checking is not making a mistake.
+    expect(thumbnail(photo, 'z')).toBeUndefined()
+    expect(thumbnails({ _: 'photoEmpty', id: 1n })).toEqual([])
+  })
+
+  it('refuses an empty photo by name', () => {
+    expect(() => thumbnailFile({ _: 'photoEmpty', id: 1n }, 's')).toThrow(/empty photo/)
   })
 })

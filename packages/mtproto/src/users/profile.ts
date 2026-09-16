@@ -41,11 +41,13 @@ import type {
   TypeInputPeer,
   TypeInputUser,
   TypePeerSettings,
+  TypePhoto,
   TypeUser,
 } from '../generated/api/types/index.js'
 import { userFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
+import type { PeerStore } from '../storage/peers.js'
 
 /** What these operations need from a client. */
 export interface Profiling {
@@ -721,3 +723,187 @@ export async function saveMusic(
     ...(options.after === undefined ? {} : { after_id: options.after }),
   })
 }
+
+/**
+ * Fetch one particular profile photo, by the identifier it carries.
+ *
+ * ```ts
+ * const photo = await profilePhoto(account, '@someone', knownId)
+ * ```
+ *
+ * Not the same as taking the first of {@link walkProfilePhotos}, which is
+ * whichever is newest. This names one: a photo referred to somewhere else — a
+ * stored identifier, a link, an older message — is fetched whether or not it is
+ * still the current one.
+ *
+ * The request is the protocol's own way of asking for exactly one: start one
+ * before the list and take a single entry at or below the identifier given.
+ * Answers nothing where the account cannot see it, which is the same thing
+ * Telegram says by returning an empty list.
+ */
+export async function profilePhoto(
+  client: Profiling,
+  peer: string | PeerRef,
+  photoId: bigint,
+): Promise<Photo | undefined> {
+  const answer = await client.api.photos.getUserPhotos({
+    user_id: await asUser(client, peer),
+    offset: -1,
+    limit: 1,
+    max_id: photoId,
+  })
+
+  const [first] = answer.photos
+
+  return first?._ === 'photo' ? first : undefined
+}
+
+/**
+ * Whether this account can name a peer without asking Telegram.
+ *
+ * ```ts
+ * if (await knows(account, '@someone')) await account.sendText('@someone', 'hi')
+ * ```
+ *
+ * A question about what is already written down, answered from the account's
+ * own peer store and reaching no network. That is the difference from
+ * {@link Profiling.resolve}, which will go and ask — so a caller deciding
+ * whether an operation is free has to ask this rather than catching a failure
+ * from that.
+ *
+ * `'me'` and `'self'` are always known: an account can always name itself.
+ */
+export async function knows(peers: PeerStore, peer: string | PeerRef): Promise<boolean> {
+  if (typeof peer !== 'string') {
+    return (await peers.byId(peer.kind, peer.id)) !== undefined
+  }
+
+  const name = peer.trim()
+  if (name === 'me' || name === 'self') return true
+
+  const bare = name.replace(/^[@+]/, '')
+  if (bare === '') return false
+
+  if (/^\d+$/.test(bare)) return (await peers.byPhone(bare)) !== undefined
+
+  return (await peers.byUsername(bare)) !== undefined
+}
+
+/**
+ * The username this account answers to, from what is already written down.
+ *
+ * ```ts
+ * const name = await myUsername(account)
+ * ```
+ *
+ * Reaches no network. An account writes itself down the first time it reads
+ * itself, so this answers after any call that described this account and
+ * answers nothing before one — which is the honest shape for a question about
+ * local state, and the reason it is not spelled as a call that would go and
+ * find out. {@link whoAmI} is the one that asks.
+ */
+export async function myUsername(
+  peers: PeerStore,
+  selfId: bigint | undefined,
+): Promise<string | undefined> {
+  if (selfId === undefined) return undefined
+
+  const self = await peers.byId('user', selfId)
+
+  // The first is the one Telegram treats as primary; the rest are the
+  // additional names a channel or a premium account may also answer to.
+  return self?.usernames[0]
+}
+
+/**
+ * Set or clear the private note this account keeps against a contact.
+ *
+ * ```ts
+ * await setContactNote(account, '@someone', 'met at the conference')
+ * ```
+ *
+ * The note is this account's own and nobody else sees it. Passing nothing
+ * clears it, which the protocol spells as empty text rather than as an absent
+ * field — so "no note" and "a note that is empty" are the same state, and this
+ * does not pretend otherwise.
+ */
+export async function setContactNote(
+  client: Profiling,
+  peer: string | PeerRef,
+  note: string | undefined,
+): Promise<void> {
+  await client.api.contacts.updateContactNote({
+    id: await asUser(client, peer),
+    note: { _: 'textWithEntities', text: note ?? '', entities: [] },
+  })
+}
+
+/**
+ * Resolve several peers at once.
+ *
+ * ```ts
+ * const [ann, bob] = await resolveMany(account, ['@ann', '@bob'])
+ * ```
+ *
+ * **Positional.** The result is as long as the input and in the same order, so
+ * a caller can zip the two. A peer this account cannot name answers `undefined`
+ * in its place rather than collapsing the list — a shorter array would silently
+ * shift every later entry onto the wrong name.
+ *
+ * **Bounded.** Eight at a time. Resolving a name this account has not seen is a
+ * request, and a list of two hundred would otherwise be two hundred at once
+ * against an account Telegram is willing to limit.
+ *
+ * **Each distinct peer is resolved once.** A list naming the same peer twice
+ * makes one request and fills both positions, which matters because a caller
+ * assembling a list from messages has duplicates by construction.
+ *
+ * Only "this account cannot name it" becomes `undefined`. Anything else — a
+ * flood wait, a connection that ended — is the caller's to see, because
+ * swallowing it would turn a failure into an absence and a retry into a gap.
+ */
+export async function resolveMany(
+  client: Profiling,
+  peers: readonly (string | PeerRef)[],
+): Promise<(TypeInputPeer | undefined)[]> {
+  const resolved = new Map<string, Promise<TypeInputPeer | undefined>>()
+  const answers: (TypeInputPeer | undefined)[] = Array.from({ length: peers.length })
+  const pending: number[] = []
+
+  const keyOf = (peer: string | PeerRef) =>
+    typeof peer === 'string' ? `n:${peer}` : `r:${peer.kind}:${peer.id}`
+
+  const once = (peer: string | PeerRef): Promise<TypeInputPeer | undefined> => {
+    const key = keyOf(peer)
+    let running = resolved.get(key)
+
+    if (running === undefined) {
+      running = client.resolve(peer).catch((error: unknown) => {
+        if (error instanceof PeerError) return undefined
+
+        throw error
+      })
+      resolved.set(key, running)
+    }
+
+    return running
+  }
+
+  for (let index = 0; index < peers.length; index += 1) pending.push(index)
+
+  const workers = Array.from({ length: Math.min(RESOLVE_AT_ONCE, pending.length) }, async () => {
+    for (;;) {
+      const index = pending.shift()
+      if (index === undefined) return
+
+      answers[index] = await once(peers[index] as string | PeerRef)
+    }
+  })
+
+  await Promise.all(workers)
+
+  return answers
+}
+
+/** How many resolutions travel at once. */
+const RESOLVE_AT_ONCE = 8

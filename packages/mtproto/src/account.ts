@@ -190,12 +190,17 @@ import {
   editProfile,
   findByPhone,
   importContacts,
+  knows,
   messageTtl,
+  myUsername,
+  profilePhoto,
   readContacts,
   readProfile,
   readUsers,
+  resolveMany,
   setBirthday,
   setCloseFriends,
+  setContactNote,
   setEmojiStatus,
   setMessageTtl,
   setOnline,
@@ -439,6 +444,15 @@ export class Account<Ext = unknown> {
 
   /** What this run writes into the claim, distinguishing it from another. */
   #holder: string | undefined
+
+  /**
+   * Which user this account is, once it has found out.
+   *
+   * Kept in the area rather than only in memory, so a restart can answer a
+   * question about local state without a call. Learned from a sign-in and from
+   * {@link Account.me}, which are the two moments Telegram says who this is.
+   */
+  #selfId: bigint | undefined
 
   readonly #options: AccountOptions
   readonly #log: Logger
@@ -1761,6 +1775,15 @@ export class Account<Ext = unknown> {
 
     await this.#belongTo(state.dcId)
 
+    // A sign-in is the other moment Telegram says who this is, and the one that
+    // happens before anything would think to ask. Read structurally: the step
+    // this wraps is generic over what each returns, and only some of them
+    // describe a user.
+    const reached = state as { kind?: unknown; user?: { id?: unknown } }
+    if (reached.kind === 'authorized' && typeof reached.user?.id === 'bigint') {
+      await this.#rememberSelf(reached.user.id)
+    }
+
     return state
   }
 
@@ -1789,7 +1812,91 @@ export class Account<Ext = unknown> {
    * resolving a peer, so nothing is looked up.
    */
   async me(): Promise<UserView> {
-    return await whoAmI(this)
+    const self = await whoAmI(this)
+    await this.#rememberSelf(self.id)
+
+    return self
+  }
+
+  /**
+   * The username this account answers to, from what is already written down.
+   *
+   * ```ts
+   * const name = await account.myUsername()
+   * ```
+   *
+   * Reaches no network, which is the whole point of it: a caller deciding what
+   * to render does not want a round trip. Answers nothing until this account
+   * has read itself at least once — {@link Account.me} is the call that finds
+   * out, and what it learns survives a restart.
+   */
+  async myUsername(): Promise<string | undefined> {
+    return await myUsername(this.#peers, this.#selfId)
+  }
+
+  /**
+   * Whether this account can name a peer without asking Telegram.
+   *
+   * ```ts
+   * if (await account.knows('@someone')) { … }
+   * ```
+   *
+   * The question {@link Account.resolve} does not answer: that one goes and
+   * asks when it has to, so catching its failure is not the same as knowing
+   * beforehand whether the operation is free.
+   */
+  async knows(peer: string | PeerRef): Promise<boolean> {
+    return await knows(this.#peers, peer)
+  }
+
+  /**
+   * Resolve several peers at once, positionally.
+   *
+   * ```ts
+   * const [ann, bob] = await account.resolveMany(['@ann', '@bob'])
+   * ```
+   *
+   * As long as what it was given and in the same order, with `undefined` where
+   * this account cannot name one — a shorter list would shift every later entry
+   * onto the wrong name. Eight travel at once, and a peer named twice is
+   * resolved once.
+   */
+  async resolveMany(peers: readonly (string | PeerRef)[]): Promise<(TypeInputPeer | undefined)[]> {
+    return await resolveMany(this, peers)
+  }
+
+  /**
+   * Fetch one particular profile photo, by the identifier it carries.
+   *
+   * Not the newest one, which is what {@link Account.profilePhotos} starts
+   * with: this names a photo referred to from somewhere else and fetches it
+   * whether or not it is still current.
+   */
+  async profilePhoto(peer: string | PeerRef, photoId: bigint): Promise<Photo | undefined> {
+    return await profilePhoto(this, peer, photoId)
+  }
+
+  /** Set or clear the private note this account keeps against a contact. */
+  async setContactNote(peer: string | PeerRef, note: string | undefined): Promise<void> {
+    await setContactNote(this, peer, note)
+  }
+
+  /**
+   * Write down which user this account is.
+   *
+   * Reported rather than thrown: knowing this is a convenience, and a store
+   * that would not take it must not fail the call that learned it.
+   */
+  async #rememberSelf(id: bigint): Promise<void> {
+    if (this.#selfId === id) return
+
+    this.#selfId = id
+
+    try {
+      await this.#area.set(SELF, id.toString())
+    } catch (error) {
+      this.#log.warn('could not write down which user this account is', { error })
+    }
   }
 
   /**
@@ -2153,6 +2260,7 @@ export class Account<Ext = unknown> {
     // because an account that never connects has no place in the stream to
     // resume from.
     this.#updates = updateStore(namespaced(storage, 'updates:'))
+    this.#selfId = await readSelfId(storage)
     const resumed = await this.#updates.load()
     this.#state = new UpdateState(resumed ?? {})
 
@@ -2587,6 +2695,28 @@ export class Account<Ext = unknown> {
     }
 
     return this.#network
+  }
+}
+
+/** Where an account writes down which user it is. */
+const SELF = 'self'
+
+/**
+ * Which user an account last knew itself to be, from its own area.
+ *
+ * Kept as text rather than a number: a user identifier is 64-bit, and a store
+ * that round-trips through JSON would quietly lose the low bits of a large one.
+ * Anything unreadable is treated as not yet known, because the only cost of
+ * that is one call to find out again.
+ */
+async function readSelfId(storage: KV<unknown>): Promise<bigint | undefined> {
+  const stored = await storage.get(SELF)
+  if (typeof stored !== 'string') return undefined
+
+  try {
+    return BigInt(stored)
+  } catch {
+    return undefined
   }
 }
 

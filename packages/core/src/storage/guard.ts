@@ -48,6 +48,19 @@ export interface GuardHold {
   readonly held: boolean
   /** Give the name up. Releasing twice is not an error. */
   release(): Promise<void>
+  /**
+   * Say how to wait for whatever this hold protects to go quiet.
+   *
+   * Registered by the consumer, because only it knows what "in flight" means.
+   * A guard that can see the hold it is superseding waits for this before
+   * handing the name on — which is what stops work admitted under the old
+   * holder from completing after the new one has started.
+   *
+   * Optional, and honestly so: a guard whose reach does not include the other
+   * holder — another process, another machine — cannot wait for something it
+   * cannot see, and says as much rather than pretending.
+   */
+  drains(quiet: () => Promise<void>): void
 }
 
 /** How a name is taken. */
@@ -73,6 +86,8 @@ export interface Guard {
 /** What a registry keeps for one held name. */
 interface Entry {
   held: boolean
+  /** How to wait for what this hold protects, once the consumer has said. */
+  quiet?: () => Promise<void>
 }
 
 /**
@@ -90,32 +105,52 @@ export function processGuard(): Guard {
     scope: 'process',
 
     acquire(name: string, options: AcquireOptions = {}): Promise<GuardHold | undefined> {
-      const existing = held.get(name)
+      return take(held, name, options)
+    },
+  }
+}
 
-      if (existing?.held === true) {
-        if (options.steal !== true) return Promise.resolve(undefined)
+/**
+ * Take a name from a registry, waiting for whatever it supersedes to go quiet.
+ *
+ * The wait is the part that makes a steal safe. Marking the old hold lost stops
+ * it admitting anything new; it does nothing about what it admitted a moment
+ * ago and is still finishing. So the successor is handed the name only once the
+ * old holder says it has nothing in flight.
+ */
+async function take(
+  held: Map<string, Entry>,
+  name: string,
+  options: AcquireOptions,
+): Promise<GuardHold | undefined> {
+  const existing = held.get(name)
 
-        // The superseded hold learns it is superseded, which is what lets
-        // anything it was protecting refuse a write that started earlier.
-        existing.held = false
-      }
+  if (existing?.held === true) {
+    if (options.steal !== true) return undefined
 
-      const entry: Entry = { held: true }
-      held.set(name, entry)
+    // Refuse anything further from the old holder first, so what is waited for
+    // below is a set that cannot grow.
+    existing.held = false
+    await existing.quiet?.()
+  }
 
-      return Promise.resolve({
-        get held() {
-          return entry.held
-        },
-        release() {
-          // Only the current holder clears the registry. A hold that was taken
-          // over releasing later must not free the name its successor holds.
-          if (entry.held && held.get(name) === entry) held.delete(name)
-          entry.held = false
+  const entry: Entry = { held: true }
+  held.set(name, entry)
 
-          return Promise.resolve()
-        },
-      })
+  return {
+    get held() {
+      return entry.held
+    },
+    drains(quiet: () => Promise<void>) {
+      entry.quiet = quiet
+    },
+    release() {
+      // Only the current holder clears the registry. A hold that was taken over
+      // releasing later must not free the name its successor holds.
+      if (entry.held && held.get(name) === entry) held.delete(name)
+      entry.held = false
+
+      return Promise.resolve()
     },
   }
 }
@@ -200,12 +235,22 @@ export function webLocksGuard(manager: LockManagerLike): Guard {
 
       if (!(await decided)) return undefined
 
+      let quiet: (() => Promise<void>) | undefined
+
       return {
         get held() {
           return entry.held
         },
+        drains(wait: () => Promise<void>) {
+          quiet = wait
+        },
         async release() {
           entry.held = false
+          // What this page admitted finishes before the lock goes, so another
+          // page cannot begin while it is still writing. A lock *stolen* from
+          // this page is a different matter, and §4 of `docs/storage.md` says
+          // so: the steal happens in another page, and nothing here is asked.
+          await quiet?.()
           release()
           await requested.catch(() => undefined)
         },

@@ -234,7 +234,7 @@ function guardName(store: KV<unknown>, name: string): string {
  * before a takeover lands after it, into an area another run now owns, and the
  * exclusion bought by the guard is spent between the check and the write.
  */
-function fenced(area: KV<unknown>, hold: GuardHold, name: string): KV<unknown> {
+function fenced(area: KV<unknown>, hold: GuardHold, name: string): Fenced {
   const refuse = (): never => {
     throw new StorageOwnershipError(
       `this run no longer owns the storage for the account '${name}', so the write was ` +
@@ -243,29 +243,66 @@ function fenced(area: KV<unknown>, hold: GuardHold, name: string): KV<unknown> {
     )
   }
 
+  let inFlight = 0
+  // A list rather than one slot: a release and a takeover can both be waiting
+  // for the same writes, and a single slot would leave whichever asked first
+  // waiting for a wake-up the second had overwritten.
+  const waiting: Array<() => void> = []
+
+  /**
+   * Run one mutation, counted.
+   *
+   * The count is what makes draining possible. Reading the lease decides
+   * whether a write may *start*; it says nothing about one already inside the
+   * adapter, and an adapter is asynchronous — so between admission and the
+   * mutation there is a window a takeover could fall into.
+   */
+  const mutating = async <T>(run: () => Promise<T>): Promise<T> => {
+    if (!hold.held) refuse()
+    inFlight += 1
+
+    try {
+      return await run()
+    } finally {
+      inFlight -= 1
+      if (inFlight === 0) {
+        for (const wake of waiting.splice(0)) wake()
+      }
+    }
+  }
+
   return {
     get: (key) => area.get(key),
 
     set: async (key, value, options?: SetOptions) => {
-      if (!hold.held) refuse()
-      await area.set(key, value, options)
+      await mutating(async () => await area.set(key, value, options))
     },
 
     delete: async (key) => {
-      if (!hold.held) refuse()
-      await area.delete(key)
+      await mutating(async () => await area.delete(key))
     },
 
     has: async (key) =>
       area.has === undefined ? (await area.get(key)) !== undefined : await area.has(key),
 
     clear: async (prefix) => {
-      if (!hold.held) refuse()
-      await area.clear?.(prefix)
+      await mutating(async () => await area.clear?.(prefix))
     },
 
     keys: (prefix) => area.keys?.(prefix) ?? empty(),
+
+    async quiet() {
+      while (inFlight > 0) {
+        await new Promise<void>((resolve) => waiting.push(resolve))
+      }
+    },
   }
+}
+
+/** An area that also says when what it admitted has finished. */
+interface Fenced extends KV<unknown> {
+  /** Settles once nothing this view admitted is still inside the adapter. */
+  quiet(): Promise<void>
 }
 
 /** Nothing, for a store that cannot enumerate. */
@@ -302,6 +339,11 @@ export async function claimArea(store: KV<unknown>, options: ClaimOptions): Prom
     )
   }
 
+  const guarded = fenced(area, hold, options.name)
+  // Registered before anything is written, so a takeover arriving at any point
+  // from here on waits for what this run has in flight.
+  hold.drains(async () => await guarded.quiet())
+
   try {
     await settleClaim({ area, store, options, exclusive })
   } catch (error) {
@@ -313,15 +355,21 @@ export async function claimArea(store: KV<unknown>, options: ClaimOptions): Prom
   }
 
   return {
-    storage: fenced(area, hold, options.name),
+    storage: guarded,
     get held() {
       return hold.held
     },
     scope: guard.scope,
     async release() {
+      // Drained first. Handing the area on while this run still has a write
+      // inside the adapter is exactly the case the fence cannot catch: it was
+      // admitted while this run owned the area, and it would land after the
+      // next one had started.
+      await guarded.quiet()
+
       // Only a run that still owns the area may clear the claim. One that was
-      // superseded must not free what took it over — which is the whole reason
-      // the fence is read here rather than the claim being compared again.
+      // superseded — possibly while draining, just above — must not free what
+      // took it over.
       if (hold.held) {
         const current = await readClaim(area)
         if (current?.holder === options.holder) await area.set(CLAIM, { name: options.name })
