@@ -120,6 +120,7 @@ export type {
   GiftRef,
   GiftVerdict,
   NewGift,
+  ResaleAttributes,
   ResalePage,
   ResaleQuery,
   StarsPrice,

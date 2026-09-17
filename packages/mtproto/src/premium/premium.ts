@@ -33,6 +33,7 @@ import type {
   TypeBusinessChatLink,
   TypeBusinessWeeklyOpen,
   TypeInputDocument,
+  TypeInputMedia,
   TypeMyBoost,
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
@@ -297,8 +298,34 @@ export interface BusinessIntro {
   readonly title?: string
   /** A line or two under it. */
   readonly description?: string
-  /** A sticker to show with it. */
-  readonly sticker?: TypeInputDocument
+  /**
+   * A sticker to show with it: one Telegram already holds, or media to hand
+   * over first — an upload, or a URL for Telegram to fetch.
+   */
+  readonly sticker?: TypeInputDocument | TypeInputMedia
+}
+
+/**
+ * The document a sticker is, handing media over to Telegram where it is not one
+ * yet.
+ *
+ * Stored against this account rather than sent anywhere, which is the one way
+ * to turn bytes into a document without a message existing.
+ */
+async function stickerOf(
+  client: Premiuming,
+  sticker: TypeInputDocument | TypeInputMedia,
+): Promise<TypeInputDocument> {
+  if (sticker._ === 'inputDocument' || sticker._ === 'inputDocumentEmpty') return sticker
+
+  const { storeMedia } = await import('../messaging/compose.js')
+  const held = await storeMedia(client, { _: 'inputPeerSelf' }, sticker)
+
+  if (held._ !== 'inputMediaDocument') {
+    throw new ValidationError(`a sticker is a document, and Telegram stored this as '${held._}'`)
+  }
+
+  return held.id
 }
 
 /**
@@ -318,6 +345,8 @@ export async function setBusinessIntro(
   client: Premiuming,
   intro: BusinessIntro | undefined,
 ): Promise<void> {
+  const sticker = intro?.sticker === undefined ? undefined : await stickerOf(client, intro.sticker)
+
   const done = await client.api.account.updateBusinessIntro({
     ...(intro === undefined
       ? {}
@@ -326,7 +355,7 @@ export async function setBusinessIntro(
             _: 'inputBusinessIntro' as const,
             title: intro.title ?? '',
             description: intro.description ?? '',
-            ...(intro.sticker === undefined ? {} : { sticker: intro.sticker }),
+            ...(sticker === undefined ? {} : { sticker }),
           },
         }),
   })

@@ -116,6 +116,9 @@ function fake(answers: readonly unknown[] = []) {
       sendStarGiftOffer: named('payments.sendStarGiftOffer'),
       resolveStarGiftOffer: named('payments.resolveStarGiftOffer'),
     },
+    messages: {
+      uploadMedia: named('messages.uploadMedia'),
+    },
     premium: {
       applyBoost: named('premium.applyBoost'),
       getMyBoosts: named('premium.getMyBoosts'),
@@ -413,6 +416,78 @@ describe('sending and settling gifts', () => {
     expect(sent(byNumber, 'payments.getResaleStarGifts')).toMatchObject({ sort_by_num: true })
   })
 
+  it('filters listings by model, pattern and backdrop, and carries the index version', async () => {
+    const client = fake([
+      { _: 'payments.resaleStarGifts', count: 0, gifts: [], chats: [], users: [] },
+    ])
+
+    await resaleOptions(client, {
+      giftId: 1n,
+      attributes: { model: [10n, 11n], pattern: [20n], backdrop: [7] },
+      attributesHash: 99n,
+      forCraft: true,
+      starsOnly: true,
+    })
+
+    expect(sent(client, 'payments.getResaleStarGifts')).toMatchObject({
+      attributes: [
+        { _: 'starGiftAttributeIdModel', document_id: 10n },
+        { _: 'starGiftAttributeIdModel', document_id: 11n },
+        { _: 'starGiftAttributeIdPattern', document_id: 20n },
+        { _: 'starGiftAttributeIdBackdrop', backdrop_id: 7 },
+      ],
+      attributes_hash: 99n,
+      for_craft: true,
+      stars_only: true,
+    })
+  })
+
+  it('leaves the filter out when nothing is being filtered by', async () => {
+    const client = fake([
+      { _: 'payments.resaleStarGifts', count: 0, gifts: [], chats: [], users: [] },
+    ])
+
+    await resaleOptions(client, { giftId: 1n, attributes: {} })
+
+    const asked = sent(client, 'payments.getResaleStarGifts')
+    expect(asked).not.toHaveProperty('attributes')
+    expect(asked).not.toHaveProperty('attributes_hash')
+  })
+
+  it('reports the attribute index a marketplace filters by, where the answer sent one', async () => {
+    const withIndex = fake([
+      {
+        _: 'payments.resaleStarGifts',
+        count: 1,
+        gifts: [],
+        attributes: [{ _: 'starGiftAttributeBackdrop', name: 'Blue', backdrop_id: 7 }],
+        attributes_hash: 99n,
+        counters: [
+          {
+            _: 'starGiftAttributeCounter',
+            attribute: { _: 'starGiftAttributeIdBackdrop', backdrop_id: 7 },
+            count: 3,
+          },
+        ],
+        chats: [],
+        users: [],
+      },
+    ])
+
+    const page = await resaleOptions(withIndex, { giftId: 1n })
+    expect(page.attributes).toHaveLength(1)
+    expect(page.attributesHash).toBe(99n)
+    expect(page.counters?.[0]).toMatchObject({ count: 3 })
+
+    // A later page with the same index sends none, and says so by omission.
+    const without = fake([
+      { _: 'payments.resaleStarGifts', count: 1, gifts: [], chats: [], users: [] },
+    ])
+    const later = await resaleOptions(without, { giftId: 1n, attributesHash: 99n })
+    expect(later).not.toHaveProperty('attributes')
+    expect(later).not.toHaveProperty('attributesHash')
+  })
+
   it('reports the total and the cursor with a page of listings', async () => {
     const client = fake([
       {
@@ -679,6 +754,58 @@ describe('the business surface', () => {
       title: 'Open',
       description: '',
     })
+  })
+
+  it('hands a sticker over to Telegram when it is not a document yet', async () => {
+    const client = fake([
+      {
+        _: 'messageMediaDocument',
+        document: { _: 'document', id: 5n, access_hash: 6n, file_reference: Uint8Array.of(1) },
+      },
+      true,
+    ])
+
+    await setBusinessIntro(client, {
+      title: 'Open',
+      sticker: {
+        _: 'inputMediaUploadedDocument',
+        file: { _: 'inputFile', id: 1n, parts: 1, name: 's.webp', md5_checksum: '' },
+        mime_type: 'image/webp',
+        attributes: [],
+      },
+    })
+
+    // Stored against this account, because a document cannot exist without a
+    // message unless Telegram is asked to hold it.
+    expect(sent(client, 'messages.uploadMedia')).toMatchObject({ peer: { _: 'inputPeerSelf' } })
+    expect(sent(client, 'account.updateBusinessIntro')?.['intro']).toMatchObject({
+      sticker: { _: 'inputDocument', id: 5n },
+    })
+  })
+
+  it('sends a sticker Telegram already holds as it is', async () => {
+    const client = fake([true])
+    const sticker = {
+      _: 'inputDocument' as const,
+      id: 5n,
+      access_hash: 6n,
+      file_reference: Uint8Array.of(1),
+    }
+
+    await setBusinessIntro(client, { title: 'Open', sticker })
+
+    expect(sent(client, 'messages.uploadMedia')).toBeUndefined()
+    expect(sent(client, 'account.updateBusinessIntro')?.['intro']).toMatchObject({ sticker })
+  })
+
+  it('refuses a sticker Telegram stored as something other than a document', async () => {
+    const client = fake([{ _: 'messageMediaPhoto', photo: { _: 'photo', id: 1n } }, true])
+
+    await expect(
+      setBusinessIntro(client, {
+        sticker: { _: 'inputMediaPhotoExternal', url: 'https://example.com/a.png' },
+      }),
+    ).rejects.toThrow(/a sticker is a document/)
   })
 
   it('counts business hours in minutes since Monday', async () => {

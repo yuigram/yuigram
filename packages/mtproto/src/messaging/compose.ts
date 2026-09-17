@@ -97,11 +97,18 @@ export async function uploadMedia(
   peer: string | PeerRef,
   media: TypeInputMedia,
 ): Promise<TypeInputMedia> {
-  return await stored(client, await client.resolve(peer), media)
+  return await storeMedia(client, await client.resolve(peer), media)
 }
 
-async function stored(
-  client: Sending,
+/**
+ * The stored form of media, handing it to Telegram first where it is bytes.
+ *
+ * Takes the calling client's api alone, because storing media needs no
+ * deduplication key and no peer resolution: the families that set a profile or
+ * an intro from a file need exactly this step.
+ */
+export async function storeMedia(
+  client: Pick<Sending, 'api'>,
   peer: TypeInputPeer,
   media: TypeInputMedia,
 ): Promise<TypeInputMedia> {
@@ -188,7 +195,7 @@ async function sendAlbumTo(
   const prepared: TypeInputMedia[] = []
   for (const item of items) {
     stopIfAborted(options?.signal)
-    prepared.push(await stored(client, target.peer, item.media))
+    prepared.push(await storeMedia(client, target.peer, item.media))
   }
   stopIfAborted(options?.signal)
 

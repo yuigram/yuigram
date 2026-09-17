@@ -214,6 +214,30 @@ seconds**. The result is cached per prime, so it is paid once — but it is paid
 on the first connection, and a page that appears to hang for five seconds is a page that looks
 broken. A worker is the obvious place to put it and nothing does that yet.
 
+**What a worker would have to do**, recorded so the work is not redesigned from scratch later:
+
+- **Take the check, not the connection.** The only thing worth moving is the primality test: a
+  2048-bit modulus in, a verdict out. Everything else about the handshake stays where it is,
+  because moving the connection would put a socket, a store and a log behind a message channel.
+- **Be optional, and detected rather than assumed.** A `Worker` exists in a browser and in some
+  edge runtimes and not in others, and a bundle must not reach for one that is not there. No
+  worker means the check runs where it runs now.
+- **Be one module, loaded when a prime is first checked.** The startup budget in
+  [performance.md](performance.md) §2 is the reason: a worker nobody needs must not be in the
+  graph a program pays for by importing the framework.
+- **Answer the same question the same way.** A verdict from a worker and a verdict from the main
+  thread have to be the same verdict, so the test itself stays one implementation called from two
+  places rather than two implementations.
+- **Cache the answer, not the worker.** The result is already cached per prime; a worker that
+  outlived the check would hold memory for something paid once per prime per process.
+- **Say what it is for.** A refusal from a worker means the datacenter published a prime that
+  fails the test — a security answer, not a transport one — so it must not be reported as a
+  worker failure. A worker that cannot start is a worker that is not used, not a connection that
+  fails.
+
+Until that exists, the five seconds are real, they are paid on the first connection in a browser,
+and this document says so rather than describing a plan as a property.
+
 **Timing.** The portable AES is table-driven, and table lookups indexed by key-dependent bytes are
 the classic cache-timing side channel. The module says so. Nothing here claims constant-time
 behaviour, and passing tests would not establish it if it did.

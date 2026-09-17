@@ -2105,6 +2105,29 @@ built from an old identifier is refused exactly as a download built from an old 
 any other way, and is refreshed the same way — by finding the file again. Nothing in the encoding
 extends the life of anything, and §11's file-reference rules are unchanged by it.
 
+**Three questions that look like one.** "Can this identifier be used" is really three, and
+they have different answers:
+
+| Question | What decides it | What it means when the answer is no |
+| --- | --- | --- |
+| Can the string be read at all? | Its version and layout | Refused by name: a version newer than this understands, or bytes that are not an identifier |
+| Can a download location be built from it? | Which file the layout names | Read but not fetchable — a picture named by volume and position has no request left that takes it |
+| Will the download be accepted? | Whether the reference inside is still current | A refusal about the reference, answered only by obtaining the file again |
+
+The third is the one that needs saying plainly: **recovery needs the context the reference came
+from, and an identifier is not that context.** A reference is reissued by whatever issued it —
+the message, the story, the profile — refetched. So:
+
+- a download started from an event recovers by itself, because the update names the message and
+  the transfer is handed a location that can go back to it;
+- a copy recovers by itself, because copying reads the source message and can read it again;
+- a download built from an identifier alone **cannot**. There is nothing in the string that says
+  where the file was seen, so a caller holding a stale one has to go back to whatever gave it the
+  string and get a current one. What Yuigram does here is refuse clearly rather than retry
+  something that cannot work.
+
+A unique identifier is outside all three: nothing is fetched from it, so it never goes stale.
+
 **Versions.** Version 4 is written. Version 2 is read, because identifiers that old are still
 passed around and refusing them would strand files nobody can re-obtain. A version or subversion
 newer than this understands is refused by name rather than guessed at, because guessing at a

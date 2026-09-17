@@ -49,6 +49,8 @@ import type {
   TypeSavedStarGift,
   TypeStarGift,
   TypeStarGiftAttribute,
+  TypeStarGiftAttributeCounter,
+  TypeStarGiftAttributeId,
   TypeStarsAmount,
   TypeTextWithEntities,
   TypeUpdates,
@@ -494,6 +496,37 @@ export interface ResalePage {
   readonly total: number
   /** What to pass as `from` for the next page, absent at the end. */
   readonly next: string | undefined
+  /**
+   * Every attribute the gifts on sale have, where the answer described them.
+   *
+   * What a marketplace filters by: the models, patterns and backdrops that
+   * exist for this gift, each with its rarity. Telegram sends the index once
+   * and then leaves it out of later answers — see {@link ResalePage.attributesHash}.
+   */
+  readonly attributes?: readonly TypeStarGiftAttribute[]
+  /**
+   * The index's version.
+   *
+   * Passed back as {@link ResaleQuery.attributesHash} on later pages so the
+   * index is not resent; an answer that leaves the index out is saying the one
+   * already held is current.
+   */
+  readonly attributesHash?: bigint
+  /** How many listings each attribute appears on, where the answer counted. */
+  readonly counters?: readonly TypeStarGiftAttributeCounter[]
+}
+
+/**
+ * Which attributes a listing must have to be shown.
+ *
+ * Models and patterns are named by the document each is drawn from, backdrops
+ * by their own identifiers — the identifiers the attribute index reports. How
+ * several of them combine is Telegram's to apply.
+ */
+export interface ResaleAttributes {
+  readonly model?: readonly bigint[]
+  readonly pattern?: readonly bigint[]
+  readonly backdrop?: readonly number[]
 }
 
 /** How resale listings are asked for. */
@@ -502,10 +535,36 @@ export interface ResaleQuery {
   readonly giftId: bigint
   /** Order by price, or by the number stamped on the gift. */
   readonly sort?: 'price' | 'number'
+  /** Only the ones the attributes name. */
+  readonly attributes?: ResaleAttributes
+  /** The index version a caller already holds, so it is not sent again. */
+  readonly attributesHash?: bigint
+  /** Only listings that can be used in a craft. */
+  readonly forCraft?: boolean
+  /** Only listings priced in Stars, leaving out the ones priced in TON. */
+  readonly starsOnly?: boolean
   /** Where to continue from, out of a previous page's `next`. */
   readonly from?: string
   /** How many to ask for. Telegram's maximum when not said. */
   readonly limit?: number
+}
+
+/** The attribute identifiers a query filters by, as the request carries them. */
+function attributeIds(attributes: ResaleAttributes): TypeStarGiftAttributeId[] {
+  return [
+    ...(attributes.model ?? []).map((id) => ({
+      _: 'starGiftAttributeIdModel' as const,
+      document_id: id,
+    })),
+    ...(attributes.pattern ?? []).map((id) => ({
+      _: 'starGiftAttributeIdPattern' as const,
+      document_id: id,
+    })),
+    ...(attributes.backdrop ?? []).map((id) => ({
+      _: 'starGiftAttributeIdBackdrop' as const,
+      backdrop_id: id,
+    })),
+  ]
 }
 
 /**
@@ -520,18 +579,27 @@ export interface ResaleQuery {
  * the first twenty.
  */
 export async function resaleOptions(client: Gifting, query: ResaleQuery): Promise<ResalePage> {
+  const wanted = query.attributes === undefined ? [] : attributeIds(query.attributes)
+
   const answer = await client.api.payments.getResaleStarGifts({
     gift_id: query.giftId,
     offset: query.from ?? '',
     limit: query.limit ?? 100,
     ...(query.sort === 'price' ? { sort_by_price: true } : {}),
     ...(query.sort === 'number' ? { sort_by_num: true } : {}),
+    ...(query.forCraft === true ? { for_craft: true as const } : {}),
+    ...(query.starsOnly === true ? { stars_only: true as const } : {}),
+    ...(wanted.length === 0 ? {} : { attributes: wanted }),
+    ...(query.attributesHash === undefined ? {} : { attributes_hash: query.attributesHash }),
   })
 
   return {
     gifts: answer.gifts.filter((gift) => gift._ === 'starGiftUnique'),
     total: answer.count,
     next: answer.next_offset,
+    ...(answer.attributes === undefined ? {} : { attributes: answer.attributes }),
+    ...(answer.attributes_hash === undefined ? {} : { attributesHash: answer.attributes_hash }),
+    ...(answer.counters === undefined ? {} : { counters: answer.counters }),
   }
 }
 

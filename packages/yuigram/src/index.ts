@@ -272,6 +272,7 @@ export {
   type ReactionPage,
   ReactionView,
   type ReactionWalkOptions,
+  type ResaleAttributes,
   type ResalePage,
   type ResaleQuery,
   type Restrictions,
