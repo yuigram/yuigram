@@ -270,9 +270,21 @@ change in the minor position and nothing between the two was published.
   - Conversations: membership and permissions, invite-link operations, management, creation
     and deletion, lookup, and folders and dialog state — sixty operations, loaded when one is
     called so a bot that never uses them pays nothing
-  - Still to come in this phase, largest first: the forum and story operations beside the four
-    lists already walked, the gift, boost and business surfaces, and a small number of
-    conversation operations that depend on a dialog cache this project does not keep
+  - Peers in bulk: reading who several are through the three bulk reads the protocol has, one
+    request per family rather than one per peer, and finding a conversation in the list by
+    walking it rather than by keeping a cache
+  - Following a channel: Telegram does not push a channel's updates to an account that is not
+    looking at it, so watching one is a subscription that asks at the server's interval
+  - Forums and stories: topics — opening, editing, closing, pinning, reordering — and stories
+    — posting, editing, pinning, archiving, reacting, reading and counting views
+  - Gifts, boosts and business: the gift lifecycle from sending to withdrawal, each paid step
+    going through the payment form Telegram requires, plus boost slots and the business surface
+  - File identifiers: reading and writing the opaque string files travel under between clients,
+    and the stable identifier that says two of them are the same file. See
+    [mtproto.md](mtproto.md) §11
+  - Still to come in this phase, largest first: a page form beside each walk that reports the
+    total, the message surface's remaining shapes (albums, copies, quoted replies, comments),
+    bot-side configuration, stickers, and the scheduled-message family
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`

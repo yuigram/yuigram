@@ -172,6 +172,53 @@ since the identifier and access hash arrive in the updates and there is no separ
 Answers carrying updates now reach the account, so a program that renames a channel sees the
 rename through its own handlers.
 
+**Peers are read in bulk, and conversations can be found rather than only named.**
+`account.peersOf([…])` reads who several peers are through the three bulk reads the protocol has
+— people, basic groups, channels — which is one request per family rather than one per peer, and
+the answer is positional, with a gap where a peer could not be named or Telegram would not
+describe it. `account.peer` and `account.user` are the single forms. `account.findDialogs` asks
+directly about whatever can already be addressed and walks the conversation list only for what is
+left, stopping the moment the last one turns up; names are matched against what the walk itself
+wrote down, so finding by name costs no extra request.
+
+**A channel can be watched.** Telegram does not push a channel's updates to an account that is
+not looking at it. `account.watchChat(chat)` starts a subscription that asks for the channel's
+difference at the interval each answer names, hands the updates to the ordinary handlers, and
+returns the way to stop. It is counted, so two parts of a program may watch one channel, and it
+ends by itself if the account turns out to no longer be in the channel.
+
+**Forums have topics.** Opening, renaming, closing, pinning, reordering, deleting a thread's
+history, reading topics by number, and turning a supergroup into a forum. The General topic is
+hidden through the same request that edits any other, so it has a name of its own rather than a
+special case a caller has to know about; deleting a thread's history keeps the account's place in
+the update stream, which a deletion it performed itself would otherwise gap.
+
+**Stories can be posted.** Posting, editing, deleting, pinning to a profile, archiving somebody
+else's, reacting, reading, counting views, and hiding this account's own views for a while. Who
+may see a story is sent explicitly even when it is everyone, because the field is required and a
+story whose audience was never decided should not be posted; an edit that does not mention the
+audience leaves it alone, which posting does not.
+
+**Gifts, boosts and a business profile.** Sending a gift, deciding what happens to one that
+arrives, upgrading it into a collectible, transferring it, buying one on resale, pricing one,
+prepaying an upgrade, pinning them, and the reads behind each. Everything that costs Stars
+fetches a payment form and pays that form — two requests Telegram requires, kept together — and
+takes the free-of-charge call where the server answers that nothing is owed. Prices keep their
+nanostar part, and a fractional price given as a plain number is refused rather than truncated.
+Boost slots say whether boosting would cost somebody else's boost, which is worth knowing before
+doing it. A Premium account can publish an intro, opening hours and pre-filled links.
+
+**Files travel between clients as one string.** `readFileId` and `writeFileId` read and write the
+opaque identifier Bot API clients hand files around as — TDLib's encoding of exactly the fields a
+download needs — so a file a bot sends can be fetched here, and one fetched here can be handed to
+a bot. `uniqueFileId` is the other identifier, which carries no access hash and no file reference,
+never goes stale, and answers "is this the same file" the same way in every Telegram client.
+
+An identifier carrying a file reference does not make that reference valid: it is a record of one,
+and a download built from a stale identifier is refused exactly as one built from a stale
+reference held any other way. Version 4 is written and version 2 is read; a newer version is
+refused by name rather than guessed at.
+
 **A file can be pulled as well as pushed.** `account.downloadIterable(request)` yields chunks in
 file order, and `break` stops the transfer behind it. `downloadTo` could not express that: a sink
 is called and cannot decline the next call, so a caller that had seen enough could only throw.
