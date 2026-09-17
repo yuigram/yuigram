@@ -136,6 +136,25 @@ returns nothing, and a last page that still carries a state. `docs/entities.md` 
 A walk yields a view where reading the value needs interpretation, and the value the schema
 describes where it does not.
 
+**Every walk now has a page read beside it.** `account.historyPage`, `account.membersPage`,
+`account.savedGiftsPage` and the rest answer with the items, the total Telegram reported and a
+cursor to continue from — which is what a program needs when a list has to be shown with a
+count, stopped now and carried on later. A total says whether it is exact, approximate or merely
+reported, and is never the length of the page; a cursor is opaque but not secret, refused before
+any request when handed to a different list or the same list with different filters, and carries
+peer references rather than access hashes. An empty page with a moving cursor is a list that
+paused, not a list that ended. Twenty lists ship, under nine continuation policies, because that
+is how many Telegram actually specifies.
+
+**Sends that are several messages, or several steps.** `sendAlbum` hands each uploaded item to
+Telegram first, because an album cannot carry bytes, then sends one request with a key per item
+and answers in the order given. `copyMessage` and `copyAlbum` read a message and send what it
+carries as a new one, which is what lets a caption change where a forward cannot — and what lets
+a file reference that expired in between be put right, by reading the message again. A quote is
+cut out of the message it quotes so the two cannot disagree; a comment finds the post's thread
+and goes to the discussion group. Scheduled messages can be read, removed, and sent now, with
+the pairing between each scheduled message and what it became read from the answer.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones
@@ -206,7 +225,10 @@ fetches a payment form and pays that form — two requests Telegram requires, ke
 takes the free-of-charge call where the server answers that nothing is owed. Prices keep their
 nanostar part, and a fractional price given as a plain number is refused rather than truncated.
 Boost slots say whether boosting would cost somebody else's boost, which is worth knowing before
-doing it. A Premium account can publish an intro, opening hours and pre-filled links.
+doing it. A Premium account can publish an intro, opening hours and pre-filled links, and the
+intro's sticker may be a file to hand over rather than only one Telegram already holds. Resale
+listings can be narrowed to a model, a pattern or a backdrop, and the answer carries the
+attribute index a marketplace filters by, with the hash that keeps it from being sent twice.
 
 **Files travel between clients as one string.** `readFileId` and `writeFileId` read and write the
 opaque identifier Bot API clients hand files around as — TDLib's encoding of exactly the fields a
@@ -218,6 +240,21 @@ An identifier carrying a file reference does not make that reference valid: it i
 and a download built from a stale identifier is refused exactly as one built from a stale
 reference held any other way. Version 4 is written and version 2 is read; a newer version is
 refused by name rather than guessed at.
+
+**The Bot API's payloads are built, and its other updates can be filtered.** `attach`,
+`newSticker`, `content`, `preview`, `replyTo`, `reaction`, `pollOption`, `price`, `invoice`,
+`shipping`, `menuButton`, `botCommands`, `permissions` and `adminRights` build the payloads
+methods take, each returning the object the schema declares and nothing more. They exist because
+the rules are not in the types: an album is captioned once, on the item a client shows the
+caption from; a permission set has to name all sixteen, because Telegram reads an absent
+permission as a withheld one; an invoice in Stars is priced in exactly one line.
+
+Filters now cover the updates that are not messages — reactions on both sides of a change,
+the three moments of a payment matched by the bot's own invoice payload, a standing change
+derived from the statuses before and after, routing by kind including a plugin's own, a reply to
+one particular message, boosts, business connections, game buttons and chosen inline results.
+`when()` takes a filter as well as a predicate, so gated middleware is written against what
+matching proved.
 
 **A peer can be named across the seam, and a link read or written.** `peerIdentity` reads a Bot
 API chat id into a kind and a bare identifier, `botApiId` writes one back, and `markedKind` says

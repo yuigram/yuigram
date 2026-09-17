@@ -180,6 +180,7 @@ the line:
 | The same, loaded when a conversation is operated on | 97 | 95.3 / 95.8 / 99.0 | 85–108 |
 | Plus forums, stories, gifts and premium, all loaded when called | 97 | — | — |
 | Plus the file-identifier surface | 98 | 99.4 / over / 92.1 | 89–107 |
+| Plus identifiers, links and the Bot API payload builders | 100 | 91.7 / 95.4 | 84–107 |
 
 The middle row is the one that matters for how the budget was being read: the
 same tree measured above and below 100 ms depending on the run, so a passing
@@ -211,6 +212,31 @@ seven — passed in two of the three. That is the straddling this section has de
 paged lists, now with less room: a tree whose median sits within a few milliseconds of the budget
 will report both answers depending on what else the machine is doing, and a single passing run is
 not evidence that it is comfortably inside.
+
+**The last row was measured against a control, and came out faster.** Two eager modules were
+added — marked identifiers with the link grammar in `@yuigram/core`, and the Bot API payload
+builders — and both are synchronous pure functions, so the argument that kept the
+file-identifier surface eager keeps these eager too: the only way to defer them would be to make
+them `async`, which hides work behind a signature change.
+
+Rather than assume the cost, both trees were built and measured in alternating rounds on one
+machine, one warm-up discarded, seven samples each:
+
+| Tree | Eager modules | Round medians | Sample range |
+| --- | --- | --- | --- |
+| Before this work | 98 | 94.4 / 97.8 ms | 85–113 ms |
+| After it | 100 | 91.7 / 95.4 ms | 84–107 ms |
+
+Both rounds agree on the ordering, which is what makes a 2–3 ms difference worth reporting at
+all, and the direction is the opposite of what the module count predicts. The explanation is the
+paged reads in the same window: the walks used to be one eager module holding every walk's
+implementation, and splitting the page reads into a lazily imported module of their own took
+more eager *bytes* out of the graph than the two new modules put back. Modules are the lever this
+section has measured, and this is the reminder that they are a proxy for work rather than the
+work itself.
+
+The gate's own run of the same procedure reports **97.4 ms, range 85–111**, inside the budget,
+which is the same straddling described above.
 
 The attributable part is one module, about 0.4 ms. The rest is the spread. **The budget is not
 being widened and the statistic is not being changed**; what is being recorded is that the

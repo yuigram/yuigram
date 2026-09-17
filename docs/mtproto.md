@@ -1723,6 +1723,41 @@ be less true than saying the identifier is not known.
 operations return their answer unchanged: an edit and a deletion are about a message the caller
 already identified, so there is nothing in the answer to discover.
 
+### 9.6.1 Sends that are more than one message, or more than one step
+
+Four shapes sit above the plain send, and each is a protocol rule rather than a convenience:
+
+**An album is one request.** `messages.sendMultiMedia` carries several media with one
+deduplication key each, and Telegram will not take bytes inside one — every uploaded item has to
+be handed over first with `messages.uploadMedia`, which returns the photo or document Telegram
+stored. So `sendAlbum` prepares each item, then sends once, and answers one result per item in
+the order given, matched by key rather than by position. The album is sent whole or not at all;
+items prepared before a failure are stored and sent nowhere, which costs nothing.
+
+**A copy is not a forward.** A forward keeps the message as the server holds it and can only drop
+its author or its captions. A copy reads the message and sends what it carries as a new message,
+which is the only way its caption can change — and is why a copied dice rolls again, a copied
+poll starts with no votes, and a copied quiz needs its right answer, which Telegram shows only to
+somebody who has answered it or created it. An invoice, a giveaway, paid media and a service
+message cannot be copied at all. Because a copy reads the source, it is also the one send that
+can recover a file reference that expired underneath it: it reads the message again, once.
+
+**A quote is part of the reply header.** `quote_text` must appear in the answered message
+exactly, formatting included, and `quote_offset` says where — so the two are cut out of the
+message together (`quoteOf`) rather than assembled by a caller who could get them to disagree.
+
+**A comment is a message in another chat.** A channel post's comments live in the linked
+discussion group, and `messages.getDiscussionMessage` returns the post's copies there newest
+first — so the thread is the *last* message listed, and the comment is sent to the group, not to
+the channel. Answering a comment inside the thread files the answer in the same thread, which is
+why it needs no separate thread field.
+
+Two smaller rules travel with them. `top_msg_id` belongs in a reply header only when the answered
+message is inside a topic and is not the message that opened it; the General topic was opened by
+nothing, so a message there carries no header at all. And `schedule_date` takes `0x7FFFFFFE` to
+mean "when the person is next online", which Telegram accepts only in a private conversation with
+somebody whose last-seen time is visible.
+
 ### 9.7 Continuing a list that arrived in pages
 
 A page of dialogs does not say where the next one starts. `messages.getDialogs` takes
