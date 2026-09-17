@@ -21,7 +21,9 @@ import type {
   MtprotoContext,
   MtprotoEventKind,
   NormalizedUpdate,
+  PeerIdentity,
   PeerRef,
+  TelegramLink,
 } from '../src/index.js'
 import { App } from '../src/index.js'
 
@@ -145,5 +147,21 @@ describe('the name both subsystems wanted', () => {
     // would leave behind.
     expectTypeOf<NormalizedUpdate>().not.toBeAny()
     expectTypeOf<NormalizedUpdate['updateId']>().toEqualTypeOf<number>()
+  })
+})
+
+describe('identifiers and links, which belong to neither transport', () => {
+  it('names a peer in the shape an account resolves', () => {
+    // An identity read from a Bot API chat id goes straight to
+    // `account.resolve`, which finds the access hash; neither side converts.
+    expectTypeOf<PeerIdentity>().not.toBeAny()
+    expectTypeOf<PeerIdentity>().toExtend<PeerRef>()
+    expectTypeOf<PeerRef>().toExtend<PeerIdentity>()
+    expectTypeOf<PeerIdentity>().toExtend<Parameters<Account['resolve']>[0]>()
+  })
+
+  it('publishes the link description as a real union', () => {
+    expectTypeOf<TelegramLink>().not.toBeAny()
+    expectTypeOf<TelegramLink['kind']>().toExtend<string>()
   })
 })

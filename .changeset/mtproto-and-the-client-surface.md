@@ -219,6 +219,20 @@ and a download built from a stale identifier is refused exactly as one built fro
 reference held any other way. Version 4 is written and version 2 is read; a newer version is
 refused by name rather than guessed at.
 
+**A peer can be named across the seam, and a link read or written.** `peerIdentity` reads a Bot
+API chat id into a kind and a bare identifier, `botApiId` writes one back, and `markedKind` says
+what a marked identifier is — including a secret chat, whose range sits below the channels and is
+refused as a peer rather than read as one of them. The ranges are Telegram's, edges included; a
+number that has lost precision is refused rather than rounded. An identity is the shape an
+account resolves, and carries no access hash: `account.resolve` still supplies that.
+
+`readLink` and `writeLink` do the same for links: usernames, phone numbers, invitations, chat
+folders, messages with their thread, comment and media timestamp, shares, video chats, sticker and
+emoji sets, stories, boosts, bot starts, adding a bot as an administrator, mini apps, attachment
+menus and games, in `t.me`, `<username>.t.me` and `tg:` form. Where Telegram's published syntax is
+silent, a link is read the way its apps read one. Both live in `@yuigram/core`, so a bot uses them
+without loading MTProto.
+
 **A file can be pulled as well as pushed.** `account.downloadIterable(request)` yields chunks in
 file order, and `break` stops the transfer behind it. `downloadTo` could not express that: a sink
 is called and cannot decline the next call, so a caller that had seen enough could only throw.

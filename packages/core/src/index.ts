@@ -1,14 +1,34 @@
 /**
  * Transport-agnostic framework core.
  *
- * This package holds the parts of Yuigram that know nothing about Telegram:
+ * This package holds the parts of Yuigram that belong to neither transport:
  * dispatch, middleware, filters, the context contract, sessions, storage,
- * errors, logging and the plugin system.
+ * errors, logging and the plugin system — and the two notations a Telegram
+ * peer or link is written in outside a session, marked identifiers and links,
+ * which both transports read and neither owns.
  *
  * It must never import from `@yuigram/bot-api` or `@yuigram/mtproto`.
  * The boundary is enforced by the layer-boundary invariant.
  */
 
+export {
+  type AttachTarget,
+  botApiId,
+  isMarkedPeerId,
+  type LinkAdminRight,
+  type LinkChat,
+  LinkError,
+  type MarkedKind,
+  type MiniAppMode,
+  markedKind,
+  PeerIdError,
+  type PeerIdentity,
+  type PeerIdentityKind,
+  peerIdentity,
+  readLink,
+  type TelegramLink,
+  writeLink,
+} from './addressing/addressing.js'
 export { App, AppError, type AppOptions, type ClientFailure } from './app/app.js'
 export type { AppClient } from './app/client.js'
 export {

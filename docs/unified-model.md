@@ -148,6 +148,71 @@ is the important practical point: **the overwhelming majority of handler code ad
 peers it just heard from**, so the unified surface covers the common case honestly, and the
 divergence appears only where it genuinely exists — addressing a peer out of the blue.
 
+### Crossing between the two: identifiers and links
+
+What does cross the seam is a *name* for a peer, and there are two notations for one that
+travel through places that belong to neither transport — configuration, a database column, a
+Bot API payload, a link somebody pasted. Both are read and written in `@yuigram/core`, so a
+program that only runs a bot never loads MTProto to use them:
+
+```ts
+import { botApiId, peerIdentity, readLink, writeLink } from 'yuigram'
+
+peerIdentity(-1001234567890)                    // { kind: 'channel', id: 1234567890n }
+botApiId({ kind: 'channel', id: 1234567890n })  // -1001234567890
+
+readLink('https://t.me/c/1234567890/42?single')
+// { kind: 'message', chat: { channel: { kind: 'channel', id: 1234567890n } }, id: 42, single: true }
+
+writeLink({ kind: 'bot-start', bot: 'shop_bot', payload: 'spring' })
+// 'https://t.me/shop_bot?start=spring'
+```
+
+Three things are kept apart, because confusing them is how the peer problem comes back:
+
+| | What it is | Where it comes from |
+| --- | --- | --- |
+| Peer identity | A kind and a bare identifier | `peerIdentity`, an event's `chat` or `sender` |
+| Marked identifier | The same identity as one signed number: the Bot API's `chat_id` | `botApiId` |
+| Resolved input peer | The identity plus the account's own access hash | `account.resolve(identity)` only |
+
+A peer identity has the same shape as an account's peer reference, so one read from a Bot API
+chat id goes straight to `account.resolve`, and resolution stays where §3 put it. Nothing here
+produces an access hash: an identifier names a peer and never reaches one.
+
+**Marked identifiers follow Telegram's own ranges**, with the boundaries its client library uses:
+users up to 2^40 − 1, basic groups below 10^12, ordinary channels up to 10^12 − 2^31, monoforum
+channels between 10^12 + 2^31 and 3·10^12, and secret chats in the 2^32-wide range around −2·10^12.
+A secret chat is recognised — `markedKind` answers `'secret-chat'` — and refused as a peer,
+because it exists only on the device holding its key; reading that range as channels would name
+a different conversation. Every valid identifier fits a JavaScript number exactly, so a number
+that is not a safe integer is refused rather than rounded, and text must be canonical decimal.
+
+**Links follow Telegram's published syntax, and where it is silent, its apps.** Eighteen kinds
+are described: usernames and phone numbers with a message draft, invitations, chat folders,
+messages with their thread, comment, album item, media timestamp, checklist task and poll
+option, shares, video chats and live streams, sticker and emoji sets, stories, boosts, bot starts,
+adding a bot to a group or channel with administrator rights, main and named mini apps,
+attachment menus in the current chat, a chosen one or a named one, and games — in their `t.me`,
+`telegram.me`, `telegram.dog`, `<username>.t.me` and `tg:` forms. Where a link carries several
+arguments, the first that forms a link decides; where a value is malformed, that argument is
+passed over rather than failing the link, as Telegram's apps do. A draft that is not valid UTF-8 is
+left out rather than decoded into different text.
+
+Administrator rights are described as the link lists them — known names, once each, in the
+link's order. Which of them apply to a group or a channel, and the implied right to manage the
+chat, are decided by whoever applies them, not by reading the link.
+
+A Telegram link of a kind not described here — a proxy, a theme, a gift, a live story, an
+affiliate referral — reads as `undefined` rather than being mistaken for a username. Writing
+always produces an `https://t.me/` link in the published form, and refuses a description a
+client would read as something else: a start parameter past 64 characters or with characters
+outside base64url, a right that does not exist, a channel link with no rights, an invite hash of
+digits alone, which every app opens as a phone number.
+
+Reading and writing are pure. Opening a link — resolving the username, joining the chat, starting
+the bot — is a request, and belongs to a client.
+
 ---
 
 ## 4. Update delivery vs. update dispatch
