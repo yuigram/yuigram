@@ -28,6 +28,7 @@ import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { POOL_LIMITS } from '../src/network/pools.js'
 import type { MtprotoContext } from '../src/normalize/context.js'
+import type { PeerRef } from '../src/normalize/normalize.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer } from './server/files.js'
@@ -3521,5 +3522,164 @@ describe('a redirection to a datacenter the list does not name', () => {
 
     await instance.dispose()
     await outcome(call)
+  })
+})
+
+describe('watching a conversation nobody pushes updates for', () => {
+  /** Let the calls a watch started actually travel. */
+  const settleCalls = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 60))
+
+  const CHANNEL: PeerRef = { kind: 'channel', id: 500n }
+
+  /**
+   * An account that can name one channel, and a record of what it asked.
+   *
+   * Everything here is about which requests a watch produces, so the datacenter
+   * answers them rather than a connection carrying them: the peer is written
+   * down as encountering it would have, and the answers are the shapes Telegram
+   * sends for a difference.
+   */
+  function watching(options: { readonly timeout?: number } = {}) {
+    const asked: TlValue[] = []
+    const instance = harness({
+      api: (query) => {
+        asked.push(query)
+
+        if (query._ === 'updates.getChannelDifference') {
+          return {
+            _: 'updates.channelDifferenceEmpty',
+            final: true,
+            pts: 4,
+            ...(options.timeout === undefined ? {} : { timeout: options.timeout }),
+          }
+        }
+
+        if (query._ === 'messages.getPeerDialogs') {
+          return {
+            _: 'messages.peerDialogs',
+            dialogs: [
+              {
+                _: 'dialog',
+                peer: { _: 'peerChannel', channel_id: CHANNEL.id },
+                top_message: 1,
+                read_inbox_max_id: 0,
+                read_outbox_max_id: 0,
+                unread_count: 0,
+                unread_mentions_count: 0,
+                unread_reactions_count: 0,
+                notify_settings: { _: 'peerNotifySettings' },
+                pts: 3,
+              },
+            ],
+            messages: [],
+            chats: [],
+            users: [],
+            state: { _: 'updates.state', pts: 1, qts: 0, date: 0, seq: 0, unread_count: 0 },
+          }
+        }
+
+        return undefined
+      },
+    })
+
+    return { instance, asked, count: (name: string) => asked.filter((q) => q._ === name).length }
+  }
+
+  /** Write the channel down, as meeting it would have. */
+  const named = async (instance: MockAccount) => {
+    await instance.account.peers.save({
+      kind: 'channel',
+      id: CHANNEL.id,
+      accessHash: 5000n,
+      min: false,
+      usernames: [],
+    })
+  }
+
+  it('asks for the channel’s difference as soon as it is watched', async () => {
+    // Telegram does not push a channel's updates to an account that is not
+    // looking at it, so looking at it is a request rather than a flag.
+    const w = watching()
+    await reach(w.instance)
+    await named(w.instance)
+
+    await w.instance.account.watchChat(CHANNEL)
+    await settleCalls()
+
+    expect(w.count('updates.getChannelDifference')).toBe(1)
+    await w.instance.dispose()
+  })
+
+  it('reads a starting position from the dialog when it has none stored', async () => {
+    // A channel the account has never held a position for cannot be asked for
+    // a difference at all, and the conversation-list row carries one.
+    const w = watching()
+    await reach(w.instance)
+    await named(w.instance)
+
+    await w.instance.account.watchChat(CHANNEL)
+    await settleCalls()
+
+    expect(w.count('messages.getPeerDialogs')).toBe(1)
+    const asked = w.asked.find((one) => one._ === 'updates.getChannelDifference')
+    expect(asked?.['pts']).toBe(3)
+    await w.instance.dispose()
+  })
+
+  it('stops asking once the watch is released', async () => {
+    const w = watching({ timeout: 30 })
+    await reach(w.instance)
+    await named(w.instance)
+
+    const stop = await w.instance.account.watchChat(CHANNEL)
+    await settleCalls()
+    const before = w.count('updates.getChannelDifference')
+
+    stop()
+    // Releasing twice is not an error and does not release somebody else's.
+    stop()
+
+    await settleCalls()
+    expect(w.count('updates.getChannelDifference')).toBe(before)
+    await w.instance.dispose()
+  })
+
+  it('does nothing for a conversation that has no sequence of its own', async () => {
+    // A private chat's updates are in the account's own sequence and already
+    // arrive. Accepted and ignored rather than refused, so a caller does not
+    // have to know which kind of conversation it is holding.
+    const w = watching()
+    await reach(w.instance)
+    await w.instance.account.peers.save({
+      kind: 'user',
+      id: 7n,
+      accessHash: 70n,
+      min: false,
+      usernames: [],
+    })
+
+    const stop = await w.instance.account.watchChat({ kind: 'user', id: 7n })
+    await settleCalls()
+
+    expect(w.count('updates.getChannelDifference')).toBe(0)
+    expect(() => {
+      stop()
+    }).not.toThrow()
+    await w.instance.dispose()
+  })
+
+  it('releases what it was watching when the account stops', async () => {
+    const w = watching({ timeout: 30 })
+    await reach(w.instance)
+    await named(w.instance)
+
+    const stop = await w.instance.account.watchChat(CHANNEL)
+    await settleCalls()
+    await w.instance.account.stop()
+
+    // The account is gone, and letting go afterwards is still safe.
+    expect(() => {
+      stop()
+    }).not.toThrow()
   })
 })

@@ -37,7 +37,7 @@ interface Entry {
 }
 
 /** What a channel is doing when it is asked about. */
-export type ChannelBehaviour = 'normal' | 'private' | 'too-long'
+export type ChannelBehaviour = 'normal' | 'private' | 'too-long' | 'unavailable'
 
 /** How a difference request should answer. */
 export interface DifferenceFaults {
@@ -47,6 +47,18 @@ export interface DifferenceFaults {
   readonly sliceAt?: number
   /** How each channel answers. */
   readonly channels?: ReadonlyMap<string, ChannelBehaviour>
+}
+
+/**
+ * How long a channel difference tells a client to wait before asking again.
+ *
+ * Telegram puts this in every channel difference, and a client following a
+ * channel is expected to use it rather than a number of its own. Optional here
+ * so that cases about catching up are unaffected by cases about following.
+ */
+export interface ChannelTiming {
+  /** Seconds, as the `timeout` field of a channel difference. */
+  readonly timeout?: number
 }
 
 export class UpdateServerError extends Error {}
@@ -75,6 +87,9 @@ export class UpdateServer {
 
   /** What a difference request should do instead of catching up honestly. */
   faults: DifferenceFaults = {}
+
+  /** What every channel difference says about when to ask again. */
+  timing: ChannelTiming = {}
 
   /** Every request the server was asked to answer. */
   readonly asked: TlValue[] = []
@@ -339,11 +354,18 @@ export class UpdateServer {
       throw new TelegramError('CHANNEL_PRIVATE (400)')
     }
 
+    if (behaviour === 'unavailable') {
+      // A refusal that says nothing about whether the account is still in the
+      // channel — the difference between giving up and trying again later.
+      throw new TelegramError('TIMEOUT (500)')
+    }
+
     const box = this.#channels.get(key) ?? { pts: 1, log: [] }
     if (behaviour === 'too-long') {
       return {
         _: 'updates.channelDifferenceTooLong',
         final: true,
+      ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
         dialog: { _: 'dialog' },
         messages: [],
         chats: [...this.#chats],
@@ -354,7 +376,12 @@ export class UpdateServer {
     const from = readInt(query, 'pts')
     const missing = box.log.filter((entry) => entry.pts > from)
     if (missing.length === 0) {
-      return { _: 'updates.channelDifferenceEmpty', final: true, pts: box.pts }
+      return {
+        _: 'updates.channelDifferenceEmpty',
+        final: true,
+      ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
+        pts: box.pts,
+      }
     }
 
     const limit = this.faults.sliceAt
@@ -364,6 +391,7 @@ export class UpdateServer {
     return {
       _: 'updates.channelDifference',
       ...(complete ? { final: true } : {}),
+      ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
       pts: taken.at(-1)?.pts ?? from,
       new_messages: taken.map((entry) => entry.update['message'] as TlValue),
       other_updates: [],

@@ -506,3 +506,180 @@ describe('a server that answers with something else entirely', () => {
     expect(state.pts).toBe(5)
   })
 })
+
+/**
+ * Following a channel, which Telegram does not push updates for.
+ *
+ * A channel's updates reach an account only while it is looking at the channel.
+ * What the protocol offers instead is the channel's difference on request, and
+ * each answer says how long to wait before asking again — so following one
+ * means asking repeatedly, at the server's interval rather than a chosen one.
+ *
+ * The scheduler is supplied, so the waiting is a step a case takes.
+ */
+describe('following a channel', () => {
+  /**
+   * Write the channel down, as encountering it would have.
+   *
+   * A channel is named by an access hash the account can only have learned by
+   * meeting it, so one never met cannot be asked about at all. Every case here
+   * is about what happens *after* that, so it is arranged rather than acted
+   * out — the refusal for a channel that was never named has a case of its own
+   * among the catch-up ones.
+   */
+  const named = async (c: ReturnType<typeof client>) => {
+    await c.peers.save({ kind: 'channel', id: CHANNEL, accessHash: 7770n, min: false, usernames: [] })
+  }
+
+  it('asks for the difference straight away', async () => {
+    // The reason a channel was opened is that somebody wants to see it, so the
+    // first fetch is now rather than after an interval.
+    const c = client()
+    c.server.channelMessage(CHANNEL, 101)
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+    expect(c.ids()).toHaveLength(1)
+  })
+
+  it('asks again after the interval the server named', async () => {
+    const c = client()
+    c.server.timing = { timeout: 30 }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    const armed = c.timers.filter((timer) => !timer.cancelled && !timer.fired)
+    expect(armed).toHaveLength(1)
+    expect(armed[0]?.delay).toBe(30_000)
+
+    // What arrived while nothing was asking is what the next ask brings back.
+    c.server.channelMessage(CHANNEL, 102)
+    await c.elapse()
+
+    expect(c.ids()).toHaveLength(1)
+  })
+
+  it('keeps asking, so the interval is a rhythm rather than one delay', async () => {
+    const c = client()
+    c.server.timing = { timeout: 10 }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    c.server.channelMessage(CHANNEL, 103)
+    await c.elapse()
+    c.server.channelMessage(CHANNEL, 104)
+    await c.elapse()
+
+    expect(c.ids()).toHaveLength(2)
+  })
+
+  it('stops asking once it is no longer being followed', async () => {
+    const c = client()
+    c.server.timing = { timeout: 10 }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    expect(c.updates.unwatchChannel(CHANNEL)).toBe(true)
+
+    // The wait that was running was cancelled, so nothing will ask again.
+    expect(c.timers.filter((timer) => !timer.cancelled && !timer.fired)).toHaveLength(0)
+    expect(c.updates.watched()).toEqual([])
+  })
+
+  it('counts followers, so one leaving does not end another’s subscription', async () => {
+    const c = client()
+    c.server.timing = { timeout: 10 }
+
+    await named(c)
+    expect(c.updates.watchChannel(CHANNEL)).toBe(true)
+    expect(c.updates.watchChannel(CHANNEL)).toBe(false)
+    await settle()
+
+    // The first to stop is not the last, so the subscription survives it.
+    expect(c.updates.unwatchChannel(CHANNEL)).toBe(false)
+    expect(c.updates.watched()).toEqual([CHANNEL])
+
+    c.server.channelMessage(CHANNEL, 105)
+    await c.elapse()
+    expect(c.ids()).toHaveLength(1)
+
+    expect(c.updates.unwatchChannel(CHANNEL)).toBe(true)
+    expect(c.updates.watched()).toEqual([])
+  })
+
+  it('says nothing was following a channel that was not', async () => {
+    const c = client()
+
+    expect(c.updates.unwatchChannel(CHANNEL)).toBe(false)
+  })
+
+  it('takes a starting position from a caller that has one', async () => {
+    // A channel the account has never held a position for cannot be asked for
+    // a difference at all. A caller that has just read the dialog has one.
+    const c = client()
+    c.state.forgetChannel(CHANNEL)
+    c.server.channelMessage(CHANNEL, 106)
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL, 1)
+    await settle()
+
+    expect(c.failures).toEqual([])
+    expect(c.ids()).toHaveLength(1)
+  })
+
+  it('keeps following after a refresh fails for a reason that may pass', async () => {
+    // A channel being looked at is still being looked at after one bad
+    // request, and the next interval may well succeed. Reported rather than
+    // swallowed, and the subscription is not ended by it.
+    const c = client()
+    c.server.timing = { timeout: 10 }
+    c.server.faults = { channels: new Map([[CHANNEL.toString(), 'unavailable' as const]]) }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    expect(c.failures.map(String)).toEqual([expect.stringContaining('TIMEOUT')])
+    expect(c.updates.watched()).toEqual([CHANNEL])
+    expect(c.timers.filter((timer) => !timer.cancelled && !timer.fired)).toHaveLength(1)
+  })
+
+  it('stops following a channel the account is no longer in', async () => {
+    // The other kind of failure. `CHANNEL_PRIVATE` says the account cannot see
+    // the channel at all, and asking every ten seconds for as long as that is
+    // true is nothing but requests. So following it ends, and the watcher
+    // finds out the way it would anyway — the updates stop.
+    const c = client()
+    c.server.timing = { timeout: 10 }
+    c.server.faults = { channels: new Map([[CHANNEL.toString(), 'private' as const]]) }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    expect(c.updates.watched()).toEqual([])
+    expect(c.timers.filter((timer) => !timer.cancelled && !timer.fired)).toHaveLength(0)
+  })
+
+  it('lets go of everything it was following when it closes', async () => {
+    const c = client()
+    c.server.timing = { timeout: 10 }
+
+    await named(c)
+    c.updates.watchChannel(CHANNEL)
+    await settle()
+
+    c.updates.close()
+
+    expect(c.updates.watched()).toEqual([])
+    expect(c.timers.filter((timer) => !timer.cancelled && !timer.fired)).toHaveLength(0)
+  })
+})

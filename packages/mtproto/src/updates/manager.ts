@@ -42,6 +42,16 @@ const REORDER_WINDOW = 500
 /** How many pages of a catch-up will be followed before giving up on it. */
 const MAX_PAGES = 100
 
+/**
+ * How long to wait before asking a followed channel again, absent an answer.
+ *
+ * Only a fallback. Telegram names the interval in every difference it sends,
+ * and that is what is used; this is the number for an answer that did not say,
+ * chosen to be the same order as the ones Telegram does send rather than to be
+ * conservative — a client asking much more often would be refused.
+ */
+const WATCH_INTERVAL = 60
+
 /** How the manager is built. */
 export interface UpdatesOptions {
   /** Where the sequences live. */
@@ -88,6 +98,28 @@ export interface Updates {
   observed(update: TlValue): void
   /** Catch a box up now, without waiting for a gap to be noticed. */
   recover(box?: Box): Promise<void>
+  /**
+   * Follow a channel's own sequence, until told to stop.
+   *
+   * Telegram does not push a channel's updates to an account that is not
+   * looking at it. What it offers instead is the channel's difference, on
+   * request, with the answer saying how long to wait before asking again — so
+   * following a channel means asking repeatedly, and the interval is the
+   * server's rather than a number chosen here.
+   *
+   * Counted, because two parts of a program may be looking at one channel and
+   * neither should end the other's subscription. Answers whether this was the
+   * one that began it.
+   *
+   * @param pts Where to start from, when the caller has just read it from a
+   *   dialog. Otherwise the stored position is used, and a channel with no
+   *   stored position cannot be followed until one arrives.
+   */
+  watchChannel(channelId: bigint, pts?: number): boolean
+  /** Stop following a channel. Answers whether that was the last watcher. */
+  unwatchChannel(channelId: bigint): boolean
+  /** Which channels are being followed, for a caller that has to know. */
+  watched(): readonly bigint[]
   /** Stop. Anything waiting to be chased is dropped. */
   close(): void
 }
@@ -104,6 +136,14 @@ export function openUpdates(options: UpdatesOptions): Updates {
   const pending = new Map<string, { cancel: () => void; held: TlValue[] }>()
   /** Channels the account can no longer see, which there is no point chasing. */
   const gone = new Set<string>()
+  /**
+   * Channels being followed, and how many callers are following each.
+   *
+   * Counted rather than a set: two parts of a program looking at one channel
+   * both stop when they are done, and the first to stop must not end the
+   * other's subscription.
+   */
+  const watching = new Map<bigint, { watchers: number; cancel?: () => void }>()
   let closed = false
 
   const nameOf = (box: Box) => (box.kind === 'channel' ? `channel:${box.channelId}` : box.kind)
@@ -349,6 +389,55 @@ export function openUpdates(options: UpdatesOptions): Updates {
     return inputChannel(record)
   }
 
+  /**
+   * Ask again for a followed channel, after the interval the server named.
+   *
+   * The wait comes from the answer rather than from a constant here: Telegram
+   * says how stale it is willing to let a client be, and a client that picks
+   * its own number is either wasting requests or missing updates. An answer
+   * without one is asked again at {@link WATCH_INTERVAL}, which is only the
+   * floor for a server that declined to say.
+   */
+  const followAgain = (channelId: bigint, seconds: number | undefined): void => {
+    const entry = watching.get(channelId)
+    if (entry === undefined || closed) return
+
+    entry.cancel?.()
+    entry.cancel = later(
+      () => {
+        void refreshChannel(channelId)
+      },
+      Math.max(seconds ?? WATCH_INTERVAL, 1) * 1000,
+    )
+  }
+
+  /** Fetch a followed channel's difference now, and arrange the next ask. */
+  const refreshChannel = async (channelId: bigint): Promise<void> => {
+    if (!watching.has(channelId) || closed) return
+
+    try {
+      await api.recover({ kind: 'channel', channelId })
+    } catch (error) {
+      fail(error)
+      // A failed refresh does not end the subscription: the channel is still
+      // being looked at, and the next interval may well succeed. Reported so
+      // that a caller watching for failures sees it.
+      followAgain(channelId, undefined)
+
+      return
+    }
+
+    // Unless the account is no longer in the channel, which the catch-up
+    // records rather than raising. Asking again would be refused the same way
+    // every interval for as long as that is true, so following it stops — and
+    // the watcher finds out by its updates ceasing, which is what happened.
+    if (gone.has(nameOf({ kind: 'channel', channelId }))) {
+      const entry = watching.get(channelId)
+      entry?.cancel?.()
+      watching.delete(channelId)
+    }
+  }
+
   const channelDifference = async (box: Box, entry: { held: TlValue[] }): Promise<void> => {
     void entry
     const channelId = box.channelId
@@ -367,7 +456,10 @@ export function openUpdates(options: UpdatesOptions): Updates {
 
       await harvest(options.peers, answer)
 
-      if (finishChannel(answer, channelId)) return
+      if (finishChannel(answer, channelId)) {
+        followAgain(channelId, readInt(answer, 'timeout'))
+        return
+      }
 
       if (answer._ !== 'updates.channelDifference') {
         throw new PeerError(`expected a channel difference, received '${answer._}'`)
@@ -382,7 +474,10 @@ export function openUpdates(options: UpdatesOptions): Updates {
 
       state.reset({ box: 'channel', channelId, pts: readInt(answer, 'pts') ?? 1 })
 
-      if (answer['final'] === true) return
+      if (answer['final'] === true) {
+        followAgain(channelId, readInt(answer, 'timeout'))
+        return
+      }
     }
 
     throw new PeerError(`channel ${channelId} did not finish catching up`)
@@ -434,7 +529,7 @@ export function openUpdates(options: UpdatesOptions): Updates {
     state.advanceContainer({ seq, ...(date === undefined ? {} : { date }) })
   }
 
-  return {
+  const api: Updates = {
     async feed(value) {
       if (closed) return
 
@@ -483,13 +578,62 @@ export function openUpdates(options: UpdatesOptions): Updates {
       await catchUp(box, entry)
     },
 
+    watchChannel(channelId, pts) {
+      const existing = watching.get(channelId)
+
+      if (existing !== undefined) {
+        existing.watchers += 1
+
+        return false
+      }
+
+      watching.set(channelId, { watchers: 1 })
+
+      // A position the caller read from a dialog is better than none: a channel
+      // the account has never held a position for cannot be asked for a
+      // difference at all, and a caller that has just read the dialog has one.
+      if (pts !== undefined && state.channelPts(channelId) === undefined) {
+        state.reset({ box: 'channel', channelId, pts })
+      }
+
+      // The first fetch happens now rather than after an interval, because the
+      // reason a channel was opened is that somebody wants to see it.
+      void refreshChannel(channelId)
+
+      return true
+    },
+
+    unwatchChannel(channelId) {
+      const existing = watching.get(channelId)
+      if (existing === undefined) return false
+
+      if (existing.watchers > 1) {
+        existing.watchers -= 1
+
+        return false
+      }
+
+      existing.cancel?.()
+      watching.delete(channelId)
+
+      return true
+    },
+
+    watched() {
+      return [...watching.keys()]
+    },
+
     close() {
       closed = true
       for (const waiting of pending.values()) waiting.cancel()
       pending.clear()
       catching.clear()
+      for (const entry of watching.values()) entry.cancel?.()
+      watching.clear()
     },
   }
+
+  return api
 }
 
 /** Which sequence an update belongs to, when it belongs to one. */

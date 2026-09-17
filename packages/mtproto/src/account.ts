@@ -63,6 +63,7 @@ import type {
 import type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
 import type { FullChat } from './chats/lookup.js'
 import type { AddOptions, NotAdded } from './chats/members.js'
+import type { FolderQuery, PeerView } from './chats/peers.js'
 import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
 import type {
@@ -2473,6 +2474,144 @@ export class Account<Ext = unknown> {
   /** Read everything Telegram will say about a conversation. */
   async fullChat(chat: string | PeerRef): Promise<FullChat> {
     return await (await import('./chats/lookup.js')).fetchFullChat(this, chat)
+  }
+
+  /**
+   * Read who a peer is — a person or a conversation, whichever it turns out to be.
+   *
+   * ```ts
+   * const who = await account.peer('@someone')
+   * ```
+   *
+   * One request rather than a full read: this is the record Telegram keeps for
+   * the peer, not the description, the counts and the settings that
+   * {@link Account.fullChat} fetches. Refused by name where the peer cannot be
+   * addressed or Telegram will not describe it.
+   */
+  async peer(peer: string | PeerRef): Promise<PeerView> {
+    return await (await import('./chats/peers.js')).fetchPeer(this, peer)
+  }
+
+  /**
+   * Read who several peers are, positionally, in as few requests as possible.
+   *
+   * ```ts
+   * const [me, channel] = await account.peersOf(['me', '@news'])
+   * ```
+   *
+   * People, basic groups and channels are three different bulk reads in the
+   * protocol, so a mixed list is one request per family rather than one per
+   * peer. Entry `n` describes peer `n`, and is `undefined` where that peer could
+   * not be named or Telegram would not describe it.
+   */
+  async peersOf(peers: readonly (string | PeerRef)[]): Promise<(PeerView | undefined)[]> {
+    return await (await import('./chats/peers.js')).fetchPeers(this, peers)
+  }
+
+  /**
+   * Read who one person is.
+   *
+   * {@link Account.peer} narrowed to people, so the answer needs no test for
+   * which kind came back. A peer naming a conversation is refused.
+   */
+  async user(peer: string | PeerRef): Promise<UserView> {
+    return await (await import('./chats/peers.js')).fetchUser(this, peer)
+  }
+
+  /**
+   * Find the conversation-list rows for peers, including ones not yet known.
+   *
+   * ```ts
+   * const [work] = await account.findDialogs(['@work'])
+   * ```
+   *
+   * Peers this account can already address are asked about directly, in one
+   * request. Whatever is left is looked for by walking the conversation list,
+   * which stops as soon as the last one is found. Refused by name if any is
+   * still missing afterwards — a row absent from the list is a conversation
+   * this account does not have.
+   */
+  async findDialogs(peers: readonly (string | PeerRef)[]): Promise<DialogView[]> {
+    return await (await import('./chats/peers.js')).findDialogs(this, peers)
+  }
+
+  /**
+   * Find one of this account's folders by what it is called or numbered.
+   *
+   * ```ts
+   * const work = await account.findFolder({ title: 'Work' })
+   * ```
+   *
+   * Every criterion given has to match. Answers `undefined` where none does;
+   * asking with nothing to match on is refused.
+   */
+  async findFolder(query: FolderQuery): Promise<Folder | undefined> {
+    return await (await import('./chats/peers.js')).findFolder(this, query)
+  }
+
+  /**
+   * Keep a conversation's updates flowing while somebody is looking at it.
+   *
+   * ```ts
+   * const stop = await account.watchChat('@news')
+   * …
+   * stop()
+   * ```
+   *
+   * Telegram does not push a channel's updates to an account that is not
+   * looking at it; what it offers instead is the channel's difference, on
+   * request, with each answer saying how long to wait before asking again. So
+   * watching a channel means asking repeatedly, at the server's interval rather
+   * than at one chosen here, and the updates arrive through the ordinary
+   * handlers exactly as pushed ones do.
+   *
+   * A conversation that is not a channel or supergroup needs none of this — its
+   * updates are in the account's own sequence and already arrive — so watching
+   * one is accepted and does nothing, which keeps a caller from having to know
+   * which kind it has.
+   *
+   * Counted, so two parts of a program may watch one channel and neither ends
+   * the other's subscription. The returned stop is safe to call more than once,
+   * and everything still being watched is released when the account stops.
+   */
+  async watchChat(chat: string | PeerRef): Promise<() => void> {
+    const { channelFor } = await import('./network/peers.js')
+    const channel = channelFor(await this.resolve(chat))
+
+    // Not a channel, so nothing to follow. Answered with a stop that does
+    // nothing rather than with a refusal: whether a conversation has a sequence
+    // of its own is Telegram's business, not the caller's.
+    if (channel === undefined) return () => {}
+
+    if (channel._ === 'inputChannelEmpty') return () => {}
+    const channelId = channel.channel_id
+    // A position the account has never held cannot be asked for a difference.
+    // The dialog carries one, and reading it is what the reference does here
+    // too — a bot has no dialogs and falls back to what it has stored.
+    const stored = this.#state.channelPts(channelId)
+    let pts: number | undefined
+    if (stored === undefined) {
+      try {
+        const [dialog] = await (await import('./chats/lookup.js')).fetchDialogs(this, [chat])
+        pts = dialog?.pts
+      } catch (error) {
+        this.#log.debug('no dialog to read a starting position from', { error })
+      }
+    }
+
+    const updates = this.#require().updates
+    updates.watchChannel(channelId, pts)
+
+    let stopped = false
+
+    return () => {
+      if (stopped) return
+      stopped = true
+      // The account may have been stopped in between, which released every
+      // watch already. Asking the manager then is harmless — it knows nothing
+      // about this channel and says so.
+      this.#network?.updates.unwatchChannel(channelId)
+    }
   }
 
   /** What a public conversation looks like from outside it. */

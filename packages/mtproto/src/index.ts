@@ -26,6 +26,7 @@ export type {
 export type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
 export type { FullChat } from './chats/lookup.js'
 export type { AddOptions, NotAdded } from './chats/members.js'
+export type { FolderQuery, PeerView } from './chats/peers.js'
 export {
   ChatEventView,
   ForumTopicView,
