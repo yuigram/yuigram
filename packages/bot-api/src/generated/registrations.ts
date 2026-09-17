@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Named event registrations (79)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Named event registrations (81)
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { ContextFor } from '../events/types.js'
 import type { EventHandler } from '../bot.js'
@@ -176,13 +176,19 @@ export interface GeneratedRegistrations<Ext> {
   onChecklistTasksDone(handler: EventHandler<ContextFor<'checklist_tasks_done'> & Ext>): this
 
   /**
-   * Service message: chat added to a Community. Equivalent to
+   * Service message: chat or bot added to a Community. Equivalent to
    * `on('community_chat_added', handler)`.
    */
   onCommunityChatAdded(handler: EventHandler<ContextFor<'community_chat_added'> & Ext>): this
 
   /**
-   * Service message: chat removed from a Community. Equivalent to
+   * Service message: chat was joined by a user from a Community. Equivalent to
+   * `on('community_chat_joined', handler)`.
+   */
+  onCommunityChatJoined(handler: EventHandler<ContextFor<'community_chat_joined'> & Ext>): this
+
+  /**
+   * Service message: chat or bot removed from a Community. Equivalent to
    * `on('community_chat_removed', handler)`.
    */
   onCommunityChatRemoved(handler: EventHandler<ContextFor<'community_chat_removed'> & Ext>): this
@@ -393,6 +399,12 @@ export interface GeneratedRegistrations<Ext> {
   onShippingQuery(handler: EventHandler<ContextFor<'shipping_query'> & Ext>): this
 
   /**
+   * A user asked the bot to stop the generation of a message. Equivalent to
+   * `on('stopped_message_generation', handler)`.
+   */
+  onStoppedMessageGeneration(handler: EventHandler<ContextFor<'stopped_message_generation'> & Ext>): this
+
+  /**
    * User payment subscription has changed. Equivalent to `on('subscription',
    * handler)`.
    */
@@ -518,6 +530,7 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onChecklistTasksAdded', 'checklist_tasks_added'],
   ['onChecklistTasksDone', 'checklist_tasks_done'],
   ['onCommunityChatAdded', 'community_chat_added'],
+  ['onCommunityChatJoined', 'community_chat_joined'],
   ['onCommunityChatRemoved', 'community_chat_removed'],
   ['onConnectedWebsite', 'connected_website'],
   ['onDirectMessagePriceChanged', 'direct_message_price_changed'],
@@ -554,6 +567,7 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onPurchasedPaidMedia', 'purchased_paid_media'],
   ['onRefundedPayment', 'refunded_payment'],
   ['onShippingQuery', 'shipping_query'],
+  ['onStoppedMessageGeneration', 'stopped_message_generation'],
   ['onSubscription', 'subscription'],
   ['onSuggestedPostApprovalFailed', 'suggested_post_approval_failed'],
   ['onSuggestedPostApproved', 'suggested_post_approved'],
