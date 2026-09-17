@@ -178,6 +178,8 @@ the line:
 | Plus the exclusion guard and the people surface | 97 | 93.9 / 94.0 / 97.2 | 85–106 |
 | Plus the conversation family, statically imported | 104 | 103 / 103 / 104 | 96–114 |
 | The same, loaded when a conversation is operated on | 97 | 95.3 / 95.8 / 99.0 | 85–108 |
+| Plus forums, stories, gifts and premium, all loaded when called | 97 | — | — |
+| Plus the file-identifier surface | 98 | 99.4 / over / 92.1 | 89–107 |
 
 The middle row is the one that matters for how the budget was being read: the
 same tree measured above and below 100 ms depending on the run, so a passing
@@ -189,10 +191,33 @@ is not a property that holds in general — later runs of the same tree produced
 samples from 85 to 106 ms. What can be said is what §2.1 says: the median is the
 statistic, it passes, and the sample range straddles the budget.
 
-The last row is the newest. Two modules were added to the eager graph — the storage guard and the
-people surface — which at 0.4 ms a module is about one millisecond, and the medians are
-indistinguishable from the row above measured in the same session. Neither the lazy codec
-boundary nor the Bot API bundle's exclusion of MTProto moved: `bundle/bot-mtproto` is still
+**The last two rows are the most recent additions, and the second of them is a deliberate trade.**
+Four domains — forum topics, stories, gifts, and boosts with the business surface — were added and
+cost the eager graph nothing, because each is loaded when one of its operations is called, exactly
+as the conversation family is. Three convenience constants that would have been exported from the
+package root are not, for the same reason: a value export pulls its whole module in, and those
+three would have cost four modules between them for constants a caller can write out.
+
+The file-identifier surface is the one module that was *not* avoided. It is a set of synchronous
+pure functions — read an identifier, write one, turn one into a download location — and the only
+way to load it lazily would be to make them `async`, which would change their signatures to hide
+work at first use. That is the thing this section exists to prevent rather than to do, so the
+module is eager and costs what it costs.
+
+What it costs is visible in the measurements, and they are reported as they came out. Three
+consecutive runs of the same tree gave a median of 99.4 ms, then one over budget, then 92.1 ms,
+with individual samples from 89 to 107 ms in every one. The gate's statistic — the median of
+seven — passed in two of the three. That is the straddling this section has described since the
+paged lists, now with less room: a tree whose median sits within a few milliseconds of the budget
+will report both answers depending on what else the machine is doing, and a single passing run is
+not evidence that it is comfortably inside.
+
+The attributable part is one module, about 0.4 ms. The rest is the spread. **The budget is not
+being widened and the statistic is not being changed**; what is being recorded is that the
+headroom is now small enough that the next eager module should be argued for rather than assumed.
+
+Neither the lazy codec boundary nor the Bot API bundle's exclusion of MTProto moved:
+`bundle/bot-mtproto` is still
 0 KB.
 
 The middle row is a regression this project caused and then removed. Sixty operations on

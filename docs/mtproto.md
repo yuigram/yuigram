@@ -2075,6 +2075,51 @@ Decision 11 puts that on the client rather than on anything bound to an update. 
 produce the `media` argument and nothing else; `messages.sendMedia` carries the caption in
 `message` and the message being answered in `reply_to`, both of which the caller already has.
 
+### The opaque identifier files travel under
+
+Bot API clients hand a file around as a single string. A bot receives a photo, writes the string
+down, and sends the same photo back next week without ever holding the bytes. That string is not
+a Bot API invention — it is TDLib's encoding of exactly the fields MTProto needs to build a
+download location — so an account speaking MTProto can read one, write one, and interoperate
+with every client that uses them.
+
+Yuigram reads and writes them: `readFileId`, `writeFileId`, `locationOf` and `fileFor`, plus
+`fileIdOfPhoto` and `fileIdOfDocument` for a value this account already has in hand.
+
+**There are two identifiers and they are not the same thing.**
+
+| | Carries | Goes stale | Can be downloaded from |
+| --- | --- | --- | --- |
+| File identifier | dc, kind, id, access hash, file reference | yes | yes |
+| Unique identifier | only what makes the file that file | no | no |
+
+The second is `uniqueFileId`, and it is what answers "is this the same file". Two identifiers for
+one photo obtained at different times, or by different accounts, have the same unique identifier
+and different file identifiers. Every Telegram client computes it the same way, so it is a cache
+key that means something outside one program. Nothing can be fetched from it, and a surface that
+confused the two would produce a key that changes every week or a download that never works.
+
+**An identifier carrying a file reference does not make that reference valid.** References
+expire. What an identifier holds is a record of one at the time it was written, and a download
+built from an old identifier is refused exactly as a download built from an old reference held
+any other way, and is refreshed the same way — by finding the file again. Nothing in the encoding
+extends the life of anything, and §11's file-reference rules are unchanged by it.
+
+**Versions.** Version 4 is written. Version 2 is read, because identifiers that old are still
+passed around and refusing them would strand files nobody can re-obtain. A version or subversion
+newer than this understands is refused by name rather than guessed at, because guessing at a
+layout produces a download request for whatever the bytes happen to line up as. Identifiers that
+name a picture by volume and position are read — they exist — but cannot be turned into a
+download, because Telegram removed the request that took them; saying so is better than sending
+one the server will not answer.
+
+**How it is checked.** A round trip through one implementation proves only that it agrees with
+itself, and a format whose whole purpose is interoperation has to be judged against something
+else. So the test fixtures are strings produced by an independent implementation of the same
+format and checked in, compared byte for byte in both directions across every layout the format
+has, together with the unique identifier for each. None of them names a real file: the ids,
+access hashes and URLs are invented.
+
 ---
 
 ## 12. Build order

@@ -71,6 +71,24 @@ export type {
   DownloadSink,
 } from './files/download.js'
 export type { DownloadMode } from './files/geometry.js'
+export type {
+  FileIdentity,
+  FileKind,
+  FileWhere,
+  PhotoSource,
+} from './files/identifier.js'
+export {
+  FileIdError,
+  fileFor,
+  fileIdOfDocument,
+  fileIdOfPhoto,
+  locationOf,
+  looksLikeFileId,
+  readFileId,
+  uniqueFileId,
+  webLocationOf,
+  writeFileId,
+} from './files/identifier.js'
 export type { UploadedDocumentOptions } from './files/media.js'
 export {
   documentFile,
