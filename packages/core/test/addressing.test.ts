@@ -121,7 +121,11 @@ const channel = { kind: 'channel', id: 1234567890n } as const
 describe('reading links', () => {
   it.each<[string, string, TelegramLink]>([
     ['a username', 't.me/newsreader', { kind: 'username', username: 'newsreader' }],
-    ['every web host', 'https://telegram.dog/newsreader', { kind: 'username', username: 'newsreader' }],
+    [
+      'every web host',
+      'https://telegram.dog/newsreader',
+      { kind: 'username', username: 'newsreader' },
+    ],
     [
       'a username with a draft and the profile',
       'https://telegram.me/newsreader?text=hi%20there&profile',
@@ -132,8 +136,16 @@ describe('reading links', () => {
         profile: true,
       },
     ],
-    ['a username subdomain', 'https://newsreader.t.me', { kind: 'username', username: 'newsreader' }],
-    ['a web preview path', 'https://t.me/s/newsreader', { kind: 'username', username: 'newsreader' }],
+    [
+      'a username subdomain',
+      'https://newsreader.t.me',
+      { kind: 'username', username: 'newsreader' },
+    ],
+    [
+      'a web preview path',
+      'https://t.me/s/newsreader',
+      { kind: 'username', username: 'newsreader' },
+    ],
     [
       'a scheme and host in capitals',
       'HTTPS://WWW.T.ME/newsreader',
@@ -374,7 +386,11 @@ describe('reading links', () => {
       'tg://msg_url?url=example.com&text=Look',
       { kind: 'share', url: 'example.com', text: 'Look' },
     ],
-    ['a story', 'tg://resolve?domain=newsreader&story=5', { kind: 'story', username: 'newsreader', id: 5 }],
+    [
+      'a story',
+      'tg://resolve?domain=newsreader&story=5',
+      { kind: 'story', username: 'newsreader', id: 5 },
+    ],
     [
       'a public boost',
       'tg://boost?domain=news_channel',
@@ -500,7 +516,10 @@ describe('reading links', () => {
   })
 
   it('leaves out a draft that is not text, and refuses a share that is not', () => {
-    expect(readLink('t.me/newsreader?text=1%A02')).toEqual({ kind: 'username', username: 'newsreader' })
+    expect(readLink('t.me/newsreader?text=1%A02')).toEqual({
+      kind: 'username',
+      username: 'newsreader',
+    })
     expect(readLink('t.me/share/url?url=%FF')).toBeUndefined()
     expect(readLink('t.me/share/url?url=example.com&text=%E2%9C')).toBeUndefined()
     expect(readLink('t.me/newsreader?text=%E2%9C%93')).toMatchObject({ text: '✓' })
@@ -656,7 +675,11 @@ describe('writing links', () => {
   })
 
   it.each<[string, TelegramLink, RegExp]>([
-    ['a username that is not one', { kind: 'username', username: 'news__reader' }, /not a username/],
+    [
+      'a username that is not one',
+      { kind: 'username', username: 'news__reader' },
+      /not a username/,
+    ],
     [
       'a start parameter with other characters',
       { kind: 'bot-start', bot: 'shop_bot', payload: 'a.b' },

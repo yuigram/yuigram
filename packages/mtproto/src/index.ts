@@ -127,11 +127,19 @@ export type {
 } from './gifts/gifts.js'
 export type { BoundApi } from './here.js'
 export type {
+  AlbumItem,
+  AlbumOptions,
+  CopyOptions,
+  Discussion,
+  SentScheduled,
+} from './messaging/compose.js'
+export type {
   CallbackAnswer,
   EditOptions,
   ForwardOptions,
   InlineAnswer,
   MessageBody,
+  Quote,
   ReactionInput,
   Sending,
   SendOptions,
@@ -148,8 +156,10 @@ export {
   forwardMessages,
   getMessages,
   pinMessage,
+  quoteOf,
   react,
   readHistory,
+  sameTopic,
   sendMedia,
   sendText,
   setTyping,

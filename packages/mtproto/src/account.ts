@@ -113,6 +113,13 @@ import type {
   UpgradeOptions,
 } from './gifts/gifts.js'
 import type {
+  AlbumItem,
+  AlbumOptions,
+  CopyOptions,
+  Discussion,
+  SentScheduled,
+} from './messaging/compose.js'
+import type {
   CallbackAnswer,
   EditOptions,
   ForwardOptions,
@@ -1607,6 +1614,120 @@ export class Account<Ext = unknown> {
     options?: ForwardOptions,
   ): Promise<void> {
     await forwardMessages(this.#sending, request, options)
+  }
+
+  /**
+   * Send several media as one album.
+   *
+   * ```ts
+   * const sent = await account.sendAlbum(chat, [
+   *   { media: uploadedPhoto(first), caption: 'before' },
+   *   { media: uploadedPhoto(second), caption: 'after' },
+   * ])
+   * ```
+   *
+   * Uploaded media is handed to Telegram first, one item at a time, because an
+   * album cannot carry bytes; the answers come back one per item, in order.
+   */
+  async sendAlbum(
+    peer: string | PeerRef,
+    items: readonly AlbumItem[],
+    options?: AlbumOptions,
+  ): Promise<readonly SentMessage[]> {
+    return await (await import('./messaging/compose.js')).sendAlbum(
+      this.#sending,
+      peer,
+      items,
+      options,
+    )
+  }
+
+  /**
+   * Hand media to Telegram without sending it, so it can be sent by reference.
+   *
+   * What an album needs for each uploaded item, and what sending the same
+   * upload to several conversations saves repeating.
+   */
+  async uploadMedia(peer: string | PeerRef, media: TypeInputMedia): Promise<TypeInputMedia> {
+    return await (await import('./messaging/compose.js')).uploadMedia(this.#sending, peer, media)
+  }
+
+  /**
+   * Send a message again as a new message, rather than forwarding it.
+   *
+   * The caption can change and buttons can be added, which a forward cannot do.
+   * A file reference that expired on the way is put right by reading the
+   * message again, once.
+   */
+  async copyMessage(
+    request: {
+      readonly from: string | PeerRef
+      readonly id: number
+      readonly to: string | PeerRef
+    },
+    options?: CopyOptions,
+  ): Promise<SentMessage> {
+    return await (await import('./messaging/compose.js')).copyMessage(
+      this.#sending,
+      request,
+      options,
+    )
+  }
+
+  /** Send an album again as a new album, each item with its own caption. */
+  async copyAlbum(
+    request: {
+      readonly from: string | PeerRef
+      readonly ids: readonly number[]
+      readonly to: string | PeerRef
+    },
+    options?: AlbumOptions,
+  ): Promise<readonly SentMessage[]> {
+    return await (await import('./messaging/compose.js')).copyAlbum(this.#sending, request, options)
+  }
+
+  /**
+   * Find a channel post's comment section.
+   *
+   * Sending a comment needs only `commentOn`; this is for reading the thread,
+   * whose messages are in the discussion group under {@link Discussion.thread}.
+   */
+  async discussion(chat: string | PeerRef, post: number): Promise<Discussion> {
+    return await (await import('./messaging/compose.js')).discussionOf(this.#sending, chat, post)
+  }
+
+  /** Every message waiting to be sent in a conversation. */
+  async scheduledMessages(peer: string | PeerRef): Promise<readonly MessageView[]> {
+    return await (await import('./messaging/compose.js')).scheduledMessages(this.#sending, peer)
+  }
+
+  /** Scheduled messages by number, with a gap where a number names none. */
+  async getScheduledMessages(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<readonly (MessageView | undefined)[]> {
+    return await (await import('./messaging/compose.js')).getScheduledMessages(
+      this.#sending,
+      peer,
+      ids,
+    )
+  }
+
+  /** Take messages off the schedule, so they are never sent. */
+  async deleteScheduledMessages(peer: string | PeerRef, ids: readonly number[]): Promise<void> {
+    await (await import('./messaging/compose.js')).deleteScheduledMessages(this.#sending, peer, ids)
+  }
+
+  /** Send scheduled messages now, and say which message each became. */
+  async sendScheduledMessages(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<readonly SentScheduled[]> {
+    return await (await import('./messaging/compose.js')).sendScheduledMessages(
+      this.#sending,
+      peer,
+      ids,
+    )
   }
 
   /**

@@ -625,12 +625,16 @@ describe('two runs starting at the same moment', () => {
     gate.hold()
     const first = claimArea(gate.store, { name: 'alice', holder: run('one'), guard })
     const second = claimArea(gate.store, { name: 'alice', holder: run('two'), guard })
+    // Watched before the gate opens: the refusal happens while the claims are
+    // settling, and a rejection nothing is waiting on yet is reported as
+    // unhandled, which would hide a real one somewhere else in the suite.
+    const outcomes = Promise.allSettled([first, second])
     await settle()
     gate.releaseAll()
 
-    const outcomes = await Promise.allSettled([first, second])
-    const started = outcomes.filter((one) => one.status === 'fulfilled')
-    const refused = outcomes.filter((one) => one.status === 'rejected')
+    const settled = await outcomes
+    const started = settled.filter((one) => one.status === 'fulfilled')
+    const refused = settled.filter((one) => one.status === 'rejected')
 
     expect(started).toHaveLength(1)
     expect(refused).toHaveLength(1)

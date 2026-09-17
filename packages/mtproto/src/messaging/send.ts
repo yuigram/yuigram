@@ -26,7 +26,7 @@
  * refused call rather than a wrong answer.
  */
 
-import { PeerError } from '@yuigram/core'
+import { PeerError, ValidationError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
 import { MessageView } from '../entities/message.js'
 import type { FormattedText } from '../format/text.js'
@@ -35,6 +35,7 @@ import type {
   TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
+  TypeInputReplyTo,
   TypeMessageEntity,
   TypeReaction,
   TypeReplyMarkup,
@@ -67,10 +68,44 @@ export interface Sending {
  */
 export type MessageBody = string | FormattedText
 
+/**
+ * A section of the message being answered, shown in the answer.
+ *
+ * The text must appear in that message exactly, formatting included, or
+ * Telegram refuses the quote. {@link quoteOf} cuts one out of a message so the
+ * two cannot disagree.
+ */
+export interface Quote {
+  /** The quoted section, with the formatting it has in the message. */
+  readonly text: MessageBody
+  /** Where the section starts in the message, in UTF-16 code units. */
+  readonly offset?: number
+}
+
 /** How to say it. */
 export interface SendOptions {
-  /** Answer this message, by its number in the same conversation. */
+  /**
+   * Answer this message, by its number in the conversation it is in — this one,
+   * or the one {@link SendOptions.replyIn} names.
+   */
   readonly replyTo?: number
+  /**
+   * The conversation the answered message is in, where it is not this one.
+   *
+   * Telegram allows this only where that conversation does not protect its
+   * content.
+   */
+  readonly replyIn?: string | PeerRef
+  /** Quote a section of the answered message. Needs {@link SendOptions.replyTo}. */
+  readonly quote?: Quote
+  /**
+   * Comment on a channel post, by its number in the channel.
+   *
+   * The peer a send names is then the channel, and the message goes to the
+   * discussion group linked to it, into the post's thread. `replyTo` answers a
+   * comment already in that thread, by its number in the group.
+   */
+  readonly commentOn?: number
   /** The forum topic to send into, where the conversation has topics. */
   readonly topicId?: number
   /** Send without a notification. */
@@ -81,8 +116,12 @@ export interface SendOptions {
   readonly noWebpagePreview?: boolean
   /** Show media above the text rather than below it. */
   readonly invertMedia?: boolean
-  /** Send at this time, in Unix seconds, rather than now. */
-  readonly scheduleDate?: number
+  /**
+   * Send at this time, in Unix seconds, rather than now — or `'online'`, the
+   * next time the person comes online, which Telegram offers only in a private
+   * conversation with somebody whose last-seen time is visible.
+   */
+  readonly scheduleDate?: number | 'online'
   /** Buttons to attach. */
   readonly markup?: TypeReplyMarkup
   /** The animation to play when it arrives. */
@@ -92,7 +131,7 @@ export interface SendOptions {
 }
 
 /** Split a body into the two fields a send carries. */
-function bodyOf(body: MessageBody): {
+export function bodyOf(body: MessageBody): {
   readonly message: string
   readonly entities: readonly TypeMessageEntity[] | undefined
 } {
@@ -105,37 +144,200 @@ function bodyOf(body: MessageBody): {
 }
 
 /** A deduplication key for this send. */
-function keyFor(client: Sending): bigint {
+export function keyFor(client: Sending): bigint {
   return randomId((length) => client.random(length))
 }
 
-/** The reply header a send carries, where it answers something or sits in a topic. */
-function replyOf(options: SendOptions | undefined) {
+/** The topic every forum has, whose messages carry no reply header at all. */
+const GENERAL_TOPIC = 1
+
+/** The schedule date Telegram reads as "when the person next comes online". */
+const WHEN_ONLINE = 0x7ffffffe
+
+/** The reply header for a message answering `replyTo`, in `topicId`, quoting `quote`. */
+export function replyHeader(
+  options: Pick<SendOptions, 'replyTo' | 'topicId' | 'quote'> | undefined,
+  replyPeer?: TypeInputPeer,
+): TypeInputReplyTo | undefined {
   const topicId = options?.topicId
-  // A message sent into a topic and answering nothing still answers the message
-  // that opened the topic, which is how Telegram files it there.
-  const answering = options?.replyTo ?? topicId
+  const general = topicId === GENERAL_TOPIC
+  // A message sent into a topic and answering nothing answers the message that
+  // opened the topic, which is how Telegram files it there. The General topic
+  // was opened by nothing, and a message in it carries no header.
+  const answering = options?.replyTo ?? (general ? undefined : topicId)
 
   if (answering === undefined) return undefined
 
+  const quote = options?.quote === undefined ? undefined : bodyOf(options.quote.text)
+
   return {
-    _: 'inputReplyToMessage' as const,
+    _: 'inputReplyToMessage',
     reply_to_msg_id: answering,
-    ...(topicId === undefined ? {} : { top_msg_id: topicId }),
+    // Only where the answered message is not the topic's own first message, and
+    // never for General: Telegram's rule for the field, which otherwise names a
+    // topic the header already implies.
+    ...(topicId !== undefined && !general && answering !== topicId ? { top_msg_id: topicId } : {}),
+    ...(replyPeer === undefined ? {} : { reply_to_peer_id: replyPeer }),
+    ...(quote === undefined ? {} : { quote_text: quote.message }),
+    ...(quote?.entities === undefined ? {} : { quote_entities: quote.entities }),
+    ...(options?.quote?.offset === undefined ? {} : { quote_offset: options.quote.offset }),
   }
 }
 
+/** Refuse targeting options that contradict each other, before anything is resolved. */
+function checkTargeting(options: SendOptions | undefined): void {
+  if (options === undefined) return
+
+  if (options.quote !== undefined && options.replyTo === undefined) {
+    throw new ValidationError('a quote needs replyTo: the message it is a section of')
+  }
+  const offset = options.quote?.offset
+  if (offset !== undefined && (!Number.isInteger(offset) || offset < 0)) {
+    throw new ValidationError('a quote offset is a whole number of UTF-16 code units from 0')
+  }
+  if (options.replyIn !== undefined && options.replyTo === undefined) {
+    throw new ValidationError('replyIn names where the answered message is, and needs replyTo')
+  }
+  if (
+    options.commentOn !== undefined &&
+    (options.replyIn !== undefined || options.topicId !== undefined)
+  ) {
+    throw new ValidationError(
+      "a comment goes into the post's own thread, so it takes no replyIn or topicId",
+    )
+  }
+  const date = options.scheduleDate
+  if (date !== undefined && date !== 'online' && (!Number.isInteger(date) || date <= 0)) {
+    throw new ValidationError("a schedule date is a Unix time in whole seconds, or 'online'")
+  }
+}
+
+/** Where a send goes and what it answers, with every name in it resolved. */
+export interface Target {
+  readonly peer: TypeInputPeer
+  readonly reply: TypeInputReplyTo | undefined
+}
+
+/**
+ * Resolve where a send goes.
+ *
+ * One place for every send, so a quote, an answer in another conversation and a
+ * comment mean the same thing whatever is being sent.
+ */
+export async function targetOf(
+  client: Sending,
+  peer: string | PeerRef,
+  options: SendOptions | undefined,
+): Promise<Target> {
+  checkTargeting(options)
+
+  if (options?.commentOn !== undefined) {
+    // Loaded when a comment is sent: finding a post's thread is a request of
+    // its own that nothing else here needs.
+    const { commentTarget } = await import('./compose.js')
+
+    return await commentTarget(client, peer, options.commentOn, options)
+  }
+
+  const target = await client.resolve(peer)
+  const replyPeer =
+    options?.replyIn === undefined ? undefined : await client.resolve(options.replyIn)
+
+  return { peer: target, reply: replyHeader(options, replyPeer) }
+}
+
 /** The flags every send shares, in the shape the call wants them. */
-function flagsOf(options: SendOptions | undefined) {
+export function flagsOf(options: SendOptions | undefined) {
+  const date = options?.scheduleDate
+
   return {
     ...(options?.silent === true ? { silent: true as const } : {}),
     ...(options?.protectContent === true ? { noforwards: true as const } : {}),
     ...(options?.invertMedia === true ? { invert_media: true as const } : {}),
     ...(options?.clearDraft === true ? { clear_draft: true as const } : {}),
-    ...(options?.scheduleDate === undefined ? {} : { schedule_date: options.scheduleDate }),
+    ...(date === undefined ? {} : { schedule_date: date === 'online' ? WHEN_ONLINE : date }),
     ...(options?.markup === undefined ? {} : { reply_markup: options.markup }),
     ...(options?.effect === undefined ? {} : { effect: options.effect }),
   }
+}
+
+/**
+ * Cut a quote out of a message.
+ *
+ * ```ts
+ * await account.sendText(chat, 'agreed', { replyTo: message.id, quote: quoteOf(message, 0, 12) })
+ * ```
+ *
+ * `start` and `end` are UTF-16 positions in the message's text, `end` exclusive.
+ * The formatting inside the section comes along, cut to it; formatting that
+ * only begins or ends outside is cut at the edge. A position between the two
+ * halves of a surrogate pair is refused, because it splits a character.
+ */
+export function quoteOf(
+  message: {
+    readonly text?: string | undefined
+    readonly entities?: readonly TypeMessageEntity[] | undefined
+  },
+  start: number,
+  end: number,
+): Quote {
+  const text = message.text ?? ''
+
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start < 0 ||
+    end > text.length ||
+    start >= end
+  ) {
+    throw new ValidationError(`a quote spans part of the text: 0 ≤ start < end ≤ ${text.length}`)
+  }
+  if (splitsPair(text, start) || splitsPair(text, end)) {
+    throw new ValidationError('a quote cannot start or end in the middle of a character')
+  }
+
+  const entities: TypeMessageEntity[] = []
+  for (const entity of message.entities ?? []) {
+    const from = Math.max(entity.offset, start)
+    const to = Math.min(entity.offset + entity.length, end)
+    if (to > from) entities.push({ ...entity, offset: from - start, length: to - from })
+  }
+
+  return { text: { text: text.slice(start, end), entities }, offset: start }
+}
+
+/** Whether a position falls between a high and a low surrogate. */
+function splitsPair(text: string, position: number): boolean {
+  const before = text.charCodeAt(position - 1)
+  const after = text.charCodeAt(position)
+
+  return before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff
+}
+
+/**
+ * The topic a message is in, to send beside it.
+ *
+ * ```ts
+ * await account.sendText(message.chat, 'noted', { ...sameTopic(message) })
+ * ```
+ *
+ * Nothing for a message outside topics or in General, which is where a message
+ * with no topic goes anyway.
+ */
+export function sameTopic(message: {
+  readonly id: number
+  readonly isTopicMessage: boolean
+  readonly replyToTopId?: number | undefined
+  readonly replyToMessageId?: number | undefined
+  readonly action?: { readonly _: string } | undefined
+}): { readonly topicId?: number } {
+  // The message that opened a topic is the topic.
+  if (message.action?._ === 'messageActionTopicCreate') return { topicId: message.id }
+  if (!message.isTopicMessage) return {}
+
+  const topicId = message.replyToTopId ?? message.replyToMessageId
+
+  return topicId === undefined || topicId === GENERAL_TOPIC ? {} : { topicId }
 }
 
 /**
@@ -155,17 +357,25 @@ export async function sendText(
   body: MessageBody,
   options?: SendOptions,
 ): Promise<SentMessage> {
-  const target = await client.resolve(peer)
+  return await sendTextTo(client, await targetOf(client, peer, options), body, options)
+}
+
+/** {@link sendText}, to a target already resolved. */
+export async function sendTextTo(
+  client: Sending,
+  target: Target,
+  body: MessageBody,
+  options?: SendOptions,
+): Promise<SentMessage> {
   const key = keyFor(client)
   const { message, entities } = bodyOf(body)
-  const reply = replyOf(options)
 
   const answer = await client.api.messages.sendMessage({
-    peer: target,
+    peer: target.peer,
     message,
     random_id: key,
     ...(entities === undefined ? {} : { entities }),
-    ...(reply === undefined ? {} : { reply_to: reply }),
+    ...(target.reply === undefined ? {} : { reply_to: target.reply }),
     ...(options?.noWebpagePreview === true ? { no_webpage: true as const } : {}),
     ...flagsOf(options),
   })
@@ -187,18 +397,27 @@ export async function sendMedia(
   body?: MessageBody,
   options?: SendOptions,
 ): Promise<SentMessage> {
-  const target = await client.resolve(peer)
+  return await sendMediaTo(client, await targetOf(client, peer, options), media, body, options)
+}
+
+/** {@link sendMedia}, to a target already resolved. */
+export async function sendMediaTo(
+  client: Sending,
+  target: Target,
+  media: TypeInputMedia,
+  body?: MessageBody,
+  options?: SendOptions,
+): Promise<SentMessage> {
   const key = keyFor(client)
   const { message, entities } = bodyOf(body ?? '')
-  const reply = replyOf(options)
 
   const answer = await client.api.messages.sendMedia({
-    peer: target,
+    peer: target.peer,
     media,
     message,
     random_id: key,
     ...(entities === undefined ? {} : { entities }),
-    ...(reply === undefined ? {} : { reply_to: reply }),
+    ...(target.reply === undefined ? {} : { reply_to: target.reply }),
     ...flagsOf(options),
   })
 

@@ -186,10 +186,24 @@ describe('saying something', () => {
 
     await sendText(client, '@someone', 'hi', { topicId: 7 })
 
+    // The topic is only named separately when the answered message is not the
+    // one that opened it: here the header already implies it.
     expect(client.calls[0]?.params['reply_to']).toEqual({
       _: 'inputReplyToMessage',
       reply_to_msg_id: 7,
-      top_msg_id: 7,
+    })
+  })
+
+  it('sends into the General topic with no header, since nothing opened it', async () => {
+    const client = fake()
+
+    await sendText(client, '@someone', 'hi', { topicId: 1 })
+    await sendText(client, '@someone', 'hi', { topicId: 1, replyTo: 42 })
+
+    expect(client.calls[0]?.params).not.toHaveProperty('reply_to')
+    expect(client.calls[1]?.params['reply_to']).toEqual({
+      _: 'inputReplyToMessage',
+      reply_to_msg_id: 42,
     })
   })
 
