@@ -85,6 +85,7 @@ export {
   has,
   hasQuery,
   MESSAGE_BEARING_KINDS,
+  type MemberChange,
   type PresenceFilters,
   type TextMatch,
 } from './filters/index.js'
@@ -151,6 +152,26 @@ export {
 export { InlineKeyboard, Keyboard } from './keyboards.js'
 export { type MediaOptions, media } from './media.js'
 export { type NormalizedUpdate, normalizeUpdate, UNKNOWN_KIND } from './normalize.js'
+export {
+  type AlbumCaption,
+  adminRights,
+  attach,
+  botCommands,
+  content,
+  type FiatInvoice,
+  invoice,
+  menuButton,
+  newSticker,
+  type PayloadFile,
+  permissions,
+  pollOption,
+  preview,
+  price,
+  reaction,
+  replyTo,
+  type StarsInvoice,
+  shipping,
+} from './payloads.js'
 export {
   type RateLimitInfo,
   type RateLimitKey,

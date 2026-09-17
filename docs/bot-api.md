@@ -251,6 +251,43 @@ server or an MTProto client is the answer.
 
 ---
 
+## 4.1 Payloads, built
+
+The generated types describe every payload a method takes, which is enough to write one
+correctly and not enough to write one quickly. A photo in an album is `{ type: 'photo', media }`;
+a permission set is sixteen booleans that all have to be named, because Telegram reads an absent
+permission as a withheld one; an invoice paid in Stars is priced in exactly one line, in `XTR`,
+with an empty provider token. Each of those is a rule a caller has to know, and each is a request
+refused for a reason that names the wrong field when they do not.
+
+So the payloads are built:
+
+| Builder | What it makes |
+| --- | --- |
+| `attach.photo` / `video` / `animation` / `audio` / `document` / `livePhoto` | one `InputMedia` item |
+| `attach.photos` / `videos` / `documents` / `audios` | a whole album, captioned once, on the item a client shows the caption from |
+| `newSticker.static` / `animated` / `video` | a sticker for a set, its format named rather than passed |
+| `content.text` / `location` / `venue` / `contact` / `invoice` | what an inline result sends |
+| `preview.off` / `url` / `large` / `small` | link preview options |
+| `replyTo` / `replyTo.inChat` / `replyTo.quoting` | reply parameters, across chats and quoting |
+| `reaction.emoji` / `custom` / `paid` | a reaction |
+| `price`, `invoice.fiat`, `invoice.stars`, `shipping` | the payment payloads |
+| `pollOption` | one poll option, with its own formatting |
+| `menuButton.default` / `commands` / `webApp` | the menu button variants |
+| `botCommands.of` / `list` / `scope.*` | commands, and where a list of them applies |
+| `permissions.all` / `none`, `adminRights.all` / `none` | a full set, then what differs |
+
+Each returns the object the schema declares and nothing more, so it can be spread, edited and
+mixed with hand-written payloads. Files go in as they come from `media.*`: an upload nested in a
+payload is rewritten to `attach://` when the request is encoded.
+
+Inline results were already built (`inline.article`, `inline.photo` and the rest), and the nine
+cached result variants are still written out, since the generated types describe them completely.
+Rich-message payloads are not built here: that surface belongs to the newer schema layer the
+MTProto side is also waiting on.
+
+---
+
 ## 5. Event promotion
 
 The Bot API delivers service messages as `message` updates with a service field set.
@@ -298,7 +335,14 @@ Everything needed to run a real bot in production, and nothing else:
 - Event normalization with service-message promotion — **shipped**
 - File download, streaming upload, `file_id` reuse, `media` sources — **shipped**
 - Keyboards, both inline and reply — **shipped**
-- Built-in filters, generated presence plus curated families — **shipped**
+- Built-in filters, generated presence plus curated families — **shipped**, including the
+  updates that are not messages: reactions (`f.reaction.*`, both sides of a change, added and
+  removed told apart), the three payment moments matched by the bot's own invoice payload
+  (`f.payment.*`), standing changes derived from the statuses before and after (`f.member.*`,
+  where one transition can be two changes), routing by kind including a plugin's own
+  (`f.kind.in`, `f.kind.custom`), a reply to one particular message (`f.reply.to`), boosts,
+  business connections, game buttons and chosen inline results. `when(filter, middleware)` gates
+  middleware on any of them and narrows what the middleware is written against.
 - Formatting helpers with escaping — **shipped**
 - Inline-mode result builders — **shipped**
 - API hooks, with flood-wait retry and throttling on them — **shipped**

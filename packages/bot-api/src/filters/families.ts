@@ -18,9 +18,25 @@
  */
 
 import type { Filter } from '@yuigram/core'
-import type { CallbackQueryContext, MessageContext } from '../events/index.js'
+import type {
+  AnyEventContext,
+  CallbackQueryContext,
+  ContextFor,
+  MessageContext,
+  PreCheckoutQueryContext,
+  ShippingQueryContext,
+} from '../events/index.js'
 import { filter } from '../filter.js'
-import type { Chat, MessageEntity, User } from '../generated/types/index.js'
+import type { UpdateEventKind } from '../generated/events.js'
+import type {
+  Chat,
+  ChatMember,
+  Message,
+  MessageEntity,
+  ReactionType,
+  SuccessfulPayment,
+  User,
+} from '../generated/types/index.js'
 import { has, MESSAGE_BEARING_KINDS } from './presence.js'
 
 /** A string or pattern to match text against. */
@@ -293,6 +309,23 @@ export const callback = Object.freeze({
 export const reply = Object.freeze({
   /** The message replies to another. */
   exists: has.reply_to_message,
+  /**
+   * The message replies to a particular message, by its number.
+   *
+   * What routes an answer back to a prompt: keep the identifier a send returned
+   * and match replies to that message rather than to any message.
+   */
+  to(messageId: number): Filter<MessageContext, { reply_to_message: Message }> {
+    return filter<MessageContext, { reply_to_message: Message }>(
+      `reply.to(${messageId})`,
+      (context) => {
+        const replied = (context as { reply_to_message?: Message }).reply_to_message
+
+        return replied?.message_id === messageId
+      },
+      { kinds: MESSAGE_BEARING_KINDS },
+    )
+  },
   /** The message replies to one of this bot's own messages. */
   toBot: filter<MessageContext>(
     'reply.toBot',
@@ -369,3 +402,431 @@ export const topic = filter<MessageContext>(
   (context) => (context as { message_thread_id?: number }).message_thread_id !== undefined,
   { kinds: MESSAGE_BEARING_KINDS },
 )
+
+/* -------------------------------------------------------------------------- */
+/* The updates that are not messages                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Everything below reads an update that is not a message: a reaction changing, a
+ * member's standing changing, the three moments of a payment, a boost, a chosen
+ * inline result — and the two questions that are about routing rather than
+ * content, which kinds an update may be and which message a reply answers.
+ *
+ * Each names the kinds it can match, so the dispatcher skips an update none of
+ * them could accept rather than calling every predicate on it.
+ */
+
+/** The context each of these updates reaches a handler as. */
+type ReactionContext = ContextFor<'message_reaction'>
+type MemberContext = ContextFor<'chat_member'>
+type BoostContext = ContextFor<'chat_boost'>
+type ChosenResultContext = ContextFor<'inline_result_chosen'>
+
+function field<T>(context: unknown, name: string): T | undefined {
+  return (context as Record<string, T | undefined>)[name]
+}
+
+/* -------------------------------------------------------------------------- */
+/* Reactions                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const REACTION_KINDS: readonly UpdateEventKind[] = ['message_reaction']
+
+/** Both sides of a reaction change: what was set before, and what is set now. */
+function bothSides(context: unknown): { before: ReactionType[]; after: ReactionType[] } {
+  return {
+    before: field<ReactionType[]>(context, 'old_reaction') ?? [],
+    after: field<ReactionType[]>(context, 'new_reaction') ?? [],
+  }
+}
+
+function anyOf(reactions: readonly ReactionType[], is: (one: ReactionType) => boolean): boolean {
+  return reactions.some(is)
+}
+
+/**
+ * How somebody's reaction to a message changed.
+ *
+ * A reaction update carries both lists rather than the difference, so these
+ * read both: `reaction.emoji('👍')` matches whether the thumb was just added or
+ * just taken away, and `added` and `removed` tell those apart.
+ */
+export const reaction = Object.freeze({
+  /** Any reaction change that leaves or removes at least one reaction. */
+  any: filter<ReactionContext>(
+    'reaction.any',
+    (context) => {
+      const { before, after } = bothSides(context)
+
+      return before.length > 0 || after.length > 0
+    },
+    { kinds: REACTION_KINDS },
+  ),
+
+  /** One of these emoji, on either side of the change. */
+  emoji(...wanted: readonly string[]): Filter<ReactionContext, unknown> {
+    const set = new Set(wanted)
+
+    return filter<ReactionContext>(
+      `reaction.emoji(${wanted.join(', ')})`,
+      (context) => {
+        const { before, after } = bothSides(context)
+        const is = (one: ReactionType) => {
+          const emoji = field<string>(one, 'emoji')
+
+          return one.type === 'emoji' && emoji !== undefined && (set.size === 0 || set.has(emoji))
+        }
+
+        return anyOf(before, is) || anyOf(after, is)
+      },
+      { kinds: REACTION_KINDS },
+    )
+  },
+
+  /** One of these custom emoji, by identifier, on either side of the change. */
+  custom(...wanted: readonly string[]): Filter<ReactionContext, unknown> {
+    const set = new Set(wanted)
+
+    return filter<ReactionContext>(
+      `reaction.custom(${wanted.join(', ')})`,
+      (context) => {
+        const { before, after } = bothSides(context)
+        const is = (one: ReactionType) => {
+          const id = field<string>(one, 'custom_emoji_id')
+
+          return one.type === 'custom_emoji' && id !== undefined && (set.size === 0 || set.has(id))
+        }
+
+        return anyOf(before, is) || anyOf(after, is)
+      },
+      { kinds: REACTION_KINDS },
+    )
+  },
+
+  /** A paid reaction, which the sender spent Stars on. */
+  paid: filter<ReactionContext>(
+    'reaction.paid',
+    (context) => {
+      const { before, after } = bothSides(context)
+      const is = (one: ReactionType) => one.type === 'paid'
+
+      return anyOf(before, is) || anyOf(after, is)
+    },
+    { kinds: REACTION_KINDS },
+  ),
+
+  /** More reactions now than before: somebody added one. */
+  added: filter<ReactionContext>(
+    'reaction.added',
+    (context) => {
+      const { before, after } = bothSides(context)
+
+      return after.length > before.length
+    },
+    { kinds: REACTION_KINDS },
+  ),
+
+  /** Fewer reactions now than before: somebody took one back. */
+  removed: filter<ReactionContext>(
+    'reaction.removed',
+    (context) => {
+      const { before, after } = bothSides(context)
+
+      return before.length > after.length
+    },
+    { kinds: REACTION_KINDS },
+  ),
+})
+
+/* -------------------------------------------------------------------------- */
+/* Payments                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The three moments a payment reaches a bot, matched by the payload the bot
+ * itself put on the invoice.
+ *
+ * That payload is the only thing tying an update back to what was being bought:
+ * it is the bot's own reference, echoed unchanged, which is why each of these
+ * takes one rather than a chat or a user.
+ */
+export const payment = Object.freeze({
+  /** A delivery-options request for an invoice with this payload. */
+  shipping(payload: TextMatch): Filter<ShippingQueryContext, unknown> {
+    return filter<ShippingQueryContext>(
+      `payment.shipping(${String(payload)})`,
+      (context) => {
+        const value = field<string>(context, 'invoice_payload')
+
+        return value !== undefined && matches(value, payload)
+      },
+      { kinds: ['shipping_query'] },
+    )
+  },
+
+  /** The last chance to refuse a charge, for an invoice with this payload. */
+  preCheckout(payload: TextMatch): Filter<PreCheckoutQueryContext, unknown> {
+    return filter<PreCheckoutQueryContext>(
+      `payment.preCheckout(${String(payload)})`,
+      (context) => {
+        const value = field<string>(context, 'invoice_payload')
+
+        return value !== undefined && matches(value, payload)
+      },
+      { kinds: ['pre_checkout_query'] },
+    )
+  },
+
+  /**
+   * A payment that went through, for an invoice with this payload.
+   *
+   * This arrives as a service message in the conversation rather than as a
+   * query, so it matches a message update and narrows the payment onto it.
+   */
+  successful(
+    payload?: TextMatch,
+  ): Filter<MessageContext, { successful_payment: SuccessfulPayment }> {
+    return filter<MessageContext, { successful_payment: SuccessfulPayment }>(
+      payload === undefined ? 'payment.successful' : `payment.successful(${String(payload)})`,
+      (context) => {
+        const paid = field<SuccessfulPayment>(context, 'successful_payment')
+        if (paid === undefined) return false
+
+        return payload === undefined || matches(paid.invoice_payload, payload)
+      },
+      { kinds: MESSAGE_BEARING_KINDS },
+    )
+  },
+})
+
+/* -------------------------------------------------------------------------- */
+/* Membership                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const MEMBER_KINDS: readonly UpdateEventKind[] = ['chat_member', 'my_chat_member']
+
+/** What a member's standing changed into, as a word. */
+export type MemberChange =
+  | 'joined'
+  | 'left'
+  | 'promoted'
+  | 'demoted'
+  | 'banned'
+  | 'unbanned'
+  | 'restricted'
+  | 'subscribed'
+
+/** Whether a status counts as being in the chat. */
+function isIn(status: string): boolean {
+  return status === 'member' || status === 'administrator' || status === 'creator'
+}
+
+/** Which change a transition is, or nothing where it is none of them. */
+function changeOf(before: ChatMember, after: ChatMember): readonly MemberChange[] {
+  const was = before.status
+  const now = after.status
+  const changes: MemberChange[] = []
+
+  if (!isIn(was) && isIn(now)) changes.push('joined')
+  if (isIn(was) && !isIn(now) && now !== 'kicked') changes.push('left')
+  if (
+    was !== 'administrator' &&
+    was !== 'creator' &&
+    (now === 'administrator' || now === 'creator')
+  ) {
+    changes.push('promoted')
+  }
+  if (
+    (was === 'administrator' || was === 'creator') &&
+    now !== 'administrator' &&
+    now !== 'creator'
+  ) {
+    changes.push('demoted')
+  }
+  if (now === 'kicked') changes.push('banned')
+  if (was === 'kicked' && now !== 'kicked') changes.push('unbanned')
+  if (now === 'restricted') changes.push('restricted')
+  // A member whose membership now has an end date is a subscriber.
+  if (isIn(now) && 'until_date' in after && after.until_date !== undefined)
+    changes.push('subscribed')
+
+  return changes
+}
+
+/** A member update's two sides, where the update carries them. */
+function standing(context: unknown): { before: ChatMember; after: ChatMember } | undefined {
+  const before = field<ChatMember>(context, 'old_chat_member')
+  const after = field<ChatMember>(context, 'new_chat_member')
+
+  return before === undefined || after === undefined ? undefined : { before, after }
+}
+
+function changeFilter(change: MemberChange): Filter<MemberContext, unknown> {
+  return filter<MemberContext>(
+    `member.${change}`,
+    (context) => {
+      const sides = standing(context)
+
+      return sides !== undefined && changeOf(sides.before, sides.after).includes(change)
+    },
+    { kinds: MEMBER_KINDS },
+  )
+}
+
+/**
+ * How somebody's standing in a chat changed.
+ *
+ * Telegram reports the status before and after rather than what happened, so
+ * the change is derived from the pair. One transition can be more than one
+ * change — an administrator who is banned is both demoted and banned — and each
+ * filter matches on its own terms rather than picking a single label.
+ */
+export const member = Object.freeze({
+  /** Any change of standing. */
+  any: filter<MemberContext>('member.any', (context) => standing(context) !== undefined, {
+    kinds: MEMBER_KINDS,
+  }),
+
+  /** A change of standing this bot's own, by the bot's user id. */
+  self(botId: number): Filter<MemberContext, unknown> {
+    return filter<MemberContext>(
+      `member.self(${botId})`,
+      (context) => {
+        const sides = standing(context)
+
+        return sides?.after.user.id === botId
+      },
+      { kinds: MEMBER_KINDS },
+    )
+  },
+
+  /** A named change, for one written out rather than chosen from below. */
+  change(change: MemberChange): Filter<MemberContext, unknown> {
+    return changeFilter(change)
+  },
+
+  joined: changeFilter('joined'),
+  left: changeFilter('left'),
+  promoted: changeFilter('promoted'),
+  demoted: changeFilter('demoted'),
+  banned: changeFilter('banned'),
+  unbanned: changeFilter('unbanned'),
+  restricted: changeFilter('restricted'),
+  subscribed: changeFilter('subscribed'),
+})
+
+/* -------------------------------------------------------------------------- */
+/* Routing                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Which kind of update this is.
+ *
+ * `bot.on('message', …)` already routes by kind, so these are for composing a
+ * kind into a larger filter, and for the kinds a plugin added, which the
+ * generated list does not know about.
+ */
+export const kind = Object.freeze({
+  /** One of these kinds. */
+  in<K extends string>(...kinds: readonly K[]): Filter<AnyEventContext, { kind: K }> {
+    const set = new Set<string>(kinds)
+
+    return filter<AnyEventContext, { kind: K }>(
+      `kind.in(${kinds.join(', ')})`,
+      (context) => {
+        const value = field<string>(context, 'kind')
+
+        return value !== undefined && set.has(value)
+      },
+      { kinds: kinds as readonly string[] as readonly UpdateEventKind[] },
+    )
+  },
+
+  /**
+   * A kind this framework does not generate: one a plugin dispatches.
+   *
+   * Kept apart from `in` so a misspelt built-in kind is a type error while a
+   * plugin's own kind, which no type can know, is not.
+   */
+  custom<N extends string>(name: N): Filter<AnyEventContext, { kind: N }> {
+    return filter<AnyEventContext, { kind: N }>(
+      `kind.custom(${name})`,
+      (context) => field<string>(context, 'kind') === name,
+    )
+  },
+})
+
+/* -------------------------------------------------------------------------- */
+/* Other updates                                                               */
+/* -------------------------------------------------------------------------- */
+
+/** A boost on a chat. */
+export const boost = Object.freeze({
+  /** Any boost added to a chat. */
+  any: filter<BoostContext>('boost.any', (context) => field(context, 'boost') !== undefined, {
+    kinds: ['chat_boost'],
+  }),
+})
+
+const BUSINESS_KINDS: readonly UpdateEventKind[] = [
+  'business_message',
+  'business_message_edited',
+  'business_messages_deleted',
+]
+
+/**
+ * Updates arriving over a connected business account.
+ *
+ * The connection update itself is excluded: it carries its identifier as `id`
+ * rather than as `business_connection_id`, so a filter matching the field would
+ * be true for the thing that created the connection as well as for messages
+ * over it.
+ */
+export const business = Object.freeze({
+  any: filter<MessageContext, { business_connection_id: string }>(
+    'business.any',
+    (context) => typeof field<string>(context, 'business_connection_id') === 'string',
+    {
+      kinds: BUSINESS_KINDS,
+    },
+  ),
+
+  /** A particular connection, by its identifier. */
+  connection(id: string): Filter<MessageContext, { business_connection_id: string }> {
+    return filter<MessageContext, { business_connection_id: string }>(
+      `business.connection(${id})`,
+      (context) => field<string>(context, 'business_connection_id') === id,
+      { kinds: BUSINESS_KINDS },
+    )
+  },
+})
+
+/** A game, either as a button press or as a chosen inline result. */
+export const game = Object.freeze({
+  /** A callback query from a game button, by the game's short name. */
+  shortName(match: TextMatch): Filter<CallbackQueryContext, unknown> {
+    return filter<CallbackQueryContext>(
+      `game.shortName(${String(match)})`,
+      (context) => {
+        const value = field<string>(context, 'game_short_name')
+
+        return value !== undefined && matches(value, match)
+      },
+      { kinds: ['callback_query'] },
+    )
+  },
+})
+
+/** An inline result somebody picked, by the identifier the bot gave it. */
+export function chosenResult(match: TextMatch): Filter<ChosenResultContext, unknown> {
+  return filter<ChosenResultContext>(
+    `chosenResult(${String(match)})`,
+    (context) => {
+      const value = field<string>(context, 'result_id')
+
+      return value !== undefined && matches(value, match)
+    },
+    { kinds: ['inline_result_chosen'] },
+  )
+}

@@ -18,6 +18,7 @@
  */
 
 import { YuigramError } from '../errors/errors.js'
+import type { AnyFilter } from '../filter/types.js'
 
 /** The continuation passed to middleware. */
 export type Next = () => Promise<void>
@@ -94,6 +95,29 @@ export async function run<C>(middlewares: ReadonlyArray<Middleware<C>>, context:
  * Skipping rather than blocking is what makes a gated middleware safe to place
  * anywhere in a chain — a non-match must not stop the updates behind it.
  */
+export function when<C>(
+  predicate: (context: C) => boolean | Promise<boolean>,
+  middleware: Middleware<C>,
+): Middleware<C>
+
+/**
+ * Gate middleware on a filter, which narrows the context it sees.
+ *
+ * ```ts
+ * bot.use(when(f.chat.private, async (context, next) => {
+ *   log.info('a private message', { from: context.sender?.id })
+ *   await next()
+ * }))
+ * ```
+ *
+ * What a filter adds over a bare predicate is the narrowing: the middleware is
+ * written against what matching proved, rather than against the widest context
+ * the chain carries.
+ */
+export function when<Base, Mod>(
+  matching: AnyFilter<Base, Mod>,
+  middleware: Middleware<Base & Mod>,
+): Middleware<unknown>
 export function when<C>(
   predicate: (context: C) => boolean | Promise<boolean>,
   middleware: Middleware<C>,
