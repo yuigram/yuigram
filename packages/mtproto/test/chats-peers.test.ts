@@ -148,8 +148,7 @@ function fake(options: {
 
       return Promise.resolve(found)
     },
-    resolveMany: (peers) =>
-      Promise.resolve(peers.map((peer) => address(options.addressing, peer))),
+    resolveMany: (peers) => Promise.resolve(peers.map((peer) => address(options.addressing, peer))),
     async *dialogs() {
       for (const one of options.walk ?? []) {
         asked.push({ method: 'walk', params: one })
@@ -329,9 +328,7 @@ describe('reading who peers are', () => {
   it('names a reference it could not read, without assuming it has a name', async () => {
     const client = fake({})
 
-    await expect(fetchPeer(client, { kind: 'channel', id: 9n })).rejects.toThrow(
-      /the channel 9/,
-    )
+    await expect(fetchPeer(client, { kind: 'channel', id: 9n })).rejects.toThrow(/the channel 9/)
   })
 
   it('narrows to a person, and refuses a conversation', async () => {

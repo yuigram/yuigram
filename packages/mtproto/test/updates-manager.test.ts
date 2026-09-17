@@ -528,7 +528,13 @@ describe('following a channel', () => {
    * among the catch-up ones.
    */
   const named = async (c: ReturnType<typeof client>) => {
-    await c.peers.save({ kind: 'channel', id: CHANNEL, accessHash: 7770n, min: false, usernames: [] })
+    await c.peers.save({
+      kind: 'channel',
+      id: CHANNEL,
+      accessHash: 7770n,
+      min: false,
+      usernames: [],
+    })
   }
 
   it('asks for the difference straight away', async () => {

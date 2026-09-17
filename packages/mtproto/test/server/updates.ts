@@ -365,7 +365,7 @@ export class UpdateServer {
       return {
         _: 'updates.channelDifferenceTooLong',
         final: true,
-      ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
+        ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
         dialog: { _: 'dialog' },
         messages: [],
         chats: [...this.#chats],
@@ -379,7 +379,7 @@ export class UpdateServer {
       return {
         _: 'updates.channelDifferenceEmpty',
         final: true,
-      ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
+        ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
         pts: box.pts,
       }
     }
