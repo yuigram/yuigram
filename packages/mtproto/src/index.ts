@@ -57,7 +57,6 @@ export {
   readUser,
   UserView,
 } from './entities/peer.js'
-
 export {
   PeerStoriesView,
   readStory,
@@ -89,7 +88,25 @@ export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.j
 export { fromHtml, toHtml } from './format/html.js'
 export { fromMarkdown, toMarkdown } from './format/markdown.js'
 export type { FormattedText, Markup } from './format/text.js'
+export type {
+  ForumSettings,
+  NewTopic,
+  TopicEdit,
+  TopicIcon,
+  TopicRef,
+} from './forums/topics.js'
 export { TL_LAYER } from './generated/schema-info.js'
+export type {
+  GiftNote,
+  GiftOffer,
+  GiftRef,
+  GiftVerdict,
+  NewGift,
+  ResalePage,
+  ResaleQuery,
+  StarsPrice,
+  UpgradeOptions,
+} from './gifts/gifts.js'
 export type { BoundApi } from './here.js'
 export type {
   CallbackAnswer,
@@ -176,6 +193,13 @@ export {
   walkStarsTransactions,
   walkStoryViewers,
 } from './paging/walk.js'
+export type {
+  BoostChance,
+  BusinessIntro,
+  LinkMessage,
+  OpenHours,
+  WorkHours,
+} from './premium/premium.js'
 export type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 export {
   cancelRecoveryEmail,
@@ -190,6 +214,13 @@ export {
 export type { PortableSession } from './session.js'
 export { areaFor, StorageOwnershipError } from './storage/ownership.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
+export type {
+  NewStory,
+  StoryAllowance,
+  StoryCaption,
+  StoryEdit,
+  StoryReaction,
+} from './stories/stories.js'
 export type { TlValue } from './tl/index.js'
 export type {
   BlockedPeer,

@@ -79,19 +79,38 @@ import type { ChatView, UserView } from './entities/peer.js'
 import type { PeerStoriesView, StoryView, StoryViewerView } from './entities/story.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
+import type { Foruming, ForumSettings, NewTopic, TopicEdit, TopicRef } from './forums/topics.js'
 import type {
   Boost,
   Photo,
   SavedStarGift,
   StarsTransaction,
+  TypeBotBusinessConnection,
+  TypeBusinessChatLink,
   TypeEmojiStatus,
   TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
   TypeMessageEntity,
+  TypeMyBoost,
   TypePeerColor,
+  TypeSavedStarGift,
   TypeSendMessageAction,
+  TypeStarGift,
+  TypeStoriesStealthMode,
+  TypeStoryViews,
 } from './generated/api/types/index.js'
+import type {
+  Gifting,
+  GiftOffer,
+  GiftRef,
+  GiftVerdict,
+  NewGift,
+  ResalePage,
+  ResaleQuery,
+  StarsPrice,
+  UpgradeOptions,
+} from './gifts/gifts.js'
 import type {
   CallbackAnswer,
   EditOptions,
@@ -167,6 +186,7 @@ import {
   walkStarsTransactions,
   walkStoryViewers,
 } from './paging/walk.js'
+import type { BoostChance, BusinessIntro, LinkMessage, WorkHours } from './premium/premium.js'
 import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 import {
   cancelRecoveryEmail,
@@ -185,6 +205,13 @@ import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type AreaLease, areaFor, claimArea } from './storage/ownership.js'
 import { type PeerStore, peerStore } from './storage/peers.js'
 import { type UpdateStore, updateStore } from './storage/updates.js'
+import type {
+  NewStory,
+  StoryAllowance,
+  StoryEdit,
+  Storying,
+  StoryReaction,
+} from './stories/stories.js'
 import type { TlValue } from './tl/index.js'
 import type { Updates } from './updates/manager.js'
 import { UpdateState } from './updates/state.js'
@@ -1228,6 +1255,26 @@ export class Account<Ext = unknown> {
     return {
       api: this.#api,
       resolve: async (peer) => await this.resolve(peer),
+      random: this.#options.random ?? randomBytes,
+    }
+  }
+
+  /**
+   * The same, for the families that both change a conversation and post into one.
+   *
+   * Topics, stories and gifts all need what operating on a conversation needs
+   * *and* a deduplication key, because each of them sends something Telegram
+   * deduplicates. Assembled here for the same reason {@link Account.#sending}
+   * is: the randomness is the account's, and nothing outside should draw from
+   * it.
+   */
+  get #posting(): Foruming & Gifting & Storying {
+    return {
+      api: this.#api,
+      resolve: async (peer) => await this.resolve(peer),
+      feed: async (value) => {
+        await this.feed(value)
+      },
       random: this.#options.random ?? randomBytes,
     }
   }
@@ -2547,6 +2594,370 @@ export class Account<Ext = unknown> {
    */
   async findFolder(query: FolderQuery): Promise<Folder | undefined> {
     return await (await import('./chats/peers.js')).findFolder(this, query)
+  }
+
+  /**
+   * Open a new topic in a forum.
+   *
+   * ```ts
+   * const opened = await account.createTopic('@forum', { title: 'Releases' })
+   * ```
+   *
+   * Answered with the service message that announced it, whose identifier is
+   * also the new topic's identifier.
+   */
+  async createTopic(chat: string | PeerRef, topic: NewTopic): Promise<SentMessage> {
+    return await (await import('./forums/topics.js')).createTopic(this.#posting, chat, topic)
+  }
+
+  /** Change a topic: its name, its icon, whether it is closed. */
+  async editTopic(chat: string | PeerRef, topic: TopicRef, edit: TopicEdit): Promise<SentMessage> {
+    return await (await import('./forums/topics.js')).editTopic(this.#posting, chat, topic, edit)
+  }
+
+  /** Close a topic to new messages, or open it again. */
+  async setTopicClosed(
+    chat: string | PeerRef,
+    topic: TopicRef,
+    closed: boolean,
+  ): Promise<SentMessage> {
+    return await (await import('./forums/topics.js')).setTopicClosed(
+      this.#posting,
+      chat,
+      topic,
+      closed,
+    )
+  }
+
+  /** Hide the General topic, or show it again. It is the only one that can be. */
+  async setGeneralTopicHidden(chat: string | PeerRef, hidden: boolean): Promise<SentMessage> {
+    return await (await import('./forums/topics.js')).setGeneralTopicHidden(
+      this.#posting,
+      chat,
+      hidden,
+    )
+  }
+
+  /** Pin a topic to the top of the forum, or unpin it. */
+  async setTopicPinned(chat: string | PeerRef, topic: TopicRef, pinned: boolean): Promise<void> {
+    await (await import('./forums/topics.js')).setTopicPinned(this.#posting, chat, topic, pinned)
+  }
+
+  /** Put the pinned topics in a given order. The order given is the whole order. */
+  async reorderPinnedTopics(
+    chat: string | PeerRef,
+    order: readonly TopicRef[],
+    options?: { readonly unpinTheRest?: boolean },
+  ): Promise<void> {
+    await (await import('./forums/topics.js')).reorderPinnedTopics(
+      this.#posting,
+      chat,
+      order,
+      options,
+    )
+  }
+
+  /** Delete a topic's messages, and keep this account's place in the stream. */
+  async deleteTopicHistory(chat: string | PeerRef, topic: TopicRef): Promise<number> {
+    return await (await import('./forums/topics.js')).deleteTopicHistory(this.#posting, chat, topic)
+  }
+
+  /** Read particular topics by number, positionally, with a gap for each missing one. */
+  async topics(
+    chat: string | PeerRef,
+    topics: readonly TopicRef[],
+  ): Promise<(ForumTopicView | undefined)[]> {
+    return await (await import('./forums/topics.js')).fetchTopics(this.#posting, chat, topics)
+  }
+
+  /** Turn a supergroup into a forum, or turn it back into an ordinary one. */
+  async setForumSettings(chat: string | PeerRef, settings: ForumSettings): Promise<void> {
+    await (await import('./forums/topics.js')).setForumSettings(this.#posting, chat, settings)
+  }
+
+  /**
+   * Post a story.
+   *
+   * ```ts
+   * const story = await account.postStory({ media, caption: 'hello' })
+   * ```
+   *
+   * Posted as this account unless a peer is named. Answered with the story
+   * itself, so its number and expiry need no second request.
+   *
+   * Who may see it defaults to everyone. An audience is a list of privacy
+   * rules — `[{ _: 'inputPrivacyValueAllowCloseFriends' }]` for close friends,
+   * `[{ _: 'inputPrivacyValueAllowContacts' }]` for contacts — which is a value
+   * rather than a helper so that posting a story loads nothing until it is
+   * posted.
+   */
+  async postStory(story: NewStory, peer?: string | PeerRef): Promise<StoryView> {
+    return await (await import('./stories/stories.js')).postStory(this.#posting, story, peer)
+  }
+
+  /** Change a story that is already posted. What is not given is left alone. */
+  async editStory(id: number, edit: StoryEdit, peer?: string | PeerRef): Promise<StoryView> {
+    return await (await import('./stories/stories.js')).editStory(this.#posting, id, edit, peer)
+  }
+
+  /** Take stories down. Answers the numbers Telegram actually removed. */
+  async deleteStories(ids: readonly number[], peer?: string | PeerRef): Promise<number[]> {
+    return await (await import('./stories/stories.js')).deleteStories(this.#posting, ids, peer)
+  }
+
+  /** Pin stories to a profile so they outlive their period, or unpin them. */
+  async setStoriesPinned(
+    ids: readonly number[],
+    pinned: boolean,
+    peer?: string | PeerRef,
+  ): Promise<number[]> {
+    return await (await import('./stories/stories.js')).setStoriesPinned(
+      this.#posting,
+      ids,
+      pinned,
+      peer,
+    )
+  }
+
+  /** Hide a peer's stories from the row at the top, or show them again. */
+  async setPeerStoriesArchived(peer: string | PeerRef, archived: boolean): Promise<void> {
+    await (await import('./stories/stories.js')).setPeerStoriesArchived(
+      this.#posting,
+      peer,
+      archived,
+    )
+  }
+
+  /** React to a story, or take a reaction back by passing nothing. */
+  async reactToStory(
+    peer: string | PeerRef,
+    id: number,
+    reaction: StoryReaction,
+    options?: { readonly addToRecent?: boolean },
+  ): Promise<void> {
+    await (await import('./stories/stories.js')).reactToStory(
+      this.#posting,
+      peer,
+      id,
+      reaction,
+      options,
+    )
+  }
+
+  /** Mark a peer's stories read, up to and including one. */
+  async markStoriesSeen(peer: string | PeerRef, upTo: number): Promise<number[]> {
+    return await (await import('./stories/stories.js')).markStoriesSeen(this.#posting, peer, upTo)
+  }
+
+  /** Report that stories were actually looked at, which is what counts a view. */
+  async countStoryViews(peer: string | PeerRef, ids: readonly number[]): Promise<void> {
+    await (await import('./stories/stories.js')).countStoryViews(this.#posting, peer, ids)
+  }
+
+  /** Stop reporting this account's story views for a while. */
+  async hideMyStoryViews(options?: {
+    readonly past?: boolean
+    readonly future?: boolean
+  }): Promise<TypeStoriesStealthMode> {
+    return await (await import('./stories/stories.js')).hideMyViews(this.#posting, options)
+  }
+
+  /** Read particular stories by number, positionally, with a gap for each gone. */
+  async stories(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<(StoryView | undefined)[]> {
+    return await (await import('./stories/stories.js')).fetchStories(this.#posting, peer, ids)
+  }
+
+  /** A peer's stories that have not expired, and how far this account has read. */
+  async peerStories(peer: string | PeerRef): Promise<PeerStoriesView> {
+    return await (await import('./stories/stories.js')).peerStories(this.#posting, peer)
+  }
+
+  /** How stories this account posted have been received. */
+  async storyInteractions(
+    ids: readonly number[],
+    peer?: string | PeerRef,
+  ): Promise<(TypeStoryViews | undefined)[]> {
+    return await (await import('./stories/stories.js')).storyInteractions(this.#posting, ids, peer)
+  }
+
+  /** A link to a story, which only exists for one on a public profile. */
+  async storyLink(peer: string | PeerRef, id: number): Promise<string> {
+    return await (await import('./stories/stories.js')).storyLink(this.#posting, peer, id)
+  }
+
+  /** Whether a story may be posted somewhere, and how many are left if so. */
+  async canPostStory(peer?: string | PeerRef): Promise<StoryAllowance> {
+    return await (await import('./stories/stories.js')).canPostStory(this.#posting, peer)
+  }
+
+  /**
+   * Send a gift, paying for it in Stars.
+   *
+   * ```ts
+   * await account.sendGift('@someone', { giftId })
+   * ```
+   *
+   * **This spends Stars.** Two requests: the payment form, then the payment.
+   */
+  async sendGift(to: string | PeerRef, gift: NewGift): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).sendGift(this.#posting, to, gift)
+  }
+
+  /** Show, hide or convert a gift this account was given. Converting is final. */
+  async decideGift(gift: GiftRef, verdict: GiftVerdict): Promise<void> {
+    await (await import('./gifts/gifts.js')).decideGift(this.#posting, gift, verdict)
+  }
+
+  /** Upgrade a gift into a unique collectible. **This may spend Stars.** */
+  async upgradeGift(
+    gift: GiftRef,
+    options?: { readonly keepOriginalDetails?: boolean },
+  ): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).upgradeGift(this.#posting, gift, options)
+  }
+
+  /** Give a unique gift to somebody else. **This may spend Stars.** */
+  async transferGift(gift: GiftRef, to: string | PeerRef): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).transferGift(this.#posting, gift, to)
+  }
+
+  /** Buy a unique gift somebody has put up for resale. **This spends Stars.** */
+  async buyResaleGift(
+    slug: string,
+    to: string | PeerRef,
+    options?: { readonly inTon?: boolean },
+  ): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).buyResaleGift(this.#posting, slug, to, options)
+  }
+
+  /** Put a unique gift up for resale, or take it off sale with `null`. */
+  async setResalePrice(gift: GiftRef, price: StarsPrice | null): Promise<void> {
+    await (await import('./gifts/gifts.js')).setResalePrice(this.#posting, gift, price)
+  }
+
+  /** Pay in advance for somebody else's gift to be upgradeable. **Spends Stars.** */
+  async prepayGiftUpgrade(peer: string | PeerRef, hash: string): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).prepayUpgrade(this.#posting, peer, hash)
+  }
+
+  /** Pin gifts to the top of a profile. The list given is the whole pinned set. */
+  async setPinnedGifts(peer: string | PeerRef, gifts: readonly GiftRef[]): Promise<void> {
+    await (await import('./gifts/gifts.js')).setPinnedGifts(this.#posting, peer, gifts)
+  }
+
+  /** The gifts that can be bought right now. */
+  async giftOptions(): Promise<TypeStarGift[]> {
+    return await (await import('./gifts/gifts.js')).giftOptions(this.#posting)
+  }
+
+  /** What a gift could turn into if it were upgraded, sorted into the three kinds. */
+  async giftUpgradeOptions(giftId: bigint): Promise<UpgradeOptions> {
+    return await (await import('./gifts/gifts.js')).upgradeOptions(this.#posting, giftId)
+  }
+
+  /** One page of the unique gifts of a kind that are currently for sale. */
+  async giftResaleOptions(query: ResaleQuery): Promise<ResalePage> {
+    return await (await import('./gifts/gifts.js')).resaleOptions(this.#posting, query)
+  }
+
+  /** Read one unique gift by its public address. */
+  async uniqueGift(slug: string): Promise<TypeStarGift> {
+    return await (await import('./gifts/gifts.js')).uniqueGift(this.#posting, slug)
+  }
+
+  /** What a unique gift is currently reckoned to be worth. */
+  async giftValue(slug: string) {
+    return await (await import('./gifts/gifts.js')).giftValue(this.#posting, slug)
+  }
+
+  /** Read particular saved gifts by reference. */
+  async savedGiftsById(gifts: readonly GiftRef[]): Promise<TypeSavedStarGift[]> {
+    return await (await import('./gifts/gifts.js')).fetchSavedGifts(this.#posting, gifts)
+  }
+
+  /** A link for taking a unique gift out of Telegram. Needs the two-factor password. */
+  async giftWithdrawalUrl(gift: GiftRef, password: string): Promise<string> {
+    return await (await import('./gifts/gifts.js')).giftWithdrawalUrl(this.#posting, gift, password)
+  }
+
+  /** Offer to buy a unique gift from whoever owns it. Nothing is spent until accepted. */
+  async offerForGift(to: string | PeerRef, offer: GiftOffer): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).offerForGift(this.#posting, to, offer)
+  }
+
+  /** Accept an offer somebody made for a gift this account owns. */
+  async settleGiftOffer(message: number): Promise<SentMessage> {
+    return await (await import('./gifts/gifts.js')).settleGiftOffer(this.#posting, message)
+  }
+
+  /** Spend one of this account's boost slots on a conversation. */
+  async boost(chat: string | PeerRef): Promise<void> {
+    await (await import('./premium/premium.js')).boost(this, chat)
+  }
+
+  /** The boost slots this account has, and what each is spent on. */
+  async boostSlots(): Promise<TypeMyBoost[]> {
+    return await (await import('./premium/premium.js')).boostSlots(this)
+  }
+
+  /** Whether this account can boost something, and at whose expense. */
+  async canBoost(): Promise<BoostChance> {
+    return await (await import('./premium/premium.js')).canBoost(this)
+  }
+
+  /** How boosted a conversation is, and what the next level needs. */
+  async boostStats(chat: string | PeerRef) {
+    return await (await import('./premium/premium.js')).boostStats(this, chat)
+  }
+
+  /** The connection a business account granted a bot. */
+  async businessConnection(connectionId: string): Promise<TypeBotBusinessConnection> {
+    return await (await import('./premium/premium.js')).businessConnection(this, connectionId)
+  }
+
+  /** Make a link that opens a conversation with this account, pre-filled. */
+  async createBusinessLink(
+    message: LinkMessage,
+    options?: { readonly title?: string },
+  ): Promise<TypeBusinessChatLink> {
+    return await (await import('./premium/premium.js')).createBusinessLink(this, message, options)
+  }
+
+  /** Change what one of this account's business links says. */
+  async editBusinessLink(
+    slug: string,
+    message: LinkMessage,
+    options?: { readonly title?: string },
+  ): Promise<TypeBusinessChatLink> {
+    return await (await import('./premium/premium.js')).editBusinessLink(
+      this,
+      slug,
+      message,
+      options,
+    )
+  }
+
+  /** Take one of this account's business links down. */
+  async deleteBusinessLink(slug: string): Promise<void> {
+    await (await import('./premium/premium.js')).deleteBusinessLink(this, slug)
+  }
+
+  /** Every business link this account has published. */
+  async businessLinks(): Promise<TypeBusinessChatLink[]> {
+    return await (await import('./premium/premium.js')).businessLinks(this)
+  }
+
+  /** Set what people see before they have written anything, or clear it. */
+  async setBusinessIntro(intro: BusinessIntro | undefined): Promise<void> {
+    await (await import('./premium/premium.js')).setBusinessIntro(this, intro)
+  }
+
+  /** Publish when this account is open for business, or take the hours down. */
+  async setBusinessHours(hours: WorkHours | undefined): Promise<void> {
+    await (await import('./premium/premium.js')).setWorkHours(this, hours)
   }
 
   /**
