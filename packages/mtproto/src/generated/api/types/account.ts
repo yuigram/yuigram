@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for account
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as auth$ from './auth.js'
 import type * as root_a$ from './root/a.js'
@@ -121,6 +121,12 @@ export interface ClearRecentEmojiStatuses {
   readonly _: 'account.clearRecentEmojiStatuses'
 }
 
+/** `account.confirmBotConnection#67ed1f68` */
+export interface ConfirmBotConnection {
+  readonly _: 'account.confirmBotConnection'
+  readonly bot_id: root_i$.TypeInputUser
+}
+
 /** `account.confirmPasswordEmail#8fdf1920` */
 export interface ConfirmPasswordEmail {
   readonly _: 'account.confirmPasswordEmail'
@@ -196,6 +202,11 @@ export interface DeletePasskey {
 export interface DeleteSecureValue {
   readonly _: 'account.deleteSecureValue'
   readonly types: readonly root_s$.TypeSecureValueType[]
+}
+
+/** `account.deleteWebBrowserSettingsExceptions#86a0765d` */
+export interface DeleteWebBrowserSettingsExceptions {
+  readonly _: 'account.deleteWebBrowserSettingsExceptions'
 }
 
 /** `account.disablePeerConnectedBot#5e437ed9` */
@@ -476,6 +487,12 @@ export interface GetWallPapers {
 /** `account.getWebAuthorizations#182e6d6f` */
 export interface GetWebAuthorizations {
   readonly _: 'account.getWebAuthorizations'
+}
+
+/** `account.getWebBrowserSettings#56655768` */
+export interface GetWebBrowserSettings {
+  readonly _: 'account.getWebBrowserSettings'
+  readonly hash: bigint
 }
 
 /** `account.initPasskeyRegistration#429547e8` */
@@ -915,6 +932,14 @@ export interface ToggleUsername {
   readonly active: boolean
 }
 
+/** `account.toggleWebBrowserSettingsException#60ed4229` */
+export interface ToggleWebBrowserSettingsException {
+  readonly _: 'account.toggleWebBrowserSettingsException'
+  readonly delete?: true
+  readonly open_external_browser?: boolean
+  readonly url: string
+}
+
 /** Any `account.AuthorizationForm`. */
 export type TypeAuthorizationForm =
   | AuthorizationForm
@@ -1036,6 +1061,11 @@ export type TypeWallPapers =
 /** Any `account.WebAuthorizations`. */
 export type TypeWebAuthorizations =
   | WebAuthorizations
+
+/** Any `account.WebBrowserSettings`. */
+export type TypeWebBrowserSettings =
+  | WebBrowserSettings
+  | WebBrowserSettingsNotModified
 
 /** `account.unregisterDevice#6a0d3206` */
 export interface UnregisterDevice {
@@ -1161,6 +1191,13 @@ export interface UpdateUsername {
   readonly username: string
 }
 
+/** `account.updateWebBrowserSettings#9adf82fe` */
+export interface UpdateWebBrowserSettings {
+  readonly _: 'account.updateWebBrowserSettings'
+  readonly open_external_browser?: true
+  readonly display_close_button?: true
+}
+
 /** `account.uploadRingtone#831a83a2` */
 export interface UploadRingtone {
   readonly _: 'account.uploadRingtone'
@@ -1219,4 +1256,19 @@ export interface WebAuthorizations {
   readonly _: 'account.webAuthorizations'
   readonly authorizations: readonly root_w$.TypeWebAuthorization[]
   readonly users: readonly root_u$.TypeUser[]
+}
+
+/** `account.webBrowserSettings#79eb8cb3` */
+export interface WebBrowserSettings {
+  readonly _: 'account.webBrowserSettings'
+  readonly open_external_browser?: true
+  readonly display_close_button?: true
+  readonly external_exceptions: readonly root_w$.TypeWebDomainException[]
+  readonly inapp_exceptions: readonly root_w$.TypeWebDomainException[]
+  readonly hash: bigint
+}
+
+/** `account.webBrowserSettingsNotModified#c31c8f4e` */
+export interface WebBrowserSettingsNotModified {
+  readonly _: 'account.webBrowserSettingsNotModified'
 }

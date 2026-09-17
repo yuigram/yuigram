@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for premium
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_b$ from './root/b.js'
 import type * as root_c$ from './root/c.js'

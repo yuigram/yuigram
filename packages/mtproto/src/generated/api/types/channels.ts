@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for channels
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from './root/c.js'
 import type * as root_e$ from './root/e.js'
@@ -173,6 +173,7 @@ export interface GetAdminedPublicChannels {
   readonly by_location?: true
   readonly check_limit?: true
   readonly for_personal?: true
+  readonly for_community_peer?: true
 }
 
 /** `channels.getChannelRecommendations#25a71742` */
@@ -255,7 +256,7 @@ export interface InviteToChannel {
   readonly users: readonly root_i$.TypeInputUser[]
 }
 
-/** `channels.joinChannel#24b524c5` */
+/** `channels.joinChannel#7f6a1e22` */
 export interface JoinChannel {
   readonly _: 'channels.joinChannel'
   readonly channel: root_i$.TypeInputChannel
@@ -404,11 +405,13 @@ export interface ToggleForum {
   readonly tabs: boolean
 }
 
-/** `channels.toggleJoinRequest#4c2985b6` */
+/** `channels.toggleJoinRequest#0ecc2618` */
 export interface ToggleJoinRequest {
   readonly _: 'channels.toggleJoinRequest'
+  readonly apply_to_invites?: true
   readonly channel: root_i$.TypeInputChannel
   readonly enabled: boolean
+  readonly guard_bot?: root_i$.TypeInputUser
 }
 
 /** `channels.toggleJoinToSend#e4cb9580` */

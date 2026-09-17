@@ -1,10 +1,12 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from '../root/c.js'
 import type * as root_i$ from '../root/i.js'
+import type * as root_m$ from '../root/m.js'
 import type * as root_p$ from '../root/p.js'
+import type * as root_r$ from '../root/r.js'
 import type { TlObject } from '../../../../tl/object.js'
 
 /** `emailVerificationApple#96d074fd` */
@@ -220,6 +222,29 @@ export interface EncryptedMessageService {
   readonly bytes: Uint8Array
 }
 
+/** `ephemeralMessage#dd27bee9` */
+export interface EphemeralMessage {
+  readonly _: 'ephemeralMessage'
+  readonly out?: true
+  readonly welcome_template?: true
+  readonly invert_media?: true
+  readonly noforwards?: true
+  readonly id: number
+  readonly from_id: root_p$.TypePeer
+  readonly peer_id?: root_p$.TypePeer
+  readonly receiver_id: bigint
+  readonly top_msg_id?: number
+  readonly date: number
+  readonly message: string
+  readonly entities?: readonly root_m$.TypeMessageEntity[]
+  readonly media?: root_m$.TypeMessageMedia
+  readonly reply_markup?: root_r$.TypeReplyMarkup
+  readonly reply_to?: root_m$.TypeMessageReplyHeader
+  readonly rich_message?: root_r$.TypeRichMessage
+  readonly chat_instance?: bigint
+  readonly anchor_msg_id?: number
+}
+
 /** `exportedChatlistInvite#0c5181ac` */
 export interface ExportedChatlistInvite {
   readonly _: 'exportedChatlistInvite'
@@ -312,6 +337,10 @@ export type TypeEncryptedFile =
 export type TypeEncryptedMessage =
   | EncryptedMessage
   | EncryptedMessageService
+
+/** Any `EphemeralMessage`. */
+export type TypeEphemeralMessage =
+  | EphemeralMessage
 
 /** Any `ExportedChatInvite`. */
 export type TypeExportedChatInvite =

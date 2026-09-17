@@ -542,19 +542,26 @@ describe('a copy', () => {
     const sent = called(client, 'messages.sendMedia')?.['media'] as {
       poll: Record<string, unknown>
     }
-    expect(sent.poll).toMatchObject({ id: 0n, multiple_choice: true, close_period: 60 })
+    // A new poll: its own identifier and its own hash, neither carried over.
+    expect(sent.poll).toMatchObject({ id: 0n, hash: 0n, multiple_choice: true, close_period: 60 })
     expect(sent.poll).not.toHaveProperty('closed')
     expect(sent.poll).not.toHaveProperty('close_date')
     expect(sent).not.toHaveProperty('correct_answers')
   })
 
   it('copies a quiz only where its right answer is known', async () => {
+    const answer = (text: string, option: number) => ({
+      _: 'pollAnswer',
+      text: { _: 'textWithEntities', text, entities: [] },
+      option: Uint8Array.of(option),
+    })
     const poll = {
       _: 'poll',
       id: 99n,
+      hash: 0n,
       quiz: true,
       question: { _: 'textWithEntities', text: 'q', entities: [] },
-      answers: [],
+      answers: [answer('wrong', 0), answer('right', 1)],
     }
     const known = copying(
       message(7, {
@@ -574,8 +581,16 @@ describe('a copy', () => {
     )
 
     await copyMessage(known, { from: '@source', id: 7, to: '@target' })
+    const sent = called(known, 'messages.sendMedia')?.['media'] as {
+      correct_answers: number[]
+      poll: { answers: { _: string; option?: Uint8Array }[] }
+    }
+    // A sent poll names its right answers by position, while the message named
+    // them by the bytes each option carried: the two are matched, not assumed.
+    expect(sent.correct_answers).toEqual([1])
+    expect(sent.poll.answers.map((one) => one._)).toEqual(['inputPollAnswer', 'inputPollAnswer'])
+    expect(sent.poll.answers[0]).not.toHaveProperty('option')
     expect(called(known, 'messages.sendMedia')?.['media']).toMatchObject({
-      correct_answers: [Uint8Array.of(1)],
       solution: 'because',
       solution_entities: [],
     })

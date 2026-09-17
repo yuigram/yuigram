@@ -31,6 +31,7 @@ import type {
   TypeInputPhoto,
   TypeMessage,
   TypeMessageMedia,
+  TypePollAnswer,
 } from '../generated/api/types/index.js'
 import { channelFor } from '../network/peers.js'
 import { type PeerRef, peerRefOf } from '../normalize/normalize.js'
@@ -350,7 +351,7 @@ async function inputMediaOf(client: Sending, media: TypeMessageMedia): Promise<T
       return { _: 'inputMediaDice', emoticon: media.emoticon }
 
     case 'messageMediaPoll':
-      return pollOf(media)
+      return await pollOf(client, media)
 
     case 'messageMediaToDo':
       // A copy of a checklist starts with nothing ticked.
@@ -411,12 +412,30 @@ function documentOf(
  * and may already have passed; how long it stays open is kept. A quiz needs its
  * right answers, which a message shows only to somebody who has answered it or
  * created it — without them it is refused rather than sent as a quiz with none.
+ *
+ * A poll is read and sent in two different shapes. What a message carries names
+ * each answer by the bytes Telegram gave it; what a send carries has no such
+ * bytes and is positional, and the right answers are the positions of the
+ * options rather than their identifiers. So the two are matched here — by the
+ * bytes, through the list the message itself carried — rather than assumed to
+ * line up.
  */
-function pollOf(media: Extract<TypeMessageMedia, { _: 'messageMediaPoll' }>): TypeInputMedia {
+async function pollOf(
+  client: Sending,
+  media: Extract<TypeMessageMedia, { _: 'messageMediaPoll' }>,
+): Promise<TypeInputMedia> {
   const { poll, results } = media
+  const answers = poll.answers.filter((answer) => answer._ === 'pollAnswer')
+
+  if (answers.length !== poll.answers.length) {
+    throw new ValidationError('the poll describes an answer this cannot read')
+  }
+
+  const positions = new Map(answers.map((answer, at) => [hex(answer.option), at]))
   const correct = (results.results ?? [])
     .filter((voters) => voters.correct === true)
-    .map((voters) => voters.option)
+    .map((voters) => positions.get(hex(voters.option)))
+    .filter((at) => at !== undefined)
 
   if (poll.quiz === true && correct.length === 0) {
     throw new ValidationError(
@@ -424,13 +443,27 @@ function pollOf(media: Extract<TypeMessageMedia, { _: 'messageMediaPoll' }>): Ty
     )
   }
 
+  const sending: TypePollAnswer[] = []
+  for (const answer of answers) {
+    sending.push({
+      _: 'inputPollAnswer',
+      text: answer.text,
+      // An answer may carry media of its own, which is copied the same way the
+      // message's own media is.
+      ...(answer.media === undefined ? {} : { media: await inputMediaOf(client, answer.media) }),
+    })
+  }
+
   return {
     _: 'inputMediaPoll',
     poll: {
       _: 'poll',
       id: 0n,
+      // Zero on the way out: the field exists so a client can tell whether a
+      // poll it already holds has changed, and a poll being created is new.
+      hash: 0n,
       question: poll.question,
-      answers: poll.answers,
+      answers: sending,
       ...(poll.public_voters === true ? { public_voters: true as const } : {}),
       ...(poll.multiple_choice === true ? { multiple_choice: true as const } : {}),
       ...(poll.quiz === true ? { quiz: true as const } : {}),
@@ -441,6 +474,11 @@ function pollOf(media: Extract<TypeMessageMedia, { _: 'messageMediaPoll' }>): Ty
       ? {}
       : { solution: results.solution, solution_entities: results.solution_entities ?? [] }),
   }
+}
+
+/** Option bytes as a value that can be compared and used as a key. */
+function hex(option: Uint8Array): string {
+  return Array.from(option, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 /** Read the messages a copy is made from. */

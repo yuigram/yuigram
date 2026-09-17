@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from '../root/c.js'
 import type * as root_d$ from '../root/d.js'
@@ -44,7 +44,7 @@ export interface FolderPeer {
   readonly folder_id: number
 }
 
-/** `forumTopic#cdff0eca` */
+/** `forumTopic#fcdad815` */
 export interface ForumTopic {
   readonly _: 'forumTopic'
   readonly my?: true
@@ -65,6 +65,7 @@ export interface ForumTopic {
   readonly unread_count: number
   readonly unread_mentions_count: number
   readonly unread_reactions_count: number
+  readonly unread_poll_votes_count: number
   readonly from_id: root_p$.TypePeer
   readonly notify_settings: root_p$.TypePeerNotifySettings
   readonly draft?: root_d$.TypeDraftMessage

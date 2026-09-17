@@ -581,7 +581,7 @@ await user.api.call({ _: 'messages.brandNewMethod', … })
 The same surface is on every context as `event.api`, so a handler never has to reach back to
 the client it was registered on for something the actions do not cover.
 
-All four ship. The MTProto surface is 757 signatures generated from the committed TL schema,
+All four ship. The MTProto surface is 813 signatures generated from the committed TL schema,
 grouped by the namespace TL declares each method in, with the parameter type being the
 method's own request without its constructor and the result being the boxed type it returns.
 There is no code per method: dispatch is one proxy that turns a property path into the TL name

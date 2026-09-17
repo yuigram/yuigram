@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from '../root/c.js'
 import type * as root_d$ from '../root/d.js'
@@ -47,11 +47,28 @@ export interface PageBlockAuthorDate {
   readonly published_date: number
 }
 
-/** `pageBlockBlockquote#263d7c26` */
+/** `pageBlockBlockquote#66d1670b` */
 export interface PageBlockBlockquote {
   readonly _: 'pageBlockBlockquote'
+  readonly collapsed?: true
   readonly text: root_r$.TypeRichText
   readonly caption: root_r$.TypeRichText
+}
+
+/** `pageBlockBlockquoteBlocks#0e6e47c4` */
+export interface PageBlockBlockquoteBlocks {
+  readonly _: 'pageBlockBlockquoteBlocks'
+  readonly blocks: readonly TypePageBlock[]
+  readonly caption: root_r$.TypeRichText
+}
+
+/** `pageBlockButtonRow#6d640318` */
+export interface PageBlockButtonRow {
+  readonly _: 'pageBlockButtonRow'
+  readonly align_left?: true
+  readonly align_center?: true
+  readonly align_right?: true
+  readonly buttons: readonly TypePageButton[]
 }
 
 /** `pageBlockChannel#ef1751b5` */
@@ -84,6 +101,13 @@ export interface PageBlockDetails {
 /** `pageBlockDivider#db20b188` */
 export interface PageBlockDivider {
   readonly _: 'pageBlockDivider'
+}
+
+/** `pageBlockDocument#38fa3ba3` */
+export interface PageBlockDocument {
+  readonly _: 'pageBlockDocument'
+  readonly document_id: bigint
+  readonly caption: TypePageCaption
 }
 
 /** `pageBlockEmbed#a8718dc5` */
@@ -123,6 +147,42 @@ export interface PageBlockHeader {
   readonly text: root_r$.TypeRichText
 }
 
+/** `pageBlockHeading1#baff072f` */
+export interface PageBlockHeading1 {
+  readonly _: 'pageBlockHeading1'
+  readonly text: root_r$.TypeRichText
+}
+
+/** `pageBlockHeading2#096b2aec` */
+export interface PageBlockHeading2 {
+  readonly _: 'pageBlockHeading2'
+  readonly text: root_r$.TypeRichText
+}
+
+/** `pageBlockHeading3#67e731ad` */
+export interface PageBlockHeading3 {
+  readonly _: 'pageBlockHeading3'
+  readonly text: root_r$.TypeRichText
+}
+
+/** `pageBlockHeading4#b532772b` */
+export interface PageBlockHeading4 {
+  readonly _: 'pageBlockHeading4'
+  readonly text: root_r$.TypeRichText
+}
+
+/** `pageBlockHeading5#dbbe6c6a` */
+export interface PageBlockHeading5 {
+  readonly _: 'pageBlockHeading5'
+  readonly text: root_r$.TypeRichText
+}
+
+/** `pageBlockHeading6#682a41a9` */
+export interface PageBlockHeading6 {
+  readonly _: 'pageBlockHeading6'
+  readonly text: root_r$.TypeRichText
+}
+
 /** `pageBlockKicker#1e148390` */
 export interface PageBlockKicker {
   readonly _: 'pageBlockKicker'
@@ -145,10 +205,19 @@ export interface PageBlockMap {
   readonly caption: TypePageCaption
 }
 
-/** `pageBlockOrderedList#9a8ae1e1` */
+/** `pageBlockMath#59080c20` */
+export interface PageBlockMath {
+  readonly _: 'pageBlockMath'
+  readonly source: string
+}
+
+/** `pageBlockOrderedList#1fd6f6c1` */
 export interface PageBlockOrderedList {
   readonly _: 'pageBlockOrderedList'
+  readonly reversed?: true
   readonly items: readonly TypePageListOrderedItem[]
+  readonly start?: number
+  readonly type?: string
 }
 
 /** `pageBlockParagraph#467a0766` */
@@ -160,6 +229,7 @@ export interface PageBlockParagraph {
 /** `pageBlockPhoto#1759c560` */
 export interface PageBlockPhoto {
   readonly _: 'pageBlockPhoto'
+  readonly spoiler?: true
   readonly photo_id: bigint
   readonly caption: TypePageCaption
   readonly url?: string
@@ -211,8 +281,15 @@ export interface PageBlockTable {
   readonly _: 'pageBlockTable'
   readonly bordered?: true
   readonly striped?: true
+  readonly compact?: true
   readonly title: root_r$.TypeRichText
   readonly rows: readonly TypePageTableRow[]
+}
+
+/** `pageBlockThinking#3c29a3e2` */
+export interface PageBlockThinking {
+  readonly _: 'pageBlockThinking'
+  readonly text: root_r$.TypeRichText
 }
 
 /** `pageBlockTitle#70abc3fd` */
@@ -231,8 +308,17 @@ export interface PageBlockVideo {
   readonly _: 'pageBlockVideo'
   readonly autoplay?: true
   readonly loop?: true
+  readonly spoiler?: true
   readonly video_id: bigint
   readonly caption: TypePageCaption
+}
+
+/** `pageButton#692a5488` */
+export interface PageButton {
+  readonly _: 'pageButton'
+  readonly text: root_r$.TypeRichText
+  readonly type: root_i$.TypeInlineButtonType
+  readonly style?: root_r$.TypeRichButtonStyle
 }
 
 /** `pageCaption#6f747657` */
@@ -242,30 +328,42 @@ export interface PageCaption {
   readonly credit: root_r$.TypeRichText
 }
 
-/** `pageListItemBlocks#25e073fc` */
+/** `pageListItemBlocks#63ca67aa` */
 export interface PageListItemBlocks {
   readonly _: 'pageListItemBlocks'
+  readonly checkbox?: true
+  readonly checked?: true
   readonly blocks: readonly TypePageBlock[]
 }
 
-/** `pageListItemText#b92fb6cd` */
+/** `pageListItemText#2f58683c` */
 export interface PageListItemText {
   readonly _: 'pageListItemText'
+  readonly checkbox?: true
+  readonly checked?: true
   readonly text: root_r$.TypeRichText
 }
 
-/** `pageListOrderedItemBlocks#98dd8936` */
+/** `pageListOrderedItemBlocks#8ff2d5f0` */
 export interface PageListOrderedItemBlocks {
   readonly _: 'pageListOrderedItemBlocks'
-  readonly num: string
+  readonly checkbox?: true
+  readonly checked?: true
+  readonly num?: string
   readonly blocks: readonly TypePageBlock[]
+  readonly value?: number
+  readonly type?: string
 }
 
-/** `pageListOrderedItemText#5e068047` */
+/** `pageListOrderedItemText#15031189` */
 export interface PageListOrderedItemText {
   readonly _: 'pageListOrderedItemText'
-  readonly num: string
+  readonly checkbox?: true
+  readonly checked?: true
+  readonly num?: string
   readonly text: root_r$.TypeRichText
+  readonly value?: number
+  readonly type?: string
 }
 
 /** `pageRelatedArticle#b390dc08` */
@@ -687,7 +785,7 @@ export interface PhotoStrippedSize {
   readonly bytes: Uint8Array
 }
 
-/** `poll#58747131` */
+/** `poll#966e2dbf` */
 export interface Poll {
   readonly _: 'poll'
   readonly id: bigint
@@ -695,37 +793,52 @@ export interface Poll {
   readonly public_voters?: true
   readonly multiple_choice?: true
   readonly quiz?: true
+  readonly open_answers?: true
+  readonly revoting_disabled?: true
+  readonly shuffle_answers?: true
+  readonly hide_results_until_close?: true
+  readonly creator?: true
+  readonly subscribers_only?: true
   readonly question: root_t$.TypeTextWithEntities
   readonly answers: readonly TypePollAnswer[]
   readonly close_period?: number
   readonly close_date?: number
+  readonly countries_iso2?: readonly string[]
+  readonly hash: bigint
 }
 
-/** `pollAnswer#ff16e2ca` */
+/** `pollAnswer#4b7d786a` */
 export interface PollAnswer {
   readonly _: 'pollAnswer'
   readonly text: root_t$.TypeTextWithEntities
   readonly option: Uint8Array
+  readonly media?: root_m$.TypeMessageMedia
+  readonly added_by?: TypePeer
+  readonly date?: number
 }
 
-/** `pollAnswerVoters#3b6ddad2` */
+/** `pollAnswerVoters#3645230a` */
 export interface PollAnswerVoters {
   readonly _: 'pollAnswerVoters'
   readonly chosen?: true
   readonly correct?: true
   readonly option: Uint8Array
-  readonly voters: number
+  readonly voters?: number
+  readonly recent_voters?: readonly TypePeer[]
 }
 
-/** `pollResults#7adf2420` */
+/** `pollResults#ba7bb15e` */
 export interface PollResults {
   readonly _: 'pollResults'
   readonly min?: true
+  readonly has_unread_votes?: true
+  readonly can_view_stats?: true
   readonly results?: readonly TypePollAnswerVoters[]
   readonly total_voters?: number
   readonly recent_voters?: readonly TypePeer[]
   readonly solution?: string
   readonly solution_entities?: readonly root_m$.TypeMessageEntity[]
+  readonly solution_media?: root_m$.TypeMessageMedia
 }
 
 /** `popularContact#5ce14175` */
@@ -1000,22 +1113,33 @@ export type TypePage =
 
 /** Any `PageBlock`. */
 export type TypePageBlock =
+  | root_i$.InputPageBlockMap
   | PageBlockAnchor
   | PageBlockAudio
   | PageBlockAuthorDate
   | PageBlockBlockquote
+  | PageBlockBlockquoteBlocks
+  | PageBlockButtonRow
   | PageBlockChannel
   | PageBlockCollage
   | PageBlockCover
   | PageBlockDetails
   | PageBlockDivider
+  | PageBlockDocument
   | PageBlockEmbed
   | PageBlockEmbedPost
   | PageBlockFooter
   | PageBlockHeader
+  | PageBlockHeading1
+  | PageBlockHeading2
+  | PageBlockHeading3
+  | PageBlockHeading4
+  | PageBlockHeading5
+  | PageBlockHeading6
   | PageBlockKicker
   | PageBlockList
   | PageBlockMap
+  | PageBlockMath
   | PageBlockOrderedList
   | PageBlockParagraph
   | PageBlockPhoto
@@ -1026,9 +1150,14 @@ export type TypePageBlock =
   | PageBlockSubheader
   | PageBlockSubtitle
   | PageBlockTable
+  | PageBlockThinking
   | PageBlockTitle
   | PageBlockUnsupported
   | PageBlockVideo
+
+/** Any `PageButton`. */
+export type TypePageButton =
+  | PageButton
 
 /** Any `PageCaption`. */
 export type TypePageCaption =
@@ -1170,6 +1299,7 @@ export type TypePoll =
 
 /** Any `PollAnswer`. */
 export type TypePollAnswer =
+  | root_i$.InputPollAnswer
   | PollAnswer
 
 /** Any `PollAnswerVoters`. */

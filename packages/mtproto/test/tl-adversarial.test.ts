@@ -64,10 +64,10 @@ describe('a conditional Bool carrying false', () => {
   )
 
   it('is a shape the schema really uses', () => {
-    // Eighteen API constructors carry one, across privacy, payment and
-    // business settings — every one of which is a field whose whole purpose is
-    // to say "off" explicitly.
-    expect(carriers.length).toBe(18)
+    // Twenty-two API constructors carry one, across privacy, payment, business
+    // and community settings — every one of which is a field whose whole
+    // purpose is to say "off" explicitly.
+    expect(carriers.length).toBe(22)
   })
 
   it('is written, not dropped', () => {

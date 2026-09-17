@@ -331,7 +331,7 @@ describe('the committed schemas', () => {
   })
 
   it('parses the whole API schema', () => {
-    expect(api.constructors.length + api.methods.length).toBe(2303)
+    expect(api.constructors.length + api.methods.length).toBe(2471)
     expect(api.layer).toBe(layer)
   })
 
@@ -348,7 +348,7 @@ describe('the committed schemas', () => {
 
     // The twelve exceptions are the generic methods, whose signatures the
     // canonicalization does not describe.
-    expect(origins['verified']).toBe(2291)
+    expect(origins['verified']).toBe(2459)
     expect(origins['declared']).toBe(12)
     expect(origins['computed']).toBeUndefined()
   })

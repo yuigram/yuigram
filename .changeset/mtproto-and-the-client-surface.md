@@ -21,7 +21,7 @@ the place in the update stream, and the peers whose access hashes were issued to
 **The protocol.** The full MTProto 2.0 stack: the authorization handshake with perfect forward
 secrecy, the session layer, transport framing and obfuscation, connection pools per datacenter
 and purpose, migration between datacenters, and the updates manager with gap recovery over the
-common box and per-channel sequences. 757 typed methods generated from a committed TL schema,
+common box and per-channel sequences. 813 typed methods generated from a committed TL schema,
 with `call()` reaching anything newer.
 
 **Files.** Chunked parallel upload and download with the alignment rules the server enforces,

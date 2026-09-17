@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_d$ from '../root/d.js'
 import type * as root_i$ from '../root/i.js'
@@ -27,6 +27,10 @@ export type TypeWebDocument =
   | WebDocument
   | WebDocumentNoProxy
 
+/** Any `WebDomainException`. */
+export type TypeWebDomainException =
+  | WebDomainException
+
 /** Any `WebPage`. */
 export type TypeWebPage =
   | WebPage
@@ -36,6 +40,7 @@ export type TypeWebPage =
 
 /** Any `WebPageAttribute`. */
 export type TypeWebPageAttribute =
+  | WebPageAttributeAiComposeTone
   | WebPageAttributeStarGiftAuction
   | WebPageAttributeStarGiftCollection
   | WebPageAttributeStickerSet
@@ -121,6 +126,15 @@ export interface WebDocumentNoProxy {
   readonly attributes: readonly root_d$.TypeDocumentAttribute[]
 }
 
+/** `webDomainException#933ca597` */
+export interface WebDomainException {
+  readonly _: 'webDomainException'
+  readonly domain: string
+  readonly url: string
+  readonly title: string
+  readonly favicon?: bigint
+}
+
 /** `webPage#e89c45b2` */
 export interface WebPage {
   readonly _: 'webPage'
@@ -144,6 +158,12 @@ export interface WebPage {
   readonly document?: root_d$.TypeDocument
   readonly cached_page?: root_p$.TypePage
   readonly attributes?: readonly TypeWebPageAttribute[]
+}
+
+/** `webPageAttributeAiComposeTone#7781fe18` */
+export interface WebPageAttributeAiComposeTone {
+  readonly _: 'webPageAttributeAiComposeTone'
+  readonly emoji_id: bigint
 }
 
 /** `webPageAttributeStarGiftAuction#01c641c2` */
@@ -220,6 +240,7 @@ export interface WebViewResultUrl {
   readonly _: 'webViewResultUrl'
   readonly fullsize?: true
   readonly fullscreen?: true
+  readonly same_origin?: true
   readonly query_id?: bigint
   readonly url: string
 }

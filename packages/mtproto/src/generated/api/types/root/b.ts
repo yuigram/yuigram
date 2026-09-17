@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_d$ from '../root/d.js'
 import type * as root_g$ from '../root/g.js'
@@ -106,9 +106,10 @@ export interface BotBusinessConnection {
   readonly rights?: TypeBusinessBotRights
 }
 
-/** `botCommand#c27ac8c7` */
+/** `botCommand#9852d6d2` */
 export interface BotCommand {
   readonly _: 'botCommand'
+  readonly ephemeral?: true
   readonly command: string
   readonly description: string
 }
@@ -245,6 +246,13 @@ export interface BotInlineMessageMediaWebPage {
   readonly entities?: readonly root_m$.TypeMessageEntity[]
   readonly url: string
   readonly reply_markup?: root_r$.TypeReplyMarkup
+}
+
+/** `botInlineMessageRichMessage#0a617e7b` */
+export interface BotInlineMessageRichMessage {
+  readonly _: 'botInlineMessageRichMessage'
+  readonly reply_markup?: root_r$.TypeReplyMarkup
+  readonly rich_message: root_r$.TypeRichMessage
 }
 
 /** `botInlineMessageText#8c7f65e2` */
@@ -427,6 +435,41 @@ export interface BusinessWorkHours {
   readonly weekly_open: readonly TypeBusinessWeeklyOpen[]
 }
 
+/** `buttonTypeDefault#c9dd90e9` */
+export interface ButtonTypeDefault {
+  readonly _: 'buttonTypeDefault'
+}
+
+/** `buttonTypeRequestGeoLocation#9beee140` */
+export interface ButtonTypeRequestGeoLocation {
+  readonly _: 'buttonTypeRequestGeoLocation'
+}
+
+/** `buttonTypeRequestPeer#4f58a237` */
+export interface ButtonTypeRequestPeer {
+  readonly _: 'buttonTypeRequestPeer'
+  readonly button_id: number
+  readonly peer_type: root_r$.TypeRequestPeerType
+  readonly max_quantity: number
+}
+
+/** `buttonTypeRequestPhone#df3d36f9` */
+export interface ButtonTypeRequestPhone {
+  readonly _: 'buttonTypeRequestPhone'
+}
+
+/** `buttonTypeRequestPoll#aacfff84` */
+export interface ButtonTypeRequestPoll {
+  readonly _: 'buttonTypeRequestPoll'
+  readonly quiz?: boolean
+}
+
+/** `buttonTypeSimpleWebView#c01a597a` */
+export interface ButtonTypeSimpleWebView {
+  readonly _: 'buttonTypeSimpleWebView'
+  readonly url: string
+}
+
 /** Any `BankCardOpenUrl`. */
 export type TypeBankCardOpenUrl =
   | BankCardOpenUrl
@@ -486,6 +529,7 @@ export type TypeBotInlineMessage =
   | BotInlineMessageMediaInvoice
   | BotInlineMessageMediaVenue
   | BotInlineMessageMediaWebPage
+  | BotInlineMessageRichMessage
   | BotInlineMessageText
 
 /** Any `BotInlineResult`. */
@@ -556,3 +600,13 @@ export type TypeBusinessWeeklyOpen =
 /** Any `BusinessWorkHours`. */
 export type TypeBusinessWorkHours =
   | BusinessWorkHours
+
+/** Any `ButtonType`. */
+export type TypeButtonType =
+  | ButtonTypeDefault
+  | ButtonTypeRequestGeoLocation
+  | ButtonTypeRequestPeer
+  | ButtonTypeRequestPhone
+  | ButtonTypeRequestPoll
+  | ButtonTypeSimpleWebView
+  | root_i$.InputButtonTypeRequestPeer

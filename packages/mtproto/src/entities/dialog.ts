@@ -27,8 +27,14 @@ import type {
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
 
-/** Which of the two a row is. */
-export type DialogForm = 'conversation' | 'folder'
+/**
+ * Which of the three a row is.
+ *
+ * A community row stands for a community rather than for a conversation: it
+ * names the community and carries no message, because a community is a group of
+ * chats rather than somewhere to write.
+ */
+export type DialogForm = 'conversation' | 'folder' | 'community'
 
 /**
  * One row in a list of conversations.
@@ -45,14 +51,26 @@ export class DialogView {
     this.raw = value
   }
 
-  /** Which of the two this is. */
+  /** Which of the three this is. */
   get form(): DialogForm {
-    return this.raw._ === 'dialogFolder' ? 'folder' : 'conversation'
+    if (this.raw._ === 'dialogFolder') return 'folder'
+
+    return this.raw._ === 'dialogCommunity' ? 'community' : 'conversation'
   }
 
   /** Whether this row stands for a folder rather than a conversation. */
   get isFolder(): boolean {
     return this.raw._ === 'dialogFolder'
+  }
+
+  /** Whether this row stands for a community rather than a conversation. */
+  get isCommunity(): boolean {
+    return this.raw._ === 'dialogCommunity'
+  }
+
+  /** The community this row is about, where it is about one. */
+  get communityId(): bigint | undefined {
+    return this.raw._ === 'dialogCommunity' ? this.raw.community_id : undefined
   }
 
   /**
@@ -62,12 +80,16 @@ export class DialogView {
    * somebody to talk to.
    */
   get peer(): PeerRef | undefined {
-    return peerRefOf(this.raw.peer)
+    return this.raw._ === 'dialogCommunity' ? undefined : peerRefOf(this.raw.peer)
   }
 
-  /** The number of the most recent message in it. */
-  get topMessageId(): number {
-    return this.raw.top_message
+  /**
+   * The number of the most recent message in it.
+   *
+   * Absent on a community row, which has no messages of its own.
+   */
+  get topMessageId(): number | undefined {
+    return this.raw._ === 'dialogCommunity' ? undefined : this.raw.top_message
   }
 
   /** Whether it is pinned to the top of the list. */

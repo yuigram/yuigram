@@ -1,9 +1,10 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_a$ from '../root/a.js'
 import type * as root_d$ from '../root/d.js'
+import type * as root_i$ from '../root/i.js'
 import type * as root_l$ from '../root/l.js'
 import type * as root_m$ from '../root/m.js'
 import type * as root_p$ from '../root/p.js'
@@ -403,9 +404,26 @@ export interface SendMessageRecordVideoAction {
   readonly _: 'sendMessageRecordVideoAction'
 }
 
-/** `sendMessageTextDraftAction#376d975c` */
+/** `sendMessageRichMessageDraftAction#52564893` */
+export interface SendMessageRichMessageDraftAction {
+  readonly _: 'sendMessageRichMessageDraftAction'
+  readonly can_stop?: true
+  readonly keep_on_stop?: true
+  readonly random_id: bigint
+  readonly rich_message: root_r$.TypeRichMessage
+}
+
+/** `sendMessageStopDraftAction#fbf902b0` */
+export interface SendMessageStopDraftAction {
+  readonly _: 'sendMessageStopDraftAction'
+  readonly random_id: bigint
+}
+
+/** `sendMessageTextDraftAction#3630b85a` */
 export interface SendMessageTextDraftAction {
   readonly _: 'sendMessageTextDraftAction'
+  readonly can_stop?: true
+  readonly keep_on_stop?: true
   readonly random_id: bigint
   readonly text: root_t$.TypeTextWithEntities
 }
@@ -1113,7 +1131,7 @@ export interface StoryFwdHeader {
   readonly story_id?: number
 }
 
-/** `storyItem#edf164f1` */
+/** `storyItem#16a4b93c` */
 export interface StoryItem {
   readonly _: 'storyItem'
   readonly pinned?: true
@@ -1138,6 +1156,7 @@ export interface StoryItem {
   readonly views?: TypeStoryViews
   readonly sent_reaction?: root_r$.TypeReaction
   readonly albums?: readonly number[]
+  readonly music?: root_d$.TypeDocument
 }
 
 /** `storyItemDeleted#51e6ee4f` */
@@ -1328,6 +1347,7 @@ export type TypeSendAsPeer =
 
 /** Any `SendMessageAction`. */
 export type TypeSendMessageAction =
+  | root_i$.InputSendMessageRichMessageDraftAction
   | SendMessageCancelAction
   | SendMessageChooseContactAction
   | SendMessageChooseStickerAction
@@ -1339,6 +1359,8 @@ export type TypeSendMessageAction =
   | SendMessageRecordAudioAction
   | SendMessageRecordRoundAction
   | SendMessageRecordVideoAction
+  | SendMessageRichMessageDraftAction
+  | SendMessageStopDraftAction
   | SendMessageTextDraftAction
   | SendMessageTypingAction
   | SendMessageUploadAudioAction

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Wire layout for channels
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlEntry } from '../../../tl/schema.js'
 
@@ -26,7 +26,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x566decd0, n: 'channels.editTitle', f: [{ n: 'channel', t: 'obj' }, { n: 'title', t: 'string' }] },
   { id: 0xe63fadeb, n: 'channels.exportMessageLink', f: [{ n: 'flags', b: 1 }, { n: 'grouped', t: 'true', c: 'flags', i: 0 }, { n: 'thread', t: 'true', c: 'flags', i: 1 }, { n: 'channel', t: 'obj' }, { n: 'id', t: 'int' }] },
   { id: 0x33ddf480, n: 'channels.getAdminLog', f: [{ n: 'flags', b: 1 }, { n: 'channel', t: 'obj' }, { n: 'q', t: 'string' }, { n: 'events_filter', t: 'obj', c: 'flags', i: 0 }, { n: 'admins', t: { v: 'obj' }, c: 'flags', i: 1 }, { n: 'max_id', t: 'long' }, { n: 'min_id', t: 'long' }, { n: 'limit', t: 'int' }] },
-  { id: 0xf8b036af, n: 'channels.getAdminedPublicChannels', f: [{ n: 'flags', b: 1 }, { n: 'by_location', t: 'true', c: 'flags', i: 0 }, { n: 'check_limit', t: 'true', c: 'flags', i: 1 }, { n: 'for_personal', t: 'true', c: 'flags', i: 2 }] },
+  { id: 0xf8b036af, n: 'channels.getAdminedPublicChannels', f: [{ n: 'flags', b: 1 }, { n: 'by_location', t: 'true', c: 'flags', i: 0 }, { n: 'check_limit', t: 'true', c: 'flags', i: 1 }, { n: 'for_personal', t: 'true', c: 'flags', i: 2 }, { n: 'for_community_peer', t: 'true', c: 'flags', i: 3 }] },
   { id: 0x25a71742, n: 'channels.getChannelRecommendations', f: [{ n: 'flags', b: 1 }, { n: 'channel', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0x0a7f6bbb, n: 'channels.getChannels', f: [{ n: 'id', t: { v: 'obj' } }] },
   { id: 0x08736a09, n: 'channels.getFullChannel', f: [{ n: 'channel', t: 'obj' }] },
@@ -39,7 +39,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x77ced9d0, n: 'channels.getParticipants', f: [{ n: 'channel', t: 'obj' }, { n: 'filter', t: 'obj' }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }, { n: 'hash', t: 'long' }] },
   { id: 0xe785a43f, n: 'channels.getSendAs', f: [{ n: 'flags', b: 1 }, { n: 'for_paid_reactions', t: 'true', c: 'flags', i: 0 }, { n: 'for_live_stories', t: 'true', c: 'flags', i: 1 }, { n: 'peer', t: 'obj' }] },
   { id: 0xc9e33d54, n: 'channels.inviteToChannel', f: [{ n: 'channel', t: 'obj' }, { n: 'users', t: { v: 'obj' } }] },
-  { id: 0x24b524c5, n: 'channels.joinChannel', f: [{ n: 'channel', t: 'obj' }] },
+  { id: 0x7f6a1e22, n: 'channels.joinChannel', f: [{ n: 'channel', t: 'obj' }] },
   { id: 0xf836aa95, n: 'channels.leaveChannel', f: [{ n: 'channel', t: 'obj' }] },
   { id: 0xcc104937, n: 'channels.readHistory', f: [{ n: 'channel', t: 'obj' }, { n: 'max_id', t: 'int' }] },
   { id: 0xeab5dc38, n: 'channels.readMessageContents', f: [{ n: 'channel', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
@@ -60,7 +60,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x68f3e4eb, n: 'channels.toggleAntiSpam', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
   { id: 0x167fc0a1, n: 'channels.toggleAutotranslation', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
   { id: 0x3ff75734, n: 'channels.toggleForum', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }, { n: 'tabs', t: 'bool' }] },
-  { id: 0x4c2985b6, n: 'channels.toggleJoinRequest', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
+  { id: 0x0ecc2618, n: 'channels.toggleJoinRequest', f: [{ n: 'flags', b: 1 }, { n: 'apply_to_invites', t: 'true', c: 'flags', i: 1 }, { n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }, { n: 'guard_bot', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0xe4cb9580, n: 'channels.toggleJoinToSend', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
   { id: 0x6a6e7854, n: 'channels.toggleParticipantsHidden', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
   { id: 0xeabbb94c, n: 'channels.togglePreHistoryHidden', f: [{ n: 'channel', t: 'obj' }, { n: 'enabled', t: 'bool' }] },

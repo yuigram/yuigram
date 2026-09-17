@@ -1,8 +1,9 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from '../root/c.js'
+import type * as root_d$ from '../root/d.js'
 import type * as root_i$ from '../root/i.js'
 import type * as root_k$ from '../root/k.js'
 import type * as root_m$ from '../root/m.js'
@@ -52,11 +53,12 @@ export interface ReactionPaid {
   readonly _: 'reactionPaid'
 }
 
-/** `reactionsNotifySettings#56e34970` */
+/** `reactionsNotifySettings#71e4ea58` */
 export interface ReactionsNotifySettings {
   readonly _: 'reactionsNotifySettings'
   readonly messages_notify_from?: TypeReactionNotificationsFrom
   readonly stories_notify_from?: TypeReactionNotificationsFrom
+  readonly poll_votes_notify_from?: TypeReactionNotificationsFrom
   readonly sound: root_n$.TypeNotificationSound
   readonly show_previews: boolean
 }
@@ -116,10 +118,11 @@ export interface RecentStory {
   readonly max_id?: number
 }
 
-/** `replyInlineMarkup#48a30254` */
+/** `replyInlineMarkup#b2b15770` */
 export interface ReplyInlineMarkup {
   readonly _: 'replyInlineMarkup'
-  readonly rows: readonly root_k$.TypeKeyboardButtonRow[]
+  readonly force_reply?: true
+  readonly rows: readonly root_k$.TypeKeyboardInlineButtonRow[]
 }
 
 /** `replyKeyboardForceReply#86b40b08` */
@@ -143,6 +146,7 @@ export interface ReplyKeyboardMarkup {
   readonly single_use?: true
   readonly selective?: true
   readonly persistent?: true
+  readonly force_reply?: true
   readonly rows: readonly root_k$.TypeKeyboardButtonRow[]
   readonly placeholder?: string
 }
@@ -184,6 +188,14 @@ export interface RequestPeerTypeChat {
   readonly forum?: boolean
   readonly user_admin_rights?: root_c$.TypeChatAdminRights
   readonly bot_admin_rights?: root_c$.TypeChatAdminRights
+}
+
+/** `requestPeerTypeCreateBot#3e81e078` */
+export interface RequestPeerTypeCreateBot {
+  readonly _: 'requestPeerTypeCreateBot'
+  readonly bot_managed?: true
+  readonly suggested_name?: string
+  readonly suggested_username?: string
 }
 
 /** `requestPeerTypeUser#5f3b8a00` */
@@ -242,6 +254,25 @@ export interface RestrictionReason {
   readonly platform: string
   readonly reason: string
   readonly text: string
+}
+
+/** `richButtonStyle#03c610bd` */
+export interface RichButtonStyle {
+  readonly _: 'richButtonStyle'
+  readonly bg_primary?: true
+  readonly bg_danger?: true
+  readonly bg_success?: true
+  readonly link?: true
+}
+
+/** `richMessage#baf39d8b` */
+export interface RichMessage {
+  readonly _: 'richMessage'
+  readonly rtl?: true
+  readonly part?: true
+  readonly blocks: readonly root_p$.TypePageBlock[]
+  readonly photos: readonly root_p$.TypePhoto[]
+  readonly documents: readonly root_d$.TypeDocument[]
 }
 
 /** Any `Reaction`. */
@@ -314,6 +345,7 @@ export type TypeReportResult =
 export type TypeRequestPeerType =
   | RequestPeerTypeBroadcast
   | RequestPeerTypeChat
+  | RequestPeerTypeCreateBot
   | RequestPeerTypeUser
 
 /** Any `RequestedPeer`. */
@@ -332,19 +364,42 @@ export type TypeRequirementToContact =
 export type TypeRestrictionReason =
   | RestrictionReason
 
+/** Any `RichButtonStyle`. */
+export type TypeRichButtonStyle =
+  | RichButtonStyle
+
+/** Any `RichMessage`. */
+export type TypeRichMessage =
+  | RichMessage
+
 /** Any `RichText`. */
 export type TypeRichText =
   | root_t$.TextAnchor
+  | root_t$.TextAutoEmail
+  | root_t$.TextAutoPhone
+  | root_t$.TextAutoUrl
+  | root_t$.TextBankCard
   | root_t$.TextBold
+  | root_t$.TextBotCommand
+  | root_t$.TextButton
+  | root_t$.TextCashtag
   | root_t$.TextConcat
+  | root_t$.TextCustomEmoji
+  | root_t$.TextDate
+  | root_t$.TextDiff
   | root_t$.TextEmail
   | root_t$.TextEmpty
   | root_t$.TextFixed
+  | root_t$.TextHashtag
   | root_t$.TextImage
   | root_t$.TextItalic
   | root_t$.TextMarked
+  | root_t$.TextMath
+  | root_t$.TextMention
+  | root_t$.TextMentionName
   | root_t$.TextPhone
   | root_t$.TextPlain
+  | root_t$.TextSpoiler
   | root_t$.TextStrike
   | root_t$.TextSubscript
   | root_t$.TextSuperscript

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Wire layout for contacts
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlEntry } from '../../../tl/schema.js'
 
@@ -28,7 +28,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x82f1e39f, n: 'contacts.getSaved', f: [] },
   { id: 0xb6c8c393, n: 'contacts.getSponsoredPeers', f: [{ n: 'q', t: 'string' }] },
   { id: 0xc4a353ee, n: 'contacts.getStatuses', f: [] },
-  { id: 0x973478b6, n: 'contacts.getTopPeers', f: [{ n: 'flags', b: 1 }, { n: 'correspondents', t: 'true', c: 'flags', i: 0 }, { n: 'bots_pm', t: 'true', c: 'flags', i: 1 }, { n: 'bots_inline', t: 'true', c: 'flags', i: 2 }, { n: 'phone_calls', t: 'true', c: 'flags', i: 3 }, { n: 'forward_users', t: 'true', c: 'flags', i: 4 }, { n: 'forward_chats', t: 'true', c: 'flags', i: 5 }, { n: 'groups', t: 'true', c: 'flags', i: 10 }, { n: 'channels', t: 'true', c: 'flags', i: 15 }, { n: 'bots_app', t: 'true', c: 'flags', i: 16 }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }, { n: 'hash', t: 'long' }] },
+  { id: 0x973478b6, n: 'contacts.getTopPeers', f: [{ n: 'flags', b: 1 }, { n: 'correspondents', t: 'true', c: 'flags', i: 0 }, { n: 'bots_pm', t: 'true', c: 'flags', i: 1 }, { n: 'bots_inline', t: 'true', c: 'flags', i: 2 }, { n: 'phone_calls', t: 'true', c: 'flags', i: 3 }, { n: 'forward_users', t: 'true', c: 'flags', i: 4 }, { n: 'forward_chats', t: 'true', c: 'flags', i: 5 }, { n: 'groups', t: 'true', c: 'flags', i: 10 }, { n: 'channels', t: 'true', c: 'flags', i: 15 }, { n: 'bots_app', t: 'true', c: 'flags', i: 16 }, { n: 'bots_guestchat', t: 'true', c: 'flags', i: 17 }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }, { n: 'hash', t: 'long' }] },
   { id: 0x13005788, n: 'contacts.importContactToken', f: [{ n: 'token', t: 'string' }] },
   { id: 0x2c800be5, n: 'contacts.importContacts', f: [{ n: 'contacts', t: { v: 'obj' } }] },
   { id: 0x77d01c3b, n: 'contacts.importedContacts', f: [{ n: 'imported', t: { v: 'obj' } }, { n: 'popular_invites', t: { v: 'obj' } }, { n: 'retry_contacts', t: { v: 'long' } }, { n: 'users', t: { v: 'obj' } }] },
@@ -37,7 +37,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x8af94344, n: 'contacts.resolvePhone', f: [{ n: 'phone', t: 'string' }] },
   { id: 0x725afbbc, n: 'contacts.resolveUsername', f: [{ n: 'flags', b: 1 }, { n: 'username', t: 'string' }, { n: 'referer', t: 'string', c: 'flags', i: 0 }] },
   { id: 0x7f077ad9, n: 'contacts.resolvedPeer', f: [{ n: 'peer', t: 'obj' }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
-  { id: 0x11f812d8, n: 'contacts.search', f: [{ n: 'q', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0x05f58d0f, n: 'contacts.search', f: [{ n: 'flags', b: 1 }, { n: 'broadcasts', t: 'true', c: 'flags', i: 0 }, { n: 'bots', t: 'true', c: 'flags', i: 1 }, { n: 'q', t: 'string' }, { n: 'limit', t: 'int' }] },
   { id: 0x94c65c76, n: 'contacts.setBlocked', f: [{ n: 'flags', b: 1 }, { n: 'my_stories_from', t: 'true', c: 'flags', i: 0 }, { n: 'id', t: { v: 'obj' } }, { n: 'limit', t: 'int' }] },
   { id: 0xeb032884, n: 'contacts.sponsoredPeers', f: [{ n: 'peers', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
   { id: 0xea32b4b1, n: 'contacts.sponsoredPeersEmpty', f: [] },

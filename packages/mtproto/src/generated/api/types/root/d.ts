@@ -1,11 +1,12 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_f$ from '../root/f.js'
 import type * as root_i$ from '../root/i.js'
 import type * as root_m$ from '../root/m.js'
 import type * as root_p$ from '../root/p.js'
+import type * as root_r$ from '../root/r.js'
 import type * as root_s$ from '../root/s.js'
 import type * as root_t$ from '../root/t.js'
 import type * as root_v$ from '../root/v.js'
@@ -38,7 +39,7 @@ export interface DefaultHistoryTTL {
   readonly period: number
 }
 
-/** `dialog#d58a08c6` */
+/** `dialog#fc89f7f3` */
 export interface Dialog {
   readonly _: 'dialog'
   readonly pinned?: true
@@ -51,11 +52,20 @@ export interface Dialog {
   readonly unread_count: number
   readonly unread_mentions_count: number
   readonly unread_reactions_count: number
+  readonly unread_poll_votes_count: number
   readonly notify_settings: root_p$.TypePeerNotifySettings
   readonly pts?: number
   readonly draft?: TypeDraftMessage
   readonly folder_id?: number
   readonly ttl_period?: number
+}
+
+/** `dialogCommunity#f78a0973` */
+export interface DialogCommunity {
+  readonly _: 'dialogCommunity'
+  readonly pinned?: true
+  readonly community_id: bigint
+  readonly notify_settings: root_p$.TypePeerNotifySettings
 }
 
 /** `dialogFilter#aa472651` */
@@ -121,6 +131,12 @@ export interface DialogFolder {
 export interface DialogPeer {
   readonly _: 'dialogPeer'
   readonly peer: root_p$.TypePeer
+}
+
+/** `dialogPeerCommunity#2f65c8e4` */
+export interface DialogPeerCommunity {
+  readonly _: 'dialogPeerCommunity'
+  readonly community_id: bigint
 }
 
 /** `dialogPeerFolder#514519e2` */
@@ -225,7 +241,7 @@ export interface DocumentEmpty {
   readonly id: bigint
 }
 
-/** `draftMessage#96eaa5eb` */
+/** `draftMessage#60fe3294` */
 export interface DraftMessage {
   readonly _: 'draftMessage'
   readonly no_webpage?: true
@@ -237,6 +253,7 @@ export interface DraftMessage {
   readonly date: number
   readonly effect?: bigint
   readonly suggested_post?: root_s$.TypeSuggestedPost
+  readonly rich_message?: root_r$.TypeRichMessage
 }
 
 /** `draftMessageEmpty#1b0c841a` */
@@ -260,6 +277,7 @@ export type TypeDefaultHistoryTTL =
 /** Any `Dialog`. */
 export type TypeDialog =
   | Dialog
+  | DialogCommunity
   | DialogFolder
 
 /** Any `DialogFilter`. */
@@ -275,6 +293,7 @@ export type TypeDialogFilterSuggested =
 /** Any `DialogPeer`. */
 export type TypeDialogPeer =
   | DialogPeer
+  | DialogPeerCommunity
   | DialogPeerFolder
 
 /** Any `DisallowedGiftsSettings`. */

@@ -354,13 +354,39 @@ Two consequences only appear once the tables exist, and both are handled rather 
 
 ### 3.3 Layer policy
 
-**Yuigram pins one TL layer per release. The pin is layer 223.**
+**Yuigram pins one TL layer per release. The pin is layer 229.**
 
-The pin was verified against `core.telegram.org/schema` on 2026-08-29, which serves 223 as
-current. It is also the layer the research corpus is measured against — the 2,315-entry count,
-the declaration budget, the round-trip corpus. Generating first against the layer the design was
-validated against is what makes the first generated diff reviewable; a pin chosen for being
-*newest* rather than *known* would mix schema novelty into the review of a brand-new parser.
+#### Telegram publishes the schema in two places, and they are not always the same layer
+
+`core.telegram.org/schema` is the written-up contract. Telegram's own client repository carries
+the schema its client is built from, as a `.tl` file ending in the layer it is. The servers speak
+a layer before the documentation describes it, so the second is at or ahead of the first — on
+2026-09-18 the documentation served 223 while the client schema stated 229.
+
+Both are Telegram's own. Nothing here reads a schema assembled by anybody else, because a
+third-party reconstruction would put someone else's reading of the protocol into generated
+codecs, and a mistake in it would be indistinguishable from a mistake in this parser.
+
+The default source is the documentation page, and `fetch --from-client` takes the client schema
+instead. Which one a release is pinned to is a decision with a cost either way: the page is
+reviewable prose with a JSON oracle beside it, and the client schema is what the servers
+currently accept. **The pin moved to 229 because capabilities that only exist there could not
+otherwise be implemented at all** — rich messages, communities, and ephemeral and welcome
+messages are constructors the 223 document does not contain.
+
+#### What the pin costs while the documentation is behind
+
+The crosscheck in §3.4 compares the parsed IR against Telegram's JSON rendering of the schema.
+That rendering follows the documentation page, so while the pin is ahead it describes a
+different layer: 55 combinators differ, every one of them a thing 229 changed. The command says
+so and does not fail — it is an oracle for the parser, and an oracle describing another layer
+cannot answer that question. It becomes one again when the page catches up. The service schema
+is unversioned and is still compared strictly; it agrees.
+
+What replaces it in the meantime is the check that does not depend on the layer at all: every
+combinator's identifier is recomputed from its own canonical form and compared with the
+identifier the schema declares. 2,459 of 2,471 verify that way, and the twelve that do not are
+the generic methods whose signatures canonicalization does not describe.
 
 **There is no automatic layer upgrade.** The drift job fetches, parses, diffs and opens a pull
 request. A person reads it and decides. A framework that followed the newest layer on its own
@@ -376,12 +402,13 @@ The whole public surface for this is one read-only field:
 
 ```ts
 import { schemaInfo } from 'yuigram'
-schemaInfo.tlLayer   // 223
+schemaInfo.tlLayer   // 229
 ```
 
 #### The update procedure
 
-1. The drift job reports that `core.telegram.org/schema` serves a layer above the pin.
+1. The drift job reports that a source serves a layer above the pin — the documentation page, or
+   the client schema, which moves first.
 2. `fetch` writes the new `.tl` and IR alongside the current ones. Old snapshots stay — they are
    the record of what each release spoke.
 3. `emit` regenerates. Output is deterministic, so the diff is attributable.
@@ -393,7 +420,7 @@ schemaInfo.tlLayer   // 223
 #### Compatibility expectations
 
 Telegram continues to serve clients on older layers — that is what the layer number is for. A
-release pinned to 223 keeps working after 224 ships; it simply does not see what 224 introduced.
+release pinned to 229 keeps working after 230 ships; it simply does not see what 230 introduced.
 The failure mode to plan for is the narrow one: a server sending a constructor the pinned table
 does not contain. That is a decode error confined to the message carrying it, not a
 connection-level failure, and the session layer treats it as an unparseable message rather than a
@@ -621,7 +648,7 @@ client in this ecosystem.
 | Artifact | Version relationship |
 |---|---|
 | Bot API schema | Tracks Telegram's version (10.2, 10.3, …) |
-| TL schema | Tracks the pinned layer number — currently 223, see §3.3 |
+| TL schema | Tracks the pinned layer number — currently 229, see §3.3 |
 | `yuigram` | Independent semantic versioning |
 
 Yuigram's version does **not** encode the Bot API version or TL layer. Those are properties of
@@ -630,7 +657,7 @@ the schema the release was built against, exposed at runtime and documented per 
 ```ts
 import { schemaInfo } from 'yuigram'
 schemaInfo.botApi   // '10.2'
-schemaInfo.tlLayer  // 223
+schemaInfo.tlLayer  // 229
 ```
 
 A schema bump that adds surface is a minor release. A schema bump that removes or changes

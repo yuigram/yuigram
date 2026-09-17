@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for contacts
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from './root/c.js'
 import type * as root_i$ from './root/i.js'
@@ -173,6 +173,7 @@ export interface GetTopPeers {
   readonly groups?: true
   readonly channels?: true
   readonly bots_app?: true
+  readonly bots_guestchat?: true
   readonly offset: number
   readonly limit: number
   readonly hash: bigint
@@ -232,9 +233,11 @@ export interface ResolvedPeer {
   readonly users: readonly root_u$.TypeUser[]
 }
 
-/** `contacts.search#11f812d8` */
+/** `contacts.search#05f58d0f` */
 export interface Search {
   readonly _: 'contacts.search'
+  readonly broadcasts?: true
+  readonly bots?: true
   readonly q: string
   readonly limit: number
 }

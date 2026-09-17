@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for messages
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_a$ from './root/a.js'
 import type * as root_b$ from './root/b.js'
@@ -47,6 +47,14 @@ export interface AddChatUser {
   readonly chat_id: bigint
   readonly user_id: root_i$.TypeInputUser
   readonly fwd_limit: number
+}
+
+/** `messages.addPollAnswer#19bc4b6d` */
+export interface AddPollAnswer {
+  readonly _: 'messages.addPollAnswer'
+  readonly peer: root_i$.TypeInputPeer
+  readonly msg_id: number
+  readonly answer: root_p$.TypePollAnswer
 }
 
 /** `messages.affectedFoundMessages#ef8d3e6c` */
@@ -201,6 +209,20 @@ export interface ChatInviteImporters {
   readonly users: readonly root_u$.TypeUser[]
 }
 
+/** `messages.chatInviteJoinResultOk#445663a7` */
+export interface ChatInviteJoinResultOk {
+  readonly _: 'messages.chatInviteJoinResultOk'
+  readonly updates: root_u$.TypeUpdates
+}
+
+/** `messages.chatInviteJoinResultWebView#61ca29d3` */
+export interface ChatInviteJoinResultWebView {
+  readonly _: 'messages.chatInviteJoinResultWebView'
+  readonly bot_id: bigint
+  readonly query_id: bigint
+  readonly users: readonly root_u$.TypeUser[]
+}
+
 /** `messages.chats#64ff9fd5` */
 export interface Chats {
   readonly _: 'messages.chats'
@@ -275,6 +297,39 @@ export interface ClickSponsoredMessage {
   readonly random_id: Uint8Array
 }
 
+/** `messages.composeMessageWithAI#daecc589` */
+export interface ComposeMessageWithAI {
+  readonly _: 'messages.composeMessageWithAI'
+  readonly proofread?: true
+  readonly emojify?: true
+  readonly text: root_t$.TypeTextWithEntities
+  readonly translate_to_lang?: string
+  readonly tone?: root_i$.TypeInputAiComposeTone
+}
+
+/** `messages.composeRichMessageWithAI#8d7ae6af` */
+export interface ComposeRichMessageWithAI {
+  readonly _: 'messages.composeRichMessageWithAI'
+  readonly proofread?: true
+  readonly emojify?: true
+  readonly text?: root_i$.TypeInputRichMessage
+  readonly translate_to_lang?: string
+  readonly tone?: root_i$.TypeInputAiComposeTone
+}
+
+/** `messages.composedMessageWithAI#90d7adfa` */
+export interface ComposedMessageWithAI {
+  readonly _: 'messages.composedMessageWithAI'
+  readonly result_text: root_t$.TypeTextWithEntities
+  readonly diff_text?: root_t$.TypeTextWithEntities
+}
+
+/** `messages.composedRichMessageWithAI#4c4537c8` */
+export interface ComposedRichMessageWithAI {
+  readonly _: 'messages.composedRichMessageWithAI'
+  readonly result: root_r$.TypeRichMessage
+}
+
 /** `messages.createChat#92ceddd4` */
 export interface CreateChat {
   readonly _: 'messages.createChat'
@@ -347,10 +402,33 @@ export interface DeleteMessages {
   readonly id: readonly number[]
 }
 
+/** `messages.deleteParticipantReaction#e3b7f82c` */
+export interface DeleteParticipantReaction {
+  readonly _: 'messages.deleteParticipantReaction'
+  readonly peer: root_i$.TypeInputPeer
+  readonly msg_id: number
+  readonly participant: root_i$.TypeInputPeer
+}
+
+/** `messages.deleteParticipantReactions#a0b80cf8` */
+export interface DeleteParticipantReactions {
+  readonly _: 'messages.deleteParticipantReactions'
+  readonly peer: root_i$.TypeInputPeer
+  readonly participant: root_i$.TypeInputPeer
+}
+
 /** `messages.deletePhoneCallHistory#f9cbe409` */
 export interface DeletePhoneCallHistory {
   readonly _: 'messages.deletePhoneCallHistory'
   readonly revoke?: true
+}
+
+/** `messages.deletePollAnswer#ac8505a5` */
+export interface DeletePollAnswer {
+  readonly _: 'messages.deletePollAnswer'
+  readonly peer: root_i$.TypeInputPeer
+  readonly msg_id: number
+  readonly option: Uint8Array
 }
 
 /** `messages.deleteQuickReplyMessages#e105e910` */
@@ -546,7 +624,7 @@ export interface EditForumTopic {
   readonly hidden?: boolean
 }
 
-/** `messages.editInlineBotMessage#83557dba` */
+/** `messages.editInlineBotMessage#a423bb51` */
 export interface EditInlineBotMessage {
   readonly _: 'messages.editInlineBotMessage'
   readonly no_webpage?: true
@@ -556,9 +634,10 @@ export interface EditInlineBotMessage {
   readonly media?: root_i$.TypeInputMedia
   readonly reply_markup?: root_r$.TypeReplyMarkup
   readonly entities?: readonly root_m$.TypeMessageEntity[]
+  readonly rich_message?: root_i$.TypeInputRichMessage
 }
 
-/** `messages.editMessage#51e842e1` */
+/** `messages.editMessage#b106e66c` */
 export interface EditMessage {
   readonly _: 'messages.editMessage'
   readonly no_webpage?: true
@@ -572,6 +651,7 @@ export interface EditMessage {
   readonly schedule_date?: number
   readonly schedule_repeat_period?: number
   readonly quick_reply_shortcut_id?: number
+  readonly rich_message?: root_i$.TypeInputRichMessage
 }
 
 /** `messages.editQuickReplyShortcut#5c003cef` */
@@ -709,6 +789,7 @@ export interface ForwardMessages {
   readonly drop_media_captions?: true
   readonly noforwards?: true
   readonly allow_paid_floodskip?: true
+  readonly from_ephemeral?: true
   readonly from_peer: root_i$.TypeInputPeer
   readonly id: readonly number[]
   readonly random_id: readonly bigint[]
@@ -1187,6 +1268,16 @@ export interface GetPeerSettings {
   readonly peer: root_i$.TypeInputPeer
 }
 
+/** `messages.getPersonalChannelHistory#55fb0996` */
+export interface GetPersonalChannelHistory {
+  readonly _: 'messages.getPersonalChannelHistory'
+  readonly user_id: root_i$.TypeInputUser
+  readonly limit: number
+  readonly max_id: number
+  readonly min_id: number
+  readonly hash: bigint
+}
+
 /** `messages.getPinnedDialogs#d6b94df2` */
 export interface GetPinnedDialogs {
   readonly _: 'messages.getPinnedDialogs'
@@ -1198,11 +1289,12 @@ export interface GetPinnedSavedDialogs {
   readonly _: 'messages.getPinnedSavedDialogs'
 }
 
-/** `messages.getPollResults#73bb643b` */
+/** `messages.getPollResults#eda3e33b` */
 export interface GetPollResults {
   readonly _: 'messages.getPollResults'
   readonly peer: root_i$.TypeInputPeer
   readonly msg_id: number
+  readonly poll_hash: bigint
 }
 
 /** `messages.getPollVotes#b86e380e` */
@@ -1270,6 +1362,13 @@ export interface GetReplies {
   readonly max_id: number
   readonly min_id: number
   readonly hash: bigint
+}
+
+/** `messages.getRichMessage#501569cf` */
+export interface GetRichMessage {
+  readonly _: 'messages.getRichMessage'
+  readonly peer: root_i$.TypeInputPeer
+  readonly id: number
 }
 
 /** `messages.getSavedDialogs#1e91fc99` */
@@ -1411,6 +1510,18 @@ export interface GetUnreadMentions {
   readonly min_id: number
 }
 
+/** `messages.getUnreadPollVotes#43286cf2` */
+export interface GetUnreadPollVotes {
+  readonly _: 'messages.getUnreadPollVotes'
+  readonly peer: root_i$.TypeInputPeer
+  readonly top_msg_id?: number
+  readonly offset_id: number
+  readonly add_offset: number
+  readonly limit: number
+  readonly max_id: number
+  readonly min_id: number
+}
+
 /** `messages.getUnreadReactions#bd7f90ac` */
 export interface GetUnreadReactions {
   readonly _: 'messages.getUnreadReactions'
@@ -1481,7 +1592,7 @@ export interface HistoryImportParsed {
   readonly title?: string
 }
 
-/** `messages.importChatInvite#6c50051c` */
+/** `messages.importChatInvite#de91436e` */
 export interface ImportChatInvite {
   readonly _: 'messages.importChatInvite'
   readonly hash: string
@@ -1706,6 +1817,13 @@ export interface ReadMessageContents {
   readonly id: readonly number[]
 }
 
+/** `messages.readPollVotes#1720b4d8` */
+export interface ReadPollVotes {
+  readonly _: 'messages.readPollVotes'
+  readonly peer: root_i$.TypeInputPeer
+  readonly top_msg_id?: number
+}
+
 /** `messages.readReactions#9ec44f93` */
 export interface ReadReactions {
   readonly _: 'messages.readReactions'
@@ -1808,12 +1926,26 @@ export interface ReportMessagesDelivery {
   readonly id: readonly number[]
 }
 
+/** `messages.reportMusicListen#ddbcd819` */
+export interface ReportMusicListen {
+  readonly _: 'messages.reportMusicListen'
+  readonly id: root_i$.TypeInputDocument
+  readonly listened_duration: number
+}
+
 /** `messages.reportReaction#3f64c076` */
 export interface ReportReaction {
   readonly _: 'messages.reportReaction'
   readonly peer: root_i$.TypeInputPeer
   readonly id: number
   readonly reaction_peer: root_i$.TypeInputPeer
+}
+
+/** `messages.reportReadMetrics#4067c5e6` */
+export interface ReportReadMetrics {
+  readonly _: 'messages.reportReadMetrics'
+  readonly peer: root_i$.TypeInputPeer
+  readonly metrics: readonly root_i$.TypeInputMessageReadMetric[]
 }
 
 /** `messages.reportSpam#cf1592db` */
@@ -1838,6 +1970,14 @@ export interface RequestAppWebView {
   readonly peer: root_i$.TypeInputPeer
   readonly app: root_i$.TypeInputBotApp
   readonly start_param?: string
+  readonly theme_params?: root_d$.TypeDataJSON
+  readonly platform: string
+}
+
+/** `messages.requestChatJoinWebView#ba9ee679` */
+export interface RequestChatJoinWebView {
+  readonly _: 'messages.requestChatJoinWebView'
+  readonly query_id: bigint
   readonly theme_params?: root_d$.TypeDataJSON
   readonly platform: string
 }
@@ -1910,7 +2050,7 @@ export interface SaveDefaultSendAs {
   readonly send_as: root_i$.TypeInputPeer
 }
 
-/** `messages.saveDraft#54ae308e` */
+/** `messages.saveDraft#ad0fa15c` */
 export interface SaveDraft {
   readonly _: 'messages.saveDraft'
   readonly no_webpage?: true
@@ -1922,6 +2062,7 @@ export interface SaveDraft {
   readonly media?: root_i$.TypeInputMedia
   readonly effect?: bigint
   readonly suggested_post?: root_s$.TypeSuggestedPost
+  readonly rich_message?: root_i$.TypeInputRichMessage
 }
 
 /** `messages.saveGif#327a30cb` */
@@ -2039,13 +2180,14 @@ export interface SearchEmojiStickerSets {
   readonly hash: bigint
 }
 
-/** `messages.searchGlobal#4bc6589a` */
+/** `messages.searchGlobal#6126a43c` */
 export interface SearchGlobal {
   readonly _: 'messages.searchGlobal'
   readonly broadcasts_only?: true
   readonly groups_only?: true
   readonly users_only?: true
   readonly folder_id?: number
+  readonly community?: root_i$.TypeInputChannel
   readonly q: string
   readonly filter: root_m$.TypeMessagesFilter
   readonly min_date: number
@@ -2105,11 +2247,12 @@ export interface SearchStickers {
   readonly hash: bigint
 }
 
-/** `messages.sendBotRequestedPeer#91b2d060` */
+/** `messages.sendBotRequestedPeer#6c5cf2a7` */
 export interface SendBotRequestedPeer {
   readonly _: 'messages.sendBotRequestedPeer'
   readonly peer: root_i$.TypeInputPeer
-  readonly msg_id: number
+  readonly msg_id?: number
+  readonly webapp_req_id?: string
   readonly button_id: number
   readonly requested_peers: readonly root_i$.TypeInputPeer[]
 }
@@ -2185,7 +2328,7 @@ export interface SendMedia {
   readonly suggested_post?: root_s$.TypeSuggestedPost
 }
 
-/** `messages.sendMessage#545cd15a` */
+/** `messages.sendMessage#fef48f62` */
 export interface SendMessage {
   readonly _: 'messages.sendMessage'
   readonly no_webpage?: true
@@ -2209,6 +2352,7 @@ export interface SendMessage {
   readonly effect?: bigint
   readonly allow_paid_stars?: bigint
   readonly suggested_post?: root_s$.TypeSuggestedPost
+  readonly rich_message?: root_i$.TypeInputRichMessage
 }
 
 /** `messages.sendMultiMedia#1bf89d74` */
@@ -2320,6 +2464,13 @@ export interface SetBotCallbackAnswer {
   readonly message?: string
   readonly url?: string
   readonly cache_time: number
+}
+
+/** `messages.setBotGuestChatResult#b8f106e3` */
+export interface SetBotGuestChatResult {
+  readonly _: 'messages.setBotGuestChatResult'
+  readonly query_id: bigint
+  readonly result: root_i$.TypeInputBotInlineResult
 }
 
 /** `messages.setBotPrecheckoutResults#09c2dd95` */
@@ -2502,12 +2653,13 @@ export interface StickersNotModified {
   readonly _: 'messages.stickersNotModified'
 }
 
-/** `messages.summarizeText#9d4104e2` */
+/** `messages.summarizeText#abbbd346` */
 export interface SummarizeText {
   readonly _: 'messages.summarizeText'
   readonly peer: root_i$.TypeInputPeer
   readonly id: number
   readonly to_lang?: string
+  readonly tone?: string
 }
 
 /** `messages.toggleBotInAttachMenu#69f59d69` */
@@ -2612,13 +2764,30 @@ export interface TranslateResult {
   readonly result: readonly root_t$.TypeTextWithEntities[]
 }
 
-/** `messages.translateText#63183030` */
+/** `messages.translateRichMessage#1a542004` */
+export interface TranslateRichMessage {
+  readonly _: 'messages.translateRichMessage'
+  readonly peer?: root_i$.TypeInputPeer
+  readonly id?: readonly number[]
+  readonly text?: readonly root_i$.TypeInputRichMessage[]
+  readonly to_lang: string
+  readonly tone?: string
+}
+
+/** `messages.translateText#a5eec345` */
 export interface TranslateText {
   readonly _: 'messages.translateText'
   readonly peer?: root_i$.TypeInputPeer
   readonly id?: readonly number[]
   readonly text?: readonly root_t$.TypeTextWithEntities[]
   readonly to_lang: string
+  readonly tone?: string
+}
+
+/** `messages.translatedRichMessage#4203998f` */
+export interface TranslatedRichMessage {
+  readonly _: 'messages.translatedRichMessage'
+  readonly result: readonly root_r$.TypeRichMessage[]
 }
 
 /** Any `messages.AffectedFoundMessages`. */
@@ -2680,6 +2849,11 @@ export type TypeChatFull =
 export type TypeChatInviteImporters =
   | ChatInviteImporters
 
+/** Any `messages.ChatInviteJoinResult`. */
+export type TypeChatInviteJoinResult =
+  | ChatInviteJoinResultOk
+  | ChatInviteJoinResultWebView
+
 /** Any `messages.Chats`. */
 export type TypeChats =
   | Chats
@@ -2688,6 +2862,14 @@ export type TypeChats =
 /** Any `messages.CheckedHistoryImportPeer`. */
 export type TypeCheckedHistoryImportPeer =
   | CheckedHistoryImportPeer
+
+/** Any `messages.ComposedMessageWithAI`. */
+export type TypeComposedMessageWithAI =
+  | ComposedMessageWithAI
+
+/** Any `messages.ComposedRichMessageWithAI`. */
+export type TypeComposedRichMessageWithAI =
+  | ComposedRichMessageWithAI
 
 /** Any `messages.DhConfig`. */
 export type TypeDhConfig =
@@ -2881,6 +3063,10 @@ export type TypeStickers =
 /** Any `messages.TranscribedAudio`. */
 export type TypeTranscribedAudio =
   | TranscribedAudio
+
+/** Any `messages.TranslatedRichMessage`. */
+export type TypeTranslatedRichMessage =
+  | TranslatedRichMessage
 
 /** Any `messages.TranslatedText`. */
 export type TypeTranslatedText =

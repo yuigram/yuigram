@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for photos
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_i$ from './root/i.js'
 import type * as root_p$ from './root/p.js'

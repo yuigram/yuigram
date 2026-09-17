@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for stats
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from './root/c.js'
 import type * as root_i$ from './root/i.js'
@@ -67,6 +67,14 @@ export interface GetMessageStats {
   readonly msg_id: number
 }
 
+/** `stats.getPollStats#c27dfa68` */
+export interface GetPollStats {
+  readonly _: 'stats.getPollStats'
+  readonly dark?: true
+  readonly peer: root_i$.TypeInputPeer
+  readonly msg_id: number
+}
+
 /** `stats.getStoryPublicForwards#a6437ef6` */
 export interface GetStoryPublicForwards {
   readonly _: 'stats.getStoryPublicForwards'
@@ -120,6 +128,12 @@ export interface MessageStats {
   readonly reactions_by_emotion_graph: root_s$.TypeStatsGraph
 }
 
+/** `stats.pollStats#2999beed` */
+export interface PollStats {
+  readonly _: 'stats.pollStats'
+  readonly votes_graph: root_s$.TypeStatsGraph
+}
+
 /** `stats.publicForwards#93037e20` */
 export interface PublicForwards {
   readonly _: 'stats.publicForwards'
@@ -148,6 +162,10 @@ export type TypeMegagroupStats =
 /** Any `stats.MessageStats`. */
 export type TypeMessageStats =
   | MessageStats
+
+/** Any `stats.PollStats`. */
+export type TypePollStats =
+  | PollStats
 
 /** Any `stats.PublicForwards`. */
 export type TypePublicForwards =

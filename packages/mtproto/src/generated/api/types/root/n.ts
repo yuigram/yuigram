@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_p$ from '../root/p.js'
 import type { TlObject } from '../../../../tl/object.js'
@@ -46,6 +46,12 @@ export interface NotifyChats {
   readonly _: 'notifyChats'
 }
 
+/** `notifyCommunity#be376999` */
+export interface NotifyCommunity {
+  readonly _: 'notifyCommunity'
+  readonly community_id: bigint
+}
+
 /** `notifyForumTopic#226e6308` */
 export interface NotifyForumTopic {
   readonly _: 'notifyForumTopic'
@@ -79,6 +85,7 @@ export type TypeNotificationSound =
 export type TypeNotifyPeer =
   | NotifyBroadcasts
   | NotifyChats
+  | NotifyCommunity
   | NotifyForumTopic
   | NotifyPeer
   | NotifyUsers

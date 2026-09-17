@@ -1,9 +1,10 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_d$ from '../root/d.js'
 import type * as root_p$ from '../root/p.js'
+import type * as root_t$ from '../root/t.js'
 import type * as root_u$ from '../root/u.js'
 import type { TlObject } from '../../../../tl/object.js'
 
@@ -11,6 +12,36 @@ import type { TlObject } from '../../../../tl/object.js'
 export interface AccountDaysTTL {
   readonly _: 'accountDaysTTL'
   readonly days: number
+}
+
+/** `aiComposeTone#cff63ea9` */
+export interface AiComposeTone {
+  readonly _: 'aiComposeTone'
+  readonly creator?: true
+  readonly id: bigint
+  readonly access_hash: bigint
+  readonly slug: string
+  readonly title: string
+  readonly emoji_id?: bigint
+  readonly prompt?: string
+  readonly installs_count?: number
+  readonly author_id?: bigint
+  readonly example_english?: TypeAiComposeToneExample
+}
+
+/** `aiComposeToneDefault#9bad6414` */
+export interface AiComposeToneDefault {
+  readonly _: 'aiComposeToneDefault'
+  readonly tone: string
+  readonly emoji_id: bigint
+  readonly title: string
+}
+
+/** `aiComposeToneExample#f1d628ec` */
+export interface AiComposeToneExample {
+  readonly _: 'aiComposeToneExample'
+  readonly from: root_t$.TypeTextWithEntities
+  readonly to: root_t$.TypeTextWithEntities
 }
 
 /** `attachMenuBot#d90d8dfe` */
@@ -180,6 +211,15 @@ export interface AvailableReaction {
 /** Any `AccountDaysTTL`. */
 export type TypeAccountDaysTTL =
   | AccountDaysTTL
+
+/** Any `AiComposeTone`. */
+export type TypeAiComposeTone =
+  | AiComposeTone
+  | AiComposeToneDefault
+
+/** Any `AiComposeToneExample`. */
+export type TypeAiComposeToneExample =
+  | AiComposeToneExample
 
 /** Any `AttachMenuBot`. */
 export type TypeAttachMenuBot =

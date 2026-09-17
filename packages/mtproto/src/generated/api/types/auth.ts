@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for auth
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as account$ from './account.js'
 import type * as help$ from './help.js'
@@ -121,12 +121,33 @@ export interface ExportedAuthorization {
   readonly bytes: Uint8Array
 }
 
+/** `auth.finishFirebasePnvLogin#2c85094c` */
+export interface FinishFirebasePnvLogin {
+  readonly _: 'auth.finishFirebasePnvLogin'
+  readonly google_token: string
+}
+
 /** `auth.finishPasskeyLogin#9857ad07` */
 export interface FinishPasskeyLogin {
   readonly _: 'auth.finishPasskeyLogin'
   readonly credential: root_i$.TypeInputPasskeyCredential
   readonly from_dc_id?: number
   readonly from_auth_key_id?: bigint
+}
+
+/** `auth.firebasePnvIntent#df5ac00c` */
+export interface FirebasePnvIntent {
+  readonly _: 'auth.firebasePnvIntent'
+  readonly nonce: string
+  readonly digital_credential_payload: string
+}
+
+/** `auth.firebasePnvSignUp#783f6b56` */
+export interface FirebasePnvSignUp {
+  readonly _: 'auth.firebasePnvSignUp'
+  readonly no_joined_notifications?: true
+  readonly first_name: string
+  readonly last_name: string
 }
 
 /** `auth.importAuthorization#a57a7dad` */
@@ -157,6 +178,13 @@ export interface ImportWebTokenAuthorization {
   readonly api_id: number
   readonly api_hash: string
   readonly web_auth_token: string
+}
+
+/** `auth.initFirebasePnvLogin#777df37a` */
+export interface InitFirebasePnvLogin {
+  readonly _: 'auth.initFirebasePnvLogin'
+  readonly api_id: number
+  readonly api_hash: string
 }
 
 /** `auth.initPasskeyLogin#518ad0b7` */
@@ -277,13 +305,14 @@ export interface SentCode {
   readonly timeout?: number
 }
 
-/** `auth.sentCodePaymentRequired#e0955a3c` */
+/** `auth.sentCodePaymentRequired#f8827ebf` */
 export interface SentCodePaymentRequired {
   readonly _: 'auth.sentCodePaymentRequired'
   readonly store_product: string
   readonly phone_code_hash: string
   readonly support_email_address: string
   readonly support_email_subject: string
+  readonly premium_days: number
   readonly currency: string
   readonly amount: bigint
 }
@@ -408,6 +437,10 @@ export type TypeCodeType =
 /** Any `auth.ExportedAuthorization`. */
 export type TypeExportedAuthorization =
   | ExportedAuthorization
+
+/** Any `auth.FirebasePnvIntent`. */
+export type TypeFirebasePnvIntent =
+  | FirebasePnvIntent
 
 /** Any `auth.LoggedOut`. */
 export type TypeLoggedOut =

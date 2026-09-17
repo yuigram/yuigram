@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
 // Wire layout for account
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 161 combinators. */
+/** 168 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0xf3ed4c73, n: 'account.acceptAuthorization', f: [{ n: 'bot_id', t: 'long' }, { n: 'scope', t: 'string' }, { n: 'public_key', t: 'string' }, { n: 'value_hashes', t: { v: 'obj' } }, { n: 'credentials', t: 'obj' }] },
   { id: 0xad2e1cd8, n: 'account.authorizationForm', f: [{ n: 'flags', b: 1 }, { n: 'required_types', t: { v: 'obj' } }, { n: 'values', t: { v: 'obj' } }, { n: 'errors', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }, { n: 'privacy_policy_url', t: 'string', c: 'flags', i: 0 }] },
@@ -19,6 +19,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xe011e1c4, n: 'account.chatThemesNotModified', f: [] },
   { id: 0x2714d86c, n: 'account.checkUsername', f: [{ n: 'username', t: 'string' }] },
   { id: 0x18201aae, n: 'account.clearRecentEmojiStatuses', f: [] },
+  { id: 0x67ed1f68, n: 'account.confirmBotConnection', f: [{ n: 'bot_id', t: 'obj' }] },
   { id: 0x8fdf1920, n: 'account.confirmPasswordEmail', f: [{ n: 'code', t: 'string' }] },
   { id: 0x5f2178c3, n: 'account.confirmPhone', f: [{ n: 'phone_code_hash', t: 'string' }, { n: 'phone_code', t: 'string' }] },
   { id: 0x17d7f87b, n: 'account.connectedBots', f: [{ n: 'connected_bots', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
@@ -31,6 +32,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x60073674, n: 'account.deleteBusinessChatLink', f: [{ n: 'slug', t: 'string' }] },
   { id: 0xf5b5563f, n: 'account.deletePasskey', f: [{ n: 'id', t: 'string' }] },
   { id: 0xb880bc4b, n: 'account.deleteSecureValue', f: [{ n: 'types', t: { v: 'obj' } }] },
+  { id: 0x86a0765d, n: 'account.deleteWebBrowserSettingsExceptions', f: [] },
   { id: 0x5e437ed9, n: 'account.disablePeerConnectedBot', f: [{ n: 'peer', t: 'obj' }] },
   { id: 0x8c3410af, n: 'account.editBusinessChatLink', f: [{ n: 'slug', t: 'string' }, { n: 'link', t: 'obj' }] },
   { id: 0x2b96cd1b, n: 'account.emailVerified', f: [{ n: 'email', t: 'string' }] },
@@ -78,6 +80,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xfc8ddbea, n: 'account.getWallPaper', f: [{ n: 'wallpaper', t: 'obj' }] },
   { id: 0x07967d36, n: 'account.getWallPapers', f: [{ n: 'hash', t: 'long' }] },
   { id: 0x182e6d6f, n: 'account.getWebAuthorizations', f: [] },
+  { id: 0x56655768, n: 'account.getWebBrowserSettings', f: [{ n: 'hash', t: 'long' }] },
   { id: 0x429547e8, n: 'account.initPasskeyRegistration', f: [] },
   { id: 0x8ef3eab0, n: 'account.initTakeoutSession', f: [{ n: 'flags', b: 1 }, { n: 'contacts', t: 'true', c: 'flags', i: 0 }, { n: 'message_users', t: 'true', c: 'flags', i: 1 }, { n: 'message_chats', t: 'true', c: 'flags', i: 2 }, { n: 'message_megagroups', t: 'true', c: 'flags', i: 3 }, { n: 'message_channels', t: 'true', c: 'flags', i: 4 }, { n: 'files', t: 'true', c: 'flags', i: 5 }, { n: 'file_max_size', t: 'long', c: 'flags', i: 5 }] },
   { id: 0xc727bb3b, n: 'account.installTheme', f: [{ n: 'flags', b: 1 }, { n: 'dark', t: 'true', c: 'flags', i: 0 }, { n: 'theme', t: 'obj', c: 'flags', i: 1 }, { n: 'format', t: 'string', c: 'flags', i: 2 }, { n: 'base_theme', t: 'obj', c: 'flags', i: 3 }] },
@@ -141,6 +144,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xfe2eda76, n: 'account.toggleNoPaidMessagesException', f: [{ n: 'flags', b: 1 }, { n: 'refund_charged', t: 'true', c: 'flags', i: 0 }, { n: 'require_payment', t: 'true', c: 'flags', i: 2 }, { n: 'parent_peer', t: 'obj', c: 'flags', i: 1 }, { n: 'user_id', t: 'obj' }] },
   { id: 0xb9d9a38d, n: 'account.toggleSponsoredMessages', f: [{ n: 'enabled', t: 'bool' }] },
   { id: 0x58d6b376, n: 'account.toggleUsername', f: [{ n: 'username', t: 'string' }, { n: 'active', t: 'bool' }] },
+  { id: 0x60ed4229, n: 'account.toggleWebBrowserSettingsException', f: [{ n: 'flags', b: 1 }, { n: 'delete', t: 'true', c: 'flags', i: 1 }, { n: 'open_external_browser', t: 'bool', c: 'flags', i: 0 }, { n: 'url', t: 'string' }] },
   { id: 0x6a0d3206, n: 'account.unregisterDevice', f: [{ n: 'token_type', t: 'int' }, { n: 'token', t: 'string' }, { n: 'other_uids', t: { v: 'long' } }] },
   { id: 0xcc6e0c11, n: 'account.updateBirthday', f: [{ n: 'flags', b: 1 }, { n: 'birthday', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0xa26a7fa5, n: 'account.updateBusinessAwayMessage', f: [{ n: 'flags', b: 1 }, { n: 'message', t: 'obj', c: 'flags', i: 0 }] },
@@ -159,6 +163,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x6628562c, n: 'account.updateStatus', f: [{ n: 'offline', t: 'bool' }] },
   { id: 0x2bf40ccc, n: 'account.updateTheme', f: [{ n: 'flags', b: 1 }, { n: 'format', t: 'string' }, { n: 'theme', t: 'obj' }, { n: 'slug', t: 'string', c: 'flags', i: 0 }, { n: 'title', t: 'string', c: 'flags', i: 1 }, { n: 'document', t: 'obj', c: 'flags', i: 2 }, { n: 'settings', t: { v: 'obj' }, c: 'flags', i: 3 }] },
   { id: 0x3e0bdd7c, n: 'account.updateUsername', f: [{ n: 'username', t: 'string' }] },
+  { id: 0x9adf82fe, n: 'account.updateWebBrowserSettings', f: [{ n: 'flags', b: 1 }, { n: 'open_external_browser', t: 'true', c: 'flags', i: 0 }, { n: 'display_close_button', t: 'true', c: 'flags', i: 1 }] },
   { id: 0x831a83a2, n: 'account.uploadRingtone', f: [{ n: 'file', t: 'obj' }, { n: 'file_name', t: 'string' }, { n: 'mime_type', t: 'string' }] },
   { id: 0x1c3db333, n: 'account.uploadTheme', f: [{ n: 'flags', b: 1 }, { n: 'file', t: 'obj' }, { n: 'thumb', t: 'obj', c: 'flags', i: 0 }, { n: 'file_name', t: 'string' }, { n: 'mime_type', t: 'string' }] },
   { id: 0xe39a8f03, n: 'account.uploadWallPaper', f: [{ n: 'flags', b: 1 }, { n: 'for_chat', t: 'true', c: 'flags', i: 0 }, { n: 'file', t: 'obj' }, { n: 'mime_type', t: 'string' }, { n: 'settings', t: 'obj' }] },
@@ -167,4 +172,6 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xcdc3858c, n: 'account.wallPapers', f: [{ n: 'hash', t: 'long' }, { n: 'wallpapers', t: { v: 'obj' } }] },
   { id: 0x1c199183, n: 'account.wallPapersNotModified', f: [] },
   { id: 0xed56c9fc, n: 'account.webAuthorizations', f: [{ n: 'authorizations', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x79eb8cb3, n: 'account.webBrowserSettings', f: [{ n: 'flags', b: 1 }, { n: 'open_external_browser', t: 'true', c: 'flags', i: 0 }, { n: 'display_close_button', t: 'true', c: 'flags', i: 1 }, { n: 'external_exceptions', t: { v: 'obj' } }, { n: 'inapp_exceptions', t: { v: 'obj' } }, { n: 'hash', t: 'long' }] },
+  { id: 0xc31c8f4e, n: 'account.webBrowserSettingsNotModified', f: [] },
 ]

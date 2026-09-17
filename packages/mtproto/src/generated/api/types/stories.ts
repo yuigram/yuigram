@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for stories
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_c$ from './root/c.js'
 import type * as root_f$ from './root/f.js'
@@ -84,7 +84,7 @@ export interface DeleteStories {
   readonly id: readonly number[]
 }
 
-/** `stories.editStory#b583ba46` */
+/** `stories.editStory#2c63a72b` */
 export interface EditStory {
   readonly _: 'stories.editStory'
   readonly peer: root_i$.TypeInputPeer
@@ -94,6 +94,7 @@ export interface EditStory {
   readonly caption?: string
   readonly entities?: readonly root_m$.TypeMessageEntity[]
   readonly privacy_rules?: readonly root_i$.TypeInputPrivacyRule[]
+  readonly music?: root_i$.TypeInputDocument
 }
 
 /** `stories.exportStoryLink#7b8def20` */
@@ -270,7 +271,7 @@ export interface SendReaction {
   readonly reaction: root_r$.TypeReaction
 }
 
-/** `stories.sendStory#737fc2ec` */
+/** `stories.sendStory#8f9e6898` */
 export interface SendStory {
   readonly _: 'stories.sendStory'
   readonly pinned?: true
@@ -287,6 +288,7 @@ export interface SendStory {
   readonly fwd_from_id?: root_i$.TypeInputPeer
   readonly fwd_from_story?: number
   readonly albums?: readonly number[]
+  readonly music?: root_i$.TypeInputDocument
 }
 
 /** `stories.startLive#d069ccde` */

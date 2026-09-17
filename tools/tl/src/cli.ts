@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { crosscheck, describeCrosscheck, fetchReferenceJson } from './crosscheck.js'
 import { emitAll } from './emit/index.js'
-import { download, extractLayer, extractSchemaText, SOURCES } from './fetch.js'
+import { download, extractLayer, extractSchemaText, layerFromText, SOURCES } from './fetch.js'
 import type { TlSchema } from './ir.js'
 import { parseSchema } from './parse.js'
 import { serializeSchema } from './serialize.js'
@@ -52,12 +52,30 @@ export function readLayer(): number {
   return pin.layer
 }
 
-async function commandFetch(): Promise<void> {
+/**
+ * Read the API schema from whichever source was asked for.
+ *
+ * The documentation page by default. `--from-client` takes it from Telegram's
+ * own client repository instead, which is where a layer appears first: the
+ * servers speak it before the page describes it, and a capability that exists
+ * only in the newer layer cannot be implemented from the older document.
+ */
+async function fetchApi(fromClient: boolean): Promise<{ text: string; layer: number }> {
+  if (!fromClient) {
+    const html = await download(SOURCES.api.url)
+
+    return { text: extractSchemaText(html, SOURCES.api.url), layer: extractLayer(html) }
+  }
+
+  const text = await download(SOURCES.apiFromClient.url)
+
+  return { text, layer: layerFromText(text) }
+}
+
+async function commandFetch(fromClient: boolean): Promise<void> {
   mkdirSync(SCHEMA_DIR, { recursive: true })
 
-  const apiHtml = await download(SOURCES.api.url)
-  const layer = extractLayer(apiHtml)
-  const apiText = extractSchemaText(apiHtml, SOURCES.api.url)
+  const { text: apiText, layer } = await fetchApi(fromClient)
 
   const mtprotoHtml = await download(SOURCES.mtproto.url)
   const mtprotoText = extractSchemaText(mtprotoHtml, SOURCES.mtproto.url)
@@ -94,7 +112,15 @@ function commandEmit(): void {
 }
 
 async function commandCrosscheck(): Promise<void> {
-  const { mtproto, api } = loadSchemas()
+  const { mtproto, api, layer } = loadSchemas()
+
+  // The oracle renders whatever layer the documentation currently serves. It is
+  // an oracle for the parser, so it only answers that question when it is
+  // describing the same layer: against an older rendering, every combinator the
+  // newer layer changed would be reported as a parser error.
+  const publishedLayer = extractLayer(await download(SOURCES.api.url))
+  const comparable = publishedLayer === layer
+
   const results = [
     crosscheck(mtproto, await fetchReferenceJson('mtproto')),
     crosscheck(api, await fetchReferenceJson('api')),
@@ -102,25 +128,38 @@ async function commandCrosscheck(): Promise<void> {
 
   let failed = false
   for (const result of results) {
+    // The service schema is unversioned, so it is compared either way.
+    const strict = comparable || result.table !== 'api'
     process.stdout.write(describeCrosscheck(result))
-    if (!result.agrees) failed = true
+    if (!result.agrees && strict) failed = true
+  }
+
+  if (!comparable) {
+    process.stdout.write(
+      `
+the API rendering is layer ${publishedLayer} and this repository is pinned to ${layer}, ` +
+        `so the differences above are the layers apart rather than the parser disagreeing; ` +
+        `the check becomes an oracle again when the documentation catches up
+`,
+    )
   }
 
   if (failed) process.exitCode = 1
 }
 
-const COMMANDS: Record<string, () => void | Promise<void>> = {
-  fetch: commandFetch,
+const COMMANDS: Record<string, (flags: readonly string[]) => void | Promise<void>> = {
+  fetch: async (flags) => await commandFetch(flags.includes('--from-client')),
   emit: commandEmit,
   crosscheck: commandCrosscheck,
 }
 
 const name = process.argv[2] ?? ''
+const flags = process.argv.slice(3)
 const command = COMMANDS[name]
 
 if (command === undefined) {
-  process.stderr.write(`usage: cli <${Object.keys(COMMANDS).join('|')}>\n`)
+  process.stderr.write(`usage: cli <${Object.keys(COMMANDS).join('|')}> [--from-client]\n`)
   process.exitCode = 1
 } else {
-  await command()
+  await command(flags)
 }

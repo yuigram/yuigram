@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_b$ from '../root/b.js'
 import type * as root_d$ from '../root/d.js'
@@ -30,7 +30,7 @@ export interface CdnPublicKey {
   readonly public_key: string
 }
 
-/** `channel#1c32b11c` */
+/** `channel#d49f34c6` */
 export interface Channel {
   readonly _: 'channel'
   readonly creator?: true
@@ -82,6 +82,7 @@ export interface Channel {
   readonly bot_verification_icon?: bigint
   readonly send_paid_messages_stars?: bigint
   readonly linked_monoforum_id?: bigint
+  readonly linked_community_id?: bigint
 }
 
 /** `channelAdminLogEvent#1fad68cd` */
@@ -468,7 +469,7 @@ export interface ChannelForbidden {
   readonly until_date?: number
 }
 
-/** `channelFull#e4e0b29d` */
+/** `channelFull#a04e8d3a` */
 export interface ChannelFull {
   readonly _: 'channelFull'
   readonly can_view_participants?: true
@@ -492,6 +493,7 @@ export interface ChannelFull {
   readonly paid_reactions_available?: true
   readonly stargifts_available?: true
   readonly paid_messages_available?: true
+  readonly has_welcome_messages?: true
   readonly id: bigint
   readonly about: string
   readonly participants_count?: number
@@ -537,6 +539,7 @@ export interface ChannelFull {
   readonly stargifts_count?: number
   readonly send_paid_messages_stars?: bigint
   readonly main_tab?: root_p$.TypeProfileTab
+  readonly guard_bot_id?: bigint
 }
 
 /** `channelLocation#209b82db` */
@@ -707,6 +710,8 @@ export interface ChatAdminRights {
   readonly delete_stories?: true
   readonly manage_direct_messages?: true
   readonly manage_ranks?: true
+  readonly manage_linked_peers?: true
+  readonly manage_welcome_messages?: true
 }
 
 /** `chatAdminWithInvites#f2ecef23` */
@@ -741,6 +746,8 @@ export interface ChatBannedRights {
   readonly send_docs?: true
   readonly send_plain?: true
   readonly edit_rank?: true
+  readonly send_reactions?: true
+  readonly manage_linked_peers?: true
   readonly until_date: number
 }
 
@@ -763,6 +770,7 @@ export interface ChatFull {
   readonly can_set_username?: true
   readonly has_scheduled?: true
   readonly translations_disabled?: true
+  readonly has_welcome_messages?: true
   readonly id: bigint
   readonly about: string
   readonly participants: TypeChatParticipants
@@ -957,6 +965,59 @@ export interface CodeSettings {
   readonly app_sandbox?: boolean
 }
 
+/** `community#65efe954` */
+export interface Community {
+  readonly _: 'community'
+  readonly creator?: true
+  readonly left?: true
+  readonly min?: true
+  readonly collapsed_in_dialogs?: true
+  readonly id: bigint
+  readonly access_hash?: bigint
+  readonly title: string
+  readonly photo: TypeChatPhoto
+  readonly date: number
+  readonly admin_rights?: TypeChatAdminRights
+  readonly default_banned_rights?: TypeChatBannedRights
+}
+
+/** `communityForbidden#fd3cdab8` */
+export interface CommunityForbidden {
+  readonly _: 'communityForbidden'
+  readonly id: bigint
+  readonly access_hash?: bigint
+  readonly title: string
+}
+
+/** `communityFull#cbb7a507` */
+export interface CommunityFull {
+  readonly _: 'communityFull'
+  readonly id: bigint
+  readonly about: string
+  readonly chat_photo: root_p$.TypePhoto
+  readonly linked_peers: readonly TypeCommunityPeer[]
+  readonly admins_count?: number
+  readonly kicked_count?: number
+  readonly peer_link_requests_pending?: number
+}
+
+/** `communityPeer#76141ebd` */
+export interface CommunityPeer {
+  readonly _: 'communityPeer'
+  readonly can_view_history?: true
+  readonly visible?: boolean
+  readonly peer: root_p$.TypePeer
+}
+
+/** `communityPeerRequest#7beafa85` */
+export interface CommunityPeerRequest {
+  readonly _: 'communityPeerRequest'
+  readonly visible?: true
+  readonly peer: root_p$.TypePeer
+  readonly requested_by: bigint
+  readonly date: number
+}
+
 /** `config#cc1a241e` */
 export interface Config {
   readonly _: 'config'
@@ -1009,12 +1070,15 @@ export interface Config {
   readonly autologin_token?: string
 }
 
-/** `connectedBot#cd64636c` */
+/** `connectedBot#033ed001` */
 export interface ConnectedBot {
   readonly _: 'connectedBot'
   readonly bot_id: bigint
   readonly recipients: root_b$.TypeBusinessBotRecipients
   readonly rights: root_b$.TypeBusinessBotRights
+  readonly device?: string
+  readonly date?: number
+  readonly location?: string
 }
 
 /** `connectedBotStarRef#19a13f71` */
@@ -1159,6 +1223,8 @@ export type TypeChat =
   | Chat
   | ChatEmpty
   | ChatForbidden
+  | Community
+  | CommunityForbidden
 
 /** Any `ChatAdminRights`. */
 export type TypeChatAdminRights =
@@ -1176,6 +1242,7 @@ export type TypeChatBannedRights =
 export type TypeChatFull =
   | ChannelFull
   | ChatFull
+  | CommunityFull
 
 /** Any `ChatInvite`. */
 export type TypeChatInvite =
@@ -1221,6 +1288,14 @@ export type TypeChatTheme =
 /** Any `CodeSettings`. */
 export type TypeCodeSettings =
   | CodeSettings
+
+/** Any `CommunityPeer`. */
+export type TypeCommunityPeer =
+  | CommunityPeer
+
+/** Any `CommunityPeerRequest`. */
+export type TypeCommunityPeerRequest =
+  | CommunityPeerRequest
 
 /** Any `Config`. */
 export type TypeConfig =

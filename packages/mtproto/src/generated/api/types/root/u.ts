@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as auth$ from '../auth.js'
 import type * as messages$ from '../messages.js'
@@ -11,6 +11,7 @@ import type * as root_e$ from '../root/e.js'
 import type * as root_f$ from '../root/f.js'
 import type * as root_g$ from '../root/g.js'
 import type * as root_i$ from '../root/i.js'
+import type * as root_j$ from '../root/j.js'
 import type * as root_l$ from '../root/l.js'
 import type * as root_m$ from '../root/m.js'
 import type * as root_n$ from '../root/n.js'
@@ -24,6 +25,7 @@ import type { TlObject } from '../../../../tl/object.js'
 
 /** Any `Update`. */
 export type TypeUpdate =
+  | UpdateAiComposeTones
   | UpdateAttachMenuBots
   | UpdateAutoSaveSettings
   | UpdateBotBusinessConnect
@@ -33,6 +35,7 @@ export type TypeUpdate =
   | UpdateBotCommands
   | UpdateBotDeleteBusinessMessage
   | UpdateBotEditBusinessMessage
+  | UpdateBotGuestChatQuery
   | UpdateBotInlineQuery
   | UpdateBotInlineSend
   | UpdateBotMenuButton
@@ -42,6 +45,7 @@ export type TypeUpdate =
   | UpdateBotPrecheckoutQuery
   | UpdateBotPurchasedPaidMedia
   | UpdateBotShippingQuery
+  | UpdateBotStarsSubscription
   | UpdateBotStopped
   | UpdateBotWebhookJSON
   | UpdateBotWebhookJSONQuery
@@ -69,6 +73,7 @@ export type TypeUpdate =
   | UpdateContactsReset
   | UpdateDcOptions
   | UpdateDeleteChannelMessages
+  | UpdateDeleteEphemeralMessages
   | UpdateDeleteGroupCallMessages
   | UpdateDeleteMessages
   | UpdateDeleteQuickReply
@@ -81,11 +86,13 @@ export type TypeUpdate =
   | UpdateDialogUnreadMark
   | UpdateDraftMessage
   | UpdateEditChannelMessage
+  | UpdateEditEphemeralMessage
   | UpdateEditMessage
   | UpdateEmojiGameInfo
   | UpdateEncryptedChatTyping
   | UpdateEncryptedMessagesRead
   | UpdateEncryption
+  | UpdateEphemeralBotCallbackQuery
   | UpdateFavedStickers
   | UpdateFolderPeers
   | UpdateGeoLiveViewed
@@ -96,9 +103,11 @@ export type TypeUpdate =
   | UpdateGroupCallMessage
   | UpdateGroupCallParticipants
   | UpdateInlineBotCallbackQuery
+  | UpdateJoinChatWebViewDecision
   | UpdateLangPack
   | UpdateLangPackTooLong
   | UpdateLoginToken
+  | UpdateManagedBot
   | UpdateMessageExtendedMedia
   | UpdateMessageID
   | UpdateMessagePoll
@@ -107,8 +116,10 @@ export type TypeUpdate =
   | UpdateMonoForumNoPaidException
   | UpdateMoveStickerSetToTop
   | UpdateNewAuthorization
+  | UpdateNewBotConnection
   | UpdateNewChannelMessage
   | UpdateNewEncryptedMessage
+  | UpdateNewEphemeralMessage
   | UpdateNewMessage
   | UpdateNewQuickReply
   | UpdateNewScheduledMessage
@@ -175,6 +186,8 @@ export type TypeUpdate =
   | UpdateUserPhone
   | UpdateUserStatus
   | UpdateUserTyping
+  | UpdateWebBrowserException
+  | UpdateWebBrowserSettings
   | UpdateWebPage
   | UpdateWebViewResultSent
 
@@ -221,6 +234,11 @@ export type TypeUserStatus =
 export type TypeUsername =
   | Username
 
+/** `updateAiComposeTones#8c0f91fb` */
+export interface UpdateAiComposeTones {
+  readonly _: 'updateAiComposeTones'
+}
+
 /** `updateAttachMenuBots#17b7a20b` */
 export interface UpdateAttachMenuBots {
   readonly _: 'updateAttachMenuBots'
@@ -258,7 +276,7 @@ export interface UpdateBotChatBoost {
   readonly qts: number
 }
 
-/** `updateBotChatInviteRequester#11dfa986` */
+/** `updateBotChatInviteRequester#7cb34d79` */
 export interface UpdateBotChatInviteRequester {
   readonly _: 'updateBotChatInviteRequester'
   readonly peer: root_p$.TypePeer
@@ -267,6 +285,7 @@ export interface UpdateBotChatInviteRequester {
   readonly about: string
   readonly invite: root_e$.TypeExportedChatInvite
   readonly qts: number
+  readonly query_id?: bigint
 }
 
 /** `updateBotCommands#4d712f2e` */
@@ -292,6 +311,15 @@ export interface UpdateBotEditBusinessMessage {
   readonly connection_id: string
   readonly message: root_m$.TypeMessage
   readonly reply_to_message?: root_m$.TypeMessage
+  readonly qts: number
+}
+
+/** `updateBotGuestChatQuery#cdd4093d` */
+export interface UpdateBotGuestChatQuery {
+  readonly _: 'updateBotGuestChatQuery'
+  readonly query_id: bigint
+  readonly message: root_m$.TypeMessage
+  readonly reference_messages?: readonly root_m$.TypeMessage[]
   readonly qts: number
 }
 
@@ -381,6 +409,17 @@ export interface UpdateBotShippingQuery {
   readonly user_id: bigint
   readonly payload: Uint8Array
   readonly shipping_address: root_p$.TypePostAddress
+}
+
+/** `updateBotStarsSubscription#6c0d8e23` */
+export interface UpdateBotStarsSubscription {
+  readonly _: 'updateBotStarsSubscription'
+  readonly canceled?: true
+  readonly payment_failed?: true
+  readonly restored?: true
+  readonly user_id: bigint
+  readonly payload: Uint8Array
+  readonly qts: number
 }
 
 /** `updateBotStopped#c4870a49` */
@@ -604,6 +643,13 @@ export interface UpdateDeleteChannelMessages {
   readonly pts_count: number
 }
 
+/** `updateDeleteEphemeralMessages#56dbfcf8` */
+export interface UpdateDeleteEphemeralMessages {
+  readonly _: 'updateDeleteEphemeralMessages'
+  readonly peer: root_p$.TypePeer
+  readonly ids: readonly number[]
+}
+
 /** `updateDeleteGroupCallMessages#3e85e92c` */
 export interface UpdateDeleteGroupCallMessages {
   readonly _: 'updateDeleteGroupCallMessages'
@@ -691,6 +737,12 @@ export interface UpdateEditChannelMessage {
   readonly pts_count: number
 }
 
+/** `updateEditEphemeralMessage#4bbb8f01` */
+export interface UpdateEditEphemeralMessage {
+  readonly _: 'updateEditEphemeralMessage'
+  readonly message: root_e$.TypeEphemeralMessage
+}
+
 /** `updateEditMessage#e40370a3` */
 export interface UpdateEditMessage {
   readonly _: 'updateEditMessage'
@@ -724,6 +776,18 @@ export interface UpdateEncryption {
   readonly _: 'updateEncryption'
   readonly chat: root_e$.TypeEncryptedChat
   readonly date: number
+}
+
+/** `updateEphemeralBotCallbackQuery#7c1079d6` */
+export interface UpdateEphemeralBotCallbackQuery {
+  readonly _: 'updateEphemeralBotCallbackQuery'
+  readonly query_id: bigint
+  readonly user_id: bigint
+  readonly peer?: root_p$.TypePeer
+  readonly msg_id: number
+  readonly data: Uint8Array
+  readonly chat_instance?: bigint
+  readonly message: root_e$.TypeEphemeralMessage
 }
 
 /** `updateFavedStickers#e511996d` */
@@ -804,6 +868,14 @@ export interface UpdateInlineBotCallbackQuery {
   readonly game_short_name?: string
 }
 
+/** `updateJoinChatWebViewDecision#bdac7e70` */
+export interface UpdateJoinChatWebViewDecision {
+  readonly _: 'updateJoinChatWebViewDecision'
+  readonly peer: root_p$.TypePeer
+  readonly query_id: bigint
+  readonly result: root_j$.TypeJoinChatBotResult
+}
+
 /** `updateLangPack#56022f4d` */
 export interface UpdateLangPack {
   readonly _: 'updateLangPack'
@@ -821,6 +893,14 @@ export interface UpdateLoginToken {
   readonly _: 'updateLoginToken'
 }
 
+/** `updateManagedBot#4880ed9a` */
+export interface UpdateManagedBot {
+  readonly _: 'updateManagedBot'
+  readonly user_id: bigint
+  readonly bot_id: bigint
+  readonly qts: number
+}
+
 /** `updateMessageExtendedMedia#d5a41724` */
 export interface UpdateMessageExtendedMedia {
   readonly _: 'updateMessageExtendedMedia'
@@ -836,20 +916,24 @@ export interface UpdateMessageID {
   readonly random_id: bigint
 }
 
-/** `updateMessagePoll#aca1657b` */
+/** `updateMessagePoll#d64c522b` */
 export interface UpdateMessagePoll {
   readonly _: 'updateMessagePoll'
+  readonly peer?: root_p$.TypePeer
+  readonly msg_id?: number
+  readonly top_msg_id?: number
   readonly poll_id: bigint
   readonly poll?: root_p$.TypePoll
   readonly results: root_p$.TypePollResults
 }
 
-/** `updateMessagePollVote#24f40e77` */
+/** `updateMessagePollVote#7699f014` */
 export interface UpdateMessagePollVote {
   readonly _: 'updateMessagePollVote'
   readonly poll_id: bigint
   readonly peer: root_p$.TypePeer
   readonly options: readonly Uint8Array[]
+  readonly positions: readonly number[]
   readonly qts: number
 }
 
@@ -889,6 +973,16 @@ export interface UpdateNewAuthorization {
   readonly location?: string
 }
 
+/** `updateNewBotConnection#b22083a6` */
+export interface UpdateNewBotConnection {
+  readonly _: 'updateNewBotConnection'
+  readonly confirmed?: true
+  readonly bot_id: bigint
+  readonly date?: number
+  readonly device?: string
+  readonly location?: string
+}
+
 /** `updateNewChannelMessage#62ba04d9` */
 export interface UpdateNewChannelMessage {
   readonly _: 'updateNewChannelMessage'
@@ -902,6 +996,12 @@ export interface UpdateNewEncryptedMessage {
   readonly _: 'updateNewEncryptedMessage'
   readonly message: root_e$.TypeEncryptedMessage
   readonly qts: number
+}
+
+/** `updateNewEphemeralMessage#20bcbba1` */
+export interface UpdateNewEphemeralMessage {
+  readonly _: 'updateNewEphemeralMessage'
+  readonly message: root_e$.TypeEphemeralMessage
 }
 
 /** `updateNewMessage#1f2b0afd` */
@@ -1435,6 +1535,21 @@ export interface UpdateUserTyping {
   readonly action: root_s$.TypeSendMessageAction
 }
 
+/** `updateWebBrowserException#140502d1` */
+export interface UpdateWebBrowserException {
+  readonly _: 'updateWebBrowserException'
+  readonly delete?: true
+  readonly open_external_browser?: boolean
+  readonly exception: root_w$.TypeWebDomainException
+}
+
+/** `updateWebBrowserSettings#c39a2ade` */
+export interface UpdateWebBrowserSettings {
+  readonly _: 'updateWebBrowserSettings'
+  readonly open_external_browser?: true
+  readonly display_close_button?: true
+}
+
 /** `updateWebPage#7f891213` */
 export interface UpdateWebPage {
   readonly _: 'updateWebPage'
@@ -1486,12 +1601,13 @@ export interface UrlAuthResultDefault {
   readonly _: 'urlAuthResultDefault'
 }
 
-/** `urlAuthResultRequest#f8f8eb1e` */
+/** `urlAuthResultRequest#3cd623ec` */
 export interface UrlAuthResultRequest {
   readonly _: 'urlAuthResultRequest'
   readonly request_write_access?: true
   readonly request_phone_number?: true
   readonly match_codes_first?: true
+  readonly is_app?: true
   readonly bot: TypeUser
   readonly domain: string
   readonly browser?: string
@@ -1500,9 +1616,10 @@ export interface UrlAuthResultRequest {
   readonly region?: string
   readonly match_codes?: readonly string[]
   readonly user_id_hint?: bigint
+  readonly verified_app_name?: string
 }
 
-/** `user#31774388` */
+/** `user#b1b8cc83` */
 export interface User {
   readonly _: 'user'
   readonly self?: true
@@ -1532,6 +1649,9 @@ export interface User {
   readonly bot_has_main_app?: true
   readonly bot_forum_view?: true
   readonly bot_forum_can_manage_topics?: true
+  readonly bot_can_manage_bots?: true
+  readonly bot_guestchat?: true
+  readonly bot_guard?: true
   readonly id: bigint
   readonly access_hash?: bigint
   readonly first_name?: string
@@ -1552,6 +1672,7 @@ export interface User {
   readonly bot_active_users?: number
   readonly bot_verification_icon?: bigint
   readonly send_paid_messages_stars?: bigint
+  readonly linked_community_id?: bigint
 }
 
 /** `userEmpty#d3bc4b7a` */
@@ -1560,7 +1681,7 @@ export interface UserEmpty {
   readonly id: bigint
 }
 
-/** `userFull#a02bc13e` */
+/** `userFull#06cbe645` */
 export interface UserFull {
   readonly _: 'userFull'
   readonly blocked?: true
@@ -1582,6 +1703,7 @@ export interface UserFull {
   readonly display_gifts_button?: true
   readonly noforwards_my_enabled?: true
   readonly noforwards_peer_enabled?: true
+  readonly unofficial_security_risk?: true
   readonly id: bigint
   readonly about?: string
   readonly settings: root_p$.TypePeerSettings
@@ -1619,6 +1741,7 @@ export interface UserFull {
   readonly main_tab?: root_p$.TypeProfileTab
   readonly saved_music?: root_d$.TypeDocument
   readonly note?: root_t$.TypeTextWithEntities
+  readonly bot_manager_id?: bigint
 }
 
 /** `userProfilePhoto#82d1f706` */

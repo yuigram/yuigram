@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// TL methods (757)
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// TL methods (813)
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlObject } from '../../tl/object.js'
 import type * as types from './types/index.js'
@@ -24,6 +24,9 @@ export interface AccountMethods {
 
   /** `account.clearRecentEmojiStatuses#18201aae` */
   clearRecentEmojiStatuses(): Promise<boolean>
+
+  /** `account.confirmBotConnection#67ed1f68` */
+  confirmBotConnection(params: Omit<types.account.ConfirmBotConnection, '_'>): Promise<boolean>
 
   /** `account.confirmPasswordEmail#8fdf1920` */
   confirmPasswordEmail(params: Omit<types.account.ConfirmPasswordEmail, '_'>): Promise<boolean>
@@ -54,6 +57,9 @@ export interface AccountMethods {
 
   /** `account.deleteSecureValue#b880bc4b` */
   deleteSecureValue(params: Omit<types.account.DeleteSecureValue, '_'>): Promise<boolean>
+
+  /** `account.deleteWebBrowserSettingsExceptions#86a0765d` */
+  deleteWebBrowserSettingsExceptions(): Promise<types.account.TypeWebBrowserSettings>
 
   /** `account.disablePeerConnectedBot#5e437ed9` */
   disablePeerConnectedBot(params: Omit<types.account.DisablePeerConnectedBot, '_'>): Promise<boolean>
@@ -184,6 +190,9 @@ export interface AccountMethods {
   /** `account.getWebAuthorizations#182e6d6f` */
   getWebAuthorizations(): Promise<types.account.TypeWebAuthorizations>
 
+  /** `account.getWebBrowserSettings#56655768` */
+  getWebBrowserSettings(params: Omit<types.account.GetWebBrowserSettings, '_'>): Promise<types.account.TypeWebBrowserSettings>
+
   /** `account.initPasskeyRegistration#429547e8` */
   initPasskeyRegistration(): Promise<types.account.TypePasskeyRegistrationOptions>
 
@@ -307,6 +316,9 @@ export interface AccountMethods {
   /** `account.toggleUsername#58d6b376` */
   toggleUsername(params: Omit<types.account.ToggleUsername, '_'>): Promise<boolean>
 
+  /** `account.toggleWebBrowserSettingsException#60ed4229` */
+  toggleWebBrowserSettingsException(params: Omit<types.account.ToggleWebBrowserSettingsException, '_'>): Promise<types.TypeUpdates>
+
   /** `account.unregisterDevice#6a0d3206` */
   unregisterDevice(params: Omit<types.account.UnregisterDevice, '_'>): Promise<boolean>
 
@@ -361,6 +373,9 @@ export interface AccountMethods {
   /** `account.updateUsername#3e0bdd7c` */
   updateUsername(params: Omit<types.account.UpdateUsername, '_'>): Promise<types.TypeUser>
 
+  /** `account.updateWebBrowserSettings#9adf82fe` */
+  updateWebBrowserSettings(params?: Omit<types.account.UpdateWebBrowserSettings, '_'>): Promise<types.account.TypeWebBrowserSettings>
+
   /** `account.uploadRingtone#831a83a2` */
   uploadRingtone(params: Omit<types.account.UploadRingtone, '_'>): Promise<types.TypeDocument>
 
@@ -375,6 +390,30 @@ export interface AccountMethods {
 
   /** `account.verifyPhone#4dd3a7f6` */
   verifyPhone(params: Omit<types.account.VerifyPhone, '_'>): Promise<boolean>
+}
+
+/** Methods in the `aicompose` namespace. */
+export interface AicomposeMethods {
+  /** `aicompose.createTone#4aa83913` */
+  createTone(params: Omit<types.aicompose.CreateTone, '_'>): Promise<types.TypeAiComposeTone>
+
+  /** `aicompose.deleteTone#dd39316a` */
+  deleteTone(params: Omit<types.aicompose.DeleteTone, '_'>): Promise<boolean>
+
+  /** `aicompose.getTone#b2e8ba03` */
+  getTone(params: Omit<types.aicompose.GetTone, '_'>): Promise<types.aicompose.TypeTones>
+
+  /** `aicompose.getToneExample#d1b4ab14` */
+  getToneExample(params: Omit<types.aicompose.GetToneExample, '_'>): Promise<types.TypeAiComposeToneExample>
+
+  /** `aicompose.getTones#abd59201` */
+  getTones(params: Omit<types.aicompose.GetTones, '_'>): Promise<types.aicompose.TypeTones>
+
+  /** `aicompose.saveTone#1782cbb1` */
+  saveTone(params: Omit<types.aicompose.SaveTone, '_'>): Promise<boolean>
+
+  /** `aicompose.updateTone#903bcf59` */
+  updateTone(params: Omit<types.aicompose.UpdateTone, '_'>): Promise<types.TypeAiComposeTone>
 }
 
 /** Methods in the `auth` namespace. */
@@ -406,8 +445,14 @@ export interface AuthMethods {
   /** `auth.exportLoginToken#b7e085fe` */
   exportLoginToken(params: Omit<types.auth.ExportLoginToken, '_'>): Promise<types.auth.TypeLoginToken>
 
+  /** `auth.finishFirebasePnvLogin#2c85094c` */
+  finishFirebasePnvLogin(params: Omit<types.auth.FinishFirebasePnvLogin, '_'>): Promise<types.auth.TypeAuthorization>
+
   /** `auth.finishPasskeyLogin#9857ad07` */
   finishPasskeyLogin(params: Omit<types.auth.FinishPasskeyLogin, '_'>): Promise<types.auth.TypeAuthorization>
+
+  /** `auth.firebasePnvSignUp#783f6b56` */
+  firebasePnvSignUp(params: Omit<types.auth.FirebasePnvSignUp, '_'>): Promise<types.auth.TypeAuthorization>
 
   /** `auth.importAuthorization#a57a7dad` */
   importAuthorization(params: Omit<types.auth.ImportAuthorization, '_'>): Promise<types.auth.TypeAuthorization>
@@ -420,6 +465,9 @@ export interface AuthMethods {
 
   /** `auth.importWebTokenAuthorization#2db873a9` */
   importWebTokenAuthorization(params: Omit<types.auth.ImportWebTokenAuthorization, '_'>): Promise<types.auth.TypeAuthorization>
+
+  /** `auth.initFirebasePnvLogin#777df37a` */
+  initFirebasePnvLogin(params: Omit<types.auth.InitFirebasePnvLogin, '_'>): Promise<types.auth.TypeFirebasePnvIntent>
 
   /** `auth.initPasskeyLogin#518ad0b7` */
   initPasskeyLogin(params: Omit<types.auth.InitPasskeyLogin, '_'>): Promise<types.auth.TypePasskeyLoginOptions>
@@ -475,11 +523,26 @@ export interface BotsMethods {
   /** `bots.checkDownloadFileParams#50077589` */
   checkDownloadFileParams(params: Omit<types.bots.CheckDownloadFileParams, '_'>): Promise<boolean>
 
+  /** `bots.checkUsername#87f2219b` */
+  checkUsername(params: Omit<types.bots.CheckUsername, '_'>): Promise<boolean>
+
+  /** `bots.createBot#e5b17f2b` */
+  createBot(params: Omit<types.bots.CreateBot, '_'>): Promise<types.TypeUser>
+
   /** `bots.deletePreviewMedia#2d0135b3` */
   deletePreviewMedia(params: Omit<types.bots.DeletePreviewMedia, '_'>): Promise<boolean>
 
+  /** `bots.editAccessSettings#31813cd8` */
+  editAccessSettings(params: Omit<types.bots.EditAccessSettings, '_'>): Promise<boolean>
+
   /** `bots.editPreviewMedia#8525606f` */
   editPreviewMedia(params: Omit<types.bots.EditPreviewMedia, '_'>): Promise<types.TypeBotPreviewMedia>
+
+  /** `bots.exportBotToken#bd0d99eb` */
+  exportBotToken(params: Omit<types.bots.ExportBotToken, '_'>): Promise<types.bots.TypeExportedBotToken>
+
+  /** `bots.getAccessSettings#213853a3` */
+  getAccessSettings(params: Omit<types.bots.GetAccessSettings, '_'>): Promise<types.bots.TypeAccessSettings>
 
   /** `bots.getAdminedBots#b0711d83` */
   getAdminedBots(): Promise<readonly types.TypeUser[]>
@@ -505,6 +568,9 @@ export interface BotsMethods {
   /** `bots.getPreviewMedias#a2a5594d` */
   getPreviewMedias(params: Omit<types.bots.GetPreviewMedias, '_'>): Promise<readonly types.TypeBotPreviewMedia[]>
 
+  /** `bots.getRequestedWebViewButton#bf25b7f3` */
+  getRequestedWebViewButton(params: Omit<types.bots.GetRequestedWebViewButton, '_'>): Promise<types.TypeKeyboardButton>
+
   /** `bots.invokeWebViewCustomMethod#087fc5e7` */
   invokeWebViewCustomMethod(params: Omit<types.bots.InvokeWebViewCustomMethod, '_'>): Promise<types.TypeDataJSON>
 
@@ -513,6 +579,9 @@ export interface BotsMethods {
 
   /** `bots.reorderUsernames#9709b1c2` */
   reorderUsernames(params: Omit<types.bots.ReorderUsernames, '_'>): Promise<boolean>
+
+  /** `bots.requestWebViewButton#31a2a35e` */
+  requestWebViewButton(params: Omit<types.bots.RequestWebViewButton, '_'>): Promise<types.bots.TypeRequestedButton>
 
   /** `bots.resetBotCommands#3d8de0f9` */
   resetBotCommands(params: Omit<types.bots.ResetBotCommands, '_'>): Promise<boolean>
@@ -537,6 +606,9 @@ export interface BotsMethods {
 
   /** `bots.setCustomVerification#8b89dfbd` */
   setCustomVerification(params: Omit<types.bots.SetCustomVerification, '_'>): Promise<boolean>
+
+  /** `bots.setJoinChatResults#e71a4810` */
+  setJoinChatResults(params: Omit<types.bots.SetJoinChatResults, '_'>): Promise<boolean>
 
   /** `bots.toggleUserEmojiStatusPermission#06de6392` */
   toggleUserEmojiStatusPermission(params: Omit<types.bots.ToggleUserEmojiStatusPermission, '_'>): Promise<boolean>
@@ -640,8 +712,8 @@ export interface ChannelsMethods {
   /** `channels.inviteToChannel#c9e33d54` */
   inviteToChannel(params: Omit<types.channels.InviteToChannel, '_'>): Promise<types.messages.TypeInvitedUsers>
 
-  /** `channels.joinChannel#24b524c5` */
-  joinChannel(params: Omit<types.channels.JoinChannel, '_'>): Promise<types.TypeUpdates>
+  /** `channels.joinChannel#7f6a1e22` */
+  joinChannel(params: Omit<types.channels.JoinChannel, '_'>): Promise<types.messages.TypeChatInviteJoinResult>
 
   /** `channels.leaveChannel#f836aa95` */
   leaveChannel(params: Omit<types.channels.LeaveChannel, '_'>): Promise<types.TypeUpdates>
@@ -691,7 +763,7 @@ export interface ChannelsMethods {
   /** `channels.toggleForum#3ff75734` */
   toggleForum(params: Omit<types.channels.ToggleForum, '_'>): Promise<types.TypeUpdates>
 
-  /** `channels.toggleJoinRequest#4c2985b6` */
+  /** `channels.toggleJoinRequest#0ecc2618` */
   toggleJoinRequest(params: Omit<types.channels.ToggleJoinRequest, '_'>): Promise<types.TypeUpdates>
 
   /** `channels.toggleJoinToSend#e4cb9580` */
@@ -762,6 +834,36 @@ export interface ChatlistsMethods {
 
   /** `chatlists.leaveChatlist#74fae13a` */
   leaveChatlist(params: Omit<types.chatlists.LeaveChatlist, '_'>): Promise<types.TypeUpdates>
+}
+
+/** Methods in the `communities` namespace. */
+export interface CommunitiesMethods {
+  /** `communities.create#a63859ec` */
+  create(params: Omit<types.communities.Create, '_'>): Promise<types.TypeUpdates>
+
+  /** `communities.getJoinedCommunities#a663e830` */
+  getJoinedCommunities(): Promise<types.messages.TypeChats>
+
+  /** `communities.getParticipantJoinedChats#f87eabab` */
+  getParticipantJoinedChats(params: Omit<types.communities.GetParticipantJoinedChats, '_'>): Promise<types.communities.TypeParticipantJoinedChats>
+
+  /** `communities.getPeerLinkRequests#93773344` */
+  getPeerLinkRequests(params: Omit<types.communities.GetPeerLinkRequests, '_'>): Promise<types.communities.TypePeerLinkRequests>
+
+  /** `communities.toggleAllPeerLinkRequestApproval#bfe3dd3d` */
+  toggleAllPeerLinkRequestApproval(params: Omit<types.communities.ToggleAllPeerLinkRequestApproval, '_'>): Promise<boolean>
+
+  /** `communities.toggleCommunityCollapsedInDialogs#d766e3ea` */
+  toggleCommunityCollapsedInDialogs(params: Omit<types.communities.ToggleCommunityCollapsedInDialogs, '_'>): Promise<types.TypeUpdates>
+
+  /** `communities.toggleParticipantBanned#9967ad0f` */
+  toggleParticipantBanned(params: Omit<types.communities.ToggleParticipantBanned, '_'>): Promise<boolean>
+
+  /** `communities.togglePeerLink#736dcfea` */
+  togglePeerLink(params: Omit<types.communities.TogglePeerLink, '_'>): Promise<boolean>
+
+  /** `communities.togglePeerLinkRequestApproval#8c8219a8` */
+  togglePeerLinkRequestApproval(params: Omit<types.communities.TogglePeerLinkRequestApproval, '_'>): Promise<boolean>
 }
 
 /** Methods in the `contacts` namespace. */
@@ -835,7 +937,7 @@ export interface ContactsMethods {
   /** `contacts.resolveUsername#725afbbc` */
   resolveUsername(params: Omit<types.contacts.ResolveUsername, '_'>): Promise<types.contacts.TypeResolvedPeer>
 
-  /** `contacts.search#11f812d8` */
+  /** `contacts.search#05f58d0f` */
   search(params: Omit<types.contacts.Search, '_'>): Promise<types.contacts.TypeFound>
 
   /** `contacts.setBlocked#94c65c76` */
@@ -849,6 +951,33 @@ export interface ContactsMethods {
 
   /** `contacts.updateContactNote#139f63fb` */
   updateContactNote(params: Omit<types.contacts.UpdateContactNote, '_'>): Promise<boolean>
+}
+
+/** Methods in the `ephemeral` namespace. */
+export interface EphemeralMethods {
+  /** `ephemeral.deleteAllWelcomeMessages#734f9721` */
+  deleteAllWelcomeMessages(params: Omit<types.ephemeral.DeleteAllWelcomeMessages, '_'>): Promise<boolean>
+
+  /** `ephemeral.deleteMessage#92f6e797` */
+  deleteMessage(params: Omit<types.ephemeral.DeleteMessage, '_'>): Promise<boolean>
+
+  /** `ephemeral.deleteWelcomeMessage#e882a9e1` */
+  deleteWelcomeMessage(params: Omit<types.ephemeral.DeleteWelcomeMessage, '_'>): Promise<boolean>
+
+  /** `ephemeral.editMessage#cf9c725b` */
+  editMessage(params: Omit<types.ephemeral.EditMessage, '_'>): Promise<types.TypeUpdates>
+
+  /** `ephemeral.getCallbackAnswer#3fa464c8` */
+  getCallbackAnswer(params: Omit<types.ephemeral.GetCallbackAnswer, '_'>): Promise<types.messages.TypeBotCallbackAnswer>
+
+  /** `ephemeral.getWelcomeMessages#db9ac18d` */
+  getWelcomeMessages(params: Omit<types.ephemeral.GetWelcomeMessages, '_'>): Promise<types.ephemeral.TypeWelcomeMessages>
+
+  /** `ephemeral.reportMessage#8704f2bf` */
+  reportMessage(params: Omit<types.ephemeral.ReportMessage, '_'>): Promise<types.TypeReportResult>
+
+  /** `ephemeral.sendMessage#ba8d5f35` */
+  sendMessage(params: Omit<types.ephemeral.SendMessage, '_'>): Promise<types.TypeUpdates>
 }
 
 /** Methods in the `folders` namespace. */
@@ -970,6 +1099,9 @@ export interface MessagesMethods {
   /** `messages.addChatUser#cbc6d107` */
   addChatUser(params: Omit<types.messages.AddChatUser, '_'>): Promise<types.messages.TypeInvitedUsers>
 
+  /** `messages.addPollAnswer#19bc4b6d` */
+  addPollAnswer(params: Omit<types.messages.AddPollAnswer, '_'>): Promise<types.TypeUpdates>
+
   /** `messages.appendTodoList#21a61057` */
   appendTodoList(params: Omit<types.messages.AppendTodoList, '_'>): Promise<types.TypeUpdates>
 
@@ -1000,6 +1132,12 @@ export interface MessagesMethods {
   /** `messages.clickSponsoredMessage#8235057e` */
   clickSponsoredMessage(params: Omit<types.messages.ClickSponsoredMessage, '_'>): Promise<boolean>
 
+  /** `messages.composeMessageWithAI#daecc589` */
+  composeMessageWithAI(params: Omit<types.messages.ComposeMessageWithAI, '_'>): Promise<types.messages.TypeComposedMessageWithAI>
+
+  /** `messages.composeRichMessageWithAI#8d7ae6af` */
+  composeRichMessageWithAI(params?: Omit<types.messages.ComposeRichMessageWithAI, '_'>): Promise<types.messages.TypeComposedRichMessageWithAI>
+
   /** `messages.createChat#92ceddd4` */
   createChat(params: Omit<types.messages.CreateChat, '_'>): Promise<types.messages.TypeInvitedUsers>
 
@@ -1027,8 +1165,17 @@ export interface MessagesMethods {
   /** `messages.deleteMessages#e58e95d2` */
   deleteMessages(params: Omit<types.messages.DeleteMessages, '_'>): Promise<types.messages.TypeAffectedMessages>
 
+  /** `messages.deleteParticipantReaction#e3b7f82c` */
+  deleteParticipantReaction(params: Omit<types.messages.DeleteParticipantReaction, '_'>): Promise<types.TypeUpdates>
+
+  /** `messages.deleteParticipantReactions#a0b80cf8` */
+  deleteParticipantReactions(params: Omit<types.messages.DeleteParticipantReactions, '_'>): Promise<boolean>
+
   /** `messages.deletePhoneCallHistory#f9cbe409` */
   deletePhoneCallHistory(params?: Omit<types.messages.DeletePhoneCallHistory, '_'>): Promise<types.messages.TypeAffectedFoundMessages>
+
+  /** `messages.deletePollAnswer#ac8505a5` */
+  deletePollAnswer(params: Omit<types.messages.DeletePollAnswer, '_'>): Promise<types.TypeUpdates>
 
   /** `messages.deleteQuickReplyMessages#e105e910` */
   deleteQuickReplyMessages(params: Omit<types.messages.DeleteQuickReplyMessages, '_'>): Promise<types.TypeUpdates>
@@ -1081,10 +1228,10 @@ export interface MessagesMethods {
   /** `messages.editForumTopic#cecc1134` */
   editForumTopic(params: Omit<types.messages.EditForumTopic, '_'>): Promise<types.TypeUpdates>
 
-  /** `messages.editInlineBotMessage#83557dba` */
+  /** `messages.editInlineBotMessage#a423bb51` */
   editInlineBotMessage(params: Omit<types.messages.EditInlineBotMessage, '_'>): Promise<boolean>
 
-  /** `messages.editMessage#51e842e1` */
+  /** `messages.editMessage#b106e66c` */
   editMessage(params: Omit<types.messages.EditMessage, '_'>): Promise<types.TypeUpdates>
 
   /** `messages.editQuickReplyShortcut#5c003cef` */
@@ -1285,13 +1432,16 @@ export interface MessagesMethods {
   /** `messages.getPeerSettings#efd9a6a2` */
   getPeerSettings(params: Omit<types.messages.GetPeerSettings, '_'>): Promise<types.messages.TypePeerSettings>
 
+  /** `messages.getPersonalChannelHistory#55fb0996` */
+  getPersonalChannelHistory(params: Omit<types.messages.GetPersonalChannelHistory, '_'>): Promise<types.messages.TypeMessages>
+
   /** `messages.getPinnedDialogs#d6b94df2` */
   getPinnedDialogs(params: Omit<types.messages.GetPinnedDialogs, '_'>): Promise<types.messages.TypePeerDialogs>
 
   /** `messages.getPinnedSavedDialogs#d63d94e0` */
   getPinnedSavedDialogs(): Promise<types.messages.TypeSavedDialogs>
 
-  /** `messages.getPollResults#73bb643b` */
+  /** `messages.getPollResults#eda3e33b` */
   getPollResults(params: Omit<types.messages.GetPollResults, '_'>): Promise<types.TypeUpdates>
 
   /** `messages.getPollVotes#b86e380e` */
@@ -1317,6 +1467,9 @@ export interface MessagesMethods {
 
   /** `messages.getReplies#22ddd30c` */
   getReplies(params: Omit<types.messages.GetReplies, '_'>): Promise<types.messages.TypeMessages>
+
+  /** `messages.getRichMessage#501569cf` */
+  getRichMessage(params: Omit<types.messages.GetRichMessage, '_'>): Promise<types.messages.TypeMessages>
 
   /** `messages.getSavedDialogs#1e91fc99` */
   getSavedDialogs(params: Omit<types.messages.GetSavedDialogs, '_'>): Promise<types.messages.TypeSavedDialogs>
@@ -1369,6 +1522,9 @@ export interface MessagesMethods {
   /** `messages.getUnreadMentions#f107e790` */
   getUnreadMentions(params: Omit<types.messages.GetUnreadMentions, '_'>): Promise<types.messages.TypeMessages>
 
+  /** `messages.getUnreadPollVotes#43286cf2` */
+  getUnreadPollVotes(params: Omit<types.messages.GetUnreadPollVotes, '_'>): Promise<types.messages.TypeMessages>
+
   /** `messages.getUnreadReactions#bd7f90ac` */
   getUnreadReactions(params: Omit<types.messages.GetUnreadReactions, '_'>): Promise<types.messages.TypeMessages>
 
@@ -1387,8 +1543,8 @@ export interface MessagesMethods {
   /** `messages.hidePeerSettingsBar#4facb138` */
   hidePeerSettingsBar(params: Omit<types.messages.HidePeerSettingsBar, '_'>): Promise<boolean>
 
-  /** `messages.importChatInvite#6c50051c` */
-  importChatInvite(params: Omit<types.messages.ImportChatInvite, '_'>): Promise<types.TypeUpdates>
+  /** `messages.importChatInvite#de91436e` */
+  importChatInvite(params: Omit<types.messages.ImportChatInvite, '_'>): Promise<types.messages.TypeChatInviteJoinResult>
 
   /** `messages.initHistoryImport#34090c3b` */
   initHistoryImport(params: Omit<types.messages.InitHistoryImport, '_'>): Promise<types.messages.TypeHistoryImport>
@@ -1426,6 +1582,9 @@ export interface MessagesMethods {
   /** `messages.readMessageContents#36a73f77` */
   readMessageContents(params: Omit<types.messages.ReadMessageContents, '_'>): Promise<types.messages.TypeAffectedMessages>
 
+  /** `messages.readPollVotes#1720b4d8` */
+  readPollVotes(params: Omit<types.messages.ReadPollVotes, '_'>): Promise<types.messages.TypeAffectedHistory>
+
   /** `messages.readReactions#9ec44f93` */
   readReactions(params: Omit<types.messages.ReadReactions, '_'>): Promise<types.messages.TypeAffectedHistory>
 
@@ -1462,8 +1621,14 @@ export interface MessagesMethods {
   /** `messages.reportMessagesDelivery#5a6d7395` */
   reportMessagesDelivery(params: Omit<types.messages.ReportMessagesDelivery, '_'>): Promise<boolean>
 
+  /** `messages.reportMusicListen#ddbcd819` */
+  reportMusicListen(params: Omit<types.messages.ReportMusicListen, '_'>): Promise<boolean>
+
   /** `messages.reportReaction#3f64c076` */
   reportReaction(params: Omit<types.messages.ReportReaction, '_'>): Promise<boolean>
+
+  /** `messages.reportReadMetrics#4067c5e6` */
+  reportReadMetrics(params: Omit<types.messages.ReportReadMetrics, '_'>): Promise<boolean>
 
   /** `messages.reportSpam#cf1592db` */
   reportSpam(params: Omit<types.messages.ReportSpam, '_'>): Promise<boolean>
@@ -1473,6 +1638,9 @@ export interface MessagesMethods {
 
   /** `messages.requestAppWebView#53618bce` */
   requestAppWebView(params: Omit<types.messages.RequestAppWebView, '_'>): Promise<types.TypeWebViewResult>
+
+  /** `messages.requestChatJoinWebView#ba9ee679` */
+  requestChatJoinWebView(params: Omit<types.messages.RequestChatJoinWebView, '_'>): Promise<types.TypeWebViewResult>
 
   /** `messages.requestEncryption#f64daf43` */
   requestEncryption(params: Omit<types.messages.RequestEncryption, '_'>): Promise<types.TypeEncryptedChat>
@@ -1492,7 +1660,7 @@ export interface MessagesMethods {
   /** `messages.saveDefaultSendAs#ccfddf96` */
   saveDefaultSendAs(params: Omit<types.messages.SaveDefaultSendAs, '_'>): Promise<boolean>
 
-  /** `messages.saveDraft#54ae308e` */
+  /** `messages.saveDraft#ad0fa15c` */
   saveDraft(params: Omit<types.messages.SaveDraft, '_'>): Promise<boolean>
 
   /** `messages.saveGif#327a30cb` */
@@ -1513,7 +1681,7 @@ export interface MessagesMethods {
   /** `messages.searchEmojiStickerSets#92b4494c` */
   searchEmojiStickerSets(params: Omit<types.messages.SearchEmojiStickerSets, '_'>): Promise<types.messages.TypeFoundStickerSets>
 
-  /** `messages.searchGlobal#4bc6589a` */
+  /** `messages.searchGlobal#6126a43c` */
   searchGlobal(params: Omit<types.messages.SearchGlobal, '_'>): Promise<types.messages.TypeMessages>
 
   /** `messages.searchSentMedia#107e31a0` */
@@ -1525,7 +1693,7 @@ export interface MessagesMethods {
   /** `messages.searchStickers#29b1c66a` */
   searchStickers(params: Omit<types.messages.SearchStickers, '_'>): Promise<types.messages.TypeFoundStickers>
 
-  /** `messages.sendBotRequestedPeer#91b2d060` */
+  /** `messages.sendBotRequestedPeer#6c5cf2a7` */
   sendBotRequestedPeer(params: Omit<types.messages.SendBotRequestedPeer, '_'>): Promise<types.TypeUpdates>
 
   /** `messages.sendEncrypted#44fa7a15` */
@@ -1543,7 +1711,7 @@ export interface MessagesMethods {
   /** `messages.sendMedia#0330e77f` */
   sendMedia(params: Omit<types.messages.SendMedia, '_'>): Promise<types.TypeUpdates>
 
-  /** `messages.sendMessage#545cd15a` */
+  /** `messages.sendMessage#fef48f62` */
   sendMessage(params: Omit<types.messages.SendMessage, '_'>): Promise<types.TypeUpdates>
 
   /** `messages.sendMultiMedia#1bf89d74` */
@@ -1575,6 +1743,9 @@ export interface MessagesMethods {
 
   /** `messages.setBotCallbackAnswer#d58f130a` */
   setBotCallbackAnswer(params: Omit<types.messages.SetBotCallbackAnswer, '_'>): Promise<boolean>
+
+  /** `messages.setBotGuestChatResult#b8f106e3` */
+  setBotGuestChatResult(params: Omit<types.messages.SetBotGuestChatResult, '_'>): Promise<types.TypeInputBotInlineMessageID>
 
   /** `messages.setBotPrecheckoutResults#09c2dd95` */
   setBotPrecheckoutResults(params: Omit<types.messages.SetBotPrecheckoutResults, '_'>): Promise<boolean>
@@ -1621,7 +1792,7 @@ export interface MessagesMethods {
   /** `messages.startHistoryImport#b43df344` */
   startHistoryImport(params: Omit<types.messages.StartHistoryImport, '_'>): Promise<boolean>
 
-  /** `messages.summarizeText#9d4104e2` */
+  /** `messages.summarizeText#abbbd346` */
   summarizeText(params: Omit<types.messages.SummarizeText, '_'>): Promise<types.TypeTextWithEntities>
 
   /** `messages.toggleBotInAttachMenu#69f59d69` */
@@ -1657,7 +1828,10 @@ export interface MessagesMethods {
   /** `messages.transcribeAudio#269e9a49` */
   transcribeAudio(params: Omit<types.messages.TranscribeAudio, '_'>): Promise<types.messages.TypeTranscribedAudio>
 
-  /** `messages.translateText#63183030` */
+  /** `messages.translateRichMessage#1a542004` */
+  translateRichMessage(params: Omit<types.messages.TranslateRichMessage, '_'>): Promise<types.messages.TypeTranslatedRichMessage>
+
+  /** `messages.translateText#a5eec345` */
   translateText(params: Omit<types.messages.TranslateText, '_'>): Promise<types.messages.TypeTranslatedText>
 
   /** `messages.uninstallStickerSet#f96e55de` */
@@ -2098,6 +2272,9 @@ export interface StatsMethods {
   /** `stats.getMessageStats#b6e0a3f5` */
   getMessageStats(params: Omit<types.stats.GetMessageStats, '_'>): Promise<types.stats.TypeMessageStats>
 
+  /** `stats.getPollStats#c27dfa68` */
+  getPollStats(params: Omit<types.stats.GetPollStats, '_'>): Promise<types.stats.TypePollStats>
+
   /** `stats.getStoryPublicForwards#a6437ef6` */
   getStoryPublicForwards(params: Omit<types.stats.GetStoryPublicForwards, '_'>): Promise<types.stats.TypePublicForwards>
 
@@ -2161,7 +2338,7 @@ export interface StoriesMethods {
   /** `stories.deleteStories#ae59db5f` */
   deleteStories(params: Omit<types.stories.DeleteStories, '_'>): Promise<readonly number[]>
 
-  /** `stories.editStory#b583ba46` */
+  /** `stories.editStory#2c63a72b` */
   editStory(params: Omit<types.stories.EditStory, '_'>): Promise<types.TypeUpdates>
 
   /** `stories.exportStoryLink#7b8def20` */
@@ -2224,7 +2401,7 @@ export interface StoriesMethods {
   /** `stories.sendReaction#7fd736b2` */
   sendReaction(params: Omit<types.stories.SendReaction, '_'>): Promise<types.TypeUpdates>
 
-  /** `stories.sendStory#737fc2ec` */
+  /** `stories.sendStory#8f9e6898` */
   sendStory(params: Omit<types.stories.SendStory, '_'>): Promise<types.TypeUpdates>
 
   /** `stories.startLive#d069ccde` */
@@ -2320,6 +2497,9 @@ export interface ApiMethods {
   /** The `account` namespace. */
   readonly account: AccountMethods
 
+  /** The `aicompose` namespace. */
+  readonly aicompose: AicomposeMethods
+
   /** The `auth` namespace. */
   readonly auth: AuthMethods
 
@@ -2332,8 +2512,14 @@ export interface ApiMethods {
   /** The `chatlists` namespace. */
   readonly chatlists: ChatlistsMethods
 
+  /** The `communities` namespace. */
+  readonly communities: CommunitiesMethods
+
   /** The `contacts` namespace. */
   readonly contacts: ContactsMethods
+
+  /** The `ephemeral` namespace. */
+  readonly ephemeral: EphemeralMethods
 
   /** The `folders` namespace. */
   readonly folders: FoldersMethods

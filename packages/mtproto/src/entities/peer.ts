@@ -366,7 +366,7 @@ export class UserView {
  * separated by flags rather than by constructor, so this is the question a
  * reader actually has.
  */
-export type ChatForm = 'group' | 'supergroup' | 'broadcast' | 'forbidden' | 'empty'
+export type ChatForm = 'group' | 'supergroup' | 'broadcast' | 'community' | 'forbidden' | 'empty'
 
 /**
  * A conversation with more than one person in it, read.
@@ -408,9 +408,12 @@ export class ChatView {
         return 'empty'
       case 'chatForbidden':
       case 'channelForbidden':
+      case 'communityForbidden':
         return 'forbidden'
       case 'chat':
         return 'group'
+      case 'community':
+        return 'community'
       default:
         return this.raw.megagroup === true ? 'supergroup' : 'broadcast'
     }

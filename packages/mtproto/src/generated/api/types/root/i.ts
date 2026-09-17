@@ -1,11 +1,10 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_b$ from '../root/b.js'
 import type * as root_d$ from '../root/d.js'
 import type * as root_j$ from '../root/j.js'
-import type * as root_k$ from '../root/k.js'
 import type * as root_l$ from '../root/l.js'
 import type * as root_m$ from '../root/m.js'
 import type * as root_n$ from '../root/n.js'
@@ -53,6 +52,68 @@ export interface InlineBotWebView {
   readonly url: string
 }
 
+/** `inlineButtonTypeBuy#48bad7a5` */
+export interface InlineButtonTypeBuy {
+  readonly _: 'inlineButtonTypeBuy'
+}
+
+/** `inlineButtonTypeCallback#2955bc38` */
+export interface InlineButtonTypeCallback {
+  readonly _: 'inlineButtonTypeCallback'
+  readonly requires_password?: true
+  readonly data: Uint8Array
+}
+
+/** `inlineButtonTypeCopy#b41d3272` */
+export interface InlineButtonTypeCopy {
+  readonly _: 'inlineButtonTypeCopy'
+  readonly copy_text: string
+}
+
+/** `inlineButtonTypeDisabled#a438619d` */
+export interface InlineButtonTypeDisabled {
+  readonly _: 'inlineButtonTypeDisabled'
+}
+
+/** `inlineButtonTypeGame#5cd3709d` */
+export interface InlineButtonTypeGame {
+  readonly _: 'inlineButtonTypeGame'
+}
+
+/** `inlineButtonTypeSwitchInline#93773ff5` */
+export interface InlineButtonTypeSwitchInline {
+  readonly _: 'inlineButtonTypeSwitchInline'
+  readonly same_peer?: true
+  readonly query: string
+  readonly peer_types?: readonly TypeInlineQueryPeerType[]
+}
+
+/** `inlineButtonTypeUrl#eca4f8d4` */
+export interface InlineButtonTypeUrl {
+  readonly _: 'inlineButtonTypeUrl'
+  readonly url: string
+}
+
+/** `inlineButtonTypeUrlAuth#bfd02da2` */
+export interface InlineButtonTypeUrlAuth {
+  readonly _: 'inlineButtonTypeUrlAuth'
+  readonly fwd_text?: string
+  readonly url: string
+  readonly button_id: number
+}
+
+/** `inlineButtonTypeUserProfile#3fa33fcf` */
+export interface InlineButtonTypeUserProfile {
+  readonly _: 'inlineButtonTypeUserProfile'
+  readonly user_id: bigint
+}
+
+/** `inlineButtonTypeWebView#3bcab5b4` */
+export interface InlineButtonTypeWebView {
+  readonly _: 'inlineButtonTypeWebView'
+  readonly url: string
+}
+
 /** `inlineQueryPeerTypeBotPM#0e3b2d0c` */
 export interface InlineQueryPeerTypeBotPM {
   readonly _: 'inlineQueryPeerTypeBotPM'
@@ -81,6 +142,31 @@ export interface InlineQueryPeerTypePM {
 /** `inlineQueryPeerTypeSameBotPM#3081ed9d` */
 export interface InlineQueryPeerTypeSameBotPM {
   readonly _: 'inlineQueryPeerTypeSameBotPM'
+}
+
+/** `inputAiComposeToneDefault#1fe9a9bf` */
+export interface InputAiComposeToneDefault {
+  readonly _: 'inputAiComposeToneDefault'
+  readonly tone: string
+}
+
+/** `inputAiComposeToneID#0773c080` */
+export interface InputAiComposeToneID {
+  readonly _: 'inputAiComposeToneID'
+  readonly id: bigint
+  readonly access_hash: bigint
+}
+
+/** `inputAiComposeToneSingleUse#0e0c35af` */
+export interface InputAiComposeToneSingleUse {
+  readonly _: 'inputAiComposeToneSingleUse'
+  readonly custom_prompt: string
+}
+
+/** `inputAiComposeToneSlug#1fa01357` */
+export interface InputAiComposeToneSlug {
+  readonly _: 'inputAiComposeToneSlug'
+  readonly slug: string
 }
 
 /** `inputAppEvent#1d1b1245` */
@@ -196,6 +282,13 @@ export interface InputBotInlineMessageMediaWebPage {
   readonly reply_markup?: root_r$.TypeReplyMarkup
 }
 
+/** `inputBotInlineMessageRichMessage#b43df56c` */
+export interface InputBotInlineMessageRichMessage {
+  readonly _: 'inputBotInlineMessageRichMessage'
+  readonly reply_markup?: root_r$.TypeReplyMarkup
+  readonly rich_message: TypeInputRichMessage
+}
+
 /** `inputBotInlineMessageText#3dcd7a87` */
 export interface InputBotInlineMessageText {
   readonly _: 'inputBotInlineMessageText'
@@ -303,6 +396,17 @@ export interface InputBusinessRecipients {
   readonly users?: readonly TypeInputUser[]
 }
 
+/** `inputButtonTypeRequestPeer#3fe268fe` */
+export interface InputButtonTypeRequestPeer {
+  readonly _: 'inputButtonTypeRequestPeer'
+  readonly name_requested?: true
+  readonly username_requested?: true
+  readonly photo_requested?: true
+  readonly button_id: number
+  readonly peer_type: root_r$.TypeRequestPeerType
+  readonly max_quantity: number
+}
+
 /** `inputChannel#f35aec28` */
 export interface InputChannel {
   readonly _: 'inputChannel'
@@ -402,6 +506,12 @@ export interface InputCollectibleUsername {
 export interface InputDialogPeer {
   readonly _: 'inputDialogPeer'
   readonly peer: TypeInputPeer
+}
+
+/** `inputDialogPeerCommunity#69ef72c4` */
+export interface InputDialogPeerCommunity {
+  readonly _: 'inputDialogPeerCommunity'
+  readonly community: TypeInputChannel
 }
 
 /** `inputDialogPeerFolder#64600527` */
@@ -577,6 +687,21 @@ export interface InputGroupCallStream {
   readonly video_quality?: number
 }
 
+/** `inputInlineButtonTypeUrlAuth#9961bcb4` */
+export interface InputInlineButtonTypeUrlAuth {
+  readonly _: 'inputInlineButtonTypeUrlAuth'
+  readonly request_write_access?: true
+  readonly fwd_text?: string
+  readonly url: string
+  readonly bot?: TypeInputUser
+}
+
+/** `inputInlineButtonTypeUserProfile#53f3ce5a` */
+export interface InputInlineButtonTypeUserProfile {
+  readonly _: 'inputInlineButtonTypeUserProfile'
+  readonly user_id: TypeInputUser
+}
+
 /** `inputInvoiceBusinessBotTransferStars#f4997e42` */
 export interface InputInvoiceBusinessBotTransferStars {
   readonly _: 'inputInvoiceBusinessBotTransferStars'
@@ -658,12 +783,14 @@ export interface InputInvoiceStarGiftPrepaidUpgrade {
   readonly hash: string
 }
 
-/** `inputInvoiceStarGiftResale#c39f5324` */
+/** `inputInvoiceStarGiftResale#e9b0c658` */
 export interface InputInvoiceStarGiftResale {
   readonly _: 'inputInvoiceStarGiftResale'
   readonly ton?: true
+  readonly show_name?: true
   readonly slug: string
   readonly to_id: TypeInputPeer
+  readonly message?: root_t$.TypeTextWithEntities
 }
 
 /** `inputInvoiceStarGiftTransfer#4a5f5bd9` */
@@ -684,38 +811,6 @@ export interface InputInvoiceStarGiftUpgrade {
 export interface InputInvoiceStars {
   readonly _: 'inputInvoiceStars'
   readonly purpose: TypeInputStorePaymentPurpose
-}
-
-/** `inputKeyboardButtonRequestPeer#02b78156` */
-export interface InputKeyboardButtonRequestPeer {
-  readonly _: 'inputKeyboardButtonRequestPeer'
-  readonly name_requested?: true
-  readonly username_requested?: true
-  readonly photo_requested?: true
-  readonly style?: root_k$.TypeKeyboardButtonStyle
-  readonly text: string
-  readonly button_id: number
-  readonly peer_type: root_r$.TypeRequestPeerType
-  readonly max_quantity: number
-}
-
-/** `inputKeyboardButtonUrlAuth#68013e72` */
-export interface InputKeyboardButtonUrlAuth {
-  readonly _: 'inputKeyboardButtonUrlAuth'
-  readonly request_write_access?: true
-  readonly style?: root_k$.TypeKeyboardButtonStyle
-  readonly text: string
-  readonly fwd_text?: string
-  readonly url: string
-  readonly bot: TypeInputUser
-}
-
-/** `inputKeyboardButtonUserProfile#7d5e07c7` */
-export interface InputKeyboardButtonUserProfile {
-  readonly _: 'inputKeyboardButtonUserProfile'
-  readonly style?: root_k$.TypeKeyboardButtonStyle
-  readonly text: string
-  readonly user_id: TypeInputUser
 }
 
 /** `inputMediaAreaChannelPost#2271f2bf` */
@@ -819,12 +914,14 @@ export interface InputMediaPaidMedia {
   readonly payload?: string
 }
 
-/** `inputMediaPhoto#b3ba0635` */
+/** `inputMediaPhoto#e3af4434` */
 export interface InputMediaPhoto {
   readonly _: 'inputMediaPhoto'
   readonly spoiler?: true
+  readonly live_photo?: true
   readonly id: TypeInputPhoto
   readonly ttl_seconds?: number
+  readonly video?: TypeInputDocument
 }
 
 /** `inputMediaPhotoExternal#e5bbfe1a` */
@@ -835,13 +932,15 @@ export interface InputMediaPhotoExternal {
   readonly ttl_seconds?: number
 }
 
-/** `inputMediaPoll#0f94e5f1` */
+/** `inputMediaPoll#883a4108` */
 export interface InputMediaPoll {
   readonly _: 'inputMediaPoll'
   readonly poll: root_p$.TypePoll
-  readonly correct_answers?: readonly Uint8Array[]
+  readonly correct_answers?: readonly number[]
+  readonly attached_media?: TypeInputMedia
   readonly solution?: string
   readonly solution_entities?: readonly root_m$.TypeMessageEntity[]
+  readonly solution_media?: TypeInputMedia
 }
 
 /** `inputMediaStakeDice#f3a9244a` */
@@ -881,13 +980,15 @@ export interface InputMediaUploadedDocument {
   readonly ttl_seconds?: number
 }
 
-/** `inputMediaUploadedPhoto#1e287d04` */
+/** `inputMediaUploadedPhoto#7d8375da` */
 export interface InputMediaUploadedPhoto {
   readonly _: 'inputMediaUploadedPhoto'
   readonly spoiler?: true
+  readonly live_photo?: true
   readonly file: TypeInputFile
   readonly stickers?: readonly TypeInputDocument[]
   readonly ttl_seconds?: number
+  readonly video?: TypeInputDocument
 }
 
 /** `inputMediaVenue#c13d1c11` */
@@ -934,6 +1035,17 @@ export interface InputMessageID {
 /** `inputMessagePinned#86872538` */
 export interface InputMessagePinned {
   readonly _: 'inputMessagePinned'
+}
+
+/** `inputMessageReadMetric#402b4495` */
+export interface InputMessageReadMetric {
+  readonly _: 'inputMessageReadMetric'
+  readonly msg_id: number
+  readonly view_id: bigint
+  readonly time_in_view_ms: number
+  readonly active_time_in_view_ms: number
+  readonly height_to_viewport_ratio_permille: number
+  readonly seen_range_ratio_permille: number
 }
 
 /** `inputMessageReplyTo#bad88395` */
@@ -1003,6 +1115,11 @@ export interface InputMessagesFilterPinned {
   readonly _: 'inputMessagesFilterPinned'
 }
 
+/** `inputMessagesFilterPoll#fa2bc90a` */
+export interface InputMessagesFilterPoll {
+  readonly _: 'inputMessagesFilterPoll'
+}
+
 /** `inputMessagesFilterRoundVideo#b549da53` */
 export interface InputMessagesFilterRoundVideo {
   readonly _: 'inputMessagesFilterRoundVideo'
@@ -1038,6 +1155,12 @@ export interface InputNotifyChats {
   readonly _: 'inputNotifyChats'
 }
 
+/** `inputNotifyCommunity#27bb1adc` */
+export interface InputNotifyCommunity {
+  readonly _: 'inputNotifyCommunity'
+  readonly community: TypeInputChannel
+}
+
 /** `inputNotifyForumTopic#5c467992` */
 export interface InputNotifyForumTopic {
   readonly _: 'inputNotifyForumTopic'
@@ -1054,6 +1177,16 @@ export interface InputNotifyPeer {
 /** `inputNotifyUsers#193b4417` */
 export interface InputNotifyUsers {
   readonly _: 'inputNotifyUsers'
+}
+
+/** `inputPageBlockMap#574b617f` */
+export interface InputPageBlockMap {
+  readonly _: 'inputPageBlockMap'
+  readonly geo: TypeInputGeoPoint
+  readonly zoom: number
+  readonly w: number
+  readonly h: number
+  readonly caption: root_p$.TypePageCaption
 }
 
 /** `inputPasskeyCredentialFirebasePNV#5b1ccb28` */
@@ -1234,6 +1367,13 @@ export interface InputPhotoLegacyFileLocation {
   readonly secret: bigint
 }
 
+/** `inputPollAnswer#199fed96` */
+export interface InputPollAnswer {
+  readonly _: 'inputPollAnswer'
+  readonly text: root_t$.TypeTextWithEntities
+  readonly media?: TypeInputMedia
+}
+
 /** `inputPrivacyKeyAbout#3823cc40` */
 export interface InputPrivacyKeyAbout {
   readonly _: 'inputPrivacyKeyAbout'
@@ -1380,7 +1520,13 @@ export interface InputQuickReplyShortcutId {
   readonly shortcut_id: number
 }
 
-/** `inputReplyToMessage#869fbe10` */
+/** `inputReplyToEphemeralMessage#4119b95e` */
+export interface InputReplyToEphemeralMessage {
+  readonly _: 'inputReplyToEphemeralMessage'
+  readonly id: number
+}
+
+/** `inputReplyToMessage#3bd4b7c2` */
 export interface InputReplyToMessage {
   readonly _: 'inputReplyToMessage'
   readonly reply_to_msg_id: number
@@ -1391,6 +1537,7 @@ export interface InputReplyToMessage {
   readonly quote_offset?: number
   readonly monoforum_peer_id?: TypeInputPeer
   readonly todo_item_id?: number
+  readonly poll_option?: Uint8Array
 }
 
 /** `inputReplyToMonoForum#69d66c45` */
@@ -1456,6 +1603,49 @@ export interface InputReportReasonViolence {
   readonly _: 'inputReportReasonViolence'
 }
 
+/** `inputRichFileDocument#83281dbd` */
+export interface InputRichFileDocument {
+  readonly _: 'inputRichFileDocument'
+  readonly id: string
+  readonly document: TypeInputDocument
+}
+
+/** `inputRichFilePhoto#9b00622b` */
+export interface InputRichFilePhoto {
+  readonly _: 'inputRichFilePhoto'
+  readonly id: string
+  readonly photo: TypeInputPhoto
+}
+
+/** `inputRichMessage#e4c449fc` */
+export interface InputRichMessage {
+  readonly _: 'inputRichMessage'
+  readonly rtl?: true
+  readonly noautolink?: true
+  readonly blocks: readonly root_p$.TypePageBlock[]
+  readonly photos?: readonly TypeInputPhoto[]
+  readonly documents?: readonly TypeInputDocument[]
+  readonly users?: readonly TypeInputUser[]
+}
+
+/** `inputRichMessageHTML#dacb836a` */
+export interface InputRichMessageHTML {
+  readonly _: 'inputRichMessageHTML'
+  readonly rtl?: true
+  readonly noautolink?: true
+  readonly html: string
+  readonly files?: readonly TypeInputRichFile[]
+}
+
+/** `inputRichMessageMarkdown#004b572c` */
+export interface InputRichMessageMarkdown {
+  readonly _: 'inputRichMessageMarkdown'
+  readonly rtl?: true
+  readonly noautolink?: true
+  readonly markdown: string
+  readonly files?: readonly TypeInputRichFile[]
+}
+
 /** `inputSavedStarGiftChat#f101aa7f` */
 export interface InputSavedStarGiftChat {
   readonly _: 'inputSavedStarGiftChat'
@@ -1510,6 +1700,15 @@ export interface InputSecureValue {
   readonly translation?: readonly TypeInputSecureFile[]
   readonly files?: readonly TypeInputSecureFile[]
   readonly plain_data?: root_s$.TypeSecurePlainData
+}
+
+/** `inputSendMessageRichMessageDraftAction#a937c7be` */
+export interface InputSendMessageRichMessageDraftAction {
+  readonly _: 'inputSendMessageRichMessageDraftAction'
+  readonly can_stop?: true
+  readonly keep_on_stop?: true
+  readonly random_id: bigint
+  readonly rich_message: TypeInputRichMessage
 }
 
 /** `inputSingleMedia#1cc6e91f` */
@@ -1632,12 +1831,13 @@ export interface InputStickeredMediaPhoto {
   readonly id: TypeInputPhoto
 }
 
-/** `inputStorePaymentAuthCode#9bb2636d` */
+/** `inputStorePaymentAuthCode#3fc18057` */
 export interface InputStorePaymentAuthCode {
   readonly _: 'inputStorePaymentAuthCode'
   readonly restore?: true
   readonly phone_number: string
   readonly phone_code_hash: string
+  readonly premium_days: number
   readonly currency: string
   readonly amount: bigint
 }
@@ -1930,6 +2130,21 @@ export type TypeInlineBotSwitchPM =
 export type TypeInlineBotWebView =
   | InlineBotWebView
 
+/** Any `InlineButtonType`. */
+export type TypeInlineButtonType =
+  | InlineButtonTypeBuy
+  | InlineButtonTypeCallback
+  | InlineButtonTypeCopy
+  | InlineButtonTypeDisabled
+  | InlineButtonTypeGame
+  | InlineButtonTypeSwitchInline
+  | InlineButtonTypeUrl
+  | InlineButtonTypeUrlAuth
+  | InlineButtonTypeUserProfile
+  | InlineButtonTypeWebView
+  | InputInlineButtonTypeUrlAuth
+  | InputInlineButtonTypeUserProfile
+
 /** Any `InlineQueryPeerType`. */
 export type TypeInlineQueryPeerType =
   | InlineQueryPeerTypeBotPM
@@ -1938,6 +2153,13 @@ export type TypeInlineQueryPeerType =
   | InlineQueryPeerTypeMegagroup
   | InlineQueryPeerTypePM
   | InlineQueryPeerTypeSameBotPM
+
+/** Any `InputAiComposeTone`. */
+export type TypeInputAiComposeTone =
+  | InputAiComposeToneDefault
+  | InputAiComposeToneID
+  | InputAiComposeToneSingleUse
+  | InputAiComposeToneSlug
 
 /** Any `InputAppEvent`. */
 export type TypeInputAppEvent =
@@ -1957,6 +2179,7 @@ export type TypeInputBotInlineMessage =
   | InputBotInlineMessageMediaInvoice
   | InputBotInlineMessageMediaVenue
   | InputBotInlineMessageMediaWebPage
+  | InputBotInlineMessageRichMessage
   | InputBotInlineMessageText
 
 /** Any `InputBotInlineMessageID`. */
@@ -2038,6 +2261,7 @@ export type TypeInputContact =
 /** Any `InputDialogPeer`. */
 export type TypeInputDialogPeer =
   | InputDialogPeer
+  | InputDialogPeerCommunity
   | InputDialogPeerFolder
 
 /** Any `InputDocument`. */
@@ -2143,10 +2367,15 @@ export type TypeInputMessage =
   | InputMessagePinned
   | InputMessageReplyTo
 
+/** Any `InputMessageReadMetric`. */
+export type TypeInputMessageReadMetric =
+  | InputMessageReadMetric
+
 /** Any `InputNotifyPeer`. */
 export type TypeInputNotifyPeer =
   | InputNotifyBroadcasts
   | InputNotifyChats
+  | InputNotifyCommunity
   | InputNotifyForumTopic
   | InputNotifyPeer
   | InputNotifyUsers
@@ -2230,9 +2459,21 @@ export type TypeInputQuickReplyShortcut =
 
 /** Any `InputReplyTo`. */
 export type TypeInputReplyTo =
+  | InputReplyToEphemeralMessage
   | InputReplyToMessage
   | InputReplyToMonoForum
   | InputReplyToStory
+
+/** Any `InputRichFile`. */
+export type TypeInputRichFile =
+  | InputRichFileDocument
+  | InputRichFilePhoto
+
+/** Any `InputRichMessage`. */
+export type TypeInputRichMessage =
+  | InputRichMessage
+  | InputRichMessageHTML
+  | InputRichMessageMarkdown
 
 /** Any `InputSavedStarGift`. */
 export type TypeInputSavedStarGift =

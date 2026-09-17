@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Codec table barrel
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlEntry } from '../../../tl/schema.js'
 import { ENTRIES as root$ } from './root.js'

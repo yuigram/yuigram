@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Pinned protocol layer
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 /**
  * The TL layer this build speaks.
@@ -9,4 +9,4 @@
  * emitted from this layer, so announcing another would claim a wire
  * contract the generated types do not implement.
  */
-export const TL_LAYER = 223 as const
+export const TL_LAYER = 229 as const

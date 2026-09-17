@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // core registry (6 combinators)
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import { type TlRegistry, createRegistry } from '../../tl/registry.js'
 import { ENTRIES } from './tables/index.js'

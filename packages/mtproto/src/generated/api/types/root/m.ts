@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as messages$ from '../messages.js'
 import type * as root_b$ from '../root/b.js'
@@ -96,7 +96,7 @@ export interface MediaAreaWeather {
   readonly color: number
 }
 
-/** `message#3ae56482` */
+/** `message#7600b9d3` */
 export interface Message {
   readonly _: 'message'
   readonly out?: true
@@ -123,6 +123,7 @@ export interface Message {
   readonly fwd_from?: TypeMessageFwdHeader
   readonly via_bot_id?: bigint
   readonly via_business_bot_id?: bigint
+  readonly guestchat_via_from?: root_p$.TypePeer
   readonly reply_to?: TypeMessageReplyHeader
   readonly date: number
   readonly message: string
@@ -146,6 +147,7 @@ export interface Message {
   readonly suggested_post?: root_s$.TypeSuggestedPost
   readonly schedule_repeat_period?: number
   readonly summary_from_language?: string
+  readonly rich_message?: root_r$.TypeRichMessage
 }
 
 /** `messageActionBoostApply#cc02aa6d` */
@@ -161,6 +163,12 @@ export interface MessageActionBotAllowed {
   readonly from_request?: true
   readonly domain?: string
   readonly app?: root_b$.TypeBotApp
+}
+
+/** `messageActionChangeCommunity#5d20bae8` */
+export interface MessageActionChangeCommunity {
+  readonly _: 'messageActionChangeCommunity'
+  readonly community_id?: bigint
 }
 
 /** `messageActionChangeCreator#e188503b` */
@@ -227,6 +235,12 @@ export interface MessageActionChatJoinedByLink {
 /** `messageActionChatJoinedByRequest#ebbca3cb` */
 export interface MessageActionChatJoinedByRequest {
   readonly _: 'messageActionChatJoinedByRequest'
+}
+
+/** `messageActionChatJoinedViaCommunity#4a8bfe80` */
+export interface MessageActionChatJoinedViaCommunity {
+  readonly _: 'messageActionChatJoinedViaCommunity'
+  readonly community_id: bigint
 }
 
 /** `messageActionChatMigrateTo#e1037f92` */
@@ -364,6 +378,12 @@ export interface MessageActionInviteToGroupCall {
   readonly users: readonly bigint[]
 }
 
+/** `messageActionManagedBotCreated#16605e3e` */
+export interface MessageActionManagedBotCreated {
+  readonly _: 'messageActionManagedBotCreated'
+  readonly bot_id: bigint
+}
+
 /** `messageActionNewCreatorPending#b07ed085` */
 export interface MessageActionNewCreatorPending {
   readonly _: 'messageActionNewCreatorPending'
@@ -446,6 +466,18 @@ export interface MessageActionPhoneCall {
 /** `messageActionPinMessage#94bd38ed` */
 export interface MessageActionPinMessage {
   readonly _: 'messageActionPinMessage'
+}
+
+/** `messageActionPollAppendAnswer#9da1cd6c` */
+export interface MessageActionPollAppendAnswer {
+  readonly _: 'messageActionPollAppendAnswer'
+  readonly answer: root_p$.TypePollAnswer
+}
+
+/** `messageActionPollDeleteAnswer#399674dc` */
+export interface MessageActionPollDeleteAnswer {
+  readonly _: 'messageActionPollDeleteAnswer'
+  readonly answer: root_p$.TypePollAnswer
 }
 
 /** `messageActionPrizeStars#b00c47a2` */
@@ -555,7 +587,7 @@ export interface MessageActionStarGiftPurchaseOfferDeclined {
   readonly price: root_s$.TypeStarsAmount
 }
 
-/** `messageActionStarGiftUnique#e6c31522` */
+/** `messageActionStarGiftUnique#7e1c1187` */
 export interface MessageActionStarGiftUnique {
   readonly _: 'messageActionStarGiftUnique'
   readonly upgrade?: true
@@ -566,6 +598,7 @@ export interface MessageActionStarGiftUnique {
   readonly assigned?: true
   readonly from_offer?: true
   readonly craft?: true
+  readonly name_hidden?: true
   readonly gift: root_s$.TypeStarGift
   readonly can_export_at?: number
   readonly transfer_stars?: bigint
@@ -577,6 +610,7 @@ export interface MessageActionStarGiftUnique {
   readonly can_resell_at?: number
   readonly drop_original_details_stars?: bigint
   readonly can_craft_at?: number
+  readonly message?: root_t$.TypeTextWithEntities
 }
 
 /** `messageActionSuggestBirthday#2c8f2a25` */
@@ -713,6 +747,28 @@ export interface MessageEntityCustomEmoji {
   readonly offset: number
   readonly length: number
   readonly document_id: bigint
+}
+
+/** `messageEntityDiffDelete#0652c1c5` */
+export interface MessageEntityDiffDelete {
+  readonly _: 'messageEntityDiffDelete'
+  readonly offset: number
+  readonly length: number
+}
+
+/** `messageEntityDiffInsert#71777116` */
+export interface MessageEntityDiffInsert {
+  readonly _: 'messageEntityDiffInsert'
+  readonly offset: number
+  readonly length: number
+}
+
+/** `messageEntityDiffReplace#c6c1e5a7` */
+export interface MessageEntityDiffReplace {
+  readonly _: 'messageEntityDiffReplace'
+  readonly offset: number
+  readonly length: number
+  readonly old_text: string
 }
 
 /** `messageEntityEmail#64e475c2` */
@@ -968,19 +1024,22 @@ export interface MessageMediaPaidMedia {
   readonly extended_media: readonly TypeMessageExtendedMedia[]
 }
 
-/** `messageMediaPhoto#695150d7` */
+/** `messageMediaPhoto#e216eb63` */
 export interface MessageMediaPhoto {
   readonly _: 'messageMediaPhoto'
   readonly spoiler?: true
+  readonly live_photo?: true
   readonly photo?: root_p$.TypePhoto
   readonly ttl_seconds?: number
+  readonly video?: root_d$.TypeDocument
 }
 
-/** `messageMediaPoll#4bd6e798` */
+/** `messageMediaPoll#773f4e66` */
 export interface MessageMediaPoll {
   readonly _: 'messageMediaPoll'
   readonly poll: root_p$.TypePoll
   readonly results: root_p$.TypePollResults
+  readonly attached_media?: TypeMessageMedia
 }
 
 /** `messageMediaStory#68cb6283` */
@@ -1106,12 +1165,13 @@ export interface MessageReplies {
   readonly read_max_id?: number
 }
 
-/** `messageReplyHeader#6917560b` */
+/** `messageReplyHeader#1b97dd66` */
 export interface MessageReplyHeader {
   readonly _: 'messageReplyHeader'
   readonly reply_to_scheduled?: true
   readonly forum_topic?: true
   readonly quote?: true
+  readonly reply_to_ephemeral?: true
   readonly reply_to_msg_id?: number
   readonly reply_to_peer_id?: root_p$.TypePeer
   readonly reply_from?: TypeMessageFwdHeader
@@ -1121,6 +1181,7 @@ export interface MessageReplyHeader {
   readonly quote_entities?: readonly TypeMessageEntity[]
   readonly quote_offset?: number
   readonly todo_item_id?: number
+  readonly poll_option?: Uint8Array
 }
 
 /** `messageReplyStoryHeader#0e5af939` */
@@ -1228,6 +1289,7 @@ export type TypeMessage =
 export type TypeMessageAction =
   | MessageActionBoostApply
   | MessageActionBotAllowed
+  | MessageActionChangeCommunity
   | MessageActionChangeCreator
   | MessageActionChannelCreate
   | MessageActionChannelMigrateFrom
@@ -1239,6 +1301,7 @@ export type TypeMessageAction =
   | MessageActionChatEditTitle
   | MessageActionChatJoinedByLink
   | MessageActionChatJoinedByRequest
+  | MessageActionChatJoinedViaCommunity
   | MessageActionChatMigrateTo
   | MessageActionConferenceCall
   | MessageActionContactSignUp
@@ -1256,6 +1319,7 @@ export type TypeMessageAction =
   | MessageActionGroupCallScheduled
   | MessageActionHistoryClear
   | MessageActionInviteToGroupCall
+  | MessageActionManagedBotCreated
   | MessageActionNewCreatorPending
   | MessageActionNoForwardsRequest
   | MessageActionNoForwardsToggle
@@ -1266,6 +1330,8 @@ export type TypeMessageAction =
   | MessageActionPaymentSentMe
   | MessageActionPhoneCall
   | MessageActionPinMessage
+  | MessageActionPollAppendAnswer
+  | MessageActionPollDeleteAnswer
   | MessageActionPrizeStars
   | MessageActionRequestedPeer
   | MessageActionRequestedPeerSentMe
@@ -1301,6 +1367,9 @@ export type TypeMessageEntity =
   | MessageEntityCashtag
   | MessageEntityCode
   | MessageEntityCustomEmoji
+  | MessageEntityDiffDelete
+  | MessageEntityDiffInsert
+  | MessageEntityDiffReplace
   | MessageEntityEmail
   | MessageEntityFormattedDate
   | MessageEntityHashtag
@@ -1400,6 +1469,7 @@ export type TypeMessagesFilter =
   | root_i$.InputMessagesFilterPhotoVideo
   | root_i$.InputMessagesFilterPhotos
   | root_i$.InputMessagesFilterPinned
+  | root_i$.InputMessagesFilterPoll
   | root_i$.InputMessagesFilterRoundVideo
   | root_i$.InputMessagesFilterRoundVoice
   | root_i$.InputMessagesFilterUrl

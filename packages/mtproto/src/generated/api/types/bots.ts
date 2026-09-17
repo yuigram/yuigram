@@ -1,14 +1,23 @@
 // GENERATED FILE — do not edit.
 // TL types for bots
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type * as root_b$ from './root/b.js'
 import type * as root_c$ from './root/c.js'
 import type * as root_d$ from './root/d.js'
 import type * as root_e$ from './root/e.js'
 import type * as root_i$ from './root/i.js'
+import type * as root_j$ from './root/j.js'
+import type * as root_k$ from './root/k.js'
 import type * as root_u$ from './root/u.js'
 import type { TlObject } from '../../../tl/object.js'
+
+/** `bots.accessSettings#dd1fbf93` */
+export interface AccessSettings {
+  readonly _: 'bots.accessSettings'
+  readonly restricted?: true
+  readonly add_users?: readonly root_u$.TypeUser[]
+}
 
 /** `bots.addPreviewMedia#17aeb75a` */
 export interface AddPreviewMedia {
@@ -53,12 +62,35 @@ export interface CheckDownloadFileParams {
   readonly url: string
 }
 
+/** `bots.checkUsername#87f2219b` */
+export interface CheckUsername {
+  readonly _: 'bots.checkUsername'
+  readonly username: string
+}
+
+/** `bots.createBot#e5b17f2b` */
+export interface CreateBot {
+  readonly _: 'bots.createBot'
+  readonly via_deeplink?: true
+  readonly name: string
+  readonly username: string
+  readonly manager_id: root_i$.TypeInputUser
+}
+
 /** `bots.deletePreviewMedia#2d0135b3` */
 export interface DeletePreviewMedia {
   readonly _: 'bots.deletePreviewMedia'
   readonly bot: root_i$.TypeInputUser
   readonly lang_code: string
   readonly media: readonly root_i$.TypeInputMedia[]
+}
+
+/** `bots.editAccessSettings#31813cd8` */
+export interface EditAccessSettings {
+  readonly _: 'bots.editAccessSettings'
+  readonly restricted?: true
+  readonly bot: root_i$.TypeInputUser
+  readonly add_users?: readonly root_i$.TypeInputUser[]
 }
 
 /** `bots.editPreviewMedia#8525606f` */
@@ -68,6 +100,25 @@ export interface EditPreviewMedia {
   readonly lang_code: string
   readonly media: root_i$.TypeInputMedia
   readonly new_media: root_i$.TypeInputMedia
+}
+
+/** `bots.exportBotToken#bd0d99eb` */
+export interface ExportBotToken {
+  readonly _: 'bots.exportBotToken'
+  readonly bot: root_i$.TypeInputUser
+  readonly revoke: boolean
+}
+
+/** `bots.exportedBotToken#3c60b621` */
+export interface ExportedBotToken {
+  readonly _: 'bots.exportedBotToken'
+  readonly token: string
+}
+
+/** `bots.getAccessSettings#213853a3` */
+export interface GetAccessSettings {
+  readonly _: 'bots.getAccessSettings'
+  readonly bot: root_i$.TypeInputUser
 }
 
 /** `bots.getAdminedBots#b0711d83` */
@@ -121,6 +172,13 @@ export interface GetPreviewMedias {
   readonly bot: root_i$.TypeInputUser
 }
 
+/** `bots.getRequestedWebViewButton#bf25b7f3` */
+export interface GetRequestedWebViewButton {
+  readonly _: 'bots.getRequestedWebViewButton'
+  readonly bot: root_i$.TypeInputUser
+  readonly webapp_req_id: string
+}
+
 /** `bots.invokeWebViewCustomMethod#087fc5e7` */
 export interface InvokeWebViewCustomMethod {
   readonly _: 'bots.invokeWebViewCustomMethod'
@@ -156,6 +214,19 @@ export interface ReorderUsernames {
   readonly _: 'bots.reorderUsernames'
   readonly bot: root_i$.TypeInputUser
   readonly order: readonly string[]
+}
+
+/** `bots.requestWebViewButton#31a2a35e` */
+export interface RequestWebViewButton {
+  readonly _: 'bots.requestWebViewButton'
+  readonly user_id: root_i$.TypeInputUser
+  readonly button: root_k$.TypeKeyboardButton
+}
+
+/** `bots.requestedButton#f13bbcd7` */
+export interface RequestedButton {
+  readonly _: 'bots.requestedButton'
+  readonly webapp_req_id: string
 }
 
 /** `bots.resetBotCommands#3d8de0f9` */
@@ -218,6 +289,13 @@ export interface SetCustomVerification {
   readonly custom_description?: string
 }
 
+/** `bots.setJoinChatResults#e71a4810` */
+export interface SetJoinChatResults {
+  readonly _: 'bots.setJoinChatResults'
+  readonly query_id: bigint
+  readonly result: root_j$.TypeJoinChatBotResult
+}
+
 /** `bots.toggleUserEmojiStatusPermission#06de6392` */
 export interface ToggleUserEmojiStatusPermission {
   readonly _: 'bots.toggleUserEmojiStatusPermission'
@@ -233,9 +311,17 @@ export interface ToggleUsername {
   readonly active: boolean
 }
 
+/** Any `bots.AccessSettings`. */
+export type TypeAccessSettings =
+  | AccessSettings
+
 /** Any `bots.BotInfo`. */
 export type TypeBotInfo =
   | BotInfo
+
+/** Any `bots.ExportedBotToken`. */
+export type TypeExportedBotToken =
+  | ExportedBotToken
 
 /** Any `bots.PopularAppBots`. */
 export type TypePopularAppBots =
@@ -244,6 +330,10 @@ export type TypePopularAppBots =
 /** Any `bots.PreviewInfo`. */
 export type TypePreviewInfo =
   | PreviewInfo
+
+/** Any `bots.RequestedButton`. */
+export type TypeRequestedButton =
+  | RequestedButton
 
 /** `bots.updateStarRefProgram#778b5ab3` */
 export interface UpdateStarRefProgram {

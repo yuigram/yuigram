@@ -142,8 +142,10 @@ export async function fetchFullChat(client: Chatting, chat: string | PeerRef): P
     description: full.about,
     members: asChannelFull.participants_count ?? membersOf(full),
     online: asChannelFull.online_count,
-    pinnedMessageId: full.pinned_msg_id,
-    messageTtl: full.ttl_period,
+    // A community's full description is a different constructor with neither
+    // field: it describes a group of chats rather than a conversation.
+    pinnedMessageId: full._ === 'communityFull' ? undefined : full.pinned_msg_id,
+    messageTtl: full._ === 'communityFull' ? undefined : full.ttl_period,
     slowMode: asChannelFull.slowmode_seconds,
     linkedChat:
       asChannelFull.linked_chat_id === undefined

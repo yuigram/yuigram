@@ -19,6 +19,7 @@ const ROW: Dialog = {
   unread_count: 2,
   unread_mentions_count: 1,
   unread_reactions_count: 3,
+  unread_poll_votes_count: 0,
   notify_settings: { _: 'peerNotifySettings' },
   pinned: true,
   unread_mark: true,

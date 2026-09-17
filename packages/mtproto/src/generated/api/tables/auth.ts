@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
 // Wire layout for auth
-// Source: Telegram TL layer 223, schemas/tl/api.223.tl
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 54 combinators. */
+/** 58 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0xe894ad4d, n: 'auth.acceptLoginToken', f: [{ n: 'token', t: 'bytes' }] },
   { id: 0x2ea2c0d4, n: 'auth.authorization', f: [{ n: 'flags', b: 1 }, { n: 'setup_password_required', t: 'true', c: 'flags', i: 1 }, { n: 'otherwise_relogin_days', t: 'int', c: 'flags', i: 1 }, { n: 'tmp_sessions', t: 'int', c: 'flags', i: 0 }, { n: 'future_auth_token', t: 'bytes', c: 'flags', i: 2 }, { n: 'user', t: 'obj' }] },
@@ -23,11 +23,15 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xe5bfffcd, n: 'auth.exportAuthorization', f: [{ n: 'dc_id', t: 'int' }] },
   { id: 0xb7e085fe, n: 'auth.exportLoginToken', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'except_ids', t: { v: 'long' } }] },
   { id: 0xb434e2b8, n: 'auth.exportedAuthorization', f: [{ n: 'id', t: 'long' }, { n: 'bytes', t: 'bytes' }] },
+  { id: 0x2c85094c, n: 'auth.finishFirebasePnvLogin', f: [{ n: 'google_token', t: 'string' }] },
   { id: 0x9857ad07, n: 'auth.finishPasskeyLogin', f: [{ n: 'flags', b: 1 }, { n: 'credential', t: 'obj' }, { n: 'from_dc_id', t: 'int', c: 'flags', i: 0 }, { n: 'from_auth_key_id', t: 'long', c: 'flags', i: 0 }] },
+  { id: 0xdf5ac00c, n: 'auth.firebasePnvIntent', f: [{ n: 'nonce', t: 'string' }, { n: 'digital_credential_payload', t: 'string' }] },
+  { id: 0x783f6b56, n: 'auth.firebasePnvSignUp', f: [{ n: 'flags', b: 1 }, { n: 'no_joined_notifications', t: 'true', c: 'flags', i: 0 }, { n: 'first_name', t: 'string' }, { n: 'last_name', t: 'string' }] },
   { id: 0xa57a7dad, n: 'auth.importAuthorization', f: [{ n: 'id', t: 'long' }, { n: 'bytes', t: 'bytes' }] },
   { id: 0x67a3ff2c, n: 'auth.importBotAuthorization', f: [{ n: 'flags', t: 'int' }, { n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'bot_auth_token', t: 'string' }] },
   { id: 0x95ac5ce4, n: 'auth.importLoginToken', f: [{ n: 'token', t: 'bytes' }] },
   { id: 0x2db873a9, n: 'auth.importWebTokenAuthorization', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'web_auth_token', t: 'string' }] },
+  { id: 0x777df37a, n: 'auth.initFirebasePnvLogin', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }] },
   { id: 0x518ad0b7, n: 'auth.initPasskeyLogin', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }] },
   { id: 0x3e72ba19, n: 'auth.logOut', f: [] },
   { id: 0xc3a2835f, n: 'auth.loggedOut', f: [{ n: 'flags', b: 1 }, { n: 'future_auth_token', t: 'bytes', c: 'flags', i: 0 }] },
@@ -45,7 +49,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x7e960193, n: 'auth.resetLoginEmail', f: [{ n: 'phone_number', t: 'string' }, { n: 'phone_code_hash', t: 'string' }] },
   { id: 0xa677244f, n: 'auth.sendCode', f: [{ n: 'phone_number', t: 'string' }, { n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'settings', t: 'obj' }] },
   { id: 0x5e002502, n: 'auth.sentCode', f: [{ n: 'flags', b: 1 }, { n: 'type', t: 'obj' }, { n: 'phone_code_hash', t: 'string' }, { n: 'next_type', t: 'obj', c: 'flags', i: 1 }, { n: 'timeout', t: 'int', c: 'flags', i: 2 }] },
-  { id: 0xe0955a3c, n: 'auth.sentCodePaymentRequired', f: [{ n: 'store_product', t: 'string' }, { n: 'phone_code_hash', t: 'string' }, { n: 'support_email_address', t: 'string' }, { n: 'support_email_subject', t: 'string' }, { n: 'currency', t: 'string' }, { n: 'amount', t: 'long' }] },
+  { id: 0xf8827ebf, n: 'auth.sentCodePaymentRequired', f: [{ n: 'store_product', t: 'string' }, { n: 'phone_code_hash', t: 'string' }, { n: 'support_email_address', t: 'string' }, { n: 'support_email_subject', t: 'string' }, { n: 'premium_days', t: 'int' }, { n: 'currency', t: 'string' }, { n: 'amount', t: 'long' }] },
   { id: 0x2390fe44, n: 'auth.sentCodeSuccess', f: [{ n: 'authorization', t: 'obj' }] },
   { id: 0x3dbb5986, n: 'auth.sentCodeTypeApp', f: [{ n: 'length', t: 'int' }] },
   { id: 0x5353e5a7, n: 'auth.sentCodeTypeCall', f: [{ n: 'length', t: 'int' }] },
