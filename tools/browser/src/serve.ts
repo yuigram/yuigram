@@ -125,25 +125,47 @@ origin's <code>localStorage</code>, and the connection is a real
 <script type="module" src="/harness.js"></script>
 `
 
-const bundled = await build({
-  entryPoints: [`${ROOT}tools/browser/src/harness.ts`],
-  bundle: true,
-  format: 'esm',
-  platform: 'browser',
-  target: 'es2022',
-  write: false,
-  metafile: true,
-  logLevel: 'silent',
-  plugins: [browserField(substitutions())],
-})
+/**
+ * The page the harness embeds to be a second browsing context.
+ *
+ * Served from the same origin, so it shares this origin's `localStorage` and
+ * its lock manager, and from a separate document, so it shares no memory with
+ * the harness. Both halves are needed: sharing the store is what makes the
+ * contention real, and sharing nothing else is what makes it the case a single
+ * page cannot construct.
+ */
+const SECOND_PAGE = `<!doctype html>
+<meta charset="utf-8">
+<title>a second page of this origin</title>
+<body><script type="module" src="/second-page.js"></script>
+`
 
-const script = bundled.outputFiles[0]?.text ?? ''
-const builtins = Object.keys(bundled.metafile.inputs).filter((path) => path.startsWith('node:'))
+/** Bundle one entry point the way a consumer's bundler would. */
+async function bundle(entry: string): Promise<string> {
+  const built = await build({
+    entryPoints: [`${ROOT}tools/browser/src/${entry}`],
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    write: false,
+    metafile: true,
+    logLevel: 'silent',
+    plugins: [browserField(substitutions())],
+  })
 
-if (builtins.length > 0) {
-  process.stderr.write(`the harness bundle reaches ${builtins.join(', ')}\n`)
-  process.exit(1)
+  const builtins = Object.keys(built.metafile.inputs).filter((path) => path.startsWith('node:'))
+
+  if (builtins.length > 0) {
+    process.stderr.write(`the ${entry} bundle reaches ${builtins.join(', ')}\n`)
+    process.exit(1)
+  }
+
+  return built.outputFiles[0]?.text ?? ''
 }
+
+const script = await bundle('harness.ts')
+const secondPageScript = await bundle('second-page.ts')
 
 /**
  * The datacenter the page talks to.
@@ -199,6 +221,20 @@ const server = createServer((request, response) => {
   if (request.url === '/harness.js') {
     response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' })
     response.end(script)
+
+    return
+  }
+
+  if (request.url === '/second-page.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' })
+    response.end(secondPageScript)
+
+    return
+  }
+
+  if (request.url === '/second-page') {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end(SECOND_PAGE)
 
     return
   }

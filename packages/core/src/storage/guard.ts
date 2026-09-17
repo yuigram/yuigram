@@ -79,6 +79,22 @@ export interface AcquireOptions {
 export interface Guard {
   /** How far this guard's exclusion reaches. Never widen this. */
   readonly scope: GuardScope
+  /**
+   * Whether a granted steal means the superseded holder has finished.
+   *
+   * The property that makes {@link AcquireOptions.steal} safe to use for
+   * anything that must not be written by two holders at once. `true` says this
+   * guard will not hand a stolen name on until the holder it supersedes has
+   * drained — so a successor that is given the name knows the work admitted
+   * before it cannot still land. `false` says a steal is abrupt: the old holder
+   * is told it lost the name and may still be inside an operation it began.
+   *
+   * Declared rather than inferred, because a consumer cannot tell by looking. A
+   * guard that answers `false` is not broken — an abrupt steal is the right
+   * answer for plenty of things — but a consumer guarding state that two
+   * writers would corrupt should refuse one rather than hope.
+   */
+  readonly drainsOnSteal: boolean
   /** Take a name, or answer nothing when something else holds it. */
   acquire(name: string, options?: AcquireOptions): Promise<GuardHold | undefined>
 }
@@ -103,6 +119,10 @@ export function processGuard(): Guard {
 
   return {
     scope: 'process',
+    // `take` waits for the superseded hold to go quiet before handing the name
+    // on, and both holders are in this process, so there is always something
+    // there to wait for.
+    drainsOnSteal: true,
 
     acquire(name: string, options: AcquireOptions = {}): Promise<GuardHold | undefined> {
       return take(held, name, options)
@@ -144,13 +164,16 @@ async function take(
     drains(quiet: () => Promise<void>) {
       entry.quiet = quiet
     },
-    release() {
+    async release() {
+      // What this holder admitted finishes before the name is free, for the
+      // same reason a steal waits: the next holder must not begin while this
+      // one still has something inside whatever it protects.
+      entry.held = false
+      await entry.quiet?.()
+
       // Only the current holder clears the registry. A hold that was taken over
       // releasing later must not free the name its successor holds.
-      if (entry.held && held.get(name) === entry) held.delete(name)
-      entry.held = false
-
-      return Promise.resolve()
+      if (held.get(name) === entry) held.delete(name)
     },
   }
 }
@@ -187,74 +210,123 @@ function lockManager(): LockManagerLike | undefined {
  * callback is given a promise that settles when the hold is released. A page
  * that closes takes its locks with it, which is what makes a crashed tab
  * recoverable without anybody being asked to confirm anything.
+ *
+ * **A steal is not how this guard hands a name on.** The API has one, and what
+ * it does is take the lock and *then* reject the request that held it — the old
+ * page learns it lost the lock after the fact, from a realm this one cannot
+ * reach into, with whatever it had begun still running. That is precisely the
+ * thing {@link Guard.drainsOnSteal} promises not to do, so a caller asking for
+ * a steal is answered by the two cases that can be told apart honestly:
+ *
+ * ```
+ *   the holder is this realm  ──> drain it here, then take the lock
+ *   the holder is another one ──> the lock is either free, or refused
+ * ```
+ *
+ * The second is not a limitation worked around, it is the right answer. A page
+ * that closed or crashed has already released its lock — the browser does that
+ * — so ordinary recovery is an ordinary acquire and needs no flag. A lock still
+ * held is held by a page that is *running*, and no amount of forcing makes it
+ * safe to write that page's storage underneath it.
  */
 export function webLocksGuard(manager: LockManagerLike): Guard {
+  /**
+   * The holds handed out by this guard, in this realm, by name.
+   *
+   * What makes an in-realm steal separable from a cross-page one. A lock is
+   * exclusive across the origin, so a live entry here is proof that no other
+   * page holds the name — and being in this realm, it is something that can be
+   * drained before the name moves on.
+   */
+  const mine = new Map<string, Entry>()
+
+  const grant = async (
+    name: string,
+    request: {
+      readonly mode: 'exclusive'
+      readonly ifAvailable?: boolean
+      readonly steal?: boolean
+    },
+  ): Promise<GuardHold | undefined> => {
+    let release = (): void => {}
+    const over = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    const entry: Entry = { held: false }
+    let granted = (_: boolean): void => {}
+    const decided = new Promise<boolean>((resolve) => {
+      granted = resolve
+    })
+
+    const requested = manager.request(name, request, async (lock) => {
+      // Null means the lock was not available, which `ifAvailable` reports
+      // rather than waiting for. Waiting is the wrong answer here: an account
+      // whose store is busy should say so, not hang.
+      if (lock === null) {
+        granted(false)
+
+        return
+      }
+
+      entry.held = true
+      granted(true)
+      await over
+    })
+
+    // A lock stolen from underneath rejects the request that held it. Caught so
+    // that a superseded hold reports `held: false` rather than producing an
+    // unhandled rejection in a page that did nothing wrong.
+    requested.catch(() => {
+      entry.held = false
+      release()
+    })
+
+    if (!(await decided)) return undefined
+
+    mine.set(name, entry)
+
+    return {
+      get held() {
+        return entry.held
+      },
+      drains(wait: () => Promise<void>) {
+        entry.quiet = wait
+      },
+      async release() {
+        entry.held = false
+        // What this page admitted finishes before the lock goes, so another
+        // page cannot begin while it is still writing.
+        await entry.quiet?.()
+        if (mine.get(name) === entry) mine.delete(name)
+        release()
+        await requested.catch(() => undefined)
+      },
+    }
+  }
+
   return {
     scope: 'origin',
+    // Never granted without the superseded holder having drained: either it is
+    // in this realm and is drained below, or the lock was already free.
+    drainsOnSteal: true,
 
     async acquire(name: string, options: AcquireOptions = {}): Promise<GuardHold | undefined> {
-      let release = (): void => {}
-      const over = new Promise<void>((resolve) => {
-        release = resolve
-      })
+      const local = options.steal === true ? mine.get(name) : undefined
 
-      const entry = { held: false }
-      let granted = (_: boolean): void => {}
-      const decided = new Promise<boolean>((resolve) => {
-        granted = resolve
-      })
+      if (local?.held === true) {
+        // Held here, so nothing outside can have it. Refuse anything further
+        // from it, wait for what it already admitted, and only then take the
+        // lock out from under what is now an empty hold.
+        local.held = false
+        await local.quiet?.()
 
-      const requested = manager.request(
-        name,
-        options.steal === true
-          ? { mode: 'exclusive', steal: true }
-          : { mode: 'exclusive', ifAvailable: true },
-        async (lock) => {
-          // Null means the lock was not available, which `ifAvailable` reports
-          // rather than waiting for. Waiting is the wrong answer here: an
-          // account whose store is busy should say so, not hang.
-          if (lock === null) {
-            granted(false)
-
-            return
-          }
-
-          entry.held = true
-          granted(true)
-          await over
-        },
-      )
-
-      // A lock stolen from underneath rejects the request that held it. Caught
-      // so that a superseded hold reports `held: false` rather than producing
-      // an unhandled rejection in a page that did nothing wrong.
-      requested.catch(() => {
-        entry.held = false
-        release()
-      })
-
-      if (!(await decided)) return undefined
-
-      let quiet: (() => Promise<void>) | undefined
-
-      return {
-        get held() {
-          return entry.held
-        },
-        drains(wait: () => Promise<void>) {
-          quiet = wait
-        },
-        async release() {
-          entry.held = false
-          // What this page admitted finishes before the lock goes, so another
-          // page cannot begin while it is still writing. A lock *stolen* from
-          // this page is a different matter, and §4 of `docs/storage.md` says
-          // so: the steal happens in another page, and nothing here is asked.
-          await quiet?.()
-          release()
-          await requested.catch(() => undefined)
-        },
+        return await grant(name, { mode: 'exclusive', steal: true })
       }
+
+      // Either free or another page's. `ifAvailable` is what tells those apart,
+      // and taking it when free is exactly the recovery a closed page needs.
+      return await grant(name, { mode: 'exclusive', ifAvailable: true })
     },
   }
 }

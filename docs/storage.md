@@ -278,14 +278,41 @@ the run it is superseding.
 | --- | --- | --- |
 | Orderly release, any runtime | ✓ | ✓ |
 | Take-over inside one process | ✓ | ✓ |
-| Take-over from another page of an origin | ✓ | ✗ — the steal happens in the other page |
-| Take-over from another process | ✓ | ✗ — nothing here can see it |
+| Take-over inside one browser page | ✓ | ✓ |
+| Take-over from another page of an origin | ✓ | refused — see below |
+| Take-over from another process | ✓ | the caller's assertion — see below |
 
-The rows marked ✗ are the honest limit rather than an oversight. A generic key-value adapter has
-no way to cancel or fence a write already handed to it, and this does not pretend otherwise: what
-it offers there is the refusal, which narrows the window without closing it. Closing it needs a
-store that can fence at its own mutation boundary — a conditional write, an advisory lock — and a
-caller with one supplies it as `storageGuard`.
+**A take-over that cannot drain is refused rather than forced.** The invariant is that a
+successor must not begin using an area while the run before it can still complete a conflicting
+write, and `takeOverStorage` is held to that rather than excused from it.
+
+The case this decides is the fourth row: a second tab of the same origin, holding the lock, with
+a write inside the adapter. The Web Locks API does have a steal, and what a steal does is take
+the lock and *then* reject the request that held it — the other page learns it lost the lock
+afterwards, from a context this one cannot reach into, with whatever it had begun still running.
+So `takeOverStorage` does not use it across pages. Asking is answered with
+`StorageOwnershipError` naming what holds the area:
+
+> taking the storage for the account 'account' over was refused: another page of this browser
+> origin still holds the area, and a run that still holds it is a run that is still writing to
+> it. `takeOverStorage` recovers an area a previous run left behind; it does not take one away
+> from a run that is going.
+
+Refusing costs nothing, because the situations people actually need are the other rows. A page
+that closed or crashed has already had its lock released by the browser, so recovery is an
+ordinary acquire with no flag at all. Two `Account`s in **one** page are a case the guard can
+answer for — both holds are in that realm — so the one being replaced is drained first, exactly
+as two in one process are. `Guard.drainsOnSteal` is where that property is declared, and a guard
+supplied from outside that answers `false` is refused a take-over outright.
+
+The fifth row is the one genuine limit, and it belongs to the adapter rather than to the guard:
+with a persistent store behind a process-wide guard, another process cannot be seen at all —
+not to drain it, and not to know whether it exists. `takeOverStorage` there is a caller's
+assertion that the other run has **ended**, and a run that has ended cannot complete a write. A
+run that has not ended was never excluded by a process-wide guard in the first place, which is
+what `AreaLease.scope` reports. A caller who wants that row closed supplies a `storageGuard`
+whose reach covers the other process — a database advisory lock, a lock file — and the same
+rules then apply to it.
 
 **Crash recovery stays ordinary.** A page that closes takes its locks with it, and a process
 that dies takes its registry with it — so where the guard's reach covers everyone who could

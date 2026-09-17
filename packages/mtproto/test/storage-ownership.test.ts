@@ -25,6 +25,7 @@ import {
   memory,
   namespaced,
   processGuard,
+  webLocksGuard,
 } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { areaFor, claimArea, StorageOwnershipError } from '../src/storage/ownership.js'
@@ -796,51 +797,51 @@ describe('a store that offers no way to take a name', () => {
  * So the interleaving is chosen rather than hoped for: admit a write, suspend
  * it inside the adapter, change ownership, then let it finish.
  */
-describe('a write admitted before ownership changed', () => {
-  /** A store whose writes can be suspended after admission. */
-  function suspendable(raw = new Map<string, unknown>()) {
-    const waiting: Array<() => void> = []
-    let holdWrites = false
+/** A store whose writes can be suspended after admission. */
+function suspendable(raw = new Map<string, unknown>()) {
+  const waiting: Array<() => void> = []
+  let holdWrites = false
 
-    return {
-      raw,
-      hold() {
-        holdWrites = true
-      },
-      get suspended() {
-        return waiting.length
-      },
-      releaseAll() {
-        holdWrites = false
-        for (const resume of waiting.splice(0)) resume()
-      },
-      store: {
-        get: (key: string) => Promise.resolve(raw.get(key)),
-        async set(key: string, value: unknown) {
-          // Only the account's own data is suspended. Holding the claim write
-          // too would suspend `release` and `claimArea` themselves, and the
-          // case would pass because ownership never changed rather than
-          // because a write was drained.
-          if (holdWrites && !key.endsWith('claim')) {
-            await new Promise<void>((resume) => waiting.push(resume))
-          }
+  return {
+    raw,
+    hold() {
+      holdWrites = true
+    },
+    get suspended() {
+      return waiting.length
+    },
+    releaseAll() {
+      holdWrites = false
+      for (const resume of waiting.splice(0)) resume()
+    },
+    store: {
+      get: (key: string) => Promise.resolve(raw.get(key)),
+      async set(key: string, value: unknown) {
+        // Only the account's own data is suspended. Holding the claim write
+        // too would suspend `release` and `claimArea` themselves, and the
+        // case would pass because ownership never changed rather than
+        // because a write was drained.
+        if (holdWrites && !key.endsWith('claim')) {
+          await new Promise<void>((resume) => waiting.push(resume))
+        }
 
-          raw.set(key, value)
-        },
-        delete: (key: string) => {
-          raw.delete(key)
-
-          return Promise.resolve()
-        },
-        async *keys(prefix?: string) {
-          for (const key of [...raw.keys()]) {
-            if (key.startsWith(prefix ?? '')) yield key
-          }
-        },
+        raw.set(key, value)
       },
-    }
+      delete: (key: string) => {
+        raw.delete(key)
+
+        return Promise.resolve()
+      },
+      async *keys(prefix?: string) {
+        for (const key of [...raw.keys()]) {
+          if (key.startsWith(prefix ?? '')) yield key
+        }
+      },
+    },
   }
+}
 
+describe('a write admitted before ownership changed', () => {
   it('finishes before an orderly release hands the area on', async () => {
     // The guarantee. Releasing waits for what it admitted, so a successor
     // cannot begin while an earlier run's write is still in the adapter.
@@ -946,5 +947,220 @@ describe('a write admitted before ownership changed', () => {
 
     expect(second.held).toBe(true)
     expect(gate.raw.get(`${areaFor('alice')}claim`)).toMatchObject({ holder: run('two') })
+  })
+})
+
+describe('taking an area over from a run that has not finished with it', () => {
+  /**
+   * The Web Locks API, to its own rules, so two "pages" can share one origin.
+   *
+   * A browser is where this question is real: two tabs of a site reach one
+   * `localStorage`, and the API that keeps them apart is the origin's. The
+   * three rules that matter are modelled exactly — one holder at a time,
+   * `ifAvailable` answers `null` rather than queueing, and a steal takes the
+   * lock and rejects the request that held it, telling that page afterwards.
+   *
+   * `tools/browser` runs the same situation against the browser's own
+   * implementation. This is what lets the decision be asserted on every run.
+   */
+  function origin() {
+    const locks = new Map<string, { lose: (reason: Error) => void }>()
+
+    return {
+      manager: {
+        request(
+          name: string,
+          options: { readonly ifAvailable?: boolean; readonly steal?: boolean },
+          callback: (lock: unknown) => Promise<void>,
+        ): Promise<void> {
+          const incumbent = locks.get(name)
+
+          if (incumbent !== undefined) {
+            if (options.steal !== true) return callback(null)
+
+            locks.delete(name)
+            incumbent.lose(new Error('AbortError'))
+          }
+
+          return new Promise<void>((resolve, reject) => {
+            const own = { lose: reject }
+            locks.set(name, own)
+            const letGo = () => {
+              if (locks.get(name) === own) locks.delete(name)
+            }
+
+            void callback({ name }).then(
+              () => {
+                letGo()
+                resolve()
+              },
+              (error: unknown) => {
+                letGo()
+                reject(error as Error)
+              },
+            )
+          })
+        },
+      },
+    }
+  }
+
+  /** A store every page of the origin can reach, as `localStorage` is. */
+  const originStore = (raw: Map<string, unknown>) => ({
+    ...memoryOver(raw),
+    info: { driver: 'web', persistent: true },
+  })
+
+  it('refuses a takeover while another page of the origin still holds it', async () => {
+    // The case that used to be a silent steal. The other page is live: taking
+    // the lock would tell it afterwards, and a page told afterwards is a page
+    // that was still writing. So the successor is refused and told what holds
+    // the area, rather than being let in beside it.
+    const shared = new Map<string, unknown>()
+    const store = originStore(shared)
+    const web = origin()
+
+    const firstPage = await claimArea(store, {
+      name: 'alice',
+      holder: run('page-one'),
+      guard: webLocksGuard(web.manager),
+    })
+
+    await expect(
+      claimArea(store, {
+        name: 'alice',
+        holder: run('page-two'),
+        takeOver: true,
+        guard: webLocksGuard(web.manager),
+      }),
+    ).rejects.toThrow(/another page of this browser origin still holds the area/)
+
+    // And the page that does hold it was not disturbed by being asked.
+    expect(firstPage.held).toBe(true)
+    await firstPage.storage.set('auth:dc2:key', 'still mine')
+    expect(shared.get(`${areaFor('alice')}auth:dc2:key`)).toBe('still mine')
+  })
+
+  it('lets the next page in once the previous one has genuinely gone', async () => {
+    // The other half, and why the refusal above costs nothing. A page that
+    // closed had its lock released by the browser, so recovery is an ordinary
+    // acquire — no flag, nobody asked to confirm anything, and what the
+    // previous page wrote is still there.
+    const shared = new Map<string, unknown>()
+    const store = originStore(shared)
+    const web = origin()
+
+    const firstPage = await claimArea(store, {
+      name: 'alice',
+      holder: run('page-one'),
+      guard: webLocksGuard(web.manager),
+    })
+    await firstPage.storage.set('auth:dc2:key', 'from the first page')
+    await firstPage.release()
+
+    const secondPage = await claimArea(store, {
+      name: 'alice',
+      holder: run('page-two'),
+      guard: webLocksGuard(web.manager),
+    })
+
+    expect(secondPage.held).toBe(true)
+    expect(await secondPage.storage.get('auth:dc2:key')).toBe('from the first page')
+  })
+
+  it('keeps other accounts usable while one is refused', async () => {
+    // Exclusion is per account, not per store. A page refused `alice` because
+    // another page has it is not refused `bob`, whom nobody holds.
+    const shared = new Map<string, unknown>()
+    const store = originStore(shared)
+    const web = origin()
+
+    await claimArea(store, {
+      name: 'alice',
+      holder: run('page-one'),
+      guard: webLocksGuard(web.manager),
+    })
+
+    await expect(
+      claimArea(store, {
+        name: 'alice',
+        holder: run('page-two'),
+        takeOver: true,
+        guard: webLocksGuard(web.manager),
+      }),
+    ).rejects.toThrow(StorageOwnershipError)
+
+    const bob = await claimArea(store, {
+      name: 'bob',
+      holder: run('page-two'),
+      guard: webLocksGuard(web.manager),
+    })
+
+    expect(bob.held).toBe(true)
+    await bob.storage.set('auth:dc2:key', 'bob own key')
+    expect(shared.get(`${areaFor('bob')}auth:dc2:key`)).toBe('bob own key')
+  })
+
+  it('drains a page that is superseding itself', async () => {
+    // Two `Account`s in one page are a case the guard *can* answer for: both
+    // holds are in this realm, so the one being replaced is drained before the
+    // lock moves, exactly as the process registry does.
+    const gate = suspendable()
+    const store = { ...gate.store, info: { driver: 'web', persistent: true } }
+    const guard = webLocksGuard(origin().manager)
+
+    const first = await claimArea(store, { name: 'alice', holder: run('one'), guard })
+    gate.hold()
+    const writing = first.storage.set('auth:dc2:key', 'from the first run')
+    await settle()
+
+    let taken = false
+    const taking = claimArea(store, {
+      name: 'alice',
+      holder: run('two'),
+      takeOver: true,
+      guard,
+    }).then((lease) => {
+      taken = true
+
+      return lease
+    })
+
+    await settle()
+    expect(taken, 'the successor started while the first run was still writing').toBe(false)
+
+    gate.releaseAll()
+    await writing
+    const second = await taking
+
+    await second.storage.set('auth:dc2:key', 'from the second run')
+    expect(gate.raw.get(`${areaFor('alice')}auth:dc2:key`)).toBe('from the second run')
+  })
+
+  it('refuses a guard that takes names without draining them', async () => {
+    // Nothing in the package builds one, and a caller may supply anything. A
+    // guard that admits it cannot answer for the holder it replaces is refused
+    // the takeover rather than trusted with it.
+    const abrupt: Guard = {
+      scope: 'process',
+      drainsOnSteal: false,
+      acquire: () =>
+        Promise.resolve({ held: true, release: () => Promise.resolve(), drains: () => {} }),
+    }
+
+    await expect(
+      claimArea(memoryOver(new Map()), {
+        name: 'alice',
+        holder: run('two'),
+        takeOver: true,
+        guard: abrupt,
+      }),
+    ).rejects.toThrow(/cannot say that the previous run has finished writing/)
+
+    // Opening it normally through the same guard is untouched: the refusal is
+    // about taking an area from somebody, not about the guard existing.
+    await expect(
+      claimArea(memoryOver(new Map()), { name: 'alice', holder: run('one'), guard: abrupt }),
+    ).resolves.toBeDefined()
   })
 })

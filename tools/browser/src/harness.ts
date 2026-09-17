@@ -52,9 +52,11 @@ interface PageElement {
   innerHTML: string
   textContent: string | null
   id: string
+  src: string
   readonly style: Record<string, string>
   readonly dataset: Record<string, string>
   append(child: PageElement): void
+  remove(): void
 }
 
 const page = globalThis as unknown as {
@@ -64,6 +66,103 @@ const page = globalThis as unknown as {
   readonly document: {
     getElementById(id: string): PageElement | null
     createElement(tag: string): PageElement
+    readonly body: PageElement
+  }
+  addEventListener(kind: string, handler: (event: { data: unknown }) => void): void
+  removeEventListener(kind: string, handler: (event: { data: unknown }) => void): void
+}
+
+/** A frame this page embedded, and the conversation it is having with it. */
+interface SecondPage {
+  /** Tell it to do one thing, and wait for what it says back. */
+  ask(act: 'claim' | 'land' | 'release', name?: string): Promise<Record<string, unknown>>
+  /** End the context without letting it release anything, as a closed tab does. */
+  destroy(): void
+}
+
+/** How long the second page has to answer before it is called unresponsive. */
+const FRAME_TIMEOUT = 15_000
+
+/** Let the browser get on with something for a moment. */
+const settleFor = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Embed a second page of this origin, and wait until it is listening.
+ *
+ * A frame rather than a tab because a frame can be opened and destroyed from
+ * here, and for this question the two are the same thing: a separate browsing
+ * context of the same origin, with its own memory, its own module graph and no
+ * way for either side to reach into the other. It shares what matters — the
+ * store and the lock manager — and shares nothing else, which is exactly the
+ * situation two tabs are in.
+ */
+async function embedSecondPage(): Promise<SecondPage> {
+  const frame = page.document.createElement('iframe')
+  frame.style['display'] = 'none'
+
+  let nextId = 1
+  const pending = new Map<number, (outcome: Record<string, unknown>) => void>()
+  let ready = (): void => {}
+  const listening = new Promise<void>((resolve) => {
+    ready = resolve
+  })
+
+  const onMessage = (event: { data: unknown }): void => {
+    const message = event.data as Record<string, unknown> | null
+    if (message?.['yuigram'] !== 'second-page') return
+
+    if (message['ready'] === true) {
+      ready()
+
+      return
+    }
+
+    const settle = pending.get(message['id'] as number)
+    if (settle !== undefined) {
+      pending.delete(message['id'] as number)
+      settle(message)
+    }
+  }
+
+  page.addEventListener('message', onMessage)
+  frame.src = '/second-page'
+  page.document.body.append(frame)
+
+  await Promise.race([
+    listening,
+    settleFor(FRAME_TIMEOUT).then(() => {
+      throw new Error('the second page never said it was listening')
+    }),
+  ])
+
+  return {
+    async ask(act, name) {
+      const id = nextId
+      nextId += 1
+
+      const answered = new Promise<Record<string, unknown>>((resolve) => {
+        pending.set(id, resolve)
+      })
+
+      const target = (
+        frame as unknown as { contentWindow: { postMessage(m: unknown, o: string): void } }
+      ).contentWindow
+      target.postMessage(
+        { yuigram: 'second-page', id, act, ...(name === undefined ? {} : { name }) },
+        '*',
+      )
+
+      return await Promise.race([
+        answered,
+        settleFor(FRAME_TIMEOUT).then<Record<string, unknown>>(() => {
+          throw new Error(`the second page never answered '${act}'`)
+        }),
+      ])
+    },
+    destroy() {
+      page.removeEventListener('message', onMessage)
+      frame.remove()
+    },
   }
 }
 
@@ -655,6 +754,134 @@ async function run(): Promise<void> {
       expect(refusal !== undefined, 'a second run was allowed to take the area')
 
       return `refused: ${String(refusal).slice(0, 80)}…`
+    })
+
+    /**
+     * Two pages of one origin, which is the situation a single page cannot make.
+     *
+     * Everything above about ownership happens inside one document, where the
+     * guard can see both holders and can therefore drain the one it replaces.
+     * The case that matters in a browser is the other one: two tabs, or a page
+     * and a frame, sharing an origin — so sharing `localStorage` and sharing
+     * the lock manager — and sharing no memory at all. Neither can wait for the
+     * other's half-finished write, because neither can see it.
+     *
+     * The frame below is a real second browsing context, served from this same
+     * origin. It claims an account area and parks a write inside the adapter,
+     * and then this page tries to take that area away from it.
+     */
+    const second = await embedSecondPage()
+
+    await check('holds an account area from a second page of this origin', async () => {
+      const reply = await second.ask('claim', 'frank')
+
+      expect(reply['ok'] === true, `the second page could not claim: ${String(reply['error'])}`)
+      expect(
+        reply['scope'] === 'origin',
+        `the second page reports scope '${String(reply['scope'])}'`,
+      )
+
+      return `the frame holds 'frank' across the origin, with a write parked in the adapter`
+    })
+
+    await check('refuses to take an area a live second page still holds', async () => {
+      // The invariant, in the one place it can actually be violated. The frame
+      // holds the lock and has a write it has not finished. Taking the lock
+      // would tell it afterwards — and a page told afterwards is a page that
+      // was still writing — so this is refused rather than forced.
+      const shared = web({ prefix: 'browser-check:twopage:' })
+      let refusal: string | undefined
+
+      try {
+        await claimArea(shared, { name: 'frank', holder: 'harness', takeOver: true })
+      } catch (error) {
+        expect(error instanceof StorageOwnershipError, `refused with ${String(error)}`)
+        refusal = (error as Error).message
+      }
+
+      expect(refusal !== undefined, 'this page was allowed to take a live page’s area')
+      expect(
+        String(refusal).includes('another page of this browser origin'),
+        `refused, but for the wrong reason: ${String(refusal)}`,
+      )
+
+      return `refused: ${String(refusal).slice(0, 90)}…`
+    })
+
+    await check('leaves the other page still holding what it holds', async () => {
+      // Being asked must not disturb the page that was asked about. Its write
+      // is allowed to land now, and it lands — so nothing about the refusal
+      // broke the run that was doing the work.
+      const reply = await second.ask('land')
+
+      expect(reply['ok'] === true, `the parked write did not land: ${String(reply['error'])}`)
+      expect(
+        page.localStorage.getItem(`browser-check:twopage:${areaFor('frank')}auth:dc2:key`) !== null,
+        'the second page’s write never reached the store',
+      )
+
+      return 'the second page finished the write this page had tried to interrupt'
+    })
+
+    await check('keeps other accounts open while one is refused', async () => {
+      // Exclusion is per account. Being refused `frank` says nothing about
+      // `grace`, whom no page holds, and a page that could not open one
+      // account must still be able to open another.
+      const shared = web({ prefix: 'browser-check:twopage:' })
+      const grace = await claimFor(shared, 'grace', 'harness')
+
+      expect(grace.held, 'a second account was refused along with the first')
+      await grace.storage.set('auth:dc2:key', 'grace’s own')
+      await grace.release()
+
+      return 'a different account on the same store opened and wrote normally'
+    })
+
+    await check('opens the area once the other page has released it', async () => {
+      // Cooperative shutdown: the other page let go on purpose. This one then
+      // takes the area with an ordinary acquire and finds what was left there.
+      await second.ask('release')
+
+      const shared = web({ prefix: 'browser-check:twopage:' })
+      const mine = await claimFor(shared, 'frank', 'harness-after-release')
+
+      expect(mine.held, 'the area was not handed on after a clean release')
+      expect(
+        (await mine.storage.get('auth:dc2:key')) === 'from the second page',
+        'what the other page wrote was not there',
+      )
+      await mine.release()
+
+      return 'the area transferred cleanly, with the other page’s data intact'
+    })
+
+    await check('opens the area after the other page is gone entirely', async () => {
+      // Abrupt termination, which is the case a flag exists for everywhere
+      // else. A browsing context that is destroyed takes its locks with it —
+      // the browser releases them, nobody is asked to confirm anything, and a
+      // page that crashed reopens exactly like a page that closed.
+      const other = await embedSecondPage()
+      await other.ask('claim', 'heidi')
+
+      let refused = false
+      try {
+        await claimFor(web({ prefix: 'browser-check:twopage:' }), 'heidi', 'harness')
+      } catch {
+        refused = true
+      }
+      expect(refused, 'a live second page did not exclude this one at all')
+
+      // Destroying the frame is this harness's stand-in for the tab being
+      // closed or the process being killed: the context ends without being
+      // asked, mid-write, and never releases anything itself.
+      other.destroy()
+      await settleFor(200)
+
+      const mine = await claimFor(web({ prefix: 'browser-check:twopage:' }), 'heidi', 'after-gone')
+      expect(mine.held, 'the area was not recoverable after the holder was destroyed')
+      await mine.release()
+
+      return 'a destroyed page released its lock, and the area reopened with no flag'
     })
   } finally {
     await check('stops and lets go of what it held', async () => {

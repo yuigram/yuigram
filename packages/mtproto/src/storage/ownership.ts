@@ -51,6 +51,37 @@
  * holds the area — and `takeOverStorage` is how a caller that knows the other
  * run is gone says so. None of that is exclusion, and this module does not call
  * it exclusion.
+ *
+ * **What a takeover is, and what it is not.** The invariant is that a successor
+ * must not begin using an area while the run before it can still complete a
+ * conflicting write, and `takeOverStorage` is held to it rather than excused
+ * from it. It recovers an area whose holder has *gone*; it does not take one
+ * away from a holder that is going. The three cases are separated by what can
+ * be established rather than by what would be convenient:
+ *
+ * ```
+ *   the previous run released    ──> drained on the way out; adopted
+ *   it ended abruptly            ──> its writes ended with it; adopted
+ *   it is live and reachable     ──> drained first, then handed on
+ *   it is live and unreachable   ──> refused, naming what holds it
+ * ```
+ *
+ * The last row is the one that used to be a silent steal. In a browser it is
+ * another page of the origin: its lock is live, the Web Locks API would take
+ * the lock and tell that page *afterwards*, and a page that is told afterwards
+ * is a page that was still writing. So it is refused. Nothing is lost by that,
+ * because a page that closed or crashed has already had its lock released by
+ * the browser, and that is the second row — reached by an ordinary acquire,
+ * with no flag and nobody asked to confirm anything.
+ *
+ * The limit this leaves is the honest one, and it is a limit of the adapter
+ * rather than of the guard: where the other run is in **another process** over a
+ * persistent store, nothing here can see it at all — not to drain it, and not
+ * to know whether it exists. `takeOverStorage` is a caller's assertion that it
+ * has ended, and a run that has ended cannot complete a write. A run that has
+ * *not* ended was never excluded by a process-scoped guard in the first place,
+ * which is what {@link AreaLease.scope} reports so that nothing downstream
+ * assumes otherwise. See §4 of `docs/storage.md`.
  */
 
 import {
@@ -154,6 +185,12 @@ export interface ClaimOptions {
    * run that is gone is adopted without anybody being asked. Where the guard
    * does not reach that far, a claim naming another run might belong to a live
    * process, and this is how a caller that knows better says otherwise.
+   *
+   * **It is recovery, not eviction.** It will not hand the area on while the run
+   * before it is live and still reachable-but-undrainable — another page of the
+   * same origin — and it will not accept a guard that takes names abruptly. Both
+   * refuse with a message saying what holds the area. What it does do is stop
+   * asking for confirmation once the previous holder has genuinely finished.
    *
    * It does not let one account take another's area. That is not a stale claim,
    * it is the wrong store, and no flag here makes it the right one.
@@ -326,16 +363,43 @@ export async function claimArea(store: KV<unknown>, options: ClaimOptions): Prom
   const area = namespaced(store, areaFor(options.name))
   const exclusive = coversEveryReader(guard, store)
 
+  // A takeover through a guard that cannot answer for the holder it replaces is
+  // the one thing this refuses outright. Its whole job is to let a successor
+  // start; a successor that starts while the old run can still finish a write
+  // is the corruption the areas exist to prevent, arrived at deliberately.
+  if (options.takeOver === true && !guard.drainsOnSteal) {
+    throw new StorageOwnershipError(
+      `taking the storage for the account '${options.name}' over was refused: the guard ` +
+        'supplied for it takes a name abruptly and cannot say that the previous run has ' +
+        'finished writing. A successor that starts while the old run is still inside a ' +
+        'write is what areas exist to prevent. Supply a guard that drains what it ' +
+        'supersedes, or stop the other run and open this one normally.',
+    )
+  }
+
   const hold = await guard.acquire(guardName(store, options.name), {
     ...(options.takeOver === true ? { steal: true } : {}),
   })
 
   if (hold === undefined) {
+    // A plain refusal and a refused takeover are different situations and get
+    // different answers. Being refused *while asking to take over* means the
+    // area is held by a run this guard can see but cannot reach into — another
+    // page of this origin — so the holder is live, and there is nothing to
+    // recover from.
     throw new StorageOwnershipError(
-      `the account '${options.name}' is already open on this storage in this ` +
-        `${guard.scope === 'origin' ? 'browser origin' : 'process'}. Two runs writing one ` +
-        'area overwrite each other’s authorization keys. Give this account a store or a ' +
-        'name of its own, or stop the run that has it.',
+      options.takeOver === true
+        ? `taking the storage for the account '${options.name}' over was refused: another ` +
+            `${guard.scope === 'origin' ? 'page of this browser origin' : 'holder in this process'}` +
+            ' still holds the area, and a run that still holds it is a run that is still ' +
+            'writing to it. `takeOverStorage` recovers an area a previous run left behind; ' +
+            'it does not take one away from a run that is going. Close that page, or wait ' +
+            'for it to stop — an area whose holder has genuinely gone is reopened without ' +
+            'any flag at all.'
+        : `the account '${options.name}' is already open on this storage in this ` +
+            `${guard.scope === 'origin' ? 'browser origin' : 'process'}. Two runs writing one ` +
+            'area overwrite each other’s authorization keys. Give this account a store or a ' +
+            'name of its own, or stop the run that has it.',
     )
   }
 
