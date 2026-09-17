@@ -87,6 +87,7 @@ import type {
   StarsTransaction,
   TypeBotBusinessConnection,
   TypeBusinessChatLink,
+  TypeDocument,
   TypeEmojiStatus,
   TypeInputBotInlineResult,
   TypeInputMedia,
@@ -151,22 +152,83 @@ import { isUpdateSource, UPDATE_CONTAINERS } from './normalize/events.js'
 import type { PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type {
+  AllStoriesFilter,
   AllStoriesOptions,
+  AllStoriesPage,
+  BoostFilter,
+  BoostPage,
   BoostWalkOptions,
+  ChatEventFilter,
   ChatEventOptions,
+  ChatEventPage,
+  DialogFilter,
+  DialogOptions,
+  DialogPage,
+  GiftFilter,
+  GiftPage,
   GiftWalkOptions,
+  GlobalSearchFilter,
+  GlobalSearchOptions,
+  HistoryFilter,
+  HistoryOptions,
+  ImporterFilter,
   ImporterWalkOptions,
+  InviteFilter,
+  InviteLinkPage,
+  InviteMemberPage,
   InviteWalkOptions,
+  MemberFilter,
   MemberOptions,
+  MemberPage,
+  MessagePage,
+  MusicPage,
+  PageOptions,
+  PhotoPage,
+  PostPage,
+  PostSearchFilter,
+  PostSearchOptions,
+  ProfileStoriesPage,
+  ReactionFilter,
+  ReactionPage,
   ReactionWalkOptions,
+  SearchFilter,
   SearchOptions,
+  SimilarChannelsPage,
+  StarsFilter,
+  StarsPage,
   StarsWalkOptions,
+  StoryFilter,
+  StoryViewerPage,
   StoryWalkOptions,
+  TopicFilter,
+  TopicPage,
   TopicWalkOptions,
+  ViewerFilter,
   ViewerWalkOptions,
   WalkOptions,
 } from './paging/walk.js'
 import {
+  allStoriesPage,
+  boostsPage,
+  chatEventsPage,
+  dialogsPage,
+  forumTopicsPage,
+  hashtagPage,
+  historyPage,
+  inviteLinksPage,
+  inviteMembersPage,
+  membersPage,
+  postSearchPage,
+  profilePhotosPage,
+  profileStoriesPage,
+  reactionsPage,
+  savedGiftsPage,
+  savedMusicPage,
+  searchGlobalPage,
+  searchPage,
+  similarChannelsPage,
+  starsTransactionsPage,
+  storyViewersPage,
   walkAllStories,
   walkBoosts,
   walkChatEvents,
@@ -178,10 +240,12 @@ import {
   walkInviteLinks,
   walkInviteMembers,
   walkMembers,
+  walkPostSearch,
   walkProfilePhotos,
   walkProfileStories,
   walkReactions,
   walkSavedGifts,
+  walkSavedMusic,
   walkSearch,
   walkStarsTransactions,
   walkStoryViewers,
@@ -935,7 +999,7 @@ export class Account<Ext = unknown> {
    * list is many requests and Telegram limits accounts that make many: how fast
    * to walk stays the caller's, which is what leaving it a generator preserves.
    */
-  dialogs(options?: WalkOptions): AsyncGenerator<DialogView, void, undefined> {
+  dialogs(options?: DialogOptions): AsyncGenerator<DialogView, void, undefined> {
     return walkDialogs(this, options)
   }
 
@@ -954,7 +1018,7 @@ export class Account<Ext = unknown> {
    */
   history(
     peer: string | PeerRef,
-    options?: WalkOptions,
+    options?: HistoryOptions,
   ): AsyncGenerator<MessageView, void, undefined> {
     return walkHistory(this, peer, options)
   }
@@ -989,7 +1053,7 @@ export class Account<Ext = unknown> {
    */
   searchGlobal(
     query: string,
-    options?: SearchOptions,
+    options?: GlobalSearchOptions,
   ): AsyncGenerator<MessageView, void, undefined> {
     return walkGlobalSearch(this, query, options)
   }
@@ -1023,7 +1087,7 @@ export class Account<Ext = unknown> {
    */
   searchHashtag(
     hashtag: string,
-    options?: WalkOptions,
+    options?: PostSearchOptions,
   ): AsyncGenerator<MessageView, void, undefined> {
     return walkHashtagSearch(this, hashtag, options)
   }
@@ -1243,6 +1307,201 @@ export class Account<Ext = unknown> {
     options?: GiftWalkOptions,
   ): AsyncGenerator<SavedStarGift, void, undefined> {
     return walkSavedGifts(this, owner, options)
+  }
+
+  /**
+   * Walk public posts matching text, across every channel.
+   *
+   * Telegram meters this search; a page read reports where the allowance
+   * stands. See {@link Account.searchPostsPage}.
+   */
+  searchPosts(
+    query: string,
+    options?: PostSearchOptions,
+  ): AsyncGenerator<MessageView, void, undefined> {
+    return walkPostSearch(this, query, options)
+  }
+
+  /** Walk the music on somebody's profile. */
+  savedMusicWalk(
+    user: string | PeerRef,
+    options?: WalkOptions,
+  ): AsyncGenerator<TypeDocument, void, undefined> {
+    return walkSavedMusic(this, user, options)
+  }
+
+  /**
+   * One page of this account's conversations, with the total and a cursor.
+   *
+   * ```ts
+   * const page = await account.dialogsPage({ size: 20 })
+   * console.log(page.total?.count, page.items.length)
+   * const more = page.next === undefined ? undefined : await account.dialogsPage({ cursor: page.next })
+   * ```
+   *
+   * The page reads beside every walk share this shape: `items`, the `total`
+   * Telegram reported (or `undefined` where it reported none), `next` (or
+   * `undefined` at the end), and the `peers` the answer described. A cursor
+   * continues only the list and filters that produced it.
+   */
+  async dialogsPage(options?: PageOptions & DialogFilter): Promise<DialogPage> {
+    return await dialogsPage(this, options)
+  }
+
+  /** One page of a conversation's messages, newest or oldest first. */
+  async historyPage(
+    peer: string | PeerRef,
+    options?: PageOptions & HistoryFilter,
+  ): Promise<MessagePage> {
+    return await historyPage(this, peer, options)
+  }
+
+  /** One page of a search in one conversation. */
+  async searchPage(
+    peer: string | PeerRef,
+    query: string,
+    options?: PageOptions & SearchFilter,
+  ): Promise<MessagePage> {
+    return await searchPage(this, peer, query, options)
+  }
+
+  /** One page of a search across every conversation. */
+  async searchGlobalPage(
+    query: string,
+    options?: PageOptions & GlobalSearchFilter,
+  ): Promise<MessagePage> {
+    return await searchGlobalPage(this, query, options)
+  }
+
+  /** One page of public posts carrying a hashtag. */
+  async searchHashtagPage(
+    hashtag: string,
+    options?: PageOptions & PostSearchFilter,
+  ): Promise<PostPage> {
+    return await hashtagPage(this, hashtag, options)
+  }
+
+  /** One page of public posts matching text, with the search allowance. */
+  async searchPostsPage(
+    query: string,
+    options?: PageOptions & PostSearchFilter,
+  ): Promise<PostPage> {
+    return await postSearchPage(this, query, options)
+  }
+
+  /** One page of a group's, supergroup's or channel's members. */
+  async membersPage(
+    peer: string | PeerRef,
+    options?: PageOptions & MemberFilter,
+  ): Promise<MemberPage> {
+    return await membersPage(this, peer, options)
+  }
+
+  /** One page of a channel's administration log. */
+  async chatEventsPage(
+    peer: string | PeerRef,
+    options?: PageOptions & ChatEventFilter,
+  ): Promise<ChatEventPage> {
+    return await chatEventsPage(this, peer, options)
+  }
+
+  /** One page of a conversation's invite links. */
+  async inviteLinksPage(
+    peer: string | PeerRef,
+    options?: PageOptions & InviteFilter,
+  ): Promise<InviteLinkPage> {
+    return await inviteLinksPage(this, peer, options)
+  }
+
+  /** One page of the accounts that came through invite links. */
+  async inviteMembersPage(
+    peer: string | PeerRef,
+    options?: PageOptions & ImporterFilter,
+  ): Promise<InviteMemberPage> {
+    return await inviteMembersPage(this, peer, options)
+  }
+
+  /** One page of the accounts that reacted to a message. */
+  async reactionsPage(
+    peer: string | PeerRef,
+    messageId: number,
+    options?: PageOptions & ReactionFilter,
+  ): Promise<ReactionPage> {
+    return await reactionsPage(this, peer, messageId, options)
+  }
+
+  /** One page of somebody's profile photos. */
+  async profilePhotosPage(user: string | PeerRef, options?: PageOptions): Promise<PhotoPage> {
+    return await profilePhotosPage(this, user, options)
+  }
+
+  /** One page of the music on somebody's profile, with the total. */
+  async savedMusicPage(user: string | PeerRef, options?: PageOptions): Promise<MusicPage> {
+    return await savedMusicPage(this, user, options)
+  }
+
+  /** The channels recommended alongside one, with the count Telegram gave. */
+  async similarChannelsPage(
+    chat: string | PeerRef,
+    options?: Pick<PageOptions, 'signal'>,
+  ): Promise<SimilarChannelsPage> {
+    return await similarChannelsPage(this, chat, options)
+  }
+
+  /** One page of a forum's topics, with how the forum orders them. */
+  async forumTopicsPage(
+    peer: string | PeerRef,
+    options?: PageOptions & TopicFilter,
+  ): Promise<TopicPage> {
+    return await forumTopicsPage(this, peer, options)
+  }
+
+  /** One page of the stories on a profile, with which are pinned to the top. */
+  async profileStoriesPage(
+    peer: string | PeerRef,
+    options?: PageOptions & StoryFilter,
+  ): Promise<ProfileStoriesPage> {
+    return await profileStoriesPage(this, peer, options)
+  }
+
+  /** One page of the stories of the accounts this one follows, with stealth mode. */
+  async allStoriesPage(
+    options?: Omit<PageOptions, 'size'> & AllStoriesFilter,
+  ): Promise<AllStoriesPage> {
+    return await allStoriesPage(this, options)
+  }
+
+  /** One page of a story's viewers, with its view, forward and reaction counts. */
+  async storyViewersPage(
+    peer: string | PeerRef,
+    storyId: number,
+    options?: PageOptions & ViewerFilter,
+  ): Promise<StoryViewerPage> {
+    return await storyViewersPage(this, peer, storyId, options)
+  }
+
+  /** One page of a channel's boosts. */
+  async boostsPage(
+    peer: string | PeerRef,
+    options?: PageOptions & BoostFilter,
+  ): Promise<BoostPage> {
+    return await boostsPage(this, peer, options)
+  }
+
+  /** One page of star or TON transactions, with the balance. */
+  async starsTransactionsPage(
+    peer: string | PeerRef,
+    options?: PageOptions & StarsFilter,
+  ): Promise<StarsPage> {
+    return await starsTransactionsPage(this, peer, options)
+  }
+
+  /** One page of the gifts an account or channel keeps. */
+  async savedGiftsPage(
+    owner: string | PeerRef,
+    options?: PageOptions & GiftFilter,
+  ): Promise<GiftPage> {
+    return await savedGiftsPage(this, owner, options)
   }
 
   /**

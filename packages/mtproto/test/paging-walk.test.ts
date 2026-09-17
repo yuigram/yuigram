@@ -566,16 +566,14 @@ describe('walking the members of a channel', () => {
     expect(client.asked[0]).toMatchObject({ filter: { _: 'channelParticipantsAdmins' } })
   })
 
-  it('refuses a conversation that does not keep members as a list', async () => {
-    // A basic group carries its members in its full description instead, so
-    // asking this way is a call that would be refused.
+  it('refuses a person, who has no members', async () => {
     const client = fake([])
 
     await expect(async () => {
       for await (const _ of walkMembers(client, '@someone')) {
         // never reached
       }
-    }).rejects.toThrow(/channel or supergroup/)
+    }).rejects.toThrow(/group, a supergroup or a channel/)
   })
 
   it('yields members read, not raw values', async () => {

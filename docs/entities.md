@@ -236,8 +236,8 @@ These have no entity class and are not gaps.
 ## 6. What the entity layer does not decide
 
 **Paging.** Iterating is not an entity question, and the answer lives on the client. `nextDialogs`
-works out where the next page begins without fetching it; `account.dialogs()` and
-`account.history(peer)` do the fetching, as async generators.
+works out where the next page begins without fetching it; the walks — `account.dialogs()`,
+`account.history(peer)` and the rest — do the fetching, as async generators.
 
 A generator was the resolution to what looked like a conflict. `normalize/paging.ts` says how many
 pages to ask for, how fast, and what to do with them are the caller's — and a generator decides
@@ -245,27 +245,66 @@ none of the three: nothing is requested until the loop asks for the next item, b
 the fetching, and `limit` is the caller's own answer. What it removes is the offset arithmetic,
 which is three fields that have to agree and the part a caller gets wrong.
 
-**Which policy a list is paged by** is the list's, not the layer's. Eighteen walks ship, using
-eight different ones, and they do not reduce to a shared helper without the helper being told which
-rule to apply:
+**Every walk has a page read beside it**, and the walk is a loop over it: `account.historyPage`,
+`account.membersPage`, `account.boostsPage` and the rest. A page is what a program needs when a
+list has to be shown with how many there are, stopped now and carried on later, or told apart from
+a list that has merely paused. It carries:
 
-| Policy | Continued by | The end is | Walks |
+| Field | What it is |
+| --- | --- |
+| `items` | The page, as the walk would have yielded it |
+| `total` | `{ count, precision }` as the answer gave it, or `undefined` where it gave none |
+| `next` | A cursor to continue from, or `undefined` where the list ends here |
+| `peers` | The users and conversations the answer described, where it described any |
+
+and whatever else that answer says about the list: a forum's ordering, the pinned-to-top stories,
+stealth mode, a story's counters, the star balance, the search allowance for public posts.
+
+`precision` is `exact` where the answer states a count without flagging it as estimated — or is
+the complete list, on a first request — `approximate` where the answer flags its own count as
+inexact, and `reported` where it gives a number and says nothing about how exact it is. A total is
+never the length of the page, and never zero standing in for "not said".
+
+A cursor is opaque, not secret: base64 over the list it belongs to, a fingerprint of the filters
+that produced it, and the position, with 64-bit values kept as integers. It is refused — before any
+request — when handed to a different list, to the same list with different filters, or when it is
+not a cursor. Peers inside it are references resolved through the account reading the next page,
+so a cursor never carries an access hash. `cursor` on a walk starts the walk from such a place, and
+`signal` stops a walk or a page read before its next request.
+
+**Which policy a list is paged by** is the list's, not the layer's. Twenty lists ship, using nine
+policies, and each list's rule is written once, in its page read:
+
+| Policy | Continued by | The end is | Lists |
 | --- | --- | --- | --- |
-| Message number | The oldest message of the page | The complete form, or a cursor that stopped moving | `history`, `search` |
+| Message number | The oldest message of the page, or the newest for `reverse` | The complete form, or a cursor that stopped moving | `history`, `search` |
 | Dialog offset | The last row's date, number and peer | The complete form | `dialogs` |
 | Rate, peer and number | The rate the answer gave, with the last message | No rate to continue from | `searchGlobal` |
-| Rate, peer and number, dated | The same, falling back to the last message's date | An empty page | `searchHashtag` |
-| Count into a live list | How many have been seen | An empty page, or the complete form | `members`, `profilePhotos` |
-| Opaque cursor | The exact string the server named | No cursor, or a cursor with an empty page | `reactions`, `boosts`, `starsTransactions`, `savedGifts`, `storyViewers` |
+| Rate, peer and number, dated | The same, falling back to the last message's date | The complete form, or an empty page | `searchHashtag`, `searchPosts` |
+| Count into a live list | How many have been seen | An empty page, or the complete form | `members`, `profilePhotos`, `savedMusic` |
+| Opaque cursor | The exact string the server named | No cursor, a cursor that stopped moving, or an empty page whose answer counts nothing | `reactions`, `boosts`, `starsTransactions`, `savedGifts`, `storyViewers` |
 | Several fields | The last entry's date and identifiers | An entry that carries none, or a cursor that stopped moving | `forumTopics`, `inviteLinks`, `inviteMembers` |
-| Identifier moving back | The oldest identifier of the page | A page that did not reach further back | `profileStories`, `chatEvents` |
+| Identifier moving back | The oldest identifier of the page | An empty page, or a cursor that stopped moving | `profileStories`, `chatEvents` |
 | State with a flag | The state, sent back as a continuation | The server saying there is no more | `allStories` |
 
-Two of those ends are easy to get wrong and invisible in what a walk yields, because an
-implementation that never terminates yields exactly the right items first. A server that names a
-cursor and returns nothing is a request that repeats forever. A last page that still carries a
-state is a list that starts again from where it ended. Both are tested by counting requests rather
-than by reading output.
+An empty page is not the end by itself. A page with nothing on it and a cursor that moves is a list
+that paused over a stretch the server left out, and it continues. What ends a list is the answer
+saying so — no cursor, the complete form, no more — or a cursor that would ask for the page just
+read, which would otherwise repeat for ever. Both kinds of end are tested by counting requests
+rather than by reading output, because an implementation that never terminates yields exactly the
+right items first.
+
+A basic group's members are not a list Telegram pages: they arrive whole, in the group's full
+description. `membersPage` reads them there and pages over the whole list locally, so its total is
+exact.
+
+**Chat folders are rules, applied here.** Telegram keeps a folder as conversations always in it,
+never in it and pinned in it, plus kinds of conversation to include and exclusions for read, muted
+and archived ones, and leaves applying them to the client. `account.dialogs({ folder })` reads the
+folder's pinned conversations first, then the conversation list with the rules applied in the order
+Telegram's own clients use: always-included wins, never-included loses, then the exclusions, then
+the kinds — where a bot matches only as a bot and the account itself counts as a contact. A shared
+folder is a fixed list of conversations and is read directly.
 
 A walk yields a view where reading the value needs interpretation — a union whose constructor is
 most of the answer, or a peer that has to become a reference — and the generated value itself where
@@ -287,9 +326,10 @@ every user and chat an answer described is written down before the walk yields �
 number read off one of these records is enough for `account.resolve({ kind, id })` afterwards,
 with no second lookup and no per-answer index to carry around.
 
-Two things the reference's richer photo type offers are **not** reproduced and are not planned: a
-single opaque `fileId` string, which is a Bot API concept this transport does not use, and typed
-selection of one thumbnail size, which is `photo.sizes` on the record.
+A photo or document can also be named by the opaque string Bot API clients use for files, through
+`fileIdOfPhoto` and `fileIdOfDocument`, and one such string turned back into a download with
+`fileFor` — see [mtproto.md](mtproto.md) §11. A particular thumbnail size is chosen with
+`thumbnail(photo, size)` and fetched with `thumbnailFile`.
 
 **Links.** A message's `t.me` address needs the conversation's username, which the message does
 not carry. It belongs on the client or the context — whichever holds the peer — not on a view

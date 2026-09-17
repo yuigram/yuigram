@@ -13,6 +13,12 @@
  *   channelParticipantLeft   ──> peer, and nothing else
  * ```
  *
+ * A basic group describes its members with three constructors of its own —
+ * `chatParticipant`, `chatParticipantAdmin`, `chatParticipantCreator` — which
+ * carry less: no rights, no bans, nobody who has left. The same view reads both
+ * families, so a caller listing members does not have to know which kind of
+ * group it is looking at, and what a basic group cannot say reads as absent.
+ *
  * As with every view here: it holds the value, computes on access, and reaches
  * nothing. Naming the person means reading the answer's users through
  * {@link PeerIndex}, and changing their standing is a call.
@@ -22,6 +28,7 @@ import type {
   TypeChannelParticipant,
   TypeChatAdminRights,
   TypeChatBannedRights,
+  TypeChatParticipant,
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
@@ -32,10 +39,15 @@ export type MemberStanding = 'member' | 'self' | 'creator' | 'administrator' | '
 /** Somebody's standing in a conversation, read. */
 export class MemberView {
   /** The value this reads. Everything else is a function of it. */
-  readonly raw: TypeChannelParticipant
+  readonly raw: TypeChannelParticipant | TypeChatParticipant
 
-  constructor(value: TypeChannelParticipant) {
+  constructor(value: TypeChannelParticipant | TypeChatParticipant) {
     this.raw = value
+  }
+
+  /** Whether this entry came from a basic group rather than a channel or supergroup. */
+  get inBasicGroup(): boolean {
+    return this.raw._.startsWith('chatParticipant')
   }
 
   /** Which of the six this is. */
@@ -44,8 +56,10 @@ export class MemberView {
       case 'channelParticipantSelf':
         return 'self'
       case 'channelParticipantCreator':
+      case 'chatParticipantCreator':
         return 'creator'
       case 'channelParticipantAdmin':
+      case 'chatParticipantAdmin':
         return 'administrator'
       case 'channelParticipantBanned':
         return 'restricted'
@@ -82,7 +96,9 @@ export class MemberView {
       this.raw._ === 'channelParticipant' ||
       this.raw._ === 'channelParticipantSelf' ||
       this.raw._ === 'channelParticipantAdmin' ||
-      this.raw._ === 'channelParticipantBanned'
+      this.raw._ === 'channelParticipantBanned' ||
+      this.raw._ === 'chatParticipant' ||
+      this.raw._ === 'chatParticipantAdmin'
     ) {
       return this.raw.date
     }
@@ -92,10 +108,15 @@ export class MemberView {
 
   /** Who invited them, where the entry says. */
   get invitedBy(): bigint | undefined {
-    if (this.raw._ === 'channelParticipantSelf') return this.raw.inviter_id
-    if (this.raw._ === 'channelParticipantAdmin') return this.raw.inviter_id
-
-    return undefined
+    switch (this.raw._) {
+      case 'channelParticipantSelf':
+      case 'channelParticipantAdmin':
+      case 'chatParticipant':
+      case 'chatParticipantAdmin':
+        return this.raw.inviter_id
+      default:
+        return undefined
+    }
   }
 
   /** Who made them an administrator, for one who is. */
@@ -170,12 +191,14 @@ export class MemberView {
   }
 
   /** The value again, so serializing a view serializes what it reads. */
-  toJSON(): TypeChannelParticipant {
+  toJSON(): TypeChannelParticipant | TypeChatParticipant {
     return this.raw
   }
 }
 
 /** Read one standing. Takes what an answer carries, including nothing. */
-export function readMember(value: TypeChannelParticipant | undefined): MemberView | undefined {
+export function readMember(
+  value: TypeChannelParticipant | TypeChatParticipant | undefined,
+): MemberView | undefined {
   return value === undefined ? undefined : new MemberView(value)
 }

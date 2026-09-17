@@ -60,6 +60,14 @@ function fake(
   const resolved: unknown[] = []
   let at = 0
 
+  // What an account would have written down from every answer it received.
+  const knownUsers = new Map<bigint, bigint>()
+  for (const answer of answers) {
+    for (const user of (answer as { users?: { id: bigint; access_hash?: bigint }[] }).users ?? []) {
+      if (user.access_hash !== undefined) knownUsers.set(user.id, user.access_hash)
+    }
+  }
+
   const next = (params: unknown) => {
     asked.push(params)
 
@@ -96,6 +104,16 @@ function fake(
     resolved,
     resolve(peer) {
       resolved.push(peer)
+
+      // A user named by reference resolves to that user, as an account that
+      // harvested the answer describing them would. Anything else is `as`.
+      if (typeof peer !== 'string' && peer.kind === 'user' && knownUsers.has(peer.id)) {
+        return Promise.resolve({
+          _: 'inputPeerUser',
+          user_id: peer.id,
+          access_hash: knownUsers.get(peer.id) as bigint,
+        })
+      }
 
       return Promise.resolve(as)
     },
@@ -579,9 +597,10 @@ describe('walking the invite links of a conversation', () => {
 })
 
 describe('walking the accounts that joined through a link', () => {
-  it('continues from the last entry, named with the hash the answer carried', async () => {
-    // The page carries the users it describes, so paging past one costs no
-    // request of its own.
+  it('continues from the last entry, named through the account that met them', async () => {
+    // The position is the date and the user of the last entry. The user is
+    // kept as a reference and named through the account, which wrote them
+    // down when this page arrived — so a cursor never carries an access hash.
     const client = fake([
       {
         _: 'messages.chatInviteImporters',
@@ -602,8 +621,8 @@ describe('walking the accounts that joined through a link', () => {
       offset_date: 200,
       offset_user: { _: 'inputUser', user_id: 2n, access_hash: 22n },
     })
-    // Only the peer was resolved: the users came out of the answer.
-    expect(client.resolved).toHaveLength(1)
+    // The conversation once for the whole walk, and the user once to continue.
+    expect(client.resolved).toEqual(['chat', { kind: 'user', id: 2n }])
   })
 
   it('starts from the empty user rather than from anybody', async () => {
@@ -617,9 +636,10 @@ describe('walking the accounts that joined through a link', () => {
     })
   })
 
-  it('stops where the answer did not describe the account it ends with', async () => {
-    // Continuing with a reference that names no hash is a request the server
-    // refuses, so the walk ends instead of making it.
+  it('refuses to continue from somebody the account cannot name', async () => {
+    // Continuing needs the last user's access hash. An account that cannot
+    // name them cannot continue, and says so: ending the walk quietly would
+    // report a partial list as though it were the whole of it.
     const client = fake([
       {
         _: 'messages.chatInviteImporters',
@@ -629,7 +649,7 @@ describe('walking the accounts that joined through a link', () => {
       },
     ])
 
-    expect(await drain(walkInviteMembers(client, 'chat'))).toHaveLength(1)
+    await expect(drain(walkInviteMembers(client, 'chat'))).rejects.toThrow(/cannot name user 1/)
     expect(client.asked).toHaveLength(1)
   })
 
