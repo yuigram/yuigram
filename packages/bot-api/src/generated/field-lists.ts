@@ -1,9 +1,9 @@
 // GENERATED FILE — do not edit.
-// Optional field lists (122 fields)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Optional field lists (123 fields)
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 /**
- * Optional fields of `Message`, for the presence filters. 116 of them,
+ * Optional fields of `Message`, for the presence filters. 117 of them,
  * covering 7 event kinds.
  */
 export const MESSAGE_FIELDS = [
@@ -23,6 +23,7 @@ export const MESSAGE_FIELDS = [
   'checklist_tasks_added',
   'checklist_tasks_done',
   'community_chat_added',
+  'community_chat_joined',
   'community_chat_removed',
   'connected_website',
   'contact',
