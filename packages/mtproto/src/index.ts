@@ -42,14 +42,14 @@ export type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
 export type { FullChat } from './chats/lookup.js'
 export type { AddOptions, NotAdded } from './chats/members.js'
 export type { FolderQuery, PeerView } from './chats/peers.js'
-export {
-  type Communing,
+export type {
+  Communing,
   CommunityLinkRequestView,
   CommunityPeerView,
-  type LinkRequestAction,
-  type LinkRequestsPage,
-  type NewCommunity,
-  type ParticipantChats,
+  LinkRequestAction,
+  LinkRequestsPage,
+  NewCommunity,
+  ParticipantChats,
 } from './communities/communities.js'
 export {
   ChatEventView,
@@ -159,14 +159,14 @@ export type {
   Discussion,
   SentScheduled,
 } from './messaging/compose.js'
-export {
-  type EditEphemeralOptions,
-  type Ephemeral,
-  type EphemeralButtonAnswer,
-  type EphemeralContent,
+export type {
+  EditEphemeralOptions,
+  Ephemeral,
+  EphemeralButtonAnswer,
+  EphemeralContent,
   EphemeralMessageView,
-  type EphemeralTarget,
-  type SendEphemeralOptions,
+  EphemeralTarget,
+  SendEphemeralOptions,
 } from './messaging/ephemeral.js'
 export type { MessageEffects } from './messaging/inspect.js'
 export type {
@@ -214,9 +214,7 @@ export {
 } from './messaging/send.js'
 export { inputChannel, inputPeerFromMessage } from './network/peers.js'
 export type { QrOptions, QrSteps } from './network/qr.js'
-export { loginUrl } from './network/qr.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
-export { testCode, testPhone } from './network/signin.js'
 export {
   type ContextOptions,
   contextFor,
@@ -358,16 +356,15 @@ export {
   resendRecoveryEmail,
   setPassword,
 } from './security/index.js'
-export {
-  type BoundCalls,
-  type CallDefaults,
-  type Calling,
-  type CollectibleInfo,
-  type CollectibleKind,
-  type Operating,
-  type TakeoutScope,
-  type TakeoutSession,
-  withParams,
+export type {
+  BoundCalls,
+  CallDefaults,
+  Calling,
+  CollectibleInfo,
+  CollectibleKind,
+  Operating,
+  TakeoutScope,
+  TakeoutSession,
 } from './session/operations.js'
 export type { PortableSession } from './session.js'
 export type {
