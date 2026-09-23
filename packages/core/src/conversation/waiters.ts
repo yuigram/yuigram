@@ -50,6 +50,50 @@ export class WaitCancelledError extends YuigramError {
   override readonly name = 'WaitCancelledError'
 }
 
+/**
+ * Raised inside a durable flow when one of its steps failed.
+ *
+ * The same class whether the step failed just now or in a run before a
+ * restart, because a flow that is resumed must take the same path it took the
+ * first time: the name and message of what failed are kept with the flow, and
+ * `cause` is present only when the failure happened in this process.
+ */
+export class FlowStepError extends YuigramError {
+  override readonly name: string = 'FlowStepError'
+
+  constructor(
+    /** The label of the step that failed. */
+    readonly step: string,
+    /** The name of the error the step raised. */
+    readonly causeName: string,
+    message: string,
+    options?: { readonly cause?: unknown },
+  ) {
+    super(`'${step}' failed with ${causeName}: ${message}`, options)
+  }
+}
+
+/**
+ * Raised inside a durable flow when an effect may or may not have happened.
+ *
+ * The flow was stopped after the effect began and before its outcome was
+ * written down — a crash, a deployment, a store that failed. Whether the
+ * effect reached the outside world cannot be known from here, so the flow is
+ * told rather than the effect being quietly run twice or not at all. An effect
+ * declared safe to repeat is run again instead.
+ */
+export class EffectUncertainError extends FlowStepError {
+  override readonly name = 'EffectUncertainError'
+
+  constructor(step: string) {
+    super(
+      step,
+      'EffectUncertainError',
+      'the flow stopped after this effect began and before its outcome was recorded',
+    )
+  }
+}
+
 /** What a waiter decides about an update it was shown. */
 export type WaitVerdict =
   /** Not what was being waited for. */

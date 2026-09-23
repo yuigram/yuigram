@@ -117,17 +117,42 @@ export class ConversationLocks {
    * poison the queue: the next update for the same conversation runs normally.
    */
   async run<T>(key: string, work: () => Promise<T>): Promise<T> {
-    // What is queued never rejects, so one failed update cannot fail every
-    // later one for the same conversation.
-    const ahead = this.#queues.get(key) ?? Promise.resolve()
-    const mine = ahead.then(work)
-    const tail = mine.catch(() => undefined)
-
-    this.#queues.set(key, tail)
+    const release = await this.acquire(key)
 
     try {
-      return await mine
+      return await work()
     } finally {
+      release()
+    }
+  }
+
+  /**
+   * Wait for this key's turn, and hold it until the returned function is called.
+   *
+   * For work that has to let go in the middle — a handler waiting for the next
+   * message cannot hold the conversation while it waits, or the message it is
+   * waiting for could never be let in. Releasing twice is harmless.
+   */
+  async acquire(key: string): Promise<() => void> {
+    // What is queued never rejects: a turn ends when it is released, however
+    // the work inside it ended, so one failed update cannot fail every later
+    // one for the same conversation.
+    const ahead = this.#queues.get(key) ?? Promise.resolve()
+    let finish: () => void = () => {}
+    const mine = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    const tail = ahead.then(() => mine)
+
+    this.#queues.set(key, tail)
+    await ahead
+
+    let released = false
+
+    return () => {
+      if (released) return
+      released = true
+      finish()
       // Removed only if nothing else queued behind it, which is what keeps the
       // map the size of the conversations currently in flight.
       if (this.#queues.get(key) === tail) this.#queues.delete(key)

@@ -55,10 +55,30 @@ export {
   checkPattern,
   conversation,
   createConversation,
+  defineFlow,
+  type FlowControls,
   type HearPattern,
   hearing,
   hears,
 } from './conversation/conversation.js'
+export type {
+  EffectOnce,
+  EffectOptions,
+  Flow,
+  FlowAddress,
+  FlowDefinition,
+  FlowDrive,
+  FlowEntry,
+  FlowFailure,
+  FlowOptions,
+  FlowProblem,
+  FlowRecord,
+  FlowResumeReport,
+  FlowState,
+  FlowStatus,
+  FlowWaiting,
+  FlowWaitSpec,
+} from './conversation/flows.js'
 export {
   type Addressed,
   type ConversationKeyFn,
@@ -77,6 +97,8 @@ export {
   type SceneStep,
 } from './conversation/scenes.js'
 export {
+  EffectUncertainError,
+  FlowStepError,
   type RegisterOptions,
   WaitCancelledError,
   WaiterRegister,
