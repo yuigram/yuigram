@@ -39,6 +39,11 @@
       "types": "./dist/webhook.d.ts",
       "import": "./dist/webhook.js",
       "default": "./dist/webhook.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js",
+      "default": "./dist/worker.js"
     }
   },
   "main": "./dist/index.js",

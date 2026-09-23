@@ -55,8 +55,21 @@ export interface StreamOptions {
 export function downloadAsStream(
   options: DownloadOptions & StreamOptions,
 ): ReadableStream<Uint8Array> {
-  const chunks = downloadIterable(options)
+  return streamOf(downloadIterable(options), options.highWaterMark ?? options.limit)
+}
 
+/**
+ * A `ReadableStream` over chunks something else produces.
+ *
+ * The transfer here, or the one a worker host is running on the other side of
+ * a port: either way the stream pulls, so nothing further is asked of the
+ * producer until the consumer has room, and cancelling returns the generator —
+ * which is what stops the producer.
+ */
+export function streamOf(
+  chunks: AsyncGenerator<Uint8Array, void, undefined>,
+  highWaterMark?: number,
+): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>(
     {
       // `pull` is called only when the queue is under the watermark, so this is
@@ -73,21 +86,20 @@ export function downloadAsStream(
 
           controller.enqueue(next.value)
         } catch (error) {
-          // The transfer failed. Telling the controller is what surfaces it to
+          // The producer failed. Telling the controller is what surfaces it to
           // the consumer; the generator has already unwound.
           controller.error(error)
         }
       },
       cancel: async (reason) => {
         // Returning the generator runs its `finally`, which abandons the
-        // transfer. Awaited so the download is stopped before `cancel`'s
-        // promise settles.
+        // producer. Awaited so it is stopped before `cancel`'s promise settles.
         await chunks.return(undefined)
         void reason
       },
     },
     {
-      highWaterMark: options.highWaterMark ?? options.limit ?? DEFAULT_WATERMARK,
+      highWaterMark: highWaterMark ?? DEFAULT_WATERMARK,
       size: (chunk) => chunk.byteLength,
     },
   )
