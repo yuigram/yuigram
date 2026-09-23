@@ -134,6 +134,19 @@ export type {
   Discussion,
   SentScheduled,
 } from './messaging/compose.js'
+export type { MessageEffects } from './messaging/inspect.js'
+export type {
+  DraftOptions,
+  InlineEditOptions,
+  PaidReactionOptions,
+  PollState,
+  RichContent,
+  RichFile,
+  StreamingDraft,
+  TextDraft,
+  TranslateOptions,
+  Translation,
+} from './messaging/interact.js'
 export type {
   CallbackAnswer,
   EditOptions,

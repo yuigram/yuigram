@@ -3684,3 +3684,105 @@ describe('watching a conversation nobody pushes updates for', () => {
     }).not.toThrow()
   })
 })
+
+/**
+ * An inline message lives on the datacenter its identifier names.
+ *
+ * Only that datacenter will edit it, and an account signed in elsewhere is
+ * unknown there until it has been introduced. So the edit goes where the
+ * identifier says, and a refusal naming an unregistered key is answered once,
+ * with the introduction, before the edit is repeated.
+ */
+describe('editing an inline message on another datacenter', () => {
+  const inlineOn = (dcId: number) => ({
+    _: 'inputBotInlineMessageID' as const,
+    dc_id: dcId,
+    id: 42n,
+    access_hash: 7n,
+  })
+
+  function inlineAccount(refusal: string, times = 1) {
+    const asked: Array<{ name: string; dcId: number }> = []
+    let refused = 0
+    const instance = harness({
+      api: (query, dcId) => {
+        asked.push({ name: query._, dcId })
+        if (query._ === 'auth.exportAuthorization') {
+          return { _: 'auth.exportedAuthorization', id: 7n, bytes: Uint8Array.of(1, 2, 3, 4) }
+        }
+        if (query._ === 'auth.importAuthorization') {
+          return { _: 'auth.authorization', user: { _: 'user', id: 7n, access_hash: 11n } }
+        }
+        if (query._ !== 'messages.editInlineBotMessage') return undefined
+        if (dcId === 4 && refused < times) {
+          refused += 1
+          throw new TelegramError(refusal)
+        }
+
+        return { _: 'boolTrue' }
+      },
+    })
+
+    return { instance, asked }
+  }
+
+  const named = (asked: Array<{ name: string; dcId: number }>, name: string) =>
+    asked.filter((entry) => entry.name === name)
+
+  it('introduces the account where the message lives, then makes the edit there', async () => {
+    const { instance, asked } = inlineAccount('AUTH_KEY_UNREGISTERED (401)')
+    await instance.account.connect()
+
+    await instance.account.editInlineMessage(inlineOn(4), 'edited')
+
+    expect(named(asked, 'messages.editInlineBotMessage')).toEqual([
+      { name: 'messages.editInlineBotMessage', dcId: 4 },
+      { name: 'messages.editInlineBotMessage', dcId: 4 },
+    ])
+    // The datacenter holding the account issues the credential; the one the
+    // message lives on accepts it.
+    expect(named(asked, 'auth.exportAuthorization')).toEqual([
+      { name: 'auth.exportAuthorization', dcId: 2 },
+    ])
+    expect(named(asked, 'auth.importAuthorization')).toEqual([
+      { name: 'auth.importAuthorization', dcId: 4 },
+    ])
+    await instance.dispose()
+  })
+
+  it('introduces once, and raises a second refusal rather than looping', async () => {
+    const { instance, asked } = inlineAccount('AUTH_KEY_UNREGISTERED (401)', 2)
+    await instance.account.connect()
+
+    await expect(instance.account.editInlineMessage(inlineOn(4), 'edited')).rejects.toThrow(
+      /AUTH_KEY_UNREGISTERED/,
+    )
+    expect(named(asked, 'auth.importAuthorization')).toHaveLength(1)
+    expect(named(asked, 'messages.editInlineBotMessage')).toHaveLength(2)
+    await instance.dispose()
+  })
+
+  it('raises any other refusal without introducing anything', async () => {
+    const { instance, asked } = inlineAccount('MESSAGE_NOT_MODIFIED (400)')
+    await instance.account.connect()
+
+    await expect(instance.account.editInlineMessage(inlineOn(4), 'same')).rejects.toThrow(
+      /MESSAGE_NOT_MODIFIED/,
+    )
+    expect(named(asked, 'auth.exportAuthorization')).toHaveLength(0)
+    await instance.dispose()
+  })
+
+  it('makes the edit on the home datacenter the ordinary way', async () => {
+    const { instance, asked } = inlineAccount('AUTH_KEY_UNREGISTERED (401)')
+    await instance.account.connect()
+
+    await instance.account.editInlineMessage(inlineOn(2), 'edited')
+
+    expect(named(asked, 'messages.editInlineBotMessage')).toEqual([
+      { name: 'messages.editInlineBotMessage', dcId: 2 },
+    ])
+    expect(named(asked, 'auth.exportAuthorization')).toHaveLength(0)
+    await instance.dispose()
+  })
+})

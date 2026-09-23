@@ -89,10 +89,14 @@ import type {
   TypeBusinessChatLink,
   TypeDocument,
   TypeEmojiStatus,
+  TypeFactCheck,
+  TypeInputBotInlineMessageID,
   TypeInputBotInlineResult,
   TypeInputMedia,
   TypeInputPeer,
   TypeMessageEntity,
+  TypeMessageMedia,
+  TypeMessageReactions,
   TypeMyBoost,
   TypePeerColor,
   TypeSavedStarGift,
@@ -119,6 +123,19 @@ import type {
   Discussion,
   SentScheduled,
 } from './messaging/compose.js'
+import type { MessageEffects } from './messaging/inspect.js'
+import type {
+  DraftOptions,
+  InlineEditOptions,
+  Interacting,
+  PaidReactionOptions,
+  PollState,
+  RichContent,
+  StreamingDraft,
+  TextDraft,
+  TranslateOptions,
+  Translation,
+} from './messaging/interact.js'
 import type {
   CallbackAnswer,
   EditOptions,
@@ -1526,6 +1543,63 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * The same, for acting on a message that already exists.
+   *
+   * Those operations hand the account what their answers carried, so a vote or
+   * an edit made here reaches this account's own handlers, and one of them — an
+   * inline message's edit — has to be made on the datacenter the message lives
+   * on rather than wherever the pools would send it.
+   */
+  get #interacting(): Interacting {
+    return {
+      api: this.#api,
+      resolve: async (peer) => await this.resolve(peer),
+      random: this.#options.random ?? randomBytes,
+      feed: async (value) => {
+        await this.feed(value)
+      },
+      at: async (dcId, query) => await this.#onDatacenter(dcId, query),
+      ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
+    }
+  }
+
+  /**
+   * Make a call on a particular datacenter, introducing the account there first
+   * if it has never been.
+   *
+   * An account is signed in on one datacenter. Another one knows nothing about
+   * it until the first issues a credential and the second accepts it, which is
+   * what a refusal naming an unregistered key means here — so it is answered
+   * once, by making the introduction, and the call is repeated. Any other
+   * refusal is the call's own.
+   */
+  async #onDatacenter(dcId: number, query: TlValue): Promise<TlValue> {
+    const { datacenters, pools } = this.#require()
+    const home = datacenters.directory.thisDc
+
+    if (dcId === home) return await this.#invoke(query)
+
+    const there = this.reach(dcId)
+    let answer: TlValue
+
+    try {
+      answer = await there.invoke(query)
+    } catch (error) {
+      const unknown =
+        error instanceof TelegramError && error.message.startsWith('AUTH_KEY_UNREGISTERED (')
+      if (!unknown) throw error
+
+      const { transferAuthorization } = await import('./network/migration.js')
+      await transferAuthorization({ from: pools.get({ id: home }), to: there, dcId })
+      answer = await there.invoke(query)
+    }
+
+    await this.#learn(answer)
+
+    return answer
+  }
+
+  /**
    * The same, for the families that both change a conversation and post into one.
    *
    * Topics, stories and gifts all need what operating on a conversation needs
@@ -1726,6 +1800,272 @@ export class Account<Ext = unknown> {
     return await (await import('./messaging/compose.js')).sendScheduledMessages(
       this.#sending,
       peer,
+      ids,
+    )
+  }
+
+  /**
+   * Vote in a poll, by the options' positions in its list or by their bytes.
+   *
+   * No options takes the vote back, where the poll allows it. The answer is
+   * the poll as it stands afterwards.
+   */
+  async sendVote(
+    peer: string | PeerRef,
+    id: number,
+    options: readonly (number | Uint8Array)[],
+  ): Promise<PollState> {
+    return await (await import('./messaging/interact.js')).sendVote(
+      this.#interacting,
+      peer,
+      id,
+      options,
+    )
+  }
+
+  /** Close a poll so no more votes are counted, and read how it ended. */
+  async closePoll(peer: string | PeerRef, id: number): Promise<PollState> {
+    return await (await import('./messaging/interact.js')).closePoll(this.#interacting, peer, id)
+  }
+
+  /**
+   * Pay a reaction into a message. **This spends Stars.**
+   *
+   * The answer is the message's reactions as they stand afterwards.
+   */
+  async sendPaidReaction(
+    peer: string | PeerRef,
+    id: number,
+    count: number,
+    options?: PaidReactionOptions,
+  ): Promise<TypeMessageReactions> {
+    return await (await import('./messaging/interact.js')).sendPaidReaction(
+      this.#interacting,
+      peer,
+      id,
+      count,
+      options,
+    )
+  }
+
+  /** Clear the unread-reaction badge on a conversation, or on one of its topics. */
+  async readReactions(
+    peer: string | PeerRef,
+    options?: { readonly topicId?: number },
+  ): Promise<void> {
+    await (await import('./messaging/interact.js')).readReactions(this.#interacting, peer, options)
+  }
+
+  /** Unpin every pinned message in a conversation, or in one of its topics. */
+  async unpinAllMessages(
+    peer: string | PeerRef,
+    options?: { readonly topicId?: number },
+  ): Promise<void> {
+    await (await import('./messaging/interact.js')).unpinAllMessages(
+      this.#interacting,
+      peer,
+      options,
+    )
+  }
+
+  /** Add items to a checklist, numbered on from its highest item. */
+  async appendTodoList(
+    peer: string | PeerRef,
+    id: number,
+    items: readonly MessageBody[],
+  ): Promise<MessageView | undefined> {
+    return await (await import('./messaging/interact.js')).appendTodoList(
+      this.#interacting,
+      peer,
+      id,
+      items,
+    )
+  }
+
+  /** Tick checklist items off and untick others, by their numbers, in one change. */
+  async toggleTodoCompleted(
+    peer: string | PeerRef,
+    id: number,
+    change: { readonly completed?: readonly number[]; readonly incompleted?: readonly number[] },
+  ): Promise<MessageView | undefined> {
+    return await (await import('./messaging/interact.js')).toggleTodoCompleted(
+      this.#interacting,
+      peer,
+      id,
+      change,
+    )
+  }
+
+  /** Translate messages of a conversation, one translation per message, in order. */
+  async translateMessage(
+    peer: string | PeerRef,
+    ids: readonly number[],
+    options: TranslateOptions,
+  ): Promise<readonly Translation[]> {
+    return await (await import('./messaging/interact.js')).translateMessage(
+      this.#interacting,
+      peer,
+      ids,
+      options,
+    )
+  }
+
+  /** Translate text that is not in a conversation, one translation per text, in order. */
+  async translateText(
+    texts: readonly MessageBody[],
+    options: TranslateOptions,
+  ): Promise<readonly Translation[]> {
+    return await (await import('./messaging/interact.js')).translateText(
+      this.#interacting,
+      texts,
+      options,
+    )
+  }
+
+  /**
+   * Change a message a bot sent through inline mode, by the identifier the
+   * chosen result arrived with — the object an update carries, or the Bot API's
+   * string. The call goes to the datacenter the identifier names.
+   */
+  async editInlineMessage(
+    message: TypeInputBotInlineMessageID | string,
+    body?: MessageBody,
+    options?: InlineEditOptions,
+  ): Promise<void> {
+    await (await import('./messaging/interact.js')).editInlineMessage(
+      this.#interacting,
+      message,
+      body,
+      options,
+    )
+  }
+
+  /** Send a rich message: blocks, or markup Telegram parses, with the files it names. */
+  async sendRichMessage(
+    peer: string | PeerRef,
+    content: RichContent,
+    options?: SendOptions,
+  ): Promise<SentMessage> {
+    return await (await import('./messaging/interact.js')).sendRichMessage(
+      this.#interacting,
+      peer,
+      content,
+      options,
+    )
+  }
+
+  /**
+   * Open a draft a conversation shows while an answer is being written.
+   *
+   * Each `write` is one request; nothing runs in between, and `stop` takes it
+   * off the screen. The message itself is still sent at the end.
+   */
+  async createStreamingDraft(peer: string | PeerRef, options?: DraftOptions): Promise<TextDraft> {
+    return await (await import('./messaging/interact.js')).createStreamingDraft(
+      this.#interacting,
+      peer,
+      options,
+    )
+  }
+
+  /** The same, for a rich message, whose content is replaced on every update. */
+  async createRichStreamingDraft(
+    peer: string | PeerRef,
+    options?: Omit<DraftOptions, 'mode'>,
+  ): Promise<StreamingDraft<RichContent>> {
+    return await (await import('./messaging/interact.js')).createRichStreamingDraft(
+      this.#interacting,
+      peer,
+      options,
+    )
+  }
+
+  /** Every message of the album one message belongs to, in the album's order. */
+  async getMessageGroup(peer: string | PeerRef, id: number): Promise<readonly MessageView[]> {
+    return await (await import('./messaging/inspect.js')).getMessageGroup(this.#sending, peer, id)
+  }
+
+  /** The message a message answers, wherever it is. */
+  async getReplyTo(message: MessageView): Promise<MessageView | undefined> {
+    return await (await import('./messaging/inspect.js')).getReplyTo(this.#sending, message)
+  }
+
+  /**
+   * The message a link names: a public one by its username, a private one if
+   * this account has met the channel, and a comment in the post's discussion.
+   */
+  async getMessageByLink(link: string): Promise<MessageView | undefined> {
+    return await (await import('./messaging/inspect.js')).getMessageByLink(this.#sending, link)
+  }
+
+  /** The message a tapped button was on, asked for through the query. */
+  async getCallbackQueryMessage(query: {
+    readonly peer: string | PeerRef
+    readonly messageId: number
+    readonly queryId: bigint
+  }): Promise<MessageView | undefined> {
+    return await (await import('./messaging/inspect.js')).getCallbackQueryMessage(
+      this.#sending,
+      query,
+    )
+  }
+
+  /** The reactions on several messages of one conversation, one entry per message. */
+  async getMessageReactions(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<readonly (TypeMessageReactions | undefined)[]> {
+    return await (await import('./messaging/inspect.js')).getMessageReactions(
+      this.#interacting,
+      peer,
+      ids,
+    )
+  }
+
+  /** The reactions on messages that may be in different conversations, in their order. */
+  async getReactionsOf(
+    messages: readonly MessageView[],
+  ): Promise<readonly (TypeMessageReactions | undefined)[]> {
+    return await (await import('./messaging/inspect.js')).getReactionsOf(
+      this.#interacting,
+      messages,
+    )
+  }
+
+  /** The fact checks on several messages of one conversation, one per message. */
+  async getFactCheck(
+    peer: string | PeerRef,
+    ids: readonly number[],
+  ): Promise<readonly TypeFactCheck[]> {
+    return await (await import('./messaging/inspect.js')).getFactCheck(this.#sending, peer, ids)
+  }
+
+  /** What Telegram would preview under a message with this text, if anything. */
+  async getWebPagePreview(
+    text: MessageBody,
+  ): Promise<Extract<TypeMessageMedia, { _: 'messageMediaWebPage' }> | undefined> {
+    return await (await import('./messaging/inspect.js')).getWebPagePreview(this.#sending, text)
+  }
+
+  /** The animations a send may name; nothing when the version held is current. */
+  async getAvailableMessageEffects(hash?: number): Promise<MessageEffects | undefined> {
+    return await (await import('./messaging/inspect.js')).getAvailableMessageEffects(
+      this.#sending,
+      hash,
+    )
+  }
+
+  /**
+   * Messages outside channels, by number alone, one entry per number.
+   *
+   * Outside channels a number is unique to the account, so no conversation has
+   * to be named; a channel's message comes back as a gap.
+   */
+  async getMessagesOutsideChannels(
+    ids: readonly number[],
+  ): Promise<readonly (MessageView | undefined)[]> {
+    return await (await import('./messaging/inspect.js')).getMessagesOutsideChannels(
+      this.#sending,
       ids,
     )
   }
