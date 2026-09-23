@@ -216,6 +216,7 @@ export { inputChannel, inputPeerFromMessage } from './network/peers.js'
 export type { QrOptions, QrSteps } from './network/qr.js'
 export { loginUrl } from './network/qr.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
+export { testCode, testPhone } from './network/signin.js'
 export {
   type ContextOptions,
   contextFor,

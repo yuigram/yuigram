@@ -27,7 +27,7 @@
  * that established them, and are neither replaced nor rewritten by any of this.
  */
 
-import { SessionError, TelegramError } from '@yuigram/core'
+import { SessionError, TelegramError, ValidationError } from '@yuigram/core'
 import { answerPasswordChallenge, readPasswordChallenge } from '../auth/password.js'
 import type { SrpOptions } from '../crypto/srp.js'
 import { MigrationError } from '../session/dispatcher.js'
@@ -344,6 +344,87 @@ export async function signInAsBot(
   }))
 
   return readAuthorization(value, dcId)
+}
+
+/**
+ * The datacenters Telegram runs for testing, and the numbers reserved for them.
+ *
+ * A test number is `99966XYYYY`, where X is the datacenter and YYYY is
+ * anything; the confirmation code is X five times over. There are three test
+ * datacenters, so X is 1, 2 or 3 and nothing else.
+ */
+const TEST_DCS = [1, 2, 3] as const
+
+/** A test number for a datacenter, with the random part drawn by the caller. */
+export function testPhone(dcId: number, random: (length: number) => Uint8Array): string {
+  if (!TEST_DCS.includes(dcId as (typeof TEST_DCS)[number])) {
+    throw new ValidationError(
+      `Telegram runs test datacenters ${TEST_DCS.join(', ')}, and ${dcId} is not one`,
+    )
+  }
+
+  const bytes = random(4)
+  let digits = ''
+  for (const byte of bytes) digits += String(byte % 10)
+
+  return `99966${dcId}${digits}`
+}
+
+/** The confirmation code a test number always receives. */
+export function testCode(dcId: number): string {
+  return String(dcId).repeat(5)
+}
+
+/**
+ * Sign in on a test datacenter, with a reserved number.
+ *
+ * Only useful against a test datacenter, and only reaches one because the
+ * number says which: Telegram redirects the sign-in to the datacenter the
+ * number names, which the step already follows. Nothing here is a shortcut
+ * around the ordinary flow — it is the ordinary flow with a number whose code
+ * is known in advance.
+ *
+ * Test accounts are public by design. Telegram wipes them periodically and
+ * anybody can sign in to one, so nothing private belongs in a conversation
+ * held with one.
+ */
+export async function startTest(
+  options: SignInOptions & {
+    /** The test datacenter to be a user of. One of 1, 2 or 3. */
+    readonly dcId?: number
+    /** A reserved number to use instead of one drawn here. */
+    readonly phone?: string
+    /** Where the random part of a drawn number comes from. */
+    readonly random?: (length: number) => Uint8Array
+  },
+): Promise<SignInState> {
+  const target = options.dcId ?? TEST_DCS[0]
+  const phone =
+    options.phone ?? testPhone(target, options.random ?? ((length) => randomDigits(length)))
+
+  const named = /^99966(\d)/.exec(phone)
+  if (named === null) {
+    throw new ValidationError(`'${phone}' is not a reserved test number`)
+  }
+
+  const sent = await sendCode({ ...options, phone })
+  if (sent.kind !== 'code-sent') return sent
+
+  return await signIn({
+    ...options,
+    dcId: sent.dcId,
+    phone,
+    phoneCodeHash: sent.phoneCodeHash,
+    code: testCode(Number(named[1])),
+  })
+}
+
+/** Four digits, where the caller supplied no source of randomness. */
+function randomDigits(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+
+  return bytes
 }
 
 /**

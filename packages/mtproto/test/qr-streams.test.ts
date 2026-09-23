@@ -14,6 +14,7 @@ import type { DownloadOptions } from '../src/files/download.js'
 import { downloadAsNodeStream, downloadAsStream } from '../src/files/streams.js'
 import { loginUrl, type QrSteps, signInQr } from '../src/network/qr.js'
 import type { LoginTokenState, SignInState } from '../src/network/signin.js'
+import { startTest, testCode, testPhone } from '../src/network/signin.js'
 import type { TlValue } from '../src/tl/index.js'
 
 /* -------------------------------------------------------------------------- */
@@ -423,5 +424,94 @@ describe('a download as a Node stream', () => {
         for await (const chunk of stream) void chunk
       })(),
     ).rejects.toThrow(/refused/)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* Signing in on a test datacenter                                             */
+/* -------------------------------------------------------------------------- */
+
+describe('a reserved test number', () => {
+  it('names the datacenter it belongs to, and refuses one that has none', () => {
+    const fixed = (length: number) => new Uint8Array(length).fill(7)
+
+    expect(testPhone(2, fixed)).toBe('9996627777')
+    expect(testPhone(1, fixed)).toMatch(/^999661\d{4}$/)
+    // Telegram runs three test datacenters and no more.
+    for (const bad of [0, 4, -1]) {
+      expect(() => testPhone(bad, fixed)).toThrow(/test datacenters/)
+    }
+  })
+
+  it('has a confirmation code of its datacenter, five times over', () => {
+    expect(testCode(2)).toBe('22222')
+    expect(testCode(3)).toBe('33333')
+  })
+
+  it('signs in through the ordinary steps, with the code it already knows', async () => {
+    const asked: TlValue[] = []
+    const reach = () => ({
+      invoke: (query: TlValue) => {
+        asked.push(query)
+
+        return Promise.resolve(
+          query._ === 'auth.sendCode'
+            ? ({ _: 'auth.sentCode', phone_code_hash: 'hash', type: {} } as TlValue)
+            : ({
+                _: 'auth.authorization',
+                user: { _: 'user', id: 9n, access_hash: 1n },
+              } as TlValue),
+        )
+      },
+    })
+
+    const state = await startTest({
+      reach,
+      dcId: 2,
+      apiId: 1,
+      apiHash: 'x',
+      random: (length) => new Uint8Array(length).fill(1),
+    })
+
+    expect(state.kind).toBe('authorized')
+    expect(asked[0]).toMatchObject({ _: 'auth.sendCode', phone_number: '9996621111' })
+    // The code is the datacenter's number five times, not something guessed at.
+    expect(asked[1]).toMatchObject({
+      _: 'auth.signIn',
+      phone_code: '22222',
+      phone_code_hash: 'hash',
+    })
+  })
+
+  it('reads the datacenter out of a number the caller supplied', async () => {
+    const asked: TlValue[] = []
+    const reach = () => ({
+      invoke: (query: TlValue) => {
+        asked.push(query)
+
+        return Promise.resolve(
+          query._ === 'auth.sendCode'
+            ? ({ _: 'auth.sentCode', phone_code_hash: 'hash', type: {} } as TlValue)
+            : ({ _: 'auth.authorization', user: { _: 'user', id: 9n } } as TlValue),
+        )
+      },
+    })
+
+    await startTest({ reach, dcId: 1, apiId: 1, apiHash: 'x', phone: '9996630000' })
+
+    // The number decides, not the argument beside it.
+    expect(asked[1]).toMatchObject({ phone_code: '33333' })
+  })
+
+  it('refuses a number that is not a reserved one', async () => {
+    await expect(
+      startTest({
+        reach: () => ({ invoke: () => Promise.resolve({} as TlValue) }),
+        dcId: 1,
+        apiId: 1,
+        apiHash: 'x',
+        phone: '+70000000000',
+      }),
+    ).rejects.toThrow(/not a reserved test number/)
   })
 })

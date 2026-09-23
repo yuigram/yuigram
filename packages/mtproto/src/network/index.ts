@@ -79,6 +79,7 @@ export {
   signIn,
   signInAsBot,
   signInWithPassword,
+  startTest,
 } from './signin.js'
 
 export type { ByteStream, Connector, StreamOptions } from './stream.js'

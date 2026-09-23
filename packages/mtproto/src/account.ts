@@ -2268,6 +2268,30 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * Sign in on a test datacenter, with one of Telegram's reserved numbers.
+   *
+   * The ordinary flow with a number whose confirmation code is known in
+   * advance, which is what makes the sign-in paths testable without a real
+   * number and its daily limit. Only reaches a test datacenter, because the
+   * number names which one.
+   *
+   * Test accounts are public: Telegram wipes them periodically and anybody can
+   * sign in to one, so nothing private belongs in a conversation held with one.
+   */
+  async startTest(
+    options: { readonly dcId?: number; readonly phone?: string } = {},
+  ): Promise<SignInState> {
+    return await this.#step(
+      async (step, base) =>
+        await step.startTest({
+          ...base,
+          ...options,
+          random: this.#options.random ?? randomBytes,
+        }),
+    )
+  }
+
+  /**
    * Sign in by showing a code to a device that is already signed in.
    *
    * The loop around {@link Account.requestLoginToken}: display, wait, ask
