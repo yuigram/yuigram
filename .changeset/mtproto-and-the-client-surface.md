@@ -155,6 +155,32 @@ cut out of the message it quotes so the two cannot disagree; a comment finds the
 and goes to the discussion group. Scheduled messages can be read, removed, and sent now, with
 the pairing between each scheduled message and what it became read from the answer.
 
+**Acting on a message that exists.** Voting by option or position and closing a poll; paid
+reactions under the time-based identifier Telegram requires, drawn again only when it aged;
+checklists appended to and ticked; translation of messages or bare text; reading reactions and
+unpinning everything, each applied to the sequence its position belongs to. An inline message is
+edited on the datacenter its identifier names, given as an update's object or as the Bot API's
+string. Rich messages go out as blocks or markup, and a streaming draft is a handle rather than a
+background task: each write is one request, and stopping it is one more. The reads beside them —
+an album from any of its messages, the message replied to, one named by a link, reactions in
+bulk, a fact check, a link preview and the available effects — answer in the order asked.
+
+**The bot surface, and sticker sets.** Commands per scope and language, a bot's description read
+and written by the bot or by the account that owns it, the menu button, and the rights a bot
+asks for in a group or a channel. A person's side of a bot as well: pressing a button (with a
+password proof where the button asks for one), a mini app opened in a conversation and prolonged
+every minute until it is closed, Telegram forgets the query, or the account stops. Sticker sets
+are created, extended, reordered and given thumbnails, each sticker's file handed to Telegram
+first and checked for what Telegram would refuse before anything is uploaded; custom emoji are
+read by identifier or gathered from the messages that use them.
+
+**Layer 229.** The committed schema follows the one Telegram's own client ships, which the
+documentation page lags behind. A conversation-list row may be a community, which has no peer
+and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;
+`ChatForm` gains `'community'`. The rights records express every right the layer defines,
+checked against the generated tables so the next layer's additions fail a test rather than go
+missing.
+
 **One application, several identities.** An `App` holds a bot and any number of accounts, each
 with its own credentials, store and connections, under shared middleware and cross-client
 handlers. Operations that mean the same thing on both transports are the same call; the ones

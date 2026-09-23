@@ -282,9 +282,17 @@ change in the minor position and nothing between the two was published.
   - File identifiers: reading and writing the opaque string files travel under between clients,
     and the stable identifier that says two of them are the same file. See
     [mtproto.md](mtproto.md) §11
-  - Still to come in this phase, largest first: a page form beside each walk that reports the
-    total, the message surface's remaining shapes (albums, copies, quoted replies, comments),
-    bot-side configuration, stickers, and the scheduled-message family
+  - Pages beside the walks, and the message surface in full: a page read reporting the total
+    beside every walk; albums, copies, quoted replies, comments and the scheduled family; votes,
+    paid reactions, checklists, translation, inline edits on the datacenter an identifier names,
+    rich messages and streaming drafts; and the reads beside them
+  - The bot surface and stickers: commands per scope and language, a bot's description, menu
+    button and default rights, pressing a button and keeping a mini app open for as long as the
+    account is; sticker sets from creation to reordering, and custom emoji
+  - Still to come in this phase, largest first: communities and the ephemeral and welcome
+    messages, both of which exist only from layer 229; games' high scores; and a few account
+    operations — sending a login code again, test-datacenter sign-in, takeout sessions, fetching
+    one range of a file, and pricing a collectible
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
