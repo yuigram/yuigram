@@ -174,6 +174,60 @@ are created, extended, reordered and given thumbnails, each sticker's file hande
 first and checked for what Telegram would refuse before anything is uploaded; custom emoji are
 read by identifier or gathered from the messages that use them.
 
+**Communities, which are not conversations.** A community holds chats and channels, keeps its
+own participants, and decides which of the chats it holds each participant can see. Nothing is
+said in one. It is addressed the way a channel is, which is all the two have in common, so
+`ChatView.isCommunity` narrows and `isAddressedAsChannel` answers the addressing question that
+`isChannel` used to answer by accident. Creating, listing, linking and unlinking chats,
+approving the requests to be listed, banning participants and reading which chats one of them
+has — eleven operations, with a page of link requests continued by Telegram's own opaque offset.
+
+**Ephemeral and welcome messages.** A message shown to one person in a chat and never added to
+its history, so the address is the chat, the receiver and the number together — the number alone
+means nothing outside that person's view. A guest chat has no conversation to name and carries a
+query identifier instead. They arrive as four update kinds of their own, because the payload is
+an `EphemeralMessage` rather than a `Message` and a handler registered for `message` would read
+fields it does not have. Welcome templates are the only ones that can be read back.
+
+**Games, and the operations that concern the account itself.** A score set in a conversation
+comes back as the edited board and one set inline comes back as nothing, which is Telegram's
+distinction rather than a simplification. A takeout wraps each call rather than opening a second
+connection, and ending one closes the export without signing the account out. `withParams` binds
+only the call options the path actually honours. `isSelfPeer` answers from what the account
+already knows. `resendCode` continues the attempt in hand instead of starting a fresh one, and
+`startTest` signs in on a test datacenter with a reserved number whose code is known in advance.
+
+**QR sign-in is the whole flow**, not the token behind it: display, wait, ask again when the
+token expires, and finish with the password where the account has one. Every exit cancels the
+wait, and stopping the account aborts it.
+
+**A download wears either stream shape.** `downloadAsStream` hands back a `ReadableStream` and
+`downloadAsNodeStream` a Node `Readable`, both adapting the existing iterable — so the ranges,
+the retries and the reference refresh are the one transfer, and cancelling either waits for it to
+unwind rather than walking away from it. The Node shape sits behind a module the `browser` field
+substitutes, so no browser bundle reaches `node:stream`. `downloadChunk` asks for one precise
+range at an arbitrary offset, which the grid-aligned transfers cannot do.
+
+**Conversations: scenes, prompts and typed buttons.** `conversation()` covers what is usually
+four packages, on one idea — a conversation has an identity, and state belongs to it. The key
+names the client first, so an application holding a bot and three accounts has four independent
+sets of conversations; the scope is chat and user by default, with chat, user and topic scopes
+for the cases where that is wrong. Updates for one conversation are serialised, so two answers
+arriving together cannot both advance the same step, while different conversations still run in
+parallel.
+
+A scene keeps a name, a step and the application's state, all of it plain data, so a restart
+resumes a half-finished form. `conversation.wait(...)` is a suspended function in memory and does
+not — that difference is stated rather than papered over, because it is the thing to know before
+choosing between them. A waiter belongs to one conversation, so a pending prompt never consumes
+another person's message; it can validate and re-ask, time out, be cancelled by a signal, and it
+is cancelled when the conversation enters or leaves a scene or the client stops.
+
+`defineCallbackData` gives a button's 64 bytes a shape and measures them in UTF-8 rather than
+characters, so a schema does not build buttons Telegram rejects for applications whose users
+write in anything but ASCII. Data from an older release reads as nothing rather than as a wrong
+answer. Parsing is not authorisation, and the module says so.
+
 **Layer 229.** The committed schema follows the one Telegram's own client ships, which the
 documentation page lags behind. A conversation-list row may be a community, which has no peer
 and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;

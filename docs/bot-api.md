@@ -370,13 +370,12 @@ What is not there yet, and what to do meanwhile:
 
 | Not yet | What to do instead | Planned |
 |---|---|---|
-| Scenes / conversations | `Router` plus sessions covers step-wise dialogue; the position is tracked by the application | v0.x |
 | Redis / SQLite storage | `KV` is four methods — write an adapter against the client the application already configures. See [storage.md](storage.md) | userland |
 | Media caching | A hook plus a `KV`, both of which ship | userland |
 
 ### v0.x
 
-- Scenes, once the design questions in [bot-api-finalization.md](bot-api-finalization.md) §9 are answered
+- Flows whose suspended position survives a restart, which `conversation().wait` does not
 - Business-account scoped API proxy
 - Rich messages (Bot API 10.2) as a first-class builder — built for the written forms and the
   files they name; builders for the individual block types are still to come

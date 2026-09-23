@@ -289,10 +289,16 @@ change in the minor position and nothing between the two was published.
   - The bot surface and stickers: commands per scope and language, a bot's description, menu
     button and default rights, pressing a button and keeping a mini app open for as long as the
     account is; sticker sets from creation to reordering, and custom emoji
-  - Still to come in this phase, largest first: communities and the ephemeral and welcome
-    messages, both of which exist only from layer 229; games' high scores; and a few account
-    operations — sending a login code again, test-datacenter sign-in, takeout sessions, fetching
-    one range of a file, and pricing a collectible
+  - Communities, which hold conversations rather than being ones, and the ephemeral and welcome
+    messages — both constructs that exist only from layer 229. Games' high scores. The operations
+    that concern the authorization itself: a login code sent again, test-datacenter sign-in,
+    takeout sessions, call defaults bound to a view, a precise range of a file, and what a
+    collectible handle sold for
+  - QR sign-in as the whole flow, and a download wearing either stream shape
+  - Conversation state: scenes whose position survives a restart, prompts that belong to one
+    conversation, and callback data with a shape and a byte budget
+  - Still to come in this phase: flows whose *suspended* position survives a restart, which the
+    in-memory waiter does not; the worker-hosted client; and the storage drivers below
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`

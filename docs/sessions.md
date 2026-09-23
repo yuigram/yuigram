@@ -311,3 +311,85 @@ different contracts. That is the layering in [storage.md](storage.md).
 The asymmetry is the point: framework state degrades gracefully because it can, and
 authorization state fails loudly because a silent recovery path would be indistinguishable
 from an attack.
+
+---
+
+## 6. Conversation state
+
+A third kind, above framework sessions and distinct from them: where a
+conversation *is*, rather than what is known about a person. `conversation()`
+covers scenes, prompts and the waiting that both rest on.
+
+### 6.1 Identity
+
+The key names the client first, then whichever parts of the update the scope
+asks for:
+
+```
+bot:c:-100123:u:456        chat+user, the default
+bot:c:-100123              chat — everybody shares one conversation
+bot:u:456                  user — one conversation wherever they are
+bot:c:-100123:u:456:t:7    chat+user+topic — per forum topic
+```
+
+Naming the client first is what keeps an application holding a bot and three
+accounts from having them advance each other's forms. An update the scope
+cannot be derived from — an inline query, a channel post with no sender — has
+no conversation, and reaches the ordinary handlers untouched.
+
+### 6.2 Concurrency
+
+Updates for one conversation are serialised; different conversations run in
+parallel. Without it, two answers arriving together both read the same position
+and the second write loses the first — a form that advances one step for two
+answers. The lock is per key and each key is dropped as it drains, so a bot
+serving a thousand conversations does not process them one at a time because
+two of them might collide.
+
+### 6.3 What survives a restart, and what does not
+
+| | Where it lives | Survives a restart |
+|---|---|---|
+| Scene position and state | The `KV` given to the plugin | **Yes**, if the store does |
+| `conversation.wait(...)` | A suspended function in memory | **No** |
+
+This is the one thing to know before choosing between them. A form built from
+scene steps resumes after a deployment because the only thing kept is a name, a
+number and plain data. A form built from `await conversation.wait(...)` reads
+better and does not: the promise goes with the process. Both ship because both
+are useful, and neither is described as the other.
+
+### 6.4 Scenes
+
+Entering runs the scene's entry handler and its first step against the update
+that entered. A step that neither navigates nor leaves is waiting for another
+update, which is the ordinary case for a question — `fresh` is what tells the
+step whether to ask or to read an answer.
+
+`beforeStep` runs before every step and *replaces* it when it navigates or
+leaves, which is what makes it the place to handle `/cancel`. `afterStep` runs
+only for a step that stayed. Moving past the last step leaves the scene, because
+that is how a form ends. Leaving always runs the exit handler before any
+successor's entry handler, including when a scene is entered from outside one.
+
+### 6.5 Waiting
+
+A waiter belongs to one conversation, so a pending prompt never consumes another
+person's message. It may validate a match and keep waiting, time out — raising
+or answering nothing, as asked — and be cancelled by a signal. A non-matching
+update reaches the handlers unless the waiter asked to be exclusive.
+
+One waiter per conversation: a second replaces the first, and the first is told
+so rather than left to never resolve. Entering or leaving a scene cancels an
+open waiter, and so does stopping the client.
+
+### 6.6 What it is not
+
+Conversation state is not authorization state, and the separation in §4 applies
+to it unchanged: a scene's position is application data that degrades
+gracefully, and nothing here touches the credentials in §3.
+
+Typed callback data is not authorization either. `unpack` says the data belongs
+to a schema; anybody who can see a button can press it, and anybody who has
+pressed one can send its data again. The query carries who pressed it, and
+whether they may is the application's question.
