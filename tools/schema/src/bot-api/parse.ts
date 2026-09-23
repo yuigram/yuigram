@@ -297,9 +297,7 @@ export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
   // Every object the page defines, known before any method is read, so a
   // return that names one is recognised wherever on the page it is declared.
   const objectNames = new Set(
-    sections
-      .map((section) => section.title)
-      .filter((title) => /^[A-Z][A-Za-z0-9]*$/.test(title)),
+    sections.map((section) => section.title).filter((title) => /^[A-Z][A-Za-z0-9]*$/.test(title)),
   )
 
   const methods: Method[] = []
