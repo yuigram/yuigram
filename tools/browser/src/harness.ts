@@ -32,6 +32,7 @@ import {
   StorageOwnershipError,
   web,
 } from '../../../packages/yuigram/src/index.js'
+import { runWorkerChecks } from './worker-checks.js'
 
 /**
  * The browser globals this file uses, named here rather than pulled in wholesale.
@@ -890,6 +891,10 @@ async function run(): Promise<void> {
       return 'the account stopped and its connections closed'
     })
   }
+
+  // ---- an account hosted in a worker ---------------------------------------
+
+  await runWorkerChecks(check, expect)
 
   report()
 }

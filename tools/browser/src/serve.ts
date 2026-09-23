@@ -18,7 +18,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { createServer } from 'node:http'
+import { createServer, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { build, type Plugin } from 'esbuild'
 import { REGISTRY as API } from '../../../packages/mtproto/src/generated/api/registry.js'
@@ -69,12 +69,18 @@ function substitutions(): Map<string, string> {
 }
 
 /** Where a package's source lives, by the name it is imported under. */
-const SOURCES = new Map(
-  PACKAGES.map((name) => [
-    name === 'yuigram' ? 'yuigram' : `@yuigram/${name}`,
-    posix(`${ROOT}packages/${name}/src/index.ts`),
-  ]),
-)
+const SOURCES = new Map([
+  ...PACKAGES.map(
+    (name) =>
+      [
+        name === 'yuigram' ? 'yuigram' : `@yuigram/${name}`,
+        posix(`${ROOT}packages/${name}/src/index.ts`),
+      ] as const,
+  ),
+  // The worker subsystem's own entry point, which \`yuigram/worker\` re-exports
+  // and which a program reaches only by naming it.
+  ['@yuigram/mtproto/worker', posix(`${ROOT}packages/mtproto/src/worker/index.ts`)] as const,
+])
 
 /**
  * Resolve everything to source, and apply the declared substitutions.
@@ -166,6 +172,15 @@ async function bundle(entry: string): Promise<string> {
 
 const script = await bundle('harness.ts')
 const secondPageScript = await bundle('second-page.ts')
+const workerHostScript = await bundle('worker-host.ts')
+const workerTabScript = await bundle('worker-tab.ts')
+
+/** The page the worker checks embed as a second tab of this origin. */
+const WORKER_TAB = `<!doctype html>
+<meta charset="utf-8">
+<title>a second tab on the shared host</title>
+<body><script type="module" src="/worker-tab.js"></script>
+`
 
 /**
  * The datacenter the page talks to.
@@ -232,6 +247,8 @@ const server = createServer((request, response) => {
     return
   }
 
+  if (serveWorkerRoute(request.url ?? '/', response)) return
+
   if (request.url === '/second-page') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
     response.end(SECOND_PAGE)
@@ -282,6 +299,65 @@ const server = createServer((request, response) => {
 })
 
 /**
+ * The routes the worker checks use, answered if the address is one of them.
+ *
+ * The scripts a worker and a second tab run, the second tab's page, a push down
+ * one account's own session, and what that account's datacenter saw.
+ */
+function serveWorkerRoute(url: string, response: ServerResponse): boolean {
+  const address = new URL(url, 'http://localhost')
+
+  if (address.pathname === '/worker-host.js' || address.pathname === '/worker-tab.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' })
+    response.end(address.pathname === '/worker-host.js' ? workerHostScript : workerTabScript)
+
+    return true
+  }
+
+  if (address.pathname === '/worker-tab') {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    response.end(WORKER_TAB)
+
+    return true
+  }
+
+  if (address.pathname === '/deliver-worker') {
+    // Push down the session of the one account named, through its own datacenter.
+    const name = address.searchParams.get('account') ?? ''
+    const user = BigInt(address.searchParams.get('user') ?? '1')
+    const sent = deliverTo(workerLive.get(name) ?? [], {
+      _: 'updateShort',
+      update: { _: 'updateUserTyping', user_id: user, action: { _: 'sendMessageTypingAction' } },
+      date: ORIGIN_SECONDS,
+    })
+
+    response.writeHead(sent ? 200 : 409, { 'content-type': 'text/plain' })
+    response.end(sent ? 'sent' : 'no established session to send down')
+
+    return true
+  }
+
+  if (address.pathname === '/stats-worker') {
+    // What an account's datacenter saw: how many connections, and how many
+    // long-lived keys were negotiated over them. One shared account connected
+    // once negotiates one; two independent connections of it would negotiate two.
+    const place = workerDatacenters.get(address.searchParams.get('account') ?? '')
+    const permanentKeys = (place?.connections ?? []).filter((one) => {
+      const settled = one.peer.result
+
+      return settled !== undefined && settled.expiresIn === undefined
+    }).length
+
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ connections: place?.connections.length ?? 0, permanentKeys }))
+
+    return true
+  }
+
+  return false
+}
+
+/**
  * Say what crossed the bridge.
  *
  * Only with `TRACE=1`: the point of the check is the page's own report, and a
@@ -294,9 +370,31 @@ const trace: (message: string) => void =
 /** The connections the page has open, so an update has somewhere to go. */
 const live: { peer: WebSocketPeer; server: MockServer }[] = []
 
+/** A datacenter per account a worker hosts, so accounts never share one. */
+const workerDatacenters = new Map<string, MockDatacenter>()
+const workerLive = new Map<string, { peer: WebSocketPeer; server: MockServer }[]>()
+
+function workerDatacenter(name: string): MockDatacenter {
+  const existing = workerDatacenters.get(name)
+  if (existing !== undefined) return existing
+
+  const made = datacenterAt()
+  workerDatacenters.set(name, made)
+  workerLive.set(name, [])
+
+  return made
+}
+
 /** Push an update down the newest connection that can carry one. */
 function deliver(update: TlValue): boolean {
-  for (const entry of [...live].reverse()) {
+  return deliverTo(live, update)
+}
+
+function deliverTo(
+  connections: readonly { peer: WebSocketPeer; server: MockServer }[],
+  update: TlValue,
+): boolean {
+  for (const entry of [...connections].reverse()) {
     if (!entry.peer.open) continue
 
     const bytes = entry.server.push(update)
@@ -324,12 +422,21 @@ serveWebSockets(server, {
   // The same, for the check that drives the exchange by hand. Its own peer,
   // because each remembers the long-lived key its client established.
   '/mtproto-raw': (peer) => bridge(rawDatacenter, peer),
+
+  // What a worker-hosted account runs over: a datacenter of its own, named by
+  // the account in the query.
+  '/mtproto-worker': (peer, url) => {
+    const name = url.searchParams.get('account') ?? 'unnamed'
+
+    return bridge(workerDatacenter(name), peer, workerLive.get(name))
+  },
 })
 
 /** Carry one page's connection into a datacenter, and its answers back out. */
 function bridge(
   place: MockDatacenter,
   peer: WebSocketPeer,
+  connections: { peer: WebSocketPeer; server: MockServer }[] = live,
 ): { onData: (data: Uint8Array) => void; onClose: () => void } {
   {
     const before = place.connections.length
@@ -347,7 +454,7 @@ function bridge(
     })
 
     const opened = place.connections[before]
-    if (opened !== undefined) live.push({ peer, server: opened.peer })
+    if (opened !== undefined) connections.push({ peer, server: opened.peer })
     trace(`a page opened connection ${String(before + 1)}`)
 
     return {

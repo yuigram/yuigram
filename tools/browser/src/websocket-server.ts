@@ -44,8 +44,16 @@ export interface WebSocketPeer {
   readonly open: boolean
 }
 
-/** How a connection is handled. */
-export type WebSocketHandler = (peer: WebSocketPeer) => {
+/**
+ * How a connection is handled.
+ *
+ * Handed the address the page asked for as well, so one route can serve
+ * several peers told apart by the query — a datacenter per account, say.
+ */
+export type WebSocketHandler = (
+  peer: WebSocketPeer,
+  url: URL,
+) => {
   readonly onData?: (data: Uint8Array) => void
   readonly onClose?: () => void
 }
@@ -139,7 +147,7 @@ export function serveWebSockets(server: Server, routes: Record<string, WebSocket
       },
     }
 
-    const hooks = handle(peer)
+    const hooks = handle(peer, new URL(request.url ?? '/', 'http://localhost'))
 
     // Whatever arrived with the upgrade belongs to the stream that follows it.
     let buffer = Buffer.concat([head])
