@@ -238,6 +238,10 @@ broken. A worker is the obvious place to put it and nothing does that yet.
 Until that exists, the five seconds are real, they are paid on the first connection in a browser,
 and this document says so rather than describing a plan as a property.
 
+An application that hosts the whole account in a worker (§6) has already moved them: the check
+runs on the worker's thread along with everything else, and the page stays responsive while it
+does. The first connection still takes five seconds. What changes is who waits.
+
 **Timing.** The portable AES is table-driven, and table lookups indexed by key-dependent bytes are
 the classic cache-timing side channel. The module says so. Nothing here claims constant-time
 behaviour, and passing tests would not establish it if it did.
@@ -308,10 +312,182 @@ and base64 on four live paths; and the five-second prime validation above.
   measurements come from. Their columns are inference from the API list, and the browser result
   raises the confidence without replacing it: both provide `node:crypto`, so both take the
   platform path rather than the one that was just exercised.
-- **No worker or edge platform has been executed against.** They resolve the same substitutions a
+- **No edge platform has been executed against** — Cloudflare Workers, Vercel Edge. They resolve the same substitutions a
   browser does, which is what the `bundle/browser-builtins` benchmark holds, but a bundle that
   reaches nothing forbidden is not a program that ran.
 - **The long-polling loop is not exercised off Node**, only bundled.
 
 Closing any of these means running against that runtime in continuous integration, which is the
 honest way to turn an "expected" into a "run".
+
+
+---
+
+## 6. An account in a worker
+
+`yuigram/worker` hosts an account on another thread and gives the thread that attached a proxy
+for it. It is a separate entry point: importing `yuigram` creates no worker, installs no listener
+and loads none of it, and the Bot API bundle does not reach it at all.
+
+```ts
+// worker.ts — owns the account
+import { serveAccounts } from 'yuigram/worker'
+serveAccounts({ create: (name, restore) => Account.fromString(restore ?? stored, { name, ... }) })
+
+// page.ts — holds a port
+import { attachAccount, openSharedWorker } from 'yuigram/worker'
+const me = await attachAccount(openSharedWorker('/worker.js', { type: 'module' }), { account: 'me' })
+me.on('message', (event) => event.reply('seen'))
+```
+
+[examples/15-worker](../examples/15-worker) is the same in Node, with a `worker_threads` worker.
+
+### 6.1 Who owns what
+
+**The host owns the accounts.** A caller names an account; it never supplies one. The host makes
+each name once, through the factory it was given, however many callers ask at the same moment —
+the second waits on the first one's factory call rather than starting its own. That is the whole
+of why an account is never connected twice by one host: there is only ever one of it, and
+connecting an account that is already connecting joins the attempt in progress.
+
+**A caller holds a port.** Everything it has is on the other side: the socket, the keys, the
+store, the session. `restore` — a session string — is handed to the factory on the call that makes
+the account and to nothing else; a caller attaching to an account that already exists has its
+`restore` ignored rather than applied over a running session.
+
+**Leaving and stopping are different things.**
+
+| | What happens | Who is affected |
+| --- | --- | --- |
+| `detach()` | This caller's calls are aborted, its callbacks refused, its streams closed and its handles released | This caller only |
+| `stop()` | The account stops | Every caller attached to it, each told `stopped` |
+| The last caller detaches | Whatever `onLastDetached` says: `'keep'` (the default), `'stop'`, or a function that decides | The account |
+| A caller falls silent | Released after `expireAfter` (60 s), and told `expired` if it is still listening | That caller only |
+| The host goes away | Every waiting call fails with `HostUnavailableError`, and the caller is told `host-lost` | Every caller of that host |
+
+A host is noticed as gone three ways: the worker's own `error` or `exit`, the port's `close`
+where the platform has one, and silence — a caller pings every `pingEvery` (10 s) and gives up
+after `hostTimeout` (30 s) without an answer. The last is the one that always works, because a
+terminated browser worker sends nothing at all.
+
+Released handles are released by kind. Staying online or watching a chat is stopped, because
+nobody is left to stop it. A mini app is closed. A streaming draft and a takeout session are left
+as they are: finishing either is a decision — sent or abandoned, succeeded or failed — and the
+host does not make it for a caller that is no longer there.
+
+A page that closes is released on `pagehide`, unless the page went into the back-forward cache
+and may come back. Pass `releaseOnPageHide: false` to leave that to expiry.
+
+### 6.2 Which worker where
+
+| Worker | Node 22+ | Bun | Deno | Browser | Workers / Edge |
+| --- | --- | --- | --- | --- | --- |
+| Dedicated — `workerEndpoint(worker)` | **run** | expected | expected | **run** | no |
+| Shared — `openSharedWorker(url)` | n/a | n/a | n/a | **run**¹ | no |
+| A port handed over by hand — `portEndpoint(port)` | **run** | expected | expected | **run** | no |
+
+¹ Chrome, two browsing contexts of one origin attached to one `SharedWorker`. Firefox and Safari
+provide `SharedWorker` and have not been run. Where a platform has none, `openSharedWorker` throws
+a `ConfigError` rather than starting a dedicated worker per page instead: that would quietly
+connect the account once per page, which is exactly what a shared host exists to prevent.
+
+In Node, the host passes `parentPort` as the scope to serve. In a browser it passes nothing, and
+tells a shared worker from a dedicated one by the scope it finds itself in.
+
+**A worker has no `localStorage`**, so `web()` is not a store an account in a worker can use. An
+account hosted there keeps what it learns in `memory()` or in a store the application supplies,
+and survives a restart through its session string: export it, keep it where the page can, and
+pass it as `restore` next time. The browser check does exactly that.
+
+### 6.3 What crosses, and how
+
+**Only what is listed.** The methods a caller may call are a fixed table, generated from the
+account's own surface and checked on the host by exact name. There is no property traversal and
+no dispatch by arbitrary name: `constructor`, `__proto__`, `surround` and anything else not in
+the table are refused as a `ValidationError`. Three properties may be read — `name`, `state` and
+`connected` — and nothing else may.
+
+A few parts of an account stay on the caller's side, because they are about the caller rather
+than the account: registering handlers and middleware, `api` and `call` (built there over one
+raw-call message), `withParams`, and the web and Node stream shapes of a download, which are made
+there over the iterator.
+
+**Values.** Structured cloning carries `bigint`, `Uint8Array`, `Date`, `Map`, `Set`, arrays and
+plain objects as they are. It does not carry prototypes, and nothing here pretends it does. The
+seventeen entity views — `MessageView`, `UserView`, `ChatView` and the rest — cross as the raw
+value they read and are built again on arrival, which is sound because every one of them is a
+function of its raw value and nothing else. Any other class instance, a function, a symbol or a
+cycle is refused, naming where in the value it was.
+
+**Errors** cross as name, message and their own data fields, without the stack. The framework's
+own classes are built again as the same class — `ConfigError`, `ValidationError`, `NetworkError`,
+`AuthError`, `SessionError`, `StorageError`, `PeerError`, `CancelledError`, `LifecycleError`,
+`TelegramError`, and `FloodError` with its `retryAfter` — so `instanceof` works on the caller's
+side. Anything else arrives as a `RemoteError` that keeps the host's name and fields.
+
+**Functions** cross only where a method takes one: the prompts of `signIn` and `signInQr`, the
+sink of `downloadTo`, the reader of an upload's source. Each becomes a token valid for that one
+call; the host calls back across, and the token is revoked when the call ends. A function
+anywhere else is refused, on both sides.
+
+**Iterators** are pulled with credit: the caller asks for eight items at a time by default, and
+the host sends no further ahead than it was asked. Leaving a `for await` early closes the
+iterator on the host.
+
+**Handles** — a streaming draft, an open mini app, a takeout session, the function that stops
+staying online — cross as a handle with a fixed list of methods and the fields it had.
+
+**Bytes.** What the host sends as bytes — a download's result, a chunk of a download stream,
+what a sink is handed — is copied into a buffer allocated for the purpose and that buffer is
+transferred, so the host never gives away memory it still reads. Bytes going the other way are
+cloned.
+
+**Cancellation.** An `AbortSignal` in the arguments is replaced by one the host controls.
+Aborting rejects the call on the caller's side at once and aborts it on the host, which forgets
+it. That bounds what an abort promises: the caller stops waiting, and the host stops what can
+still be stopped. An operation already past its point of no return — a message the server has
+already accepted — finishes, and its result is discarded.
+
+### 6.4 Updates
+
+The host is the account's application. It surrounds the account's dispatch with one middleware
+that forwards each update, in the order the account delivered it, to every caller that asked for
+updates; the caller normalizes it and runs its own handlers. Replies and other actions go back
+across as calls.
+
+Each caller has its own window. The host lets up to `window` (1024) unacknowledged updates out to
+a caller and holds up to `backlog` (8192) more; the caller acknowledges as it handles them. A
+caller whose backlog overflows is told `lagged` and released. That is deliberate: an update is
+never silently dropped from the middle of a caller's stream, and a caller that has fallen that
+far behind is told so and let go rather than kept on a stream with a hole in it.
+
+A slow caller delays only itself, and a handler that throws is logged on its own side and never
+reaches the host, so neither affects another caller of the same account. Updates are not replayed
+to a caller that attaches later.
+
+### 6.5 Secrets
+
+Sign-in prompts run on the caller's side — that is where the person typing a code is — and the
+answer crosses to the host as the result of a callback. The protocol logs no arguments, results
+or callback values. `exportSession` returns the session string to the caller because that is what
+the method is for; the host itself never logs it.
+
+### 6.6 What has been run
+
+- **Protocol** — a host and a caller at either end of a real `MessageChannel`, so every value is
+  genuinely cloned, with the account talking to in-process datacenters. These establish how the
+  protocol behaves, not that it runs anywhere in particular, and are not counted as runtime
+  results here.
+- **Node, `worker_threads`** — the host on another thread: calls, a `FloodError` with its wait, an
+  update pushed down the session in the other thread, a file streamed in order, one account shared
+  by two callers and made once, cancellation, and a terminated worker failing every waiting call.
+- **A browser, a dedicated `Worker`** — the key exchange and an encrypted call in the worker over
+  a real WebSocket, a pushed update dispatched on the page, cancellation leaving nothing pending,
+  a call after a stop refused as `LifecycleError`, a session exported and restored in a new worker
+  with the same key, and a terminated worker failing its calls.
+- **A browser, a `SharedWorker`** — the page and a second browsing context attached to one host:
+  one account made once, one long-lived key at the datacenter, one update handled in both, one
+  context closed and released with nothing left behind while the other still works, a second
+  account kept apart on the same host, and a stop reaching every caller.
+
+Not run: Bun, Deno, Firefox, Safari, any mobile browser, and Telegram itself.

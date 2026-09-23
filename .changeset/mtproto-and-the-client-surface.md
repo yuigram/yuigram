@@ -228,6 +228,23 @@ characters, so a schema does not build buttons Telegram rejects for applications
 write in anything but ASCII. Data from an older release reads as nothing rather than as a wrong
 answer. Parsing is not authorisation, and the module says so.
 
+**An account in a worker.** `yuigram/worker` runs accounts on another thread — a Node
+`worker_threads` worker, a browser `Worker`, or a `SharedWorker` that every tab of an origin
+attaches to — and hands the thread that attached a proxy with the account's own methods.
+The worker owns the account and makes each one once, however many callers ask at the same moment,
+so two tabs share one connection rather than opening two. Handlers run where they were
+registered; the update was decrypted in the worker and forwarded in the order the account
+delivered it, each caller with its own acknowledged window, and a caller that falls too far
+behind is told so and let go instead of silently missing updates. Leaving is not stopping: one
+tab closing releases its calls, iterators and handles and leaves the others as they were.
+
+What crosses is a fixed table of methods checked by name on the host — never a walk over the
+account's properties. Entity views cross as the value they read and are built again on arrival;
+the framework's error classes arrive as themselves, `FloodError` with its wait; a function crosses
+only where a method takes one, such as a sign-in prompt; a cancelled call is cancelled on the
+host too; and a worker that goes away fails every call still waiting on it. Importing `yuigram`
+loads none of this. `docs/runtimes.md` §6 has the contract and what has been run where.
+
 **Layer 229.** The committed schema follows the one Telegram's own client ships, which the
 documentation page lags behind. A conversation-list row may be a community, which has no peer
 and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;

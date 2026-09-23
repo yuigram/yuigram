@@ -28,6 +28,8 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 10 | [production](10-production) | Throttling, retry, rate limiting, concurrency, clean shutdown |
 | 12 | [multiple clients](12-multiple-clients) | A bot and several accounts in one application, each with its own store and connections |
 | 13 | [walking lists](13-walking-lists) | Paged lists as one sequence, the people surface, and pulling a file chunk by chunk |
+| 14 | [conversations](14-conversations) | Scenes, prompts and typed buttons, with state that belongs to one conversation |
+| 15 | [worker](15-worker) | An account on another thread, attached to through a port |
 
 ## The gap at 11
 

@@ -39,6 +39,9 @@
     },
     {
       "path": "14-conversations"
+    },
+    {
+      "path": "15-worker"
     }
   ]
 }

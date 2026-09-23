@@ -297,8 +297,11 @@ change in the minor position and nothing between the two was published.
   - QR sign-in as the whole flow, and a download wearing either stream shape
   - Conversation state: scenes whose position survives a restart, prompts that belong to one
     conversation, and callback data with a shape and a byte budget
+  - An account in a worker: a dedicated worker or a `SharedWorker` that every tab attaches to,
+    the account made once and connected once, and a fixed table of what may cross. See
+    [runtimes.md](runtimes.md) §6
   - Still to come in this phase: flows whose *suspended* position survives a restart, which the
-    in-memory waiter does not; the worker-hosted client; and the storage drivers below
+    in-memory waiter does not; and the storage drivers below
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
