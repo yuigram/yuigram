@@ -301,64 +301,39 @@ export class SceneRegistry<C extends Addressed, S = unknown> {
   ): Promise<SceneOutcome> {
     let position = start
     let entering = options.entering
+
     // A scene that enters another that enters another is a chain, not a loop,
     // and a bound turns a mistake into a failure rather than a hang.
     for (let hop = 0; hop <= MAX_HOPS; hop += 1) {
       const definition = this.#require(position.scene)
-      const step = definition.steps[position.step]
-      if (step === undefined) {
+
+      if (definition.steps[position.step] === undefined) {
         // Off the end: the scene is finished, which is a leave rather than an
         // error, because `next()` on the last step is how a form ends.
-        await this.#storage.delete(key)
-        await this.#leaving(context, position, false)
-
-        return { handled: true, inScene: false }
+        return await this.#finish(key, context, position, false)
       }
 
-      const bound = controls(position, definition.steps.length)
-
-      if (entering && definition.onEnter !== undefined) {
-        await definition.onEnter(context, bound.api)
-      }
-
-      if (bound.move().kind === 'stay' && definition.beforeStep !== undefined) {
-        await definition.beforeStep(context, bound.api)
-      }
-
-      // A `beforeStep` that navigated or left replaces the step rather than
-      // running before it, which is what makes it useful for `/cancel`.
-      if (bound.move().kind === 'stay') {
-        await step(context, bound.api)
-
-        if (bound.move().kind === 'stay' && definition.afterStep !== undefined) {
-          await definition.afterStep(context, bound.api)
-        }
-      }
-
-      const move = bound.move()
-      const state = bound.state()
+      const { move, state } = await this.#step(context, definition, position, entering)
+      position = { ...position, state }
 
       if (move.kind === 'stay') {
         // Waiting for another update. The step has run once now, so the next
         // update is not the first time.
-        position = { ...position, state, fresh: false }
+        position = { ...position, fresh: false }
         await this.#write(key, position)
 
         return { handled: true, inScene: true }
       }
 
       if (move.kind === 'leave') {
-        await this.#storage.delete(key)
-        await this.#leaving(context, { ...position, state }, move.cancelled)
-
-        return { handled: true, inScene: false }
+        return await this.#finish(key, context, position, move.cancelled)
       }
 
       if (move.kind === 'enter') {
         const next = this.#require(move.scene)
         // Leaving the old scene before entering the new one, so an exit
         // handler cannot run after its successor's entry handler.
-        await this.#leaving(context, { ...position, state }, false)
+        await this.#leaving(context, position, false)
         position = {
           scene: move.scene,
           step: 0,
@@ -366,16 +341,64 @@ export class SceneRegistry<C extends Addressed, S = unknown> {
           fresh: true,
         }
         entering = true
-        await this.#write(key, position)
-        continue
+      } else {
+        position = { ...position, step: move.step, fresh: move.fresh }
+        entering = false
       }
 
-      position = { ...position, step: move.step, state, fresh: move.fresh }
-      entering = false
       await this.#write(key, position)
     }
 
     throw new ValidationError(`a scene moved ${MAX_HOPS} times for one update without settling`)
+  }
+
+  /**
+   * Run one step, with whatever surrounds it, and report where it asked to go.
+   *
+   * `onEnter` and `beforeStep` each run only while nothing has navigated yet,
+   * so either of them can replace the step rather than merely precede it —
+   * which is what makes `beforeStep` the place to handle `/cancel`.
+   */
+  async #step(
+    context: C,
+    definition: SceneDefinition<C, S>,
+    position: ScenePosition<S>,
+    entering: boolean,
+  ): Promise<{ readonly move: Move; readonly state: S }> {
+    const step = definition.steps[position.step] as SceneStep<C, S>
+    const bound = controls(position, definition.steps.length)
+    const staying = (): boolean => bound.move().kind === 'stay'
+
+    if (entering && definition.onEnter !== undefined) {
+      await definition.onEnter(context, bound.api)
+    }
+
+    if (staying() && definition.beforeStep !== undefined) {
+      await definition.beforeStep(context, bound.api)
+    }
+
+    if (staying()) {
+      await step(context, bound.api)
+
+      if (staying() && definition.afterStep !== undefined) {
+        await definition.afterStep(context, bound.api)
+      }
+    }
+
+    return { move: bound.move(), state: bound.state() }
+  }
+
+  /** Clear a conversation's position and run the scene's exit handler. */
+  async #finish(
+    key: string,
+    context: C,
+    position: ScenePosition<S>,
+    cancelled: boolean,
+  ): Promise<SceneOutcome> {
+    await this.#storage.delete(key)
+    await this.#leaving(context, position, cancelled)
+
+    return { handled: true, inScene: false }
   }
 
   /** Run a scene's exit handler, if it has one. */

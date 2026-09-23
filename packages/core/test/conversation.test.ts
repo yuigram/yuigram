@@ -423,6 +423,102 @@ describe('scenes', () => {
   })
 })
 
+describe('what runs around a step', () => {
+  const trace: string[] = []
+  const built = (definition: Partial<SceneDefinition<never, Record<never, never>>>) => {
+    trace.length = 0
+
+    return createConversation<never, Record<never, never>>({
+      storage: memory<ScenePosition<Record<never, never>>>(),
+      scenes: [
+        {
+          name: 'around',
+          steps: [
+            (_c, scene) => {
+              trace.push(`step0:${scene.fresh}`)
+            },
+            () => trace.push('step1'),
+          ],
+          ...definition,
+        } as SceneDefinition<never, Record<never, never>>,
+      ],
+    })
+  }
+
+  it('lets onEnter replace everything after it', async () => {
+    const { middleware } = built({
+      onEnter: (_c, scene) => {
+        trace.push('enter')
+        scene.leave()
+      },
+      beforeStep: () => trace.push('before'),
+      onLeave: () => trace.push('leave'),
+    })
+
+    const entering = update({})
+    await run(middleware, entering)
+    await held(entering).enter('around')
+
+    // Navigating in `onEnter` skips `beforeStep` and the step body alike.
+    expect(trace).toEqual(['enter', 'leave'])
+  })
+
+  it('does not run afterStep when the step navigated', async () => {
+    const { middleware } = built({
+      steps: [
+        (_c, scene) => {
+          trace.push('step0')
+          scene.next()
+        },
+        (_c, scene) => {
+          if (scene.fresh) trace.push('step1')
+        },
+      ],
+      afterStep: () => trace.push('after'),
+    })
+
+    const entering = update({})
+    await run(middleware, entering)
+    await held(entering).enter('around')
+
+    // `afterStep` is for a step that stayed; one that moved has already said
+    // what happens next. So it runs once, for the step that waited, and not
+    // for the one that navigated past it.
+    expect(trace).toEqual(['step0', 'step1', 'after'])
+  })
+
+  it('runs afterStep when the step stayed', async () => {
+    const { middleware } = built({ afterStep: () => trace.push('after') })
+
+    const entering = update({})
+    await run(middleware, entering)
+    await held(entering).enter('around')
+
+    expect(trace).toEqual(['step0:true', 'after'])
+  })
+
+  it('leaves the scene when a step moves past the last one', async () => {
+    const { middleware } = built({
+      steps: [
+        (_c, scene) => {
+          trace.push('only')
+          scene.next()
+        },
+      ],
+      onLeave: (_c, scene) => trace.push(`leave:${scene.cancelled}`),
+    })
+
+    const entering = update({})
+    await run(middleware, entering)
+    await held(entering).enter('around')
+
+    // `next()` on the last step is how a form ends, so it is a leave rather
+    // than a failure.
+    expect(trace).toEqual(['only', 'leave:false'])
+    expect(await held(entering).position()).toBeUndefined()
+  })
+})
+
 describe('waiting for an answer', () => {
   const plain = () =>
     createConversation<never, Record<never, never>>({
