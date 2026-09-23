@@ -37,8 +37,26 @@ import type { Callable } from './migration.js'
 /** The constructors that describe a user well enough to name it. */
 const USER_KINDS = new Set(['user'])
 
-/** The constructors that describe a group or a channel well enough to name it. */
-const CHAT_KINDS = new Set(['chat', 'chatForbidden', 'channel', 'channelForbidden'])
+/**
+ * The constructors that describe a group or a channel well enough to name it.
+ *
+ * A community is here because it is addressed the way a channel is — by
+ * identifier and access hash, through `inputChannel` — even though it is
+ * neither a group nor a broadcast. Leaving it out would mean an answer that
+ * described a community taught the account nothing about it, and the next call
+ * naming that community would have no hash to address it with.
+ */
+const CHAT_KINDS = new Set([
+  'chat',
+  'chatForbidden',
+  'channel',
+  'channelForbidden',
+  'community',
+  'communityForbidden',
+])
+
+/** Of those, the ones addressed by identifier alone. */
+const NUMBERED_KINDS = new Set(['chat', 'chatForbidden'])
 
 /**
  * Read every peer an answer describes.
@@ -353,8 +371,9 @@ function readChat(value: unknown): PeerRecord | undefined {
   const id = chat['id']
   if (typeof id !== 'bigint') return undefined
 
-  // A basic group is named by its identifier alone; a channel needs a hash.
-  const kind: PeerKind = chat._ === 'chat' || chat._ === 'chatForbidden' ? 'chat' : 'channel'
+  // A basic group is named by its identifier alone; a channel or a community
+  // needs a hash.
+  const kind: PeerKind = NUMBERED_KINDS.has(chat._) ? 'chat' : 'channel'
   const hash = chat['access_hash']
 
   return {

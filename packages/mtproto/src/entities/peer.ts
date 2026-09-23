@@ -398,7 +398,7 @@ export class ChatView {
    * would collide, which is why this carries both halves.
    */
   get ref(): PeerRef {
-    return { kind: this.isChannel ? 'channel' : 'chat', id: this.raw.id }
+    return { kind: this.isAddressedAsChannel ? 'channel' : 'chat', id: this.raw.id }
   }
 
   /** Which of the five this is. */
@@ -422,11 +422,37 @@ export class ChatView {
   /**
    * Whether this is a channel or supergroup rather than a basic group.
    *
-   * The distinction decides which family of calls addresses it: a channel is
-   * addressed with an access hash and its own methods, a basic group by number.
+   * A community is not one. It is addressed the same way — see
+   * {@link ChatView.isAddressedAsChannel} — but it is a separate construct with
+   * its own membership and its own methods, and a reader asking this question
+   * is asking whether it may treat this as a channel, which it may not.
    */
   get isChannel(): boolean {
     return this.raw._ === 'channel' || this.raw._ === 'channelForbidden'
+  }
+
+  /**
+   * Whether this is a community rather than a conversation.
+   *
+   * A community holds conversations; it is not one. Nothing is posted in it, it
+   * has no history, and the calls that operate on it are its own — so a reader
+   * that has one in hand and treats it as a supergroup will address the wrong
+   * thing. {@link ChatView.form} says the same; this is the narrowing question.
+   */
+  get isCommunity(): boolean {
+    return this.raw._ === 'community' || this.raw._ === 'communityForbidden'
+  }
+
+  /**
+   * Whether addressing it takes an identifier and an access hash.
+   *
+   * True of a channel and of a community alike: both are named by
+   * `inputChannel`, and a basic group by number alone. This is the question the
+   * peer store answers with `kind`, kept separate from {@link ChatView.isChannel}
+   * because the two stopped meaning the same thing when communities arrived.
+   */
+  get isAddressedAsChannel(): boolean {
+    return this.isChannel || this.isCommunity
   }
 
   /** Whether this is a hole rather than a conversation the answer described. */
@@ -441,7 +467,11 @@ export class ChatView {
    * that something is there, not enough to read it.
    */
   get isForbidden(): boolean {
-    return this.raw._ === 'chatForbidden' || this.raw._ === 'channelForbidden'
+    return (
+      this.raw._ === 'chatForbidden' ||
+      this.raw._ === 'channelForbidden' ||
+      this.raw._ === 'communityForbidden'
+    )
   }
 
   /** The name shown for it, where the answer carried one. */
@@ -456,9 +486,15 @@ export class ChatView {
    * Only a channel has one; a basic group is addressed by number alone.
    */
   get accessHash(): bigint | undefined {
-    if (this.raw._ === 'channel' || this.raw._ === 'channelForbidden') return this.raw.access_hash
-
-    return undefined
+    switch (this.raw._) {
+      case 'channel':
+      case 'channelForbidden':
+      case 'community':
+      case 'communityForbidden':
+        return this.raw.access_hash
+      default:
+        return undefined
+    }
   }
 
   /**
@@ -468,7 +504,7 @@ export class ChatView {
    * addressing it.
    */
   get isPartial(): boolean {
-    return this.raw._ === 'channel' ? this.raw.min === true : false
+    return this.raw._ === 'channel' || this.raw._ === 'community' ? this.raw.min === true : false
   }
 
   /** The main handle, where the conversation has one. */
@@ -483,14 +519,18 @@ export class ChatView {
 
   /** The picture, where it has one. */
   get photo(): TypeChatPhoto | undefined {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.photo
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.photo
+    }
 
     return undefined
   }
 
   /** When it was created, in Unix seconds, where the answer says. */
   get date(): number | undefined {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.date
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.date
+    }
 
     return undefined
   }
@@ -505,16 +545,31 @@ export class ChatView {
 
   /** Whether the account created it. */
   get isCreator(): boolean {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.creator === true
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.creator === true
+    }
 
     return false
   }
 
   /** Whether the account has left. */
   get hasLeft(): boolean {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.left === true
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.left === true
+    }
 
     return false
+  }
+
+  /**
+   * Whether a community is shown collapsed in the conversation list.
+   *
+   * A community's own field, and the one {@link toggleCommunityCollapsed}
+   * changes. Absent rather than false for anything that is not a community, so
+   * a reader cannot mistake "not applicable" for "expanded".
+   */
+  get isCollapsedInDialogs(): boolean | undefined {
+    return this.raw._ === 'community' ? this.raw.collapsed_in_dialogs === true : undefined
   }
 
   /**
@@ -667,7 +722,9 @@ export class ChatView {
 
   /** What the account may do as an administrator, where it is one. */
   get adminRights(): TypeChatAdminRights | undefined {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.admin_rights
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.admin_rights
+    }
 
     return undefined
   }
@@ -679,7 +736,9 @@ export class ChatView {
 
   /** What everyone is barred from doing by default. */
   get defaultBannedRights(): TypeChatBannedRights | undefined {
-    if (this.raw._ === 'chat' || this.raw._ === 'channel') return this.raw.default_banned_rights
+    if (this.raw._ === 'chat' || this.raw._ === 'channel' || this.raw._ === 'community') {
+      return this.raw.default_banned_rights
+    }
 
     return undefined
   }
