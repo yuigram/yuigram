@@ -24,6 +24,15 @@ export {
   type PollOptions,
 } from './bot.js'
 export {
+  CALLBACK_DATA_LIMIT,
+  type CallbackData,
+  CallbackDataInvalid,
+  CallbackDataTooLong,
+  type CallbackValue,
+  defineCallbackData,
+  type FieldSpec,
+} from './callback-data.js'
+export {
   type ChatActionOptions,
   type ChatActionTarget,
   chatAction,

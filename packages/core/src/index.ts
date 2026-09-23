@@ -46,6 +46,44 @@ export type {
   UnifiedContext,
 } from './context/types.js'
 export {
+  answering,
+  type Conversation,
+  type ConversationContext,
+  type ConversationControls,
+  type ConversationFlavour,
+  type ConversationOptions,
+  checkPattern,
+  conversation,
+  createConversation,
+  type HearPattern,
+  hearing,
+  hears,
+} from './conversation/conversation.js'
+export {
+  type Addressed,
+  type ConversationKeyFn,
+  ConversationLocks,
+  type ConversationScope,
+  checkScope,
+  conversationKey,
+  DEFAULT_SCOPE,
+} from './conversation/identity.js'
+export {
+  type SceneControls,
+  type SceneDefinition,
+  type SceneOutcome,
+  type ScenePosition,
+  SceneRegistry,
+  type SceneStep,
+} from './conversation/scenes.js'
+export {
+  type RegisterOptions,
+  WaitCancelledError,
+  WaiterRegister,
+  type WaiterSpec,
+  WaitTimeoutError,
+} from './conversation/waiters.js'
+export {
   type Dispatchable,
   Dispatcher,
   type DispatcherOptions,
