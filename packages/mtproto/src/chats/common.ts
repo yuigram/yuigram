@@ -204,6 +204,14 @@ export interface AdminRights {
   readonly postStories?: boolean
   readonly editStories?: boolean
   readonly deleteStories?: boolean
+  /** Answer the direct messages sent to a channel. */
+  readonly manageDirectMessages?: boolean
+  /** Give members the titles shown beside their names. */
+  readonly manageRanks?: boolean
+  /** Link other chats to this one, as a community does. */
+  readonly manageLinkedPeers?: boolean
+  /** Set the messages a new member is greeted with. */
+  readonly manageWelcomeMessages?: boolean
   /**
    * Nothing in particular, and enough to be listed as an administrator.
    *
@@ -237,6 +245,12 @@ export interface Restrictions {
   readonly sendVoices?: boolean
   readonly sendDocs?: boolean
   readonly sendPlain?: boolean
+  /** Cannot change the title shown beside their own name. */
+  readonly editRank?: boolean
+  /** Cannot react to messages. */
+  readonly sendReactions?: boolean
+  /** Cannot link other chats to this one. */
+  readonly manageLinkedPeers?: boolean
   /**
    * When the restriction lifts, in Unix seconds.
    *
@@ -266,6 +280,10 @@ export function adminRights(rights: AdminRights): TypeChatAdminRights {
     ...flag('post_stories', rights.postStories),
     ...flag('edit_stories', rights.editStories),
     ...flag('delete_stories', rights.deleteStories),
+    ...flag('manage_direct_messages', rights.manageDirectMessages),
+    ...flag('manage_ranks', rights.manageRanks),
+    ...flag('manage_linked_peers', rights.manageLinkedPeers),
+    ...flag('manage_welcome_messages', rights.manageWelcomeMessages),
     ...flag('other', rights.other),
   }
 }
@@ -295,6 +313,9 @@ export function bannedRights(restrictions: Restrictions): TypeChatBannedRights {
     ...flag('send_voices', restrictions.sendVoices),
     ...flag('send_docs', restrictions.sendDocs),
     ...flag('send_plain', restrictions.sendPlain),
+    ...flag('edit_rank', restrictions.editRank),
+    ...flag('send_reactions', restrictions.sendReactions),
+    ...flag('manage_linked_peers', restrictions.manageLinkedPeers),
   }
 }
 
