@@ -52,6 +52,22 @@ describe('single returns', () => {
       ),
     ).toEqual({ kind: 'reference', name: 'User' })
   })
+
+  it('recognises a single word the page defines as an object, and only that', () => {
+    const description =
+      'Returns the list of gifts that can be sent by the bot to users and channel chats. Requires no parameters. Returns a Gifts object.'
+
+    // Without the page's objects, a word with no internal capital is prose.
+    expect(inferReturnType(description)).toEqual({ kind: 'boolean' })
+    expect(inferReturnType(description, new Set(['Gifts', 'Gift']))).toEqual({
+      kind: 'reference',
+      name: 'Gifts',
+    })
+    // A capitalised word the page does not define stays prose.
+    expect(inferReturnType('Returns Nothing on success.', new Set(['Gifts']))).toEqual({
+      kind: 'boolean',
+    })
+  })
 })
 
 describe('union returns', () => {

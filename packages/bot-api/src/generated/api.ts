@@ -3,7 +3,7 @@
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { CallOptions } from '../api-options.js'
-import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
+import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, Gifts, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
 import type {
   AddStickerToSetParams,
   AnswerCallbackQueryParams,
@@ -1201,7 +1201,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getavailablegifts
    */
-  getAvailableGifts(params?: GetAvailableGiftsParams, options?: CallOptions): Promise<boolean>
+  getAvailableGifts(params?: GetAvailableGiftsParams, options?: CallOptions): Promise<Gifts>
 
   /**
    * Sends a gift to the given user or channel chat. The gift can't be converted

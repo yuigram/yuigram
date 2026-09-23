@@ -3,7 +3,7 @@
   "releasedAt": "august-24-2026",
   "source": {
     "url": "https://corefork.telegram.org/bots/api",
-    "fetchedAt": "2026-09-17T23:45:01.607Z"
+    "fetchedAt": "2026-09-23T10:13:31.419Z"
   },
   "methods": [
     {
@@ -6885,7 +6885,8 @@
       "documentationLink": "https://corefork.telegram.org/bots/api#getavailablegifts",
       "parameters": [],
       "returns": {
-        "kind": "boolean"
+        "kind": "reference",
+        "name": "Gifts"
       },
       "hasFileParameter": false
     },

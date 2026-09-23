@@ -115,7 +115,7 @@ narrowing does not survive a composition written inside the registration argumen
 
 ### Fixed on the way
 
-Five defects surfaced while porting, and are fixed:
+Six defects surfaced while porting, and are fixed:
 
 - **Service messages could not reply.** A promoted service kind is absent from `MESSAGE_KINDS`,
   and deciding by kind left exactly those updates — a member joining, a title changing —
@@ -134,6 +134,10 @@ Five defects surfaced while porting, and are fixed:
   state, and `stop()` returned immediately when idle — abandoning every in-flight handler
   while reporting a clean shutdown. In-flight work is now drained whether or not a start verb
   was ever called.
+- **`getAvailableGifts` was typed as returning a boolean.** It returns a `Gifts` object. The
+  return type is read from the method's prose, and a single-word type name was taken for an
+  ordinary noun; any word the page defines as an object is now read as one. Code that used the
+  result as a boolean was already wrong at runtime.
 
 ### What is new
 
