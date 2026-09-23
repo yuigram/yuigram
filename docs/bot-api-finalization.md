@@ -118,7 +118,7 @@ is required and meaningless to the caller.
 | **Media caching** | **Userland recipe** | It is a hook plus a `KV`. Both exist. Shipping it means owning an eviction policy nobody agrees on |
 | **Redis / SQLite storage** | **Userland recipe** | `KV` is four methods. Shipping an adapter means owning a driver dependency, a connection lifecycle and a version matrix for something the application already has |
 | **Scenes / conversations** | **Deferred** | Real design surface — persistence of position, re-entry, cancellation, nesting. Doing it badly is worse than not doing it. `Router` plus sessions covers the common case today |
-| **Rich messages** | **Not now** | New, niche, and the generated types already make them callable |
+| **Rich messages** | **Core** | A written rich message and the files it names have to agree, which the generated types cannot check. The block form is typed completely by the schema |
 | **Pagination** | **Not building** | The Bot API paginates almost nothing; `getUpdates` offsets are handled by polling |
 
 The through-line: something belongs in core when it rides an extension point core already
@@ -282,8 +282,6 @@ about is eviction, and there is no answer that suits a bot with ten files and a 
 million.
 
 **Pagination helpers.** The Bot API paginates almost nothing.
-
-**Rich message builders.** Recent, narrow, and reachable through the generated types.
 
 **A plugin package per capability.** Package count is not a health metric. Every capability
 here rides an extension point that is public and documented, which is what makes an ecosystem

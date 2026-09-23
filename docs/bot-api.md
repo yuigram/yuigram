@@ -276,15 +276,24 @@ So the payloads are built:
 | `menuButton.default` / `commands` / `webApp` | the menu button variants |
 | `botCommands.of` / `list` / `scope.*` | commands, and where a list of them applies |
 | `permissions.all` / `none`, `adminRights.all` / `none` | a full set, then what differs |
+| `richMessage.html` / `markdown` / `blocks` | a rich message, in exactly one of its three forms |
+| `richMedia.photo` / `video` / `animation` / `audio` / `voiceNote` / `document`, `richMedia.link` | the files a written rich message names, and the link it names each by |
 
 Each returns the object the schema declares and nothing more, so it can be spread, edited and
 mixed with hand-written payloads. Files go in as they come from `media.*`: an upload nested in a
 payload is rewritten to `attach://` when the request is encoded.
 
-Inline results were already built (`inline.article`, `inline.photo` and the rest), and the nine
-cached result variants are still written out, since the generated types describe them completely.
-Rich-message payloads are not built here: that surface belongs to the newer schema layer the
-MTProto side is also waiting on.
+Inline results cover all twenty shapes: `inline.article`, `inline.photo` and the rest by URL or
+description, `inline.cached.*` for files Telegram already holds, and `inline.button.webApp` /
+`start` for the control above the results.
+
+A rich message written as HTML or Markdown names its files with `tg://photo`, `tg://video`,
+`tg://audio` and `tg://document` links. `richMedia.link(entry)` writes the link from the entry,
+so the id is written once and an animation is named as a video and a voice note as audio, as
+their players are. `richMessage.html` and `markdown` refuse a link to a file that is not attached,
+a link of the wrong kind, two files under one id, and more than fifty; an attached file no link
+names is left for Telegram to judge. An upload inside an entry is attached when the request is
+encoded, like any other nested file.
 
 ---
 
@@ -369,7 +378,8 @@ What is not there yet, and what to do meanwhile:
 
 - Scenes, once the design questions in [bot-api-finalization.md](bot-api-finalization.md) §9 are answered
 - Business-account scoped API proxy
-- Rich messages (Bot API 10.2) as a first-class builder
+- Rich messages (Bot API 10.2) as a first-class builder — built for the written forms and the
+  files they name; builders for the individual block types are still to come
 
 ### v1.0
 

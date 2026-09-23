@@ -9,10 +9,16 @@
 
 import type { FilterMatch } from '@yuigram/core'
 import { describe, expectTypeOf, it } from 'vitest'
-import type { SendMediaGroupParams, SendMessageParams } from '../src/generated/methods/index.js'
+import type {
+  AnswerInlineQueryParams,
+  SendMediaGroupParams,
+  SendMessageParams,
+  SendRichMessageParams,
+} from '../src/generated/methods/index.js'
 import type {
   ChatAdministratorRights,
   ChatPermissions,
+  InlineQueryResult,
   InlineQueryResultArticle,
   InputMedia,
   InputMessageContent,
@@ -40,6 +46,8 @@ import {
   price,
   reaction,
   replyTo,
+  richMedia,
+  richMessage,
   shipping,
 } from '../src/index.js'
 
@@ -102,6 +110,60 @@ describe('the payloads a method takes', () => {
     expectTypeOf(permissions.all()).toEqualTypeOf<ChatPermissions>()
     // Every required right is present, which is what makes this assignable.
     expectTypeOf(adminRights.none()).toEqualTypeOf<ChatAdministratorRights>()
+  })
+})
+
+describe('rich messages and every inline result', () => {
+  it('builds a rich message the send takes, in each form', () => {
+    const chart = richMedia.photo('chart', 'x')
+    expectTypeOf(richMessage.html('x', { media: [chart] })).toEqualTypeOf<
+      SendRichMessageParams['rich_message']
+    >()
+    expectTypeOf(richMessage.markdown('x')).toEqualTypeOf<SendRichMessageParams['rich_message']>()
+    expectTypeOf(richMessage.blocks([{ type: 'divider' }])).toEqualTypeOf<
+      SendRichMessageParams['rich_message']
+    >()
+    // A media entry is only ever one of the six kinds a rich message carries.
+    expectTypeOf(richMedia.voiceNote('m', 'x').media).toEqualTypeOf<
+      NonNullable<SendRichMessageParams['rich_message']['media']>[number]['media']
+    >()
+  })
+
+  it('builds all twenty results into one answer', () => {
+    const results = [
+      inline.article('t', 'm'),
+      inline.photo('u'),
+      inline.gif('u'),
+      inline.mpeg4Gif('u'),
+      inline.video('u', { mime_type: 'video/mp4', title: 't' }),
+      inline.audio('u', 't'),
+      inline.voice('u', 't'),
+      inline.document('u', 't', { mime_type: 'application/pdf' }),
+      inline.location(1, 2, 't'),
+      inline.venue(1, 2, 't', 'a'),
+      inline.contact('+1', 'A'),
+      inline.game('g'),
+      inline.cached.photo('f'),
+      inline.cached.gif('f'),
+      inline.cached.mpeg4Gif('f'),
+      inline.cached.video('f', 't'),
+      inline.cached.audio('f'),
+      inline.cached.voice('f', 't'),
+      inline.cached.document('f', 't'),
+      inline.cached.sticker('f'),
+    ]
+    expectTypeOf(results).toExtend<InlineQueryResult[]>()
+    expectTypeOf(inline.button.start('t', 'p')).toEqualTypeOf<
+      NonNullable<AnswerInlineQueryParams['button']>
+    >()
+
+    // The title a cached video, voice note or document needs is not optional.
+    // @ts-expect-error — a cached video without its title
+    inline.cached.video('f')
+    // @ts-expect-error — a cached document without its title
+    inline.cached.document('f')
+    // @ts-expect-error — an MPEG-4 animation's URL is its own positional argument
+    inline.mpeg4Gif('u', { mpeg4_url: 'v' })
   })
 })
 

@@ -167,8 +167,13 @@ export {
   pollOption,
   preview,
   price,
+  type RichMediaLink,
+  type RichMessageOptions,
+  type RichTextOptions,
   reaction,
   replyTo,
+  richMedia,
+  richMessage,
   type StarsInvoice,
   shipping,
 } from './payloads.js'

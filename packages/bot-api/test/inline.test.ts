@@ -131,3 +131,59 @@ describe('shape', () => {
     expect(Object.isFrozen(inline)).toBe(true)
   })
 })
+
+describe('the rest of the twenty', () => {
+  it('builds the animation and game results', () => {
+    expect(inline.mpeg4Gif('https://e.com/a.mp4', { id: 'm' })).toEqual({
+      type: 'mpeg4_gif',
+      id: 'm',
+      mpeg4_url: 'https://e.com/a.mp4',
+      thumbnail_url: 'https://e.com/a.mp4',
+    })
+    expect(inline.game('snake', { id: 'g' })).toEqual({
+      type: 'game',
+      id: 'g',
+      game_short_name: 'snake',
+    })
+  })
+
+  it('names a file Telegram holds by the field its kind uses, under the same type', () => {
+    const { cached } = inline
+
+    expect(
+      [
+        cached.photo('f'),
+        cached.gif('f'),
+        cached.mpeg4Gif('f'),
+        cached.video('f', 'Clip'),
+        cached.audio('f'),
+        cached.voice('f', 'Memo'),
+        cached.document('f', 'Notes'),
+        cached.sticker('f'),
+      ].map(({ id: _id, ...rest }) => rest),
+    ).toEqual([
+      { type: 'photo', photo_file_id: 'f' },
+      { type: 'gif', gif_file_id: 'f' },
+      { type: 'mpeg4_gif', mpeg4_file_id: 'f' },
+      { type: 'video', video_file_id: 'f', title: 'Clip' },
+      { type: 'audio', audio_file_id: 'f' },
+      { type: 'voice', voice_file_id: 'f', title: 'Memo' },
+      { type: 'document', document_file_id: 'f', title: 'Notes' },
+      { type: 'sticker', sticker_file_id: 'f' },
+    ])
+  })
+
+  it('builds the button above the results in either of its two forms', () => {
+    expect(inline.button.webApp('Open', 'https://e.com/app')).toEqual({
+      text: 'Open',
+      web_app: { url: 'https://e.com/app' },
+    })
+    expect(inline.button.start('Sign in', 'login-42_x')).toEqual({
+      text: 'Sign in',
+      start_parameter: 'login-42_x',
+    })
+    for (const bad of ['', 'a'.repeat(65), 'with space', 'a+b']) {
+      expect(() => inline.button.start('x', bad)).toThrow(/start parameter/)
+    }
+  })
+})

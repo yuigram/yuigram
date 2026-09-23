@@ -50,7 +50,11 @@ import type {
   InputMediaLivePhoto,
   InputMediaPhoto,
   InputMediaVideo,
+  InputMediaVoiceNote,
   InputPollOption,
+  InputRichBlock,
+  InputRichMessage,
+  InputRichMessageMedia,
   InputSticker,
   InputTextMessageContent,
   InputVenueMessageContent,
@@ -145,6 +149,12 @@ export const attach = Object.freeze({
     media: PayloadFile,
     extra: Extra<InputMediaDocument, 'media'> = {},
   ): InputMediaDocument => item('document', media, extra),
+
+  /** A voice note, which only a rich message carries this way. */
+  voiceNote: (
+    media: PayloadFile,
+    extra: Extra<InputMediaVoiceNote, 'media'> = {},
+  ): InputMediaVoiceNote => item('voice_note', media, extra),
 
   /** A live photo: the still, and the short video that plays with it. */
   livePhoto: (
@@ -245,6 +255,212 @@ export const content = Object.freeze({
     checkPrices(params)
 
     return params
+  },
+})
+
+/* -------------------------------------------------------------------------- */
+/* Rich messages                                                               */
+/* -------------------------------------------------------------------------- */
+
+/** The most media one rich message carries. */
+const MAX_RICH_MEDIA = 50
+
+/** What a rich message's media id may be made of. */
+const RICH_MEDIA_ID = /^[A-Za-z0-9_-]{1,64}$/
+
+/** The four link forms a rich message's text names its media by. */
+export type RichMediaLink = 'photo' | 'video' | 'audio' | 'document'
+
+/**
+ * The link form each kind of media is named by.
+ *
+ * Telegram documents four link forms for six kinds of media. An animation is
+ * played as a video and a voice note as audio — the formatting examples put
+ * the one in a video element and the other in an audio element — so each is
+ * named by the link its player takes.
+ */
+const LINK_OF: Readonly<Record<string, RichMediaLink>> = {
+  photo: 'photo',
+  video: 'video',
+  animation: 'video',
+  audio: 'audio',
+  voice_note: 'audio',
+  document: 'document',
+}
+
+function checkMediaId(id: string): void {
+  if (!RICH_MEDIA_ID.test(id)) {
+    throw new ValidationError(
+      `a rich message's media id is 1 to 64 characters of A-Z, a-z, 0-9, _ and -, not ${JSON.stringify(id)}`,
+    )
+  }
+}
+
+function richEntry(id: string, media: InputRichMessageMedia['media']): InputRichMessageMedia {
+  checkMediaId(id)
+
+  return { id, media }
+}
+
+function linkOf(entry: InputRichMessageMedia): RichMediaLink {
+  const kind = LINK_OF[entry.media.type]
+  if (kind === undefined) {
+    throw new ValidationError(`a rich message cannot name media of type ${entry.media.type}`)
+  }
+
+  return kind
+}
+
+/**
+ * The media a rich message written as HTML or Markdown refers to.
+ *
+ * Each entry is a file under an id, and the text names it with a
+ * `tg://<kind>?id=<id>` link. `richMedia.link(entry)` writes that link from the
+ * entry itself, so the id is written once and the kind cannot disagree with
+ * the file:
+ *
+ * ```ts
+ * const chart = richMedia.photo('chart', media.path('chart.png'))
+ *
+ * await bot.api.sendRichMessage({
+ *   chat_id: chat,
+ *   rich_message: richMessage.html(`<img src="${richMedia.link(chart)}"/>`, { media: [chart] }),
+ * })
+ * ```
+ *
+ * A file uploaded here is attached when the request is encoded, as it is for
+ * an album.
+ */
+export const richMedia = Object.freeze({
+  photo: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaPhoto, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.photo(file, extra)),
+
+  video: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaVideo, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.video(file, extra)),
+
+  animation: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaAnimation, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.animation(file, extra)),
+
+  audio: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaAudio, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.audio(file, extra)),
+
+  voiceNote: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaVoiceNote, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.voiceNote(file, extra)),
+
+  document: (
+    id: string,
+    file: PayloadFile,
+    extra: Extra<InputMediaDocument, 'media'> = {},
+  ): InputRichMessageMedia => richEntry(id, attach.document(file, extra)),
+
+  /** The link the text names an entry by. */
+  link: (entry: InputRichMessageMedia): string => `tg://${linkOf(entry)}?id=${entry.id}`,
+})
+
+/** How a rich message is shown, whichever way it is written. */
+export interface RichMessageOptions {
+  /** Shown right to left. */
+  readonly is_rtl?: boolean
+  /** Leave URLs, mentions, hashtags and the like as plain text. */
+  readonly skip_entity_detection?: boolean
+}
+
+/** A rich message written as text, with the media its links name. */
+export interface RichTextOptions extends RichMessageOptions {
+  readonly media?: readonly InputRichMessageMedia[]
+}
+
+/** The media links a rich message's text contains. */
+const MEDIA_LINK = /tg:\/\/(photo|video|audio|document)\?id=([A-Za-z0-9_-]{1,64})/g
+
+/**
+ * Check a written rich message against the media it carries.
+ *
+ * What is refused is what cannot be displayed: two entries under one id, a
+ * link naming an id nothing was attached under, and a link whose kind is not
+ * the entry's. An entry no link names is let through — Telegram decides what
+ * an unreferenced file means, and it may be named in a form this does not read.
+ */
+function checkRichMedia(text: string, media: readonly InputRichMessageMedia[]): void {
+  if (media.length > MAX_RICH_MEDIA) {
+    throw new ValidationError(
+      `a rich message carries at most ${MAX_RICH_MEDIA} media, not ${media.length}`,
+    )
+  }
+
+  const byId = new Map<string, RichMediaLink>()
+  for (const entry of media) {
+    checkMediaId(entry.id)
+    if (byId.has(entry.id)) {
+      throw new ValidationError(`two media in one rich message share the id ${entry.id}`)
+    }
+    byId.set(entry.id, linkOf(entry))
+  }
+
+  for (const [, kind, id = ''] of text.matchAll(MEDIA_LINK)) {
+    const attached = byId.get(id)
+    if (attached === undefined) {
+      throw new ValidationError(`the text links to media ${id}, which is not attached`)
+    }
+    if (attached !== kind) {
+      throw new ValidationError(
+        `the text links to ${id} as ${kind}, but it is attached as ${attached}: tg://${attached}?id=${id}`,
+      )
+    }
+  }
+}
+
+function written(
+  form: 'html' | 'markdown',
+  text: string,
+  options: RichTextOptions,
+): InputRichMessage {
+  const { media, ...shown } = options
+  checkRichMedia(text, media ?? [])
+
+  return {
+    [form]: text,
+    ...(media === undefined || media.length === 0 ? {} : { media: [...media] }),
+    ...shown,
+  } as InputRichMessage
+}
+
+/**
+ * A rich message: headings, lists, tables, media and the rest.
+ *
+ * Telegram takes exactly one of three forms, and each is its own builder, so a
+ * message written in two cannot be built. The written forms carry the media
+ * their links name; the block form carries its media inside the blocks.
+ */
+export const richMessage = Object.freeze({
+  html: (html: string, options: RichTextOptions = {}): InputRichMessage =>
+    written('html', html, options),
+
+  markdown: (markdown: string, options: RichTextOptions = {}): InputRichMessage =>
+    written('markdown', markdown, options),
+
+  blocks: (
+    blocks: readonly InputRichBlock[],
+    options: RichMessageOptions = {},
+  ): InputRichMessage => {
+    if (blocks.length === 0) throw new ValidationError('a rich message needs at least one block')
+
+    return { blocks: [...blocks], ...options }
   },
 })
 

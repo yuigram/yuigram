@@ -275,6 +275,12 @@ the rules are not in the types: an album is captioned once, on the item a client
 caption from; a permission set has to name all sixteen, because Telegram reads an absent
 permission as a withheld one; an invoice in Stars is priced in exactly one line.
 
+`richMessage` builds a rich message in exactly one of its three forms, and `richMedia` the files
+a written one names, with the `tg://` link each is named by written from the entry itself; a link
+to nothing, a link of the wrong kind and a duplicated id are refused before the request is made.
+`inline` now builds all twenty result shapes, the cached ones under `inline.cached`, and the
+button above the results.
+
 Filters now cover the updates that are not messages — reactions on both sides of a change,
 the three moments of a payment matched by the bot's own invoice payload, a standing change
 derived from the statuses before and after, routing by kind including a plugin's own, a reply to
