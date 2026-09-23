@@ -42,6 +42,9 @@
     },
     {
       "path": "15-worker"
+    },
+    {
+      "path": "16-durable-flows"
     }
   ]
 }

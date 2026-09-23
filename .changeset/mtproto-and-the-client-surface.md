@@ -221,7 +221,27 @@ resumes a half-finished form. `conversation.wait(...)` is a suspended function i
 not — that difference is stated rather than papered over, because it is the thing to know before
 choosing between them. A waiter belongs to one conversation, so a pending prompt never consumes
 another person's message; it can validate and re-ask, time out, be cancelled by a signal, and it
-is cancelled when the conversation enters or leaves a scene or the client stops.
+is cancelled when the conversation enters or leaves a scene, or when the application calls
+`cancelAll` on stopping. A handler awaiting one hands the conversation's turn back while it waits
+and takes it again before carrying on, so the answer can reach it and its continuation never
+overlaps a later update.
+
+**Durable flows.** A conversation written as one function — ask, wait, act, ask again — that
+resumes after a restart. What is kept is not the function but a journal of plain data: what each
+step produced, and the wait the run is suspended at, with its deadline. On the next update, in
+whatever process is running, the function runs again from the top; every recorded step returns
+its recorded result without doing anything, and the pending wait is offered the update. Anything
+that reaches outside is an effect whose result is recorded, and an effect interrupted between
+starting and finishing is reported to the flow as uncertain rather than silently run twice —
+unless it says repeating is safe, in which case it runs again under the same idempotency key.
+Deadlines that pass while nothing runs are acted on at the next update or at startup; a
+redelivered update is recognised and not used twice; a run whose definition is missing, of a
+version the definition does not accept, or replayed down a different path than it recorded, is
+reported and left untouched rather than reset. Stopping a process is not cancelling a run.
+Updates for one conversation are serialised within a process; two processes over one store are
+not coordinated, and the documentation says so. The machinery loads only when flows are
+configured. `examples/16-durable-flows` finishes an order in a second process that the first
+started.
 
 `defineCallbackData` gives a button's 64 bytes a shape and measures them in UTF-8 rather than
 characters, so a schema does not build buttons Telegram rejects for applications whose users

@@ -14,7 +14,7 @@
  * - **A scene's position is stored**, so a deployment in the middle of a form
  *   resumes it. `await conversation.wait(...)` is a suspended function and is
  *   *not* stored — it does not survive a restart, which is the trade for being
- *   able to write a question inline.
+ *   able to write a question inline. A flow keeps both: see 16-durable-flows.
  * - **Updates for one conversation are serialised.** Two messages arriving
  *   together cannot both advance the same step.
  *
@@ -63,91 +63,91 @@ if (token === undefined) {
 
 const bot = Bot.fromToken<WithConversation>(token)
 
-bot.extend(
-  conversation<Step, Signup>({
-    // Memory is fine to try this with. A form that has to survive a restart
-    // wants a store that does: the position is the only thing kept, and it is
-    // plain data.
-    storage: memory<ScenePosition<Signup>>(),
-    // The default — one person in one chat. `'chat+user+topic'` would give
-    // each forum topic its own form.
-    scope: 'chat+user',
-    // A form nobody finishes should not be waiting a month later.
-    ttl: 60 * 60,
-    scenes: [
-      {
-        name: 'signup',
-        initial: () => ({}),
-        steps: [
-          async (message, scene) => {
-            if (scene.fresh) {
-              await message.reply('What is your name?')
+const conversations = conversation<Step, Signup>({
+  // Memory is fine to try this with. A form that has to survive a restart
+  // wants a store that does: the position is the only thing kept, and it is
+  // plain data.
+  storage: memory<ScenePosition<Signup>>(),
+  // The default — one person in one chat. `'chat+user+topic'` would give
+  // each forum topic its own form.
+  scope: 'chat+user',
+  // A form nobody finishes should not be waiting a month later.
+  ttl: 60 * 60,
+  scenes: [
+    {
+      name: 'signup',
+      initial: () => ({}),
+      steps: [
+        async (message, scene) => {
+          if (scene.fresh) {
+            await message.reply('What is your name?')
 
-              return
-            }
+            return
+          }
 
-            const name = message.text?.trim()
-            if (name === undefined || name.length === 0) {
-              await message.reply('Please send your name as text.')
+          const name = message.text?.trim()
+          if (name === undefined || name.length === 0) {
+            await message.reply('Please send your name as text.')
 
-              return
-            }
+            return
+          }
 
-            scene.state.name = name
-            scene.next()
-          },
-
-          async (message, scene) => {
-            if (scene.fresh) {
-              await message.reply(`Hello, ${scene.state.name}. How old are you?`)
-
-              return
-            }
-
-            const age = Number(message.text)
-            if (!Number.isInteger(age) || age < 0 || age > 150) {
-              // Staying on the step is how a question is asked again: nothing
-              // is written, and the next message arrives here too.
-              await message.reply('That is not an age. Try a whole number.')
-
-              return
-            }
-
-            scene.state.age = age
-            scene.next()
-          },
-
-          async (message, scene) => {
-            if (scene.fresh) {
-              await message.reply(`${scene.state.name}, ${scene.state.age}. Is that right?`, {
-                reply_markup: new InlineKeyboard()
-                  .add(confirm.button('Yes', { answer: 'yes' }))
-                  .add(confirm.button('No', { answer: 'no' })),
-              })
-
-              return
-            }
-
-            // Anything typed at this point is not an answer to the buttons.
-            await message.reply('Please use one of the buttons.')
-          },
-        ],
-
-        // Runs however the form ends: finished, cancelled, or replaced by
-        // another scene. The place to clean up whatever the form was holding.
-        onLeave: async (message, scene) => {
-          if (scene.cancelled) await message.reply('Cancelled. Nothing was saved.')
+          scene.state.name = name
+          scene.next()
         },
 
-        // Runs before every step. Returning after `scene.cancel()` is what
-        // makes `/cancel` work from anywhere in the form.
-        beforeStep: (message, scene) => {
-          if (message.text === '/cancel') scene.cancel()
+        async (message, scene) => {
+          if (scene.fresh) {
+            await message.reply(`Hello, ${scene.state.name}. How old are you?`)
+
+            return
+          }
+
+          const age = Number(message.text)
+          if (!Number.isInteger(age) || age < 0 || age > 150) {
+            // Staying on the step is how a question is asked again: nothing
+            // is written, and the next message arrives here too.
+            await message.reply('That is not an age. Try a whole number.')
+
+            return
+          }
+
+          scene.state.age = age
+          scene.next()
         },
+
+        async (message, scene) => {
+          if (scene.fresh) {
+            await message.reply(`${scene.state.name}, ${scene.state.age}. Is that right?`, {
+              reply_markup: new InlineKeyboard()
+                .add(confirm.button('Yes', { answer: 'yes' }))
+                .add(confirm.button('No', { answer: 'no' })),
+            })
+
+            return
+          }
+
+          // Anything typed at this point is not an answer to the buttons.
+          await message.reply('Please use one of the buttons.')
+        },
+      ],
+
+      // Runs however the form ends: finished, cancelled, or replaced by
+      // another scene. The place to clean up whatever the form was holding.
+      onLeave: async (message, scene) => {
+        if (scene.cancelled) await message.reply('Cancelled. Nothing was saved.')
       },
-    ],
-  }),
-)
+
+      // Runs before every step. Returning after `scene.cancel()` is what
+      // makes `/cancel` work from anywhere in the form.
+      beforeStep: (message, scene) => {
+        if (message.text === '/cancel') scene.cancel()
+      },
+    },
+  ],
+})
+
+bot.extend(conversations)
 
 bot.onCommand('start', async (message) => {
   await message.conversation.enter('signup')
@@ -204,9 +204,10 @@ bot.onCommand('nickname', async (message) => {
   await message.reply(answer === undefined ? 'Never mind.' : `Noted: ${answer}`)
 })
 
-// Every open wait is cancelled when the bot stops, so nothing is left
-// suspended on a promise that will never settle.
 process.once('SIGINT', () => {
+  // Cancel every open wait, so no handler is left suspended on a promise that
+  // will never settle. Stopping the bot does not do this by itself.
+  conversations.controls.cancelAll('the bot is stopping')
   void bot.stop()
 })
 

@@ -346,18 +346,30 @@ answers. The lock is per key and each key is dropped as it drains, so a bot
 serving a thousand conversations does not process them one at a time because
 two of them might collide.
 
+A handler that awaits `conversation.wait(...)` hands its turn back while it
+waits — the answer belongs to the same conversation and could not get in
+otherwise — and takes it again, behind whatever arrived meanwhile, before it
+carries on. Its continuation never runs alongside a later update.
+
+The lock is in the process. Two processes sharing one store are not coordinated:
+the storage contract has no compare-and-set, and nothing here claims otherwise.
+Run one process per conversation, or route each conversation to one process.
+
 ### 6.3 What survives a restart, and what does not
 
 | | Where it lives | Survives a restart |
 |---|---|---|
 | Scene position and state | The `KV` given to the plugin | **Yes**, if the store does |
+| A flow's journal and the wait it is at | The `KV` given to `flows` | **Yes**, if the store does |
 | `conversation.wait(...)` | A suspended function in memory | **No** |
 
 This is the one thing to know before choosing between them. A form built from
 scene steps resumes after a deployment because the only thing kept is a name, a
-number and plain data. A form built from `await conversation.wait(...)` reads
-better and does not: the promise goes with the process. Both ship because both
-are useful, and neither is described as the other.
+number and plain data. A flow resumes for the same reason: what it keeps is a
+journal of plain data, not the function. A form built from
+`await conversation.wait(...)` reads like a flow and does not survive: the
+promise goes with the process. All three ship because each is useful, and none
+is described as another.
 
 ### 6.4 Scenes
 
@@ -381,9 +393,101 @@ update reaches the handlers unless the waiter asked to be exclusive.
 
 One waiter per conversation: a second replaces the first, and the first is told
 so rather than left to never resolve. Entering or leaving a scene cancels an
-open waiter, and so does stopping the client.
+open waiter. Stopping the client does not: nothing tells a plugin that its
+client stopped, so an application calls `controls.cancelAll()` when it stops,
+and a handler still waiting then learns why.
 
-### 6.6 What it is not
+### 6.6 Flows
+
+A flow is a conversation written as one function, which survives a restart:
+
+```ts
+const order = defineFlow<Step, undefined, Order>({
+  name: 'order',
+  version: 1,
+  async run(flow) {
+    const drink = await flow.ask('drink', (m) => m.reply('What would you like?'), typed)
+    const number = await flow.effect('place', () => placeOrder(drink))
+    await flow.effect('confirm', () => flow.context.reply(`Order #${number}.`).then(() => null))
+
+    return { drink, number }
+  },
+})
+
+bot.onCommand('order', (message) => message.conversation.start(order))
+```
+
+**What is stored.** Nothing about the function. A run is a record of plain
+data: its identity, the flow's name and version, the conversation key and where
+it was started, the input, a journal of what each step produced, the wait it is
+suspended at — its label, deadline and how many answers it rejected — the update
+that started it, and how it ended. The store is the one given to `flows`, and a
+file store keeps it as JSON.
+
+**Resuming is replaying.** When an update arrives for a conversation whose flow
+is waiting — in this process or a new one, with the definitions registered again
+under the same names — the function runs again from the top. Every step already
+in the journal returns what it returned the first time without doing anything;
+the wait it was suspended at is offered the update; from there it runs for real
+until it waits again or ends. Two rules follow, and they are the price of
+writing a durable conversation as one function:
+
+- **Take the same path given the same journal.** Decide on what steps
+  returned, not on `flow.context`, which is whatever update is driving this
+  resume.
+- **Reach outside only through `flow.effect`.** Code between steps runs again
+  on every resume. A message, a write, the clock and a random number are
+  effects, and their results are recorded.
+
+A definition that changes its steps changes its `version`. A run started under
+a version the definition does not `accept` is left as it is and reported. A
+change that slipped through without a new version is caught when the replay
+meets a different step than the journal recorded — or ends before reaching the
+one the run was waiting at — and is reported without anything being written.
+
+**What an effect promises.** The flow records that an effect started before it
+runs and records its result after. A stop between the two leaves an outcome
+nobody can know:
+
+| The run stopped | On resume |
+|---|---|
+| Before the effect started | It runs, once |
+| After it started, before it finished | `EffectUncertainError` at that step — or, with `repeat: true`, it runs again |
+| After it finished, before its result was written | The same: from the store, this cannot be told apart from the row above |
+| After its result was written | Its result is returned; it does not run |
+
+An effect is handed `once.key`, stable for that step of that run across attempts
+and restarts, and `once.id`, a 64-bit number derived from it — the shape of an
+MTProto send's `random_id`, which is how Telegram recognises a message sent
+again. Nothing here makes a Telegram call exactly-once: it is at-most-once by
+default, and at-least-once where an effect says repeating is safe.
+
+**Waiting and ending.**
+
+| What happens | What the flow sees |
+|---|---|
+| The answer arrives | The wait returns what `transform` made of it |
+| An answer is rejected by `validate` | Nothing: `onInvalid` is told, the attempt is counted, the wait stays |
+| An update that is not the answer | Nothing; the update reaches the handlers unless the wait is `exclusive` |
+| The deadline passes while this process runs | `WaitTimeoutError` at the wait, with no update: `flow.context` throws and `flow.address` names the chat |
+| The deadline passed while nothing ran | The same, on the next update in the conversation — which then reaches the handlers, since it was not an answer — or at startup through `controls.flows.resume()` |
+| `cancelFlow()`, `controls.flows.cancel()`, entering a scene, a reset, or another flow started | `WaitCancelledError` at the wait, so cleanup can run as effects; the run ends cancelled |
+| The same update delivered twice | Nothing: it is recognised by its update number, or by its message number and kind, and not used again |
+| The function throws | The run ends failed with the error kept; the error goes where a handler's would, or to `onProblem` when a deadline was driving it |
+| The client stops or the process exits | Nothing. The run stays as stored; `controls.flows.shutdown()` stops this process acting on deadlines, and the next process's `resume()` picks them up |
+
+Stopping and cancelling are different on purpose. A deployment is not a reason
+to tell somebody their order was abandoned.
+
+**Concurrency** is §6.2's: updates for one conversation are handled one at a
+time in one process, so two answers arriving together cannot both advance one
+wait; two processes over one store are not coordinated.
+
+A flow is a bounded conversation — a run may take a thousand steps by default —
+and the journal is replayed on every resume. A conversation that loops for ever
+belongs in a scene.
+
+### 6.7 What it is not
 
 Conversation state is not authorization state, and the separation in §4 applies
 to it unchanged: a scene's position is application data that degrades

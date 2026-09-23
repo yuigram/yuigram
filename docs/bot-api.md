@@ -375,7 +375,6 @@ What is not there yet, and what to do meanwhile:
 
 ### v0.x
 
-- Flows whose suspended position survives a restart, which `conversation().wait` does not
 - Business-account scoped API proxy
 - Rich messages (Bot API 10.2) as a first-class builder — built for the written forms and the
   files they name; builders for the individual block types are still to come

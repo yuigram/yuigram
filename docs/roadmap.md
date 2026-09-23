@@ -300,8 +300,9 @@ change in the minor position and nothing between the two was published.
   - An account in a worker: a dedicated worker or a `SharedWorker` that every tab attaches to,
     the account made once and connected once, and a fixed table of what may cross. See
     [runtimes.md](runtimes.md) §6
-  - Still to come in this phase: flows whose *suspended* position survives a restart, which the
-    in-memory waiter does not; and the storage drivers below
+  - Durable flows: a conversation written as one function whose journal survives a restart, with
+    effects that are not repeated behind the application's back. See [sessions.md](sessions.md) §6.6
+  - Still to come in this phase: the storage drivers below
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
