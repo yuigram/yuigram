@@ -220,6 +220,55 @@ export async function sendCode(
 }
 
 /**
+ * Ask for the code again, by whatever means Telegram offers next.
+ *
+ * Not the same as sending again. {@link sendCode} starts a fresh attempt and
+ * invalidates the hash the caller is holding; this continues the attempt
+ * already under way, which is what lets Telegram move from an in-app code to an
+ * SMS. The hash from the first answer names the attempt and is required.
+ *
+ * The answer may name a *new* hash, so a caller holding the old one replaces it
+ * with what comes back rather than keeping the one it sent.
+ */
+export async function resendCode(
+  options: SignInOptions & {
+    readonly phone: string
+    readonly phoneCodeHash: string
+    /** Why it is being asked for again, where the caller has a reason to give. */
+    readonly reason?: string
+  },
+): Promise<SignInState> {
+  const { value, dcId } = await followingRedirections(options, () => ({
+    _: 'auth.resendCode',
+    phone_number: options.phone,
+    phone_code_hash: options.phoneCodeHash,
+    ...(options.reason === undefined ? {} : { reason: options.reason }),
+  }))
+
+  if (value._ === 'auth.sentCodeSuccess') {
+    const authorization = value['authorization']
+    if (typeof authorization !== 'object' || authorization === null) {
+      throw new SessionError("'auth.sentCodeSuccess.authorization' must be an object")
+    }
+
+    return readAuthorization(authorization as TlValue, dcId)
+  }
+
+  if (value._ !== 'auth.sentCode') {
+    throw new SessionError(`expected a sent code, received '${value._}'`)
+  }
+
+  const timeout = value['timeout']
+
+  return {
+    kind: 'code-sent',
+    dcId,
+    phoneCodeHash: readText(value, 'phone_code_hash'),
+    ...(typeof timeout === 'number' ? { timeout } : {}),
+  }
+}
+
+/**
  * Prove the code was received.
  *
  * An account protected by a password is not signed in by the code alone, and

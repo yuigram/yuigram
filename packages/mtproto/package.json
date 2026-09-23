@@ -31,6 +31,7 @@
   },
   "browser": {
     "./dist/crypto/backend.js": "./dist/crypto/backend.browser.js",
+    "./dist/files/node-stream.js": "./dist/files/node-stream.browser.js",
     "./dist/network/connect.js": "./dist/network/connect.browser.js",
     "./dist/session/gunzip.js": "./dist/session/gunzip.browser.js"
   },

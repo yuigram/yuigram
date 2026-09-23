@@ -52,6 +52,14 @@ export const ACCOUNT_KINDS = [
   'mtproto:shipping_query',
   'mtproto:precheckout_query',
   'mtproto:join_request',
+  // Ephemeral messages are their own kinds rather than the shared message ones.
+  // They carry `EphemeralMessage`, not `Message`: a handler registered for
+  // `message` reads fields this payload does not have, and one registered for
+  // these knows the message it is given exists in a single person's view.
+  'mtproto:ephemeral_message',
+  'mtproto:ephemeral_message_edited',
+  'mtproto:ephemeral_messages_deleted',
+  'mtproto:ephemeral_callback_query',
   RAW_KIND,
 ] as const
 
@@ -103,6 +111,10 @@ export const UPDATE_EVENTS: Readonly<Record<string, MtprotoEventKind>> = {
   // An account signed in with a bot token receives these over this transport,
   // not over the Bot API. Nothing else can answer them: a query that arrived
   // here is answered here, with the identifier it arrived with.
+  updateNewEphemeralMessage: 'mtproto:ephemeral_message',
+  updateEditEphemeralMessage: 'mtproto:ephemeral_message_edited',
+  updateDeleteEphemeralMessages: 'mtproto:ephemeral_messages_deleted',
+  updateEphemeralBotCallbackQuery: 'mtproto:ephemeral_callback_query',
   updateBotCallbackQuery: 'mtproto:callback_query',
   updateInlineBotCallbackQuery: 'mtproto:callback_query',
   updateBotInlineQuery: 'mtproto:inline_query',
@@ -153,6 +165,18 @@ export const MESSAGE_UPDATES: ReadonlySet<string> = new Set([
   'updateNewChannelMessage',
   'updateEditMessage',
   'updateEditChannelMessage',
+])
+
+/**
+ * Constructors carrying an ephemeral message rather than an ordinary one.
+ *
+ * Kept apart from {@link MESSAGE_UPDATES} because the payload is a different
+ * type: reading one as a `Message` would produce a view whose accessors answer
+ * for fields the constructor does not have.
+ */
+export const EPHEMERAL_MESSAGE_UPDATES: ReadonlySet<string> = new Set([
+  'updateNewEphemeralMessage',
+  'updateEditEphemeralMessage',
 ])
 
 /** Constructors carrying a message inline rather than as a nested object. */

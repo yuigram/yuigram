@@ -72,6 +72,7 @@ export {
   type LoginTokenState,
   type Reach,
   requestLoginToken,
+  resendCode,
   type SignInOptions,
   type SignInState,
   sendCode,

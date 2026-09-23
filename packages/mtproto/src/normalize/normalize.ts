@@ -30,6 +30,7 @@ import type { TypeMessage } from '../generated/api/types/index.js'
 import type { PeerKind } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
 import {
+  EPHEMERAL_MESSAGE_UPDATES,
   MESSAGE_UPDATES,
   type MtprotoEventKind,
   RAW_KIND,
@@ -75,6 +76,22 @@ export function normalizeUpdate(update: TlValue): NormalizedUpdate {
 
   if (MESSAGE_UPDATES.has(update._)) return fromMessage(update, kind)
   if (SHORT_MESSAGE_UPDATES.has(update._)) return fromShortMessage(update, kind)
+  if (EPHEMERAL_MESSAGE_UPDATES.has(update._)) return fromEphemeral(update, kind)
+
+  if (update._ === 'updateDeleteEphemeralMessages') {
+    return {
+      kind,
+      chat: peerRefOf(update['peer']),
+      sender: undefined,
+      message: undefined,
+      // Named `ids` here rather than `messages`, and meaningful only for the
+      // person the messages were shown to.
+      messageIds: readIntVector(update['ids']),
+      text: undefined,
+      date: undefined,
+      raw: update,
+    }
+  }
 
   return {
     kind,
@@ -104,6 +121,34 @@ function kindOf(update: TlValue): MtprotoEventKind {
   }
 
   return mapped
+}
+
+/**
+ * Read an update carrying an ephemeral message.
+ *
+ * The conversation and the author come out of the message rather than the
+ * update, as they do for an ordinary one — but `message` stays undefined,
+ * because that field holds a `Message` and this is not one. The whole payload
+ * is in `raw`, which is where `EphemeralMessageView` reads it from.
+ */
+function fromEphemeral(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
+  const message = asValue(update['message'])
+
+  return {
+    kind,
+    // Absent in a guest chat, where the message belongs to a query rather than
+    // to a conversation.
+    chat: message === undefined ? undefined : peerRefOf(message['peer_id']),
+    sender: message === undefined ? undefined : peerRefOf(message['from_id']),
+    message: undefined,
+    // A send is not a deletion, so this stays empty; the message's own number
+    // is in `raw`, where it belongs to the ephemeral message rather than to the
+    // conversation.
+    messageIds: undefined,
+    text: message === undefined ? undefined : readString(message['message']),
+    date: message === undefined ? undefined : readDate(message['date']),
+    raw: update,
+  }
 }
 
 /** Read an update whose payload is a whole message. */

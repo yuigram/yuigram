@@ -29,6 +29,7 @@ export type {
   WebViewRequest,
   WebViewSource,
 } from './bots/config.js'
+export type { GameScore, Gaming, ScoreOptions } from './bots/games.js'
 export type { AdminRights, ChatKind, Chatting, Restrictions } from './chats/common.js'
 export type { Folder, NewFolder } from './chats/folders.js'
 export type {
@@ -41,6 +42,15 @@ export type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
 export type { FullChat } from './chats/lookup.js'
 export type { AddOptions, NotAdded } from './chats/members.js'
 export type { FolderQuery, PeerView } from './chats/peers.js'
+export {
+  type Communing,
+  CommunityLinkRequestView,
+  CommunityPeerView,
+  type LinkRequestAction,
+  type LinkRequestsPage,
+  type NewCommunity,
+  type ParticipantChats,
+} from './communities/communities.js'
 export {
   ChatEventView,
   ForumTopicView,
@@ -116,6 +126,7 @@ export {
   uploadedDocument,
   uploadedPhoto,
 } from './files/media.js'
+export type { NodeReadable, StreamOptions } from './files/streams.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
 export { fromHtml, toHtml } from './format/html.js'
 export { fromMarkdown, toMarkdown } from './format/markdown.js'
@@ -148,6 +159,15 @@ export type {
   Discussion,
   SentScheduled,
 } from './messaging/compose.js'
+export {
+  type EditEphemeralOptions,
+  type Ephemeral,
+  type EphemeralButtonAnswer,
+  type EphemeralContent,
+  EphemeralMessageView,
+  type EphemeralTarget,
+  type SendEphemeralOptions,
+} from './messaging/ephemeral.js'
 export type { MessageEffects } from './messaging/inspect.js'
 export type {
   DraftOptions,
@@ -193,6 +213,8 @@ export {
   setTyping,
 } from './messaging/send.js'
 export { inputChannel, inputPeerFromMessage } from './network/peers.js'
+export type { QrOptions, QrSteps } from './network/qr.js'
+export { loginUrl } from './network/qr.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export {
   type ContextOptions,
@@ -335,6 +357,17 @@ export {
   resendRecoveryEmail,
   setPassword,
 } from './security/index.js'
+export {
+  type BoundCalls,
+  type CallDefaults,
+  type Calling,
+  type CollectibleInfo,
+  type CollectibleKind,
+  type Operating,
+  type TakeoutScope,
+  type TakeoutSession,
+  withParams,
+} from './session/operations.js'
 export type { PortableSession } from './session.js'
 export type {
   MaskPoint,

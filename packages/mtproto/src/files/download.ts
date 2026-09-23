@@ -707,3 +707,50 @@ export async function* downloadIterable(
     await running.catch(() => undefined)
   }
 }
+
+/** The most Telegram serves in one range. */
+const MAX_CHUNK = 1024 * 1024
+
+/**
+ * Fetch one range of a file, at exactly the offset asked for.
+ *
+ * {@link download} and {@link downloadIterable} plan their own ranges on the
+ * grid the protocol prefers, which is what makes a whole-file transfer fast and
+ * what makes them useless for reading a header at a known position. This asks
+ * for one range in `precise` mode, where the alignment is fine enough that an
+ * arbitrary offset is legal, and hands back exactly those bytes.
+ *
+ * Fewer bytes than asked for means the file ended inside the range. That is an
+ * answer rather than a failure: a caller reading past the end of a file learns
+ * where the end is.
+ *
+ * The migration, reference refresh and retry behaviour is the transfer's own,
+ * because it is the same transfer with a plan of one range.
+ */
+export async function downloadChunk(
+  options: Omit<DownloadOptions, 'write' | 'offset' | 'length' | 'mode' | 'size'> & {
+    /** Where the range starts, in bytes. Any offset, not only an aligned one. */
+    readonly offset: number
+    /** How many bytes are wanted. At most one megabyte, which is Telegram's limit. */
+    readonly length: number
+  },
+): Promise<Uint8Array> {
+  if (!Number.isInteger(options.offset) || options.offset < 0) {
+    throw new ValidationError(`a range starts at a whole number of bytes, not ${options.offset}`)
+  }
+  if (!Number.isInteger(options.length) || options.length <= 0) {
+    throw new ValidationError(`a range is a positive whole number of bytes, not ${options.length}`)
+  }
+  if (options.length > MAX_CHUNK) {
+    throw new ValidationError(
+      `Telegram serves at most ${MAX_CHUNK} bytes in one range, and ${options.length} were asked for`,
+    )
+  }
+
+  return await download({
+    ...options,
+    offset: options.offset,
+    length: options.length,
+    mode: 'precise',
+  })
+}

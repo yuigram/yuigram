@@ -65,6 +65,7 @@ import type {
   WebView,
   WebViewRequest,
 } from './bots/config.js'
+import type { GameScore, ScoreOptions } from './bots/games.js'
 import type { AdminRights, Restrictions } from './chats/common.js'
 import type { Folder, NewFolder } from './chats/folders.js'
 import type {
@@ -77,6 +78,12 @@ import type { HistoryRemoval, NewChat } from './chats/lifecycle.js'
 import type { FullChat } from './chats/lookup.js'
 import type { AddOptions, NotAdded } from './chats/members.js'
 import type { FolderQuery, PeerView } from './chats/peers.js'
+import type {
+  LinkRequestAction,
+  LinkRequestsPage,
+  NewCommunity,
+  ParticipantChats,
+} from './communities/communities.js'
 import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
 import type {
@@ -91,6 +98,7 @@ import type { MessageView, ReactionView } from './entities/message.js'
 import type { ChatView, UserView } from './entities/peer.js'
 import type { PeerStoriesView, StoryView, StoryViewerView } from './entities/story.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
+import type { NodeReadable, StreamOptions } from './files/streams.js'
 import type { UploadedFile, UploadRequest } from './files/upload.js'
 import type { Foruming, ForumSettings, NewTopic, TopicEdit, TopicRef } from './forums/topics.js'
 import type {
@@ -139,6 +147,13 @@ import type {
   Discussion,
   SentScheduled,
 } from './messaging/compose.js'
+import type {
+  EditEphemeralOptions,
+  EphemeralButtonAnswer,
+  EphemeralMessageView,
+  EphemeralTarget,
+  SendEphemeralOptions,
+} from './messaging/ephemeral.js'
 import type { MessageEffects } from './messaging/inspect.js'
 import type {
   DraftOptions,
@@ -186,6 +201,7 @@ import type { DcConfiguration, DcDirectory } from './network/dc.js'
 import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
+import type { QrOptions } from './network/qr.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
 import { isUpdateSource, UPDATE_CONTAINERS } from './normalize/events.js'
@@ -303,6 +319,15 @@ import {
   setPassword,
 } from './security/index.js'
 import type { ClientInfo } from './session/connection.js'
+import type {
+  BoundCalls,
+  CallDefaults,
+  CollectibleInfo,
+  CollectibleKind,
+  TakeoutScope,
+  TakeoutSession,
+} from './session/operations.js'
+import { withParams } from './session/operations.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
 import type {
   MySetsPage,
@@ -602,6 +627,13 @@ export class Account<Ext = unknown> {
   #stopPresence: (() => void) | undefined
   /** Mini apps being kept open, each closed when the account stops. */
   readonly #held = new Set<() => void>()
+  /**
+   * Who to tell when Telegram says a login token was approved.
+   *
+   * Only a QR sign-in subscribes, and only while it is waiting. The update
+   * carries nothing worth reading — it is a prompt to ask again.
+   */
+  readonly #loginTokenWatchers = new Set<() => void>()
 
   /**
    * Which user this account is, once it has found out.
@@ -1570,6 +1602,21 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * Register something for the account to undo when it stops.
+   *
+   * The same set the mini apps use: whatever is registered here is run once on
+   * stop, and the returned function takes it back out for a caller that
+   * finished first.
+   */
+  #holdOpen(close: () => void): () => void {
+    this.#held.add(close)
+
+    return () => {
+      this.#held.delete(close)
+    }
+  }
+
+  /**
    * The same, for the bot surface, whose mini apps have to be kept open.
    *
    * What is kept open is the account's: it is held in a set the account empties
@@ -1854,6 +1901,431 @@ export class Account<Ext = unknown> {
       peer,
       ids,
     )
+  }
+
+  /**
+   * The communities this account has joined.
+   *
+   * A community holds conversations rather than being one; `ChatView.isCommunity`
+   * is what tells the two apart once a caller has a chat in hand.
+   */
+  async getJoinedCommunities(): Promise<readonly ChatView[]> {
+    return await (await import('./communities/communities.js')).getJoinedCommunities(this)
+  }
+
+  /** Make a community around a chat, which it starts with already linked. */
+  async createCommunity(community: NewCommunity): Promise<ChatView> {
+    return await (await import('./communities/communities.js')).createCommunity(this, community)
+  }
+
+  /** Show or hide a community in this account's own conversation list. */
+  async toggleCommunityCollapsed(community: string | PeerRef, collapsed: boolean): Promise<void> {
+    await (await import('./communities/communities.js')).toggleCommunityCollapsed(
+      this,
+      community,
+      collapsed,
+    )
+  }
+
+  /** The chats asking to be listed in a community, a page at a time. */
+  async getCommunityLinkRequests(
+    community: string | PeerRef,
+    options?: { readonly from?: string; readonly limit?: number },
+  ): Promise<LinkRequestsPage> {
+    return await (await import('./communities/communities.js')).getCommunityLinkRequests(
+      this,
+      community,
+      options,
+    )
+  }
+
+  /** Which of a community's chats a participant has created or joined. */
+  async getCommunityParticipantChats(
+    community: string | PeerRef,
+    participant: string | PeerRef,
+  ): Promise<ParticipantChats> {
+    return await (await import('./communities/communities.js')).getCommunityParticipantChats(
+      this,
+      community,
+      participant,
+    )
+  }
+
+  /** List a chat in a community, or change whether the community shows it. */
+  async linkCommunityPeer(
+    community: string | PeerRef,
+    peer: string | PeerRef,
+    options?: { readonly hidden?: boolean },
+  ): Promise<void> {
+    await (await import('./communities/communities.js')).linkCommunityPeer(
+      this,
+      community,
+      peer,
+      options,
+    )
+  }
+
+  /** Take a chat out of a community. */
+  async unlinkCommunityPeer(community: string | PeerRef, peer: string | PeerRef): Promise<void> {
+    await (await import('./communities/communities.js')).unlinkCommunityPeer(this, community, peer)
+  }
+
+  /** Accept or turn down one chat's request to be listed in a community. */
+  async hideCommunityLinkRequest(
+    community: string | PeerRef,
+    peer: string | PeerRef,
+    action: LinkRequestAction,
+  ): Promise<void> {
+    await (await import('./communities/communities.js')).hideCommunityLinkRequest(
+      this,
+      community,
+      peer,
+      action,
+    )
+  }
+
+  /** Answer every pending request to be listed in a community, the same way. */
+  async hideAllCommunityLinkRequests(
+    community: string | PeerRef,
+    action: LinkRequestAction,
+  ): Promise<void> {
+    await (await import('./communities/communities.js')).hideAllCommunityLinkRequests(
+      this,
+      community,
+      action,
+    )
+  }
+
+  /** Ban somebody from a community. */
+  async banCommunityParticipant(
+    community: string | PeerRef,
+    participant: string | PeerRef,
+  ): Promise<void> {
+    await (await import('./communities/communities.js')).banCommunityParticipant(
+      this,
+      community,
+      participant,
+    )
+  }
+
+  /** Let somebody back into a community. */
+  async unbanCommunityParticipant(
+    community: string | PeerRef,
+    participant: string | PeerRef,
+  ): Promise<void> {
+    await (await import('./communities/communities.js')).unbanCommunityParticipant(
+      this,
+      community,
+      participant,
+    )
+  }
+
+  /**
+   * Send a message only one person in a conversation can see.
+   *
+   * It never joins the conversation's history, so nothing here can read it
+   * back. Acting on it later means naming the same chat, receiver and number —
+   * which is what {@link EphemeralTarget} carries.
+   */
+  async sendEphemeralMessage(
+    target: EphemeralTarget,
+    body: MessageBody,
+    options?: SendEphemeralOptions,
+  ): Promise<EphemeralMessageView> {
+    return await (await import('./messaging/ephemeral.js')).sendEphemeralMessage(
+      this.#sending,
+      target,
+      body,
+      options,
+    )
+  }
+
+  /** Change an ephemeral message this account sent. */
+  async editEphemeralMessage(
+    target: EphemeralTarget,
+    messageId: number,
+    change: EditEphemeralOptions,
+  ): Promise<EphemeralMessageView> {
+    return await (await import('./messaging/ephemeral.js')).editEphemeralMessage(
+      this.#sending,
+      target,
+      messageId,
+      change,
+    )
+  }
+
+  /** Take back an ephemeral message, which removes the whole of it. */
+  async deleteEphemeralMessage(target: EphemeralTarget, messageId: number): Promise<void> {
+    await (await import('./messaging/ephemeral.js')).deleteEphemeralMessage(
+      this.#sending,
+      target,
+      messageId,
+    )
+  }
+
+  /** Press a button on an ephemeral message, as the person shown it. */
+  async getEphemeralCallbackAnswer(
+    chat: string | PeerRef,
+    messageId: number,
+    data?: Uint8Array | string,
+  ): Promise<EphemeralButtonAnswer> {
+    return await (await import('./messaging/ephemeral.js')).getEphemeralCallbackAnswer(
+      this.#sending,
+      chat,
+      messageId,
+      data,
+    )
+  }
+
+  /** The welcome templates a chat shows people as they arrive. */
+  async getWelcomeMessages(chat: string | PeerRef): Promise<readonly EphemeralMessageView[]> {
+    return await (await import('./messaging/ephemeral.js')).getWelcomeMessages(this.#sending, chat)
+  }
+
+  /** Remove one of a chat's welcome templates. */
+  async deleteWelcomeMessage(chat: string | PeerRef, messageId: number): Promise<void> {
+    await (await import('./messaging/ephemeral.js')).deleteWelcomeMessage(
+      this.#sending,
+      chat,
+      messageId,
+    )
+  }
+
+  /** Remove every welcome template a chat has. */
+  async deleteAllWelcomeMessages(chat: string | PeerRef): Promise<void> {
+    await (await import('./messaging/ephemeral.js')).deleteAllWelcomeMessages(this.#sending, chat)
+  }
+
+  /** Set a player's score in a game sent to a conversation. */
+  async setGameScore(
+    chat: string | PeerRef,
+    messageId: number,
+    user: string | PeerRef,
+    score: number,
+    options?: ScoreOptions,
+  ): Promise<MessageView | undefined> {
+    return await (await import('./bots/games.js')).setGameScore(
+      this.#interacting,
+      chat,
+      messageId,
+      user,
+      score,
+      options,
+    )
+  }
+
+  /** Set a player's score in a game sent through inline mode. */
+  async setInlineGameScore(
+    message: string | TypeInputBotInlineMessageID,
+    user: string | PeerRef,
+    score: number,
+    options?: ScoreOptions,
+  ): Promise<void> {
+    await (await import('./bots/games.js')).setInlineGameScore(
+      this.#interacting,
+      message,
+      user,
+      score,
+      options,
+    )
+  }
+
+  /** The score table of a game in a conversation, built around one player. */
+  async getGameHighScores(
+    chat: string | PeerRef,
+    messageId: number,
+    user: string | PeerRef,
+  ): Promise<readonly GameScore[]> {
+    return await (await import('./bots/games.js')).getGameHighScores(
+      this.#interacting,
+      chat,
+      messageId,
+      user,
+    )
+  }
+
+  /** The score table of a game sent through inline mode. */
+  async getInlineGameHighScores(
+    message: string | TypeInputBotInlineMessageID,
+    user: string | PeerRef,
+  ): Promise<readonly GameScore[]> {
+    return await (await import('./bots/games.js')).getInlineGameHighScores(
+      this.#interacting,
+      message,
+      user,
+    )
+  }
+
+  /**
+   * Begin exporting this account's data.
+   *
+   * A takeout is a scope laid over this authorization rather than a second one:
+   * calls made through it do not mark anything as seen. Ending it closes the
+   * export and nothing else — this account stays signed in either way.
+   */
+  async initTakeoutSession(scope?: TakeoutScope): Promise<TakeoutSession> {
+    return await (await import('./session/operations.js')).initTakeoutSession(this, scope)
+  }
+
+  /**
+   * This account with call options applied unless a call overrides them.
+   *
+   * A view, not a copy: the connection, the session and the peer store are this
+   * account's, and stopping the account stops calls made through it.
+   */
+  withParams(defaults: CallDefaults): BoundCalls {
+    return withParams(
+      { call: async (query, options) => await this.#invoke(query, options) },
+      defaults,
+    )
+  }
+
+  /**
+   * Whether a peer is this account.
+   *
+   * Answered from what the account already knows wherever it can be, so the
+   * common cases — `'me'`, a user reference, `inputPeerSelf` — cost nothing.
+   */
+  async isSelfPeer(peer: string | PeerRef): Promise<boolean> {
+    return await (await import('./session/operations.js')).isSelfPeer(
+      {
+        api: this.#api,
+        resolve: async (one) => await this.resolve(one),
+        selfId: async () => this.#selfId ?? (await this.me()).id,
+      },
+      peer,
+    )
+  }
+
+  /** What a collectible username or phone number sold for. Public information. */
+  async getCollectibleInfo(kind: CollectibleKind, item: string): Promise<CollectibleInfo> {
+    return await (await import('./session/operations.js')).getCollectibleInfo(this, kind, item)
+  }
+
+  /**
+   * Fetch one range of a file, at exactly the offset asked for.
+   *
+   * The whole-file transfers plan their ranges on the grid the protocol
+   * prefers, which is what makes them fast and what makes them useless for
+   * reading a header at a known position. This asks for one precise range.
+   * Fewer bytes than asked for means the file ended inside it.
+   */
+  async downloadChunk(
+    request: DownloadRequest & { readonly offset: number; readonly length: number },
+  ): Promise<Uint8Array> {
+    const reach = this.#transfers(await this.#allowance(request))
+    const { downloadChunk } = await import('./files/download.js')
+
+    return await downloadChunk({ ...request, reach })
+  }
+
+  /**
+   * Fetch a file as a `ReadableStream`.
+   *
+   * The same transfer {@link Account.downloadIterable} runs, wearing the shape
+   * the platform expects. The stream pulls, so nothing further is fetched until
+   * the consumer has taken what it was given, and cancelling it stops the
+   * download rather than leaving ranges being fetched for a file nobody reads.
+   */
+  async downloadAsStream(
+    request: DownloadRequest & StreamOptions,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const reach = this.#transfers(await this.#allowance(request))
+    const { downloadAsStream } = await import('./files/streams.js')
+
+    return downloadAsStream({ ...request, reach })
+  }
+
+  /**
+   * Fetch a file as a Node `Readable`.
+   *
+   * Only where the runtime has `node:stream`; elsewhere this rejects saying so.
+   * Destroying the stream stops the download.
+   */
+  async downloadAsNodeStream(request: DownloadRequest & StreamOptions): Promise<NodeReadable> {
+    const reach = this.#transfers(await this.#allowance(request))
+    const { downloadAsNodeStream } = await import('./files/streams.js')
+
+    return await downloadAsNodeStream({ ...request, reach })
+  }
+
+  /**
+   * Ask for the login code again, by whatever means Telegram offers next.
+   *
+   * Not the same as calling {@link Account.sendCode} again, which starts a
+   * fresh attempt and invalidates the hash in hand. This continues the attempt
+   * already under way, which is what lets Telegram move from an in-app code to
+   * an SMS. The answer may name a new hash; the caller keeps what comes back.
+   */
+  async resendCode(request: {
+    readonly phone: string
+    readonly phoneCodeHash: string
+    readonly reason?: string
+  }): Promise<SignInState> {
+    return await this.#step(
+      async (step, options) => await step.resendCode({ ...options, ...request }),
+    )
+  }
+
+  /**
+   * Sign in by showing a code to a device that is already signed in.
+   *
+   * The loop around {@link Account.requestLoginToken}: display, wait, ask
+   * again when the token expires, and finish with the password where the
+   * account has one. Resolves once the account is signed in.
+   *
+   * ```ts
+   * await account.signInQr({ onToken: (url) => showQrCode(url) })
+   * ```
+   *
+   * Telegram's `updateLoginToken` is used to notice an approval sooner; without
+   * it the next request notices anyway. Every exit — approval, refusal, abort,
+   * or the account stopping — cancels the wait and unsubscribes.
+   */
+  async signInQr(options: QrOptions): Promise<SignInState> {
+    const { signInQr } = await import('./network/qr.js')
+
+    // An account that stops mid-flow must not leave a sign-in waiting on a
+    // token it will never ask about again, so stopping aborts the wait the same
+    // way the caller's own signal would.
+    const stopped = new AbortController()
+    const release = this.#holdOpen(() => {
+      stopped.abort(new LifecycleError(`the account '${this.name}' stopped`))
+    })
+    const given = options.signal
+    const relay = (): void => stopped.abort(given?.reason)
+    given?.addEventListener('abort', relay, { once: true })
+    if (given?.aborted === true) stopped.abort(given.reason)
+
+    try {
+      return await signInQr(
+        {
+          requestToken: async (asked) => await this.requestLoginToken(asked),
+          signInWithPassword: async (password) => await this.signInWithPassword(password),
+          schedule: this.#options.schedule ?? defaultSchedule,
+          onApproval: (notify) => this.#onLoginToken(notify),
+        },
+        { ...options, signal: stopped.signal },
+      )
+    } finally {
+      given?.removeEventListener('abort', relay)
+      release()
+    }
+  }
+
+  /**
+   * Be told when Telegram says a login token was approved.
+   *
+   * The update carries nothing worth reading — it is a prompt to ask again —
+   * so this passes on the fact and no more.
+   */
+  #onLoginToken(notify: () => void): () => void {
+    const watchers = this.#loginTokenWatchers
+    watchers.add(notify)
+
+    return () => {
+      watchers.delete(notify)
+    }
   }
 
   /** The commands a bot shows, for one scope and language. Bot accounts only. */
@@ -4401,6 +4873,13 @@ export class Account<Ext = unknown> {
    * account's own middleware rather than sorting into it.
    */
   async deliver(update: Parameters<typeof mtprotoContext>[0]): Promise<void> {
+    // A QR sign-in waiting on a token learns of the approval here. Told before
+    // the handlers run and without waiting for them: a sign-in should not be
+    // held up by what an application does with an unrelated update.
+    if ((update as { readonly _?: unknown })._ === 'updateLoginToken') {
+      for (const notify of [...this.#loginTokenWatchers]) notify()
+    }
+
     const context = mtprotoContext(update, {
       client: this,
       log: this.#log,
@@ -4546,8 +5025,8 @@ export class Account<Ext = unknown> {
    * when there is no connection, and one place the peers an answer described
    * are written down.
    */
-  async #invoke(query: TlValue): Promise<TlValue> {
-    const answer = await this.#following(query)
+  async #invoke(query: TlValue, options?: CallDefaults): Promise<TlValue> {
+    const answer = await this.#following(query, options)
     await this.#learn(answer)
 
     return answer
@@ -4575,7 +5054,7 @@ export class Account<Ext = unknown> {
    * legitimately be sent to more of them than exist, so anything past that is
    * datacenters pointing at each other rather than an account being found.
    */
-  async #following(query: TlValue): Promise<TlValue> {
+  async #following(query: TlValue, options?: CallDefaults): Promise<TlValue> {
     let dcId = this.#require().datacenters.directory.thisDc
     const seen: number[] = [dcId]
 
@@ -4583,7 +5062,7 @@ export class Account<Ext = unknown> {
       const here = this.#require().pools.get({ id: dcId })
 
       try {
-        return await here.invoke(query)
+        return await here.invoke(query, options)
       } catch (error) {
         // Loaded here rather than at the top of this file: recognising a
         // redirection needs the session layer's error type and answering one
