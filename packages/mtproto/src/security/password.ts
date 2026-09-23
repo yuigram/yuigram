@@ -156,7 +156,7 @@ async function verifierFor(
  * Fetched and answered together: the proof is built for one published
  * challenge, so a challenge fetched earlier is one the server has moved past.
  */
-async function proveCurrent(
+export async function proveCurrent(
   client: Securing,
   password: string | undefined,
 ): Promise<TypeInputCheckPasswordSRP> {

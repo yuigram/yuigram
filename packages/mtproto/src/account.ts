@@ -52,6 +52,19 @@ import {
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
+import type {
+  BotInfo,
+  BotInfoTarget,
+  ButtonAnswer,
+  CommandInfo,
+  CommandsTarget,
+  Configuring,
+  MenuButtonSetting,
+  PreparedMessage,
+  PreparedTarget,
+  WebView,
+  WebViewRequest,
+} from './bots/config.js'
 import type { AdminRights, Restrictions } from './chats/common.js'
 import type { Folder, NewFolder } from './chats/folders.js'
 import type {
@@ -92,8 +105,10 @@ import type {
   TypeFactCheck,
   TypeInputBotInlineMessageID,
   TypeInputBotInlineResult,
+  TypeInputDocument,
   TypeInputMedia,
   TypeInputPeer,
+  TypeMessage,
   TypeMessageEntity,
   TypeMessageMedia,
   TypeMessageReactions,
@@ -102,6 +117,7 @@ import type {
   TypeSavedStarGift,
   TypeSendMessageAction,
   TypeStarGift,
+  TypeStickerSet,
   TypeStoriesStealthMode,
   TypeStoryViews,
 } from './generated/api/types/index.js'
@@ -288,6 +304,14 @@ import {
 } from './security/index.js'
 import type { ClientInfo } from './session/connection.js'
 import { decodeSession, encodeSession, type PortableSession } from './session.js'
+import type {
+  MySetsPage,
+  NewSticker,
+  NewStickerSet,
+  StickerRef,
+  StickerSetContents,
+  StickerSetRef,
+} from './stickers/stickers.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
 import { type DatacenterStore, datacenterStore } from './storage/datacenters.js'
 import { type AreaLease, areaFor, claimArea } from './storage/ownership.js'
@@ -576,6 +600,8 @@ export class Account<Ext = unknown> {
 
   /** How to stop saying this account is online, while it is saying so. */
   #stopPresence: (() => void) | undefined
+  /** Mini apps being kept open, each closed when the account stops. */
+  readonly #held = new Set<() => void>()
 
   /**
    * Which user this account is, once it has found out.
@@ -620,6 +646,7 @@ export class Account<Ext = unknown> {
       onStart: () => this.#open(),
       onStop: async () => {
         this.#stopPresence?.()
+        for (const close of [...this.#held]) close()
         this.#close()
         // After the network is down, so nothing can write to the area between
         // giving up the claim and the last write landing.
@@ -1543,6 +1570,31 @@ export class Account<Ext = unknown> {
   }
 
   /**
+   * The same, for the bot surface, whose mini apps have to be kept open.
+   *
+   * What is kept open is the account's: it is held in a set the account empties
+   * when it stops, so a mini app never outlives the account that opened it.
+   */
+  get #configuring(): Configuring {
+    return {
+      api: this.#api,
+      resolve: async (peer) => await this.resolve(peer),
+      random: this.#options.random ?? randomBytes,
+      schedule: this.#options.schedule ?? defaultSchedule,
+      hold: (close) => {
+        this.#held.add(close)
+
+        return () => {
+          this.#held.delete(close)
+        }
+      },
+      warn: (message, error) => {
+        this.#log.warn(message, { error })
+      },
+    }
+  }
+
+  /**
    * The same, for acting on a message that already exists.
    *
    * Those operations hand the account what their answers carried, so a vote or
@@ -1801,6 +1853,217 @@ export class Account<Ext = unknown> {
       this.#sending,
       peer,
       ids,
+    )
+  }
+
+  /** The commands a bot shows, for one scope and language. Bot accounts only. */
+  async getMyCommands(target?: CommandsTarget): Promise<readonly CommandInfo[]> {
+    return await (await import('./bots/config.js')).getMyCommands(this.#sending, target)
+  }
+
+  /**
+   * Publish the commands a bot shows, for one scope and language. Bot accounts
+   * only. An empty list is deleting them, which is {@link Account.deleteMyCommands}.
+   */
+  async setMyCommands(commands: readonly CommandInfo[], target?: CommandsTarget): Promise<void> {
+    await (await import('./bots/config.js')).setMyCommands(this.#sending, commands, target)
+  }
+
+  /** Remove the commands for one scope and language, so the wider one applies. */
+  async deleteMyCommands(target?: CommandsTarget): Promise<void> {
+    await (await import('./bots/config.js')).deleteMyCommands(this.#sending, target)
+  }
+
+  /**
+   * A bot's name, about text and description in one language — this account's
+   * own, where it is a bot, or those of a bot it owns.
+   */
+  async getBotInfo(target?: BotInfoTarget): Promise<BotInfo> {
+    return await (await import('./bots/config.js')).getBotInfo(this.#sending, target)
+  }
+
+  /** Change a bot's name, about text or description; only what is given is sent. */
+  async setBotInfo(change: Partial<BotInfo> & BotInfoTarget): Promise<void> {
+    await (await import('./bots/config.js')).setBotInfo(this.#sending, change)
+  }
+
+  /** The menu button one person sees, or everybody's where nobody is named. Bots only. */
+  async getBotMenuButton(user?: string | PeerRef): Promise<MenuButtonSetting> {
+    return await (await import('./bots/config.js')).getBotMenuButton(this.#sending, user)
+  }
+
+  /** Set the menu button one person sees, or everybody's. Bots only. */
+  async setBotMenuButton(button: MenuButtonSetting, user?: string | PeerRef): Promise<void> {
+    await (await import('./bots/config.js')).setBotMenuButton(this.#sending, button, user)
+  }
+
+  /** The rights a bot asks for when it is made an administrator. Bots only. */
+  async setMyDefaultRights(target: 'group' | 'channel', rights: AdminRights): Promise<void> {
+    await (await import('./bots/config.js')).setMyDefaultRights(this.#sending, target, rights)
+  }
+
+  /**
+   * Press an inline button on a bot's message, as a person would, and read what
+   * the bot answered. A button that asks for this account's password is answered
+   * with a proof of it.
+   */
+  async getCallbackAnswer(
+    peer: string | PeerRef,
+    messageId: number,
+    button: {
+      readonly data?: Uint8Array | string
+      readonly game?: boolean
+      readonly password?: string
+    },
+  ): Promise<ButtonAnswer> {
+    return await (await import('./bots/config.js')).getCallbackAnswer(
+      this.#configuring,
+      peer,
+      messageId,
+      button,
+    )
+  }
+
+  /** Let a bot set this account's emoji status, or take the permission back. */
+  async toggleEmojiStatusPermission(bot: string | PeerRef, allow: boolean): Promise<void> {
+    await (await import('./bots/config.js')).toggleEmojiStatusPermission(this.#sending, bot, allow)
+  }
+
+  /** Answer a guest chat query with one result, and learn the message it became. Bots only. */
+  async answerBotGuestChatQuery(
+    queryId: bigint,
+    result: TypeInputBotInlineResult,
+  ): Promise<TypeInputBotInlineMessageID> {
+    return await (await import('./bots/config.js')).answerBotGuestChatQuery(
+      this.#sending,
+      queryId,
+      result,
+    )
+  }
+
+  /** Prepare a message a mini app can ask a person to send. Bots only. */
+  async prepareInlineMessage(
+    user: string | PeerRef,
+    result: TypeInputBotInlineResult,
+    targets?: readonly PreparedTarget[],
+  ): Promise<PreparedMessage> {
+    return await (await import('./bots/config.js')).prepareInlineMessage(
+      this.#sending,
+      user,
+      result,
+      targets,
+    )
+  }
+
+  /**
+   * Open a bot's mini app.
+   *
+   * One opened in a conversation is kept open — prolonged every minute, as
+   * Telegram requires — until it is closed, Telegram says its query is gone, or
+   * this account stops.
+   */
+  async openWebview(request: WebViewRequest): Promise<WebView> {
+    return await (await import('./bots/config.js')).openWebview(this.#configuring, request)
+  }
+
+  /** Stop keeping a mini app open. */
+  closeWebview(view: WebView): void {
+    view.close()
+  }
+
+  /** A sticker set and its stickers. */
+  async getStickerSet(set: StickerSetRef): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).getStickerSet(this.#sending, set)
+  }
+
+  /** The sticker sets this account has installed. */
+  async getInstalledStickers(): Promise<readonly TypeStickerSet[]> {
+    return await (await import('./stickers/stickers.js')).getInstalledStickers(this.#sending)
+  }
+
+  /** One page of the sticker sets this account created. */
+  async getMyStickerSets(options?: {
+    readonly from?: bigint
+    readonly limit?: number
+  }): Promise<MySetsPage> {
+    return await (await import('./stickers/stickers.js')).getMyStickerSets(this.#sending, options)
+  }
+
+  /** Make a sticker set, handing each sticker's file to Telegram first. */
+  async createStickerSet(set: NewStickerSet): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).createStickerSet(this.#sending, set)
+  }
+
+  /** Add a sticker to a set this account manages. */
+  async addStickerToSet(set: StickerSetRef, sticker: NewSticker): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).addStickerToSet(
+      this.#sending,
+      set,
+      sticker,
+    )
+  }
+
+  /** Take a sticker out of its set. */
+  async deleteStickerFromSet(sticker: StickerRef): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).deleteStickerFromSet(
+      this.#sending,
+      sticker,
+    )
+  }
+
+  /** Put a new sticker where an old one was, keeping its place. */
+  async replaceStickerInSet(
+    sticker: StickerRef,
+    replacement: NewSticker,
+  ): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).replaceStickerInSet(
+      this.#sending,
+      sticker,
+      replacement,
+    )
+  }
+
+  /** Move a sticker to a position in its set, counted from zero. */
+  async moveStickerInSet(sticker: StickerRef, position: number): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).moveStickerInSet(
+      this.#sending,
+      sticker,
+      position,
+    )
+  }
+
+  /** Set a sticker set's thumbnail — a file, or one of its own emoji — or take it away. */
+  async setStickerSetThumb(
+    set: StickerSetRef,
+    thumb:
+      | { readonly file: TypeInputDocument | TypeInputMedia }
+      | { readonly emojiId: bigint }
+      | undefined,
+  ): Promise<StickerSetContents> {
+    return await (await import('./stickers/stickers.js')).setStickerSetThumb(
+      this.#sending,
+      set,
+      thumb,
+    )
+  }
+
+  /** Choose the sticker set a supergroup offers, or remove it. */
+  async setChatStickerSet(chat: string | PeerRef, set: StickerSetRef | undefined): Promise<void> {
+    await (await import('./stickers/stickers.js')).setChatStickerSet(this.#sending, chat, set)
+  }
+
+  /** The documents custom emoji are drawn from, one per identifier, in order. */
+  async getCustomEmojis(ids: readonly bigint[]): Promise<readonly (TypeDocument | undefined)[]> {
+    return await (await import('./stickers/stickers.js')).getCustomEmojis(this.#sending, ids)
+  }
+
+  /** The custom emoji some messages use, each once, in order of first use. */
+  async getCustomEmojisFromMessages(
+    messages: readonly (TypeMessage | MessageView)[],
+  ): Promise<readonly TypeDocument[]> {
+    return await (await import('./stickers/stickers.js')).getCustomEmojisFromMessages(
+      this.#sending,
+      messages.map((one) => ('raw' in one ? one.raw : one)),
     )
   }
 

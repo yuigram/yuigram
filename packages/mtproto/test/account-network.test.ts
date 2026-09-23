@@ -3786,3 +3786,92 @@ describe('editing an inline message on another datacenter', () => {
     await instance.dispose()
   })
 })
+
+describe('a mini app the account keeps open', () => {
+  const BOT = {
+    _: 'user',
+    id: 90n,
+    access_hash: 91n,
+    bot: true,
+    bot_info_version: 1,
+    username: 'shop_bot',
+  }
+
+  /** An account answering the bot's name and the request, holding back the prolonging timer. */
+  function keeping() {
+    const prolonging: { run: () => void; cancelled: boolean }[] = []
+    const asked: TlValue[] = []
+    const instance = harness({
+      schedule: (run, delay) => {
+        if (delay !== 60_000) {
+          const timer = setTimeout(run, delay)
+
+          return () => clearTimeout(timer)
+        }
+        const entry = { run, cancelled: false }
+        prolonging.push(entry)
+
+        return () => {
+          entry.cancelled = true
+        }
+      },
+      api: (query) => {
+        asked.push(query)
+        if (query._ === 'contacts.resolveUsername') {
+          return {
+            _: 'contacts.resolvedPeer',
+            peer: { _: 'peerUser', user_id: 90n },
+            chats: [],
+            users: [BOT],
+          }
+        }
+        if (query._ === 'messages.requestWebView') {
+          return { _: 'webViewResultUrl', query_id: 5n, url: 'https://app.example/' }
+        }
+
+        return undefined
+      },
+    })
+
+    return { instance, prolonging, asked }
+  }
+
+  it('lets go of what it keeps open when it stops', async () => {
+    // A mini app opened in a conversation is prolonged every minute. The
+    // account that opened it is what stops that, so nothing keeps calling
+    // Telegram on behalf of an account that has gone.
+    const { instance, prolonging } = keeping()
+    await instance.account.connect()
+
+    const view = await instance.account.openWebview({
+      bot: '@shop_bot',
+      source: { kind: 'chat', url: 'https://app.example/' },
+      platform: 'android',
+    })
+    expect(view.open).toBe(true)
+    expect(prolonging).toHaveLength(1)
+
+    await instance.account.stop()
+
+    expect(view.open).toBe(false)
+    expect(prolonging.every((timer) => timer.cancelled)).toBe(true)
+    await instance.dispose()
+  })
+
+  it('stops keeping one that is closed, and no longer holds it at stop', async () => {
+    const { instance, prolonging, asked } = keeping()
+    await instance.account.connect()
+
+    const view = await instance.account.openWebview({
+      bot: '@shop_bot',
+      source: { kind: 'chat' },
+      platform: 'android',
+    })
+    instance.account.closeWebview(view)
+    await instance.account.stop()
+
+    expect(prolonging[0]?.cancelled).toBe(true)
+    expect(asked.filter((query) => query._ === 'messages.prolongWebView')).toEqual([])
+    await instance.dispose()
+  })
+})

@@ -15,6 +15,20 @@ export {
   type AccountOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
+export type {
+  BotInfo,
+  BotInfoTarget,
+  ButtonAnswer,
+  CommandInfo,
+  CommandScope,
+  CommandsTarget,
+  MenuButtonSetting,
+  PreparedMessage,
+  PreparedTarget,
+  WebView,
+  WebViewRequest,
+  WebViewSource,
+} from './bots/config.js'
 export type { AdminRights, ChatKind, Chatting, Restrictions } from './chats/common.js'
 export type { Folder, NewFolder } from './chats/folders.js'
 export type {
@@ -322,6 +336,16 @@ export {
   setPassword,
 } from './security/index.js'
 export type { PortableSession } from './session.js'
+export type {
+  MaskPoint,
+  MySetsPage,
+  NewSticker,
+  NewStickerSet,
+  StickerRef,
+  StickerSetContents,
+  StickerSetKind,
+  StickerSetRef,
+} from './stickers/stickers.js'
 export { areaFor, StorageOwnershipError } from './storage/ownership.js'
 export type { PeerKind, PeerRecord, PeerStore } from './storage/peers.js'
 export type {
