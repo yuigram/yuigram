@@ -28,7 +28,7 @@ const AUTHORIZED: SignInState = {
 }
 
 /** Steps answering from a script, with the timer and the subscription held open. */
-function steps(answers: readonly LoginTokenState[] | readonly SignInState[]) {
+function steps(answers: readonly (LoginTokenState | SignInState)[]) {
   const timers: { run: () => void; delay: number; cancelled: boolean }[] = []
   const approvals: (() => void)[] = []
   const passwords: string[] = []
@@ -43,7 +43,7 @@ function steps(answers: readonly LoginTokenState[] | readonly SignInState[]) {
     unsubscribed(): number
   } = {
     requestToken: () => {
-      const answer = (answers as readonly SignInState[])[asked] ?? answers.at(-1)
+      const answer = answers[asked] ?? answers.at(-1)
       asked += 1
 
       return Promise.resolve(answer as never)
