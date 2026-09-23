@@ -122,6 +122,16 @@ function fake(
     resolve(peer) {
       resolved.push(peer)
 
+      // A reference already carries the identifier, so it resolves to itself
+      // rather than to the fixture's stand-in; a name still needs looking up.
+      if (typeof peer === 'object' && peer.kind === 'user') {
+        return Promise.resolve({
+          _: 'inputPeerUser',
+          user_id: peer.id,
+          access_hash: 0n,
+        } as TypeInputPeer)
+      }
+
       return Promise.resolve(as)
     },
   }
@@ -451,6 +461,19 @@ describe('who this account knows', () => {
     await setCloseFriends(client, ['@one', '@two'])
 
     expect(client.asked[0]).toEqual({ id: [7n, 7n] })
+  })
+
+  it('takes bare identifiers as readily as names, which is the whole of the raw form', async () => {
+    // Telegram's call takes numbers, and a user reference carries one, so
+    // naming people by identifier needs no separate method.
+    const client = fake([true])
+
+    await setCloseFriends(client, [
+      { kind: 'user', id: 11n },
+      { kind: 'user', id: 12n },
+    ])
+
+    expect(client.asked[0]).toEqual({ id: [11n, 12n] })
   })
 })
 

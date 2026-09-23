@@ -1053,4 +1053,24 @@ describe('the topic a message is in', () => {
     expect(sameTopic(view({}))).toEqual({})
     expect(sameTopic(view({ reply_to: header({ reply_to_msg_id: 7 }) }))).toEqual({})
   })
+
+  it('answers a message where it was said, which is what a dedicated answer call is', async () => {
+    // Composed rather than wrapped: sending to the message's own conversation
+    // with its own topic spread in reaches the same place a dedicated `answer`
+    // would, and reads as an ordinary send.
+    const heard = new MessageView(
+      message(40, { reply_to: header({ forum_topic: true, reply_to_msg_id: 7 }) }) as never,
+    )
+    const client = scripted()
+
+    await sendText(client, heard.chat as PeerRef, 'noted', { ...sameTopic(heard) })
+
+    expect(client.calls[0]?.params).toMatchObject({
+      message: 'noted',
+      // Filed in the topic by answering the message that opened it, which is
+      // how Telegram files anything sent into one.
+      reply_to: { _: 'inputReplyToMessage', reply_to_msg_id: 7 },
+    })
+    expect(client.resolved[0]).toEqual(heard.chat)
+  })
 })
