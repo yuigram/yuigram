@@ -31,7 +31,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyUpdates, type Chatting } from '../chats/common.js'
+import { applyAffected, applyUpdates, type Chatting } from '../chats/common.js'
 import { ForumTopicView } from '../entities/chat.js'
 import type { TypeForumTopic } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
@@ -283,18 +283,10 @@ export async function deleteTopicHistory(
   })
 
   // Not an updates container, so it cannot be fed as one. What it carries is a
-  // position and a count — the same thing a deletion update carries — and the
-  // account's sequence needs both or it will chase a gap this call opened.
-  await applyUpdates(client, {
-    _: 'updateShort',
-    date: 0,
-    update: {
-      _: 'updateDeleteMessages',
-      messages: [],
-      pts: answer.pts,
-      pts_count: answer.pts_count,
-    },
-  })
+  // position and a count in the channel's own sequence — a forum is always a
+  // channel — and the account needs both, applied there, or it will chase a gap
+  // this call opened.
+  await applyAffected(client, peer, answer)
 
   return answer.pts_count
 }

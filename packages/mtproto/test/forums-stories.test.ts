@@ -278,14 +278,16 @@ describe('opening and changing topics', () => {
 
   it('keeps the account’s place in the stream after deleting a thread', async () => {
     // The answer is a position and a count rather than a container, and an
-    // account that ignored it would chase a gap it opened itself.
+    // account that ignored it would chase a gap it opened itself. A forum is a
+    // channel, so the position is the channel's own: applied to the common
+    // sequence it would open a gap there instead.
     const client = fake([{ _: 'messages.affectedHistory', pts: 40, pts_count: 3, offset: 0 }])
 
     expect(await deleteTopicHistory(client, '@forum', 42)).toBe(3)
     expect(sent(client, 'messages.deleteTopicHistory')).toMatchObject({ top_msg_id: 42 })
     expect(client.fed[0]).toMatchObject({
       _: 'updateShort',
-      update: { _: 'updateDeleteMessages', pts: 40, pts_count: 3 },
+      update: { _: 'updateDeleteChannelMessages', pts: 40, pts_count: 3 },
     })
   })
 

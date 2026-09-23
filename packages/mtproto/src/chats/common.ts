@@ -144,6 +144,42 @@ export async function applyUpdates(client: Chatting, answer: unknown): Promise<v
   await client.feed(value)
 }
 
+/**
+ * Hand the account the position an operation on history moved to.
+ *
+ * Deleting, unpinning everything and clearing reaction badges are answered with
+ * a position and a count rather than with updates, and the position belongs to
+ * a sequence: a channel's own, or the common one every other conversation
+ * shares. Applied to the wrong one it opens a gap there and leaves the right one
+ * behind, and the account then fetches a difference to repair something that
+ * was never broken — or misses one that was.
+ *
+ * So the answer is fed as the update that would have carried it, for the
+ * sequence it came from.
+ */
+export async function applyAffected(
+  client: Chatting,
+  peer: TypeInputPeer,
+  answer: { readonly pts: number; readonly pts_count: number },
+): Promise<void> {
+  const channel = channelFor(peer)
+
+  await applyUpdates(client, {
+    _: 'updateShort',
+    date: 0,
+    update:
+      channel?._ === 'inputChannel'
+        ? {
+            _: 'updateDeleteChannelMessages',
+            channel_id: channel.channel_id,
+            messages: [],
+            pts: answer.pts,
+            pts_count: answer.pts_count,
+          }
+        : { _: 'updateDeleteMessages', messages: [], pts: answer.pts, pts_count: answer.pts_count },
+  })
+}
+
 /** What an administrator may do. Anything left out is a right they do not have. */
 export interface AdminRights {
   /** Change the title, photo and description. */
