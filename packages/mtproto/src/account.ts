@@ -105,6 +105,7 @@ import type { DialogView } from './entities/dialog.js'
 import type { MemberView } from './entities/member.js'
 import type { MessageView, ReactionView } from './entities/message.js'
 import type { ChatView, UserView } from './entities/peer.js'
+import type { StickerSetView } from './entities/sticker-set.js'
 import type { PeerStoriesView, StoryView, StoryViewerView } from './entities/story.js'
 import type { DownloadOutcome, DownloadRequest, DownloadSink } from './files/download.js'
 import type { NodeReadable, StreamOptions } from './files/streams.js'
@@ -134,7 +135,6 @@ import type {
   TypeSavedStarGift,
   TypeSendMessageAction,
   TypeStarGift,
-  TypeStickerSet,
   TypeStoriesStealthMode,
   TypeStoryViews,
 } from './generated/api/types/index.js'
@@ -345,7 +345,6 @@ import type {
   NewSticker,
   NewStickerSet,
   StickerRef,
-  StickerSetContents,
   StickerSetRef,
 } from './stickers/stickers.js'
 import { type AuthorizationStore, authorizationStore } from './storage/authorization.js'
@@ -2583,12 +2582,12 @@ export class Account<Ext = unknown> {
   }
 
   /** A sticker set and its stickers. */
-  async getStickerSet(set: StickerSetRef): Promise<StickerSetContents> {
+  async getStickerSet(set: StickerSetRef): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).getStickerSet(this.#sending, set)
   }
 
   /** The sticker sets this account has installed. */
-  async getInstalledStickers(): Promise<readonly TypeStickerSet[]> {
+  async getInstalledStickers(): Promise<readonly StickerSetView[]> {
     return await (await import('./stickers/stickers.js')).getInstalledStickers(this.#sending)
   }
 
@@ -2601,12 +2600,12 @@ export class Account<Ext = unknown> {
   }
 
   /** Make a sticker set, handing each sticker's file to Telegram first. */
-  async createStickerSet(set: NewStickerSet): Promise<StickerSetContents> {
+  async createStickerSet(set: NewStickerSet): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).createStickerSet(this.#sending, set)
   }
 
   /** Add a sticker to a set this account manages. */
-  async addStickerToSet(set: StickerSetRef, sticker: NewSticker): Promise<StickerSetContents> {
+  async addStickerToSet(set: StickerSetRef, sticker: NewSticker): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).addStickerToSet(
       this.#sending,
       set,
@@ -2615,7 +2614,7 @@ export class Account<Ext = unknown> {
   }
 
   /** Take a sticker out of its set. */
-  async deleteStickerFromSet(sticker: StickerRef): Promise<StickerSetContents> {
+  async deleteStickerFromSet(sticker: StickerRef): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).deleteStickerFromSet(
       this.#sending,
       sticker,
@@ -2623,10 +2622,7 @@ export class Account<Ext = unknown> {
   }
 
   /** Put a new sticker where an old one was, keeping its place. */
-  async replaceStickerInSet(
-    sticker: StickerRef,
-    replacement: NewSticker,
-  ): Promise<StickerSetContents> {
+  async replaceStickerInSet(sticker: StickerRef, replacement: NewSticker): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).replaceStickerInSet(
       this.#sending,
       sticker,
@@ -2635,7 +2631,7 @@ export class Account<Ext = unknown> {
   }
 
   /** Move a sticker to a position in its set, counted from zero. */
-  async moveStickerInSet(sticker: StickerRef, position: number): Promise<StickerSetContents> {
+  async moveStickerInSet(sticker: StickerRef, position: number): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).moveStickerInSet(
       this.#sending,
       sticker,
@@ -2650,7 +2646,7 @@ export class Account<Ext = unknown> {
       | { readonly file: TypeInputDocument | TypeInputMedia }
       | { readonly emojiId: bigint }
       | undefined,
-  ): Promise<StickerSetContents> {
+  ): Promise<StickerSetView> {
     return await (await import('./stickers/stickers.js')).setStickerSetThumb(
       this.#sending,
       set,

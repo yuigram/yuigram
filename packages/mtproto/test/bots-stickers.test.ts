@@ -27,6 +27,7 @@ import {
   setMyDefaultRights,
   toggleEmojiStatusPermission,
 } from '../src/bots/config.js'
+import { readStickerSet, StickerSetView } from '../src/entities/sticker-set.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
 import {
@@ -565,7 +566,12 @@ describe('sticker sets', () => {
     const installed = scripted({
       'messages.getAllStickers': { _: 'messages.allStickers', hash: 1n, sets: [set] },
     })
-    expect(await getInstalledStickers(installed)).toEqual([set])
+    // Brief views over what the list carried: the set, and no stickers.
+    const sets = await getInstalledStickers(installed)
+    expect(sets.map((one) => one.raw)).toEqual([set])
+    expect(sets.map((one) => [one.title, one.isFull, one.stickers.length])).toEqual([
+      ['Cats', false, 0],
+    ])
 
     const covered = (id: bigint) => ({ _: 'stickerSetNoCovered', set: { ...set, id } })
     const full = scripted({
@@ -577,6 +583,7 @@ describe('sticker sets', () => {
     })
     const page = await getMyStickerSets(full, { limit: 2 })
     expect(page).toMatchObject({ total: 5, next: 2n })
+    expect(page.sets.map((one) => one.id)).toEqual([1n, 2n])
     expect(sent(full, 'messages.getMyStickers')).toEqual({ offset_id: 0n, limit: 2 })
 
     const last = scripted({
@@ -781,5 +788,143 @@ describe('custom emoji', () => {
     const none = scripted()
     expect(await getCustomEmojisFromMessages(none, [withEmoji()] as never)).toEqual([])
     expect(none.calls).toEqual([])
+  })
+})
+
+describe('a sticker set, read', () => {
+  const brief = {
+    _: 'stickerSet' as const,
+    emojis: true as const,
+    creator: true as const,
+    installed_date: 1_700_000_000,
+    id: 9n,
+    access_hash: -3n,
+    title: 'Faces',
+    short_name: 'faces',
+    count: 3,
+    hash: 0,
+    thumbs: [
+      { _: 'photoStrippedSize' as const, type: 'i', bytes: new Uint8Array([1, 2, 3]) },
+      { _: 'photoSize' as const, type: 's', w: 100, h: 100, size: 2048 },
+    ],
+    thumb_dc_id: 4,
+    thumb_version: 7,
+  }
+  const sticker = (id: bigint, alt: string) => ({
+    _: 'document' as const,
+    id,
+    access_hash: id * 10n,
+    file_reference: new Uint8Array(0),
+    date: 1,
+    mime_type: 'image/webp',
+    size: 10n,
+    dc_id: 2,
+    attributes: [
+      {
+        _: 'documentAttributeSticker' as const,
+        alt,
+        stickerset: { _: 'inputStickerSetEmpty' as const },
+      },
+    ],
+  })
+  const full = new StickerSetView({
+    _: 'messages.stickerSet',
+    set: brief,
+    documents: [sticker(1n, '😀'), sticker(2n, '😢'), sticker(3n, '')],
+    packs: [
+      { _: 'stickerPack', emoticon: '😀', documents: [1n, 3n] },
+      { _: 'stickerPack', emoticon: '🙂', documents: [1n] },
+      { _: 'stickerPack', emoticon: '😢', documents: [2n] },
+    ],
+    keywords: [{ _: 'stickerKeyword', document_id: 2n, keyword: ['sad', 'tear'] }],
+  })
+
+  it('reads the set’s description, and names it by identifier and by link', () => {
+    expect([full.id, full.accessHash, full.title, full.shortName, full.count]).toEqual([
+      9n,
+      -3n,
+      'Faces',
+      'faces',
+      3,
+    ])
+    expect([full.kind, full.isCreator, full.isArchived, full.isOfficial]).toEqual([
+      'emoji',
+      true,
+      false,
+      false,
+    ])
+    expect(full.installedDate).toBe(1_700_000_000)
+    const colored = new StickerSetView({
+      ...brief,
+      text_color: true,
+      channel_emoji_status: true,
+      thumb_document_id: 77n,
+    })
+    expect([colored.isTextColored, colored.isChannelStatus, colored.thumbnailEmojiId]).toEqual([
+      true,
+      true,
+      77n,
+    ])
+    expect([full.isTextColored, full.isChannelStatus, full.thumbnailEmojiId]).toEqual([
+      false,
+      false,
+      undefined,
+    ])
+    expect(full.input).toEqual({ _: 'inputStickerSetID', id: 9n, access_hash: -3n })
+    expect(full.link).toBe('https://t.me/addemoji/faces')
+    const { emojis: _emojis, ...plain } = brief
+    expect(new StickerSetView(plain).link).toBe('https://t.me/addstickers/faces')
+  })
+
+  it('pairs every sticker with the emoji the set files it under and its keywords, in order', () => {
+    expect(full.isFull).toBe(true)
+    expect(
+      full.stickers.map((item) => [item.document.id, item.alt, item.emojis, item.keywords]),
+    ).toEqual([
+      [1n, '😀', ['😀', '🙂'], []],
+      [2n, '😢', ['😢'], ['sad', 'tear']],
+      [3n, '', ['😀'], []],
+    ])
+    expect(full.byEmoji('😀').map((item) => item.document.id)).toEqual([1n, 3n])
+    expect(full.byEmoji('🎉')).toEqual([])
+  })
+
+  it('reads a brief form, with its covers, as a set with no stickers listed', () => {
+    const covered = new StickerSetView({
+      _: 'stickerSetMultiCovered',
+      set: brief,
+      covers: [sticker(1n, '😀'), sticker(2n, '😢')],
+    })
+
+    expect(covered.isFull).toBe(false)
+    expect(covered.count).toBe(3)
+    expect(covered.stickers).toEqual([])
+    expect(covered.covers.map((one) => one._ === 'document' && one.id)).toEqual([1n, 2n])
+    expect(readStickerSet(undefined)).toBeUndefined()
+  })
+
+  it('offers the set’s own picture for download, and nothing for a size that arrived inline', () => {
+    expect(full.thumbnailFile()).toEqual({
+      location: {
+        _: 'inputStickerSetThumb',
+        stickerset: { _: 'inputStickerSetID', id: 9n, access_hash: -3n },
+        thumb_version: 7,
+      },
+      dcId: 4,
+      size: 2048,
+    })
+    expect(full.thumbnailFile('i')).toBeUndefined()
+    const { thumb_version: _version, ...unversioned } = brief
+    expect(new StickerSetView(unversioned).thumbnailFile()).toBeUndefined()
+  })
+
+  it('serialises as the value Telegram sent', () => {
+    expect(
+      JSON.parse(
+        JSON.stringify({ at: full }, (_key, value) =>
+          typeof value === 'bigint' ? String(value) : value,
+        ),
+      ).at._,
+    ).toBe('messages.stickerSet')
   })
 })

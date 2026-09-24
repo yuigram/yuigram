@@ -129,6 +129,10 @@ a better question than the one the schema asks.
 | `dialog` | 15 | 15 | — |
 | `dialogFolder` | 8 | 8 | — |
 | every `messageMedia*` | 17 constructors | all | — |
+| `stickerSet` | 18 | 17 | `hash` |
+
+`hash` on a sticker set is a cache key for asking whether the list changed, which a reader of the
+set has no use for.
 
 `legacy` marks a message sent by a client old enough that its text needs re-fetching before its
 formatting can be trusted. It is an instruction to the code that fetches rather than a fact
@@ -148,6 +152,10 @@ Where the schema asks a question badly, the view asks a better one rather than m
 - **Derived, but from the value alone.** `canBeForwarded`, `isAutomaticForward`,
   `isTopicMessage`, `isReply` and `displayName` are computed, and computed without reaching
   anything.
+- **Two depths, one reading.** A sticker set arrives brief in a list — sometimes with a cover or
+  several — and full when asked for by itself. `StickerSetView` reads every form, says which with
+  `isFull`, and pairs each sticker with every emoji the set's packs file it under, which is where
+  Telegram records them, rather than only the one the sticker names for itself.
 - **One constructor, six things.** `messageMediaDocument` is a video, a voice note, a sticker, an
   animation, a music track or a plain file, and which one lives in the document's attributes
   rather than in the constructor. `MediaView.kind` is that search, done once and named — and the

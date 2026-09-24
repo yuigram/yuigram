@@ -22,6 +22,7 @@ import {
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Account } from '../src/account.js'
 import { ChatView, UserView } from '../src/entities/peer.js'
+import { StickerSetView } from '../src/entities/sticker-set.js'
 import type { TlValue } from '../src/tl/index.js'
 import {
   type AttachedAccount,
@@ -157,6 +158,28 @@ describe('the codec', () => {
 
     expect(rebuilt.user).toBeInstanceOf(UserView)
     expect(rebuilt.user.firstName).toBe('Ada')
+  })
+
+  it('carries a sticker set read on the other side, stickers and all', () => {
+    const set = new StickerSetView({
+      _: 'messages.stickerSet',
+      set: {
+        _: 'stickerSet',
+        id: 9n,
+        access_hash: 1n,
+        title: 'Cats',
+        short_name: 'cats',
+        count: 1,
+        hash: 0,
+      },
+      packs: [{ _: 'stickerPack', emoticon: '🐱', documents: [3n] }],
+      keywords: [],
+      documents: [{ _: 'document', id: 3n, attributes: [] } as never],
+    })
+    const rebuilt = decodeValue(structuredClone(encodeValue({ set }))) as { set: StickerSetView }
+
+    expect(rebuilt.set).toBeInstanceOf(StickerSetView)
+    expect(rebuilt.set.byEmoji('🐱').map((item) => item.document.id)).toEqual([3n])
   })
 
   it('refuses what cannot cross, naming where it was', () => {

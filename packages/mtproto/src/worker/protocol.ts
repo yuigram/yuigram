@@ -69,6 +69,7 @@ import { MediaView } from '../entities/media.js'
 import { MemberView } from '../entities/member.js'
 import { MessageView, ReactionView } from '../entities/message.js'
 import { ChatView, UserView } from '../entities/peer.js'
+import { StickerSetView } from '../entities/sticker-set.js'
 import { PeerStoriesView, StoryView, StoryViewerView } from '../entities/story.js'
 import { EphemeralMessageView } from '../messaging/ephemeral.js'
 
@@ -433,6 +434,7 @@ const VIEWS = {
   MessageView,
   PeerStoriesView,
   ReactionView,
+  StickerSetView,
   StoryView,
   StoryViewerView,
   UserView,

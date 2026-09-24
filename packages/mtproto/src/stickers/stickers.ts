@@ -10,6 +10,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
+import { type StickerSetKind, StickerSetView } from '../entities/sticker-set.js'
 import type {
   TypeDocument,
   TypeInputDocument,
@@ -69,7 +70,12 @@ function stickerOf(ref: StickerRef): TypeInputDocument {
 /* Reading sets                                                                */
 /* -------------------------------------------------------------------------- */
 
-/** A sticker set and what is in it. */
+/**
+ * A sticker set and what is in it, as the raw values Telegram sent.
+ *
+ * What {@link StickerSetView} carries besides its readings, so code written
+ * against these four fields reads a view unchanged.
+ */
 export interface StickerSetContents {
   readonly set: TypeStickerSet
   /** The stickers, in the set's order. */
@@ -80,41 +86,41 @@ export interface StickerSetContents {
   readonly keywords: readonly TypeStickerKeyword[]
 }
 
-function contentsOf(answer: { readonly _: string } & Record<string, unknown>): StickerSetContents {
+function contentsOf(answer: { readonly _: string } & Record<string, unknown>): StickerSetView {
   if (answer._ !== 'messages.stickerSet') {
     throw new ValidationError('Telegram answered without describing the set')
   }
 
-  return {
-    set: answer['set'] as TypeStickerSet,
-    documents: answer['documents'] as TypeDocument[],
-    packs: answer['packs'] as TypeStickerPack[],
-    keywords: answer['keywords'] as TypeStickerKeyword[],
-  }
+  return new StickerSetView(answer as never)
 }
 
 /** A sticker set and its stickers. */
-export async function getStickerSet(
-  client: Sending,
-  set: StickerSetRef,
-): Promise<StickerSetContents> {
+export async function getStickerSet(client: Sending, set: StickerSetRef): Promise<StickerSetView> {
   const answer = await client.api.messages.getStickerSet({ stickerset: setOf(set), hash: 0 })
 
   return contentsOf(answer as never)
 }
 
-/** The sets this account has installed, in the order it shows them. */
-export async function getInstalledStickers(client: Sending): Promise<readonly TypeStickerSet[]> {
+/**
+ * The sets this account has installed, in the order it shows them.
+ *
+ * Brief: each says what the set is and how many stickers it holds, and
+ * {@link getStickerSet} gives the stickers.
+ */
+export async function getInstalledStickers(client: Sending): Promise<readonly StickerSetView[]> {
   const answer = await client.api.messages.getAllStickers({ hash: 0n })
 
   // Nothing held here to be unchanged against, so the full answer is expected;
   // an unchanged one is read as no sets rather than as an error.
-  return answer._ === 'messages.allStickers' ? answer.sets : []
+  return answer._ === 'messages.allStickers'
+    ? answer.sets.map((set) => new StickerSetView(set))
+    : []
 }
 
 /** One page of the sets this account created. */
 export interface MySetsPage {
-  readonly sets: readonly TypeStickerSet[]
+  /** Brief, each with the stickers Telegram showed for it as `covers`. */
+  readonly sets: readonly StickerSetView[]
   /** How many there are altogether. */
   readonly total: number
   /** Where the next page begins, absent where this was the last. */
@@ -139,7 +145,7 @@ export async function getMyStickerSets(
     offset_id: options?.from ?? 0n,
     limit,
   })
-  const sets = answer.sets.map((covered) => covered.set)
+  const sets = answer.sets.map((covered) => new StickerSetView(covered))
   const last = sets.at(-1)
   const seen = sets.length
 
@@ -244,8 +250,7 @@ async function itemOf(client: Sending, sticker: NewSticker): Promise<TypeInputSt
   }
 }
 
-/** Which kind of set: ordinary stickers, masks, or custom emoji. */
-export type StickerSetKind = 'stickers' | 'masks' | 'emoji'
+export type { StickerSetKind }
 
 /** What a new set is. */
 export interface NewStickerSet {
@@ -279,7 +284,7 @@ const SHORT_NAME = /^[A-Za-z](?:[A-Za-z0-9]|_(?!_))*$/
 export async function createStickerSet(
   client: Sending,
   set: NewStickerSet,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   if (set.title.length < 1 || set.title.length > 64) {
     throw new ValidationError('a sticker set’s title is 1 to 64 characters')
   }
@@ -319,7 +324,7 @@ export async function addStickerToSet(
   client: Sending,
   set: StickerSetRef,
   sticker: NewSticker,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   const answer = await client.api.stickers.addStickerToSet({
     stickerset: setOf(set),
     sticker: await itemOf(client, sticker),
@@ -332,7 +337,7 @@ export async function addStickerToSet(
 export async function deleteStickerFromSet(
   client: Sending,
   sticker: StickerRef,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   const answer = await client.api.stickers.removeStickerFromSet({ sticker: stickerOf(sticker) })
 
   return contentsOf(answer as never)
@@ -343,7 +348,7 @@ export async function replaceStickerInSet(
   client: Sending,
   sticker: StickerRef,
   replacement: NewSticker,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   const answer = await client.api.stickers.replaceSticker({
     sticker: stickerOf(sticker),
     new_sticker: await itemOf(client, replacement),
@@ -357,7 +362,7 @@ export async function moveStickerInSet(
   client: Sending,
   sticker: StickerRef,
   position: number,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   if (!Number.isInteger(position) || position < 0) {
     throw new ValidationError(`a position in a set is counted from zero, not ${position}`)
   }
@@ -384,7 +389,7 @@ export async function setStickerSetThumb(
     | { readonly file: TypeInputDocument | TypeInputMedia }
     | { readonly emojiId: bigint }
     | undefined,
-): Promise<StickerSetContents> {
+): Promise<StickerSetView> {
   const answer = await client.api.stickers.setStickerSetThumb({
     stickerset: setOf(set),
     ...(thumb === undefined

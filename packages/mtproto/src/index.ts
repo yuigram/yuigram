@@ -82,6 +82,12 @@ export {
   UserView,
 } from './entities/peer.js'
 export {
+  readStickerSet,
+  type StickerItem,
+  type StickerSetValue,
+  StickerSetView,
+} from './entities/sticker-set.js'
+export {
   PeerStoriesView,
   readStory,
   type StoryForm,
