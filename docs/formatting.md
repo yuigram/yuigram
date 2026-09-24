@@ -93,7 +93,7 @@ same text back.
 **Choices worth knowing.**
 
 - HTML keeps whitespace by default, as Telegram's HTML does; the collapsing reading is an option.
-  In it a space before a closing tag is kept where a browser would keep it, rather than trimmed.
+  In it a space before a closing tag is kept where a browser would keep it.
 - An unrecognised tag stays in the text as written, and an unclosed one runs to the end, rather
   than being dropped. `strict` refuses both instead.
 - Markdown is MarkdownV2 — `*bold*`, `_italic_`, `__underline__` — so text escaped for a bot is safe
