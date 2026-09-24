@@ -70,7 +70,13 @@ export interface StreamingAccount {
     content: RichContent,
     options?: SendOptions,
   ): Promise<SentMessage>
-  on(kind: 'mtproto:typing', handler: (context: never) => unknown): unknown
+  /**
+   * Handle typing updates, which is where a reader's stop arrives.
+   *
+   * The handler reads only the update itself, so an account's own `on` — which
+   * hands it the whole event — fits.
+   */
+  on(kind: 'mtproto:typing', handler: (context: { readonly raw: unknown }) => unknown): unknown
 }
 
 /** How a stream is sent from an account. */
@@ -142,7 +148,7 @@ function registryOf(account: StreamingAccount): Registry {
   registries.set(account, registry)
   const live = registry.runs
 
-  account.on('mtproto:typing', ((context: { readonly raw?: unknown }) => {
+  account.on('mtproto:typing', (context) => {
     const update = (context.raw ?? {}) as {
       readonly _?: string
       readonly user_id?: bigint
@@ -158,7 +164,7 @@ function registryOf(account: StreamingAccount): Registry {
         continue
       run.stop.stop()
     }
-  }) as never)
+  })
 
   return registry
 }
