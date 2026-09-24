@@ -9,9 +9,11 @@
  * thing.
  */
 
+import { type Entity, parseHtml, parseMarkdown } from '@yuigram/core/format'
 import { describe, expect, it } from 'vitest'
 import { fromHtml, toHtml } from '../src/format/html.js'
 import { fromMarkdown, toMarkdown } from '../src/format/markdown.js'
+import { fromTlEntities } from '../src/format/neutral.js'
 import type { FormattedText } from '../src/format/text.js'
 import type { TypeMessageEntity } from '../src/generated/api/types/index.js'
 
@@ -313,14 +315,14 @@ describe('writing markup back', () => {
     expect(fromHtml(toHtml(read)).text).toBe(read.text)
   })
 
-  it('does not escape inside a code span, where a backslash is a backslash', () => {
+  it('escapes only a backtick and a backslash inside a code span, as the dialect says', () => {
     const read: FormattedText = {
-      text: 'a\\b*c',
-      entities: [{ _: 'messageEntityCode', offset: 0, length: 5 }],
+      text: 'a\\b*c`d',
+      entities: [{ _: 'messageEntityCode', offset: 0, length: 7 }],
     }
 
-    expect(toMarkdown(read)).toBe('`a\\b*c`')
-    expect(fromMarkdown(toMarkdown(read)).text).toBe('a\\b*c')
+    expect(toMarkdown(read)).toBe('`a\\\\b*c\\`d`')
+    expect(fromMarkdown(toMarkdown(read))).toEqual(read)
   })
 
   it('puts a marker on every line of a quote', () => {
@@ -770,5 +772,168 @@ describe('the cases the dialect specifies by name', () => {
       { _: 'messageEntitySpoiler', offset: 8, length: 1 },
       { _: 'messageEntityCode', offset: 10, length: 1 },
     ])
+  })
+})
+
+/** Which kinds cover each character, so two readings can be compared position by position. */
+function formattingByCharacter(value: FormattedText): string[] {
+  return Array.from({ length: value.text.length }, (_, at) =>
+    value.entities
+      .filter((entity) => at >= entity.offset && at < entity.offset + entity.length)
+      .map((entity) => entity._)
+      .sort()
+      .join(','),
+  )
+}
+
+/** What two independent parsers can be compared on: kind, range and the one value that matters. */
+function comparable(entity: Entity): string {
+  const detail = entity.url ?? entity.user?.id ?? entity.custom_emoji_id ?? entity.language ?? ''
+
+  return `${entity.type}@${entity.offset}+${entity.length}${detail === '' ? '' : `:${detail}`}`
+}
+
+const values = (entities: readonly Entity[]): string[] => entities.map(comparable).sort()
+
+describe('what reaches an attribute through interpolation', () => {
+  it('cannot end the attribute and add one of its own', () => {
+    const path = 'x" href="https://attacker.example/'
+    const read = fromHtml`<a href="https://example.com/${path}">here</a>`
+
+    expect(read.entities).toEqual([
+      {
+        _: 'messageEntityTextUrl',
+        offset: 0,
+        length: 4,
+        url: 'https://example.com/x" href="https://attacker.example/',
+      },
+    ])
+  })
+
+  it('keeps a quote in text as the quote it was', () => {
+    expect(fromHtml`<b>${`it's "quoted"`}</b>`.text).toBe(`it's "quoted"`)
+  })
+
+  it('writes an address with a quote in it so it reads back whole', () => {
+    const value: FormattedText = {
+      text: 'here',
+      entities: [{ _: 'messageEntityTextUrl', offset: 0, length: 4, url: 'https://a.example/"x' }],
+    }
+
+    expect(fromHtml(toHtml(value))).toEqual(value)
+  })
+
+  it('leaves text as written where an emoji id or a reference names nothing', () => {
+    const read = fromHtml('<tg-emoji emoji-id="not-a-number">x</tg-emoji> &#x110000;')
+
+    expect(read).toEqual({ text: 'x &#x110000;', entities: [] })
+  })
+})
+
+describe("a link's address in Markdown", () => {
+  it('arrives as it was interpolated, with nothing of the escaping left in it', () => {
+    const url = 'https://example.com/a_b-c.d?x=1&y=(2)'
+    const read = fromMarkdown`[site](${url})`
+
+    expect(read.entities).toEqual([{ _: 'messageEntityTextUrl', offset: 0, length: 4, url }])
+  })
+
+  it('is written with its closing parenthesis and backslashes escaped', () => {
+    const value: FormattedText = {
+      text: 'wiki',
+      entities: [
+        {
+          _: 'messageEntityTextUrl',
+          offset: 0,
+          length: 4,
+          url: 'https://en.wikipedia.org/wiki/Set_(mathematics)\\x',
+        },
+      ],
+    }
+
+    expect(toMarkdown(value)).toBe('[wiki](https://en.wikipedia.org/wiki/Set_(mathematics\\)\\\\x)')
+    expect(fromMarkdown(toMarkdown(value))).toEqual(value)
+  })
+
+  it('reads an escaped backtick inside code as a backtick', () => {
+    expect(fromMarkdown('`a\\`b`')).toEqual({
+      text: 'a`b',
+      entities: [{ _: 'messageEntityCode', offset: 0, length: 3 }],
+    })
+  })
+})
+
+describe('ranges that cross', () => {
+  const crossing: FormattedText = {
+    text: 'abcdefgh',
+    entities: [
+      { _: 'messageEntityBold', offset: 0, length: 5 },
+      { _: 'messageEntityItalic', offset: 3, length: 5 },
+      { _: 'messageEntityTextUrl', offset: 2, length: 4, url: 'https://example.com/' },
+    ],
+  }
+
+  it('come back from HTML with every character formatted as it was', () => {
+    const written = toHtml(crossing)
+
+    expect(formattingByCharacter(fromHtml(written))).toEqual(formattingByCharacter(crossing))
+  })
+
+  it('come back from Markdown with every character formatted as it was', () => {
+    const written = toMarkdown(crossing)
+
+    expect(formattingByCharacter(fromMarkdown(written))).toEqual(formattingByCharacter(crossing))
+  })
+})
+
+describe('against the independent parsers in @yuigram/core/format', () => {
+  const markdown = [
+    '*bold* _italic_ __underline__ ~strike~ ||spoiler||',
+    '*bold _italic bold_ bold*',
+    '`co\\`de` and ```js\nlet a = 1\n```',
+    '[link](https://example.com/a\\)b) [me](tg://user?id=42) ![👍](tg://emoji?id=5368324170671202286)',
+    '>quoted line\n>second line\nafter',
+    '>shown\n>hidden||',
+    'escaped \\*not bold\\* and a\\_b',
+  ]
+
+  it.each(markdown)('reads MarkdownV2 the same: %s', (source) => {
+    const here = fromMarkdown(source)
+    const there = parseMarkdown(source)
+
+    expect(here.text).toBe(there.text)
+    expect(values(fromTlEntities(here.entities))).toEqual(values(there.entities))
+  })
+
+  const html = [
+    '<b>bold</b> <i>it</i> <u>u</u> <s>s</s> <tg-spoiler>sp</tg-spoiler> <code>c</code>',
+    '<pre><code class="language-js">let a = 1</code></pre>',
+    '<a href="https://example.com/?a=1&amp;b=2">link</a> <a href="tg://user?id=42">me</a> <tg-emoji emoji-id="5368324170671202286">👍</tg-emoji>',
+    '<blockquote>q</blockquote>\n<blockquote expandable>hidden</blockquote>',
+    '<b>bold <i>both</i></b> &lt;tag&gt; &amp; &quot;q&quot;',
+  ]
+
+  it.each(html)('reads HTML the same: %s', (source) => {
+    const here = fromHtml(source)
+    const there = parseHtml(source)
+
+    expect(here.text).toBe(there.text)
+    expect(values(fromTlEntities(here.entities))).toEqual(values(there.entities))
+  })
+
+  const hostile = [
+    '</b><a href="https://attacker.example/">x</a>',
+    'x" href="https://attacker.example/',
+    '*_[]()~`>#+-=|{}.!\\',
+    '&amp; &lt; 👍🏽',
+  ]
+
+  it.each(hostile)('keeps an interpolated value as text in both dialects: %s', (value) => {
+    for (const read of [fromHtml`<b>${value}</b>`, fromMarkdown`*${value}*`]) {
+      expect(read).toEqual({
+        text: value,
+        entities: [{ _: 'messageEntityBold', offset: 0, length: value.length }],
+      })
+    }
   })
 })

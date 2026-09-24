@@ -20,13 +20,18 @@
  */
 
 import type { TypeMessageEntity } from '../generated/api/types/index.js'
-import { assemble, type FormattedText, type Markup, withinText } from './text.js'
+import { assemble, type FormattedText, type Markup, markerRuns, withinText } from './text.js'
 
-/** Characters that would otherwise start a tag or a character reference. */
+/**
+ * Characters that would otherwise start a tag or a character reference, or
+ * end an attribute's value.
+ */
 const ESCAPES: Readonly<Record<string, string>> = {
   '&': '&amp;',
   '<': '&lt;',
   '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
 }
 
 /** Named character references Telegram's own markup uses. */
@@ -63,11 +68,28 @@ interface OpenTag {
 /**
  * Escape text so it survives {@link fromHtml} unchanged.
  *
- * Only the three that would otherwise be read as markup. Escaping more would
- * put character references in front of the reader.
+ * Only the three that would otherwise be read as markup, for text written back
+ * by {@link toHtml}.
  */
 function escapeHtml(text: string): string {
   return text.replace(/[&<>]/g, (character) => ESCAPES[character] as string)
+}
+
+/**
+ * Escape a value that may land inside an attribute.
+ *
+ * An interpolated value is text wherever it lands, and it can land between an
+ * attribute's quotes: `<a href="https://example.com/${path}">`. Unescaped, a
+ * quote in it would end the value and let what follows add attributes of its
+ * own — a second `href`, which is the one a reader would follow.
+ */
+function escapeAttribute(text: string): string {
+  return text.replace(/[&<>"']/g, (character) => ESCAPES[character] as string)
+}
+
+/** The character a numeric reference names, or the reference as written if it names none. */
+function characterOf(code: number, written: string): string {
+  return Number.isNaN(code) || code > 0x10ffff ? written : String.fromCodePoint(code)
 }
 
 /** Resolve `&amp;`, `&#39;` and `&#x27;` back to the character each stands for. */
@@ -77,17 +99,8 @@ function decodeReferences(text: string): string {
   return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, body: string) => {
     const lower = body.toLowerCase()
 
-    if (lower.startsWith('#x')) {
-      const code = Number.parseInt(lower.slice(2), 16)
-
-      return Number.isNaN(code) ? whole : String.fromCodePoint(code)
-    }
-
-    if (lower.startsWith('#')) {
-      const code = Number.parseInt(lower.slice(1), 10)
-
-      return Number.isNaN(code) ? whole : String.fromCodePoint(code)
-    }
+    if (lower.startsWith('#x')) return characterOf(Number.parseInt(lower.slice(2), 16), whole)
+    if (lower.startsWith('#')) return characterOf(Number.parseInt(lower.slice(1), 10), whole)
 
     return REFERENCES[lower] ?? whole
   })
@@ -152,7 +165,9 @@ function entityFor(
 
     case 'tg-emoji': {
       const id = open.attributes.get('emoji-id') ?? open.attributes.get('document-id')
-      if (id === undefined) return undefined
+      // An identifier is a number. Anything else names no emoji, and the text
+      // stays as it was rather than the whole message failing to parse.
+      if (id === undefined || !/^\d+$/.test(id)) return undefined
 
       return { _: 'messageEntityCustomEmoji', offset, length, document_id: BigInt(id) }
     }
@@ -312,7 +327,7 @@ function takeOpen(scan: Scan, raw: string): string {
  * refusing.
  */
 export function fromHtml(input: Markup, ...values: readonly unknown[]): FormattedText {
-  const markup = assemble(input, values, escapeHtml)
+  const markup = assemble(input, values, escapeAttribute)
   const scan: Scan = { text: '', entities: [], open: [], language: undefined }
 
   let at = 0
@@ -394,13 +409,13 @@ function tagsFor(entity: TypeMessageEntity): readonly [string, string] | undefin
     case 'messageEntityPre':
       return entity.language === ''
         ? ['<pre>', '</pre>']
-        : [`<pre><code class="language-${escapeHtml(entity.language)}">`, '</code></pre>']
+        : [`<pre><code class="language-${escapeAttribute(entity.language)}">`, '</code></pre>']
     case 'messageEntityBlockquote':
       return entity.collapsed === true
         ? ['<blockquote expandable>', '</blockquote>']
         : ['<blockquote>', '</blockquote>']
     case 'messageEntityTextUrl':
-      return [`<a href="${escapeHtml(entity.url)}">`, '</a>']
+      return [`<a href="${escapeAttribute(entity.url)}">`, '</a>']
     case 'messageEntityMentionName':
       return [`<a href="tg://user?id=${entity.user_id}">`, '</a>']
     case 'messageEntityCustomEmoji':
@@ -421,9 +436,10 @@ function tagsFor(entity: TypeMessageEntity): readonly [string, string] | undefin
  * numbers, bank cards — are left as plain text, because marking them up would
  * change nothing about the message.
  *
- * Overlapping ranges are closed and reopened where they cross, so the result
- * always parses back to the same set of ranges even where Telegram's entities
- * were not nested to begin with.
+ * Overlapping ranges are closed and reopened where they cross, so every
+ * character parses back with the formatting it had even where Telegram's
+ * entities were not nested to begin with; a range that crossed another comes
+ * back as two ranges side by side.
  */
 export function toHtml(value: FormattedText): string {
   return render(value, tagsFor, escapeHtml)
@@ -441,41 +457,13 @@ function render(
   markersFor: (entity: TypeMessageEntity) => readonly [string, string] | undefined,
   escapeText: (text: string) => string,
 ): string {
-  const opens = new Map<number, string[]>()
-  const closes = new Map<number, string[]>()
-
-  for (const entity of value.entities) {
-    const markers = markersFor(entity)
-    if (markers === undefined) continue
-    if (entity.length <= 0 || entity.offset < 0) continue
-    if (entity.offset + entity.length > value.text.length) continue
-
-    const [before, after] = markers
-    const opening = opens.get(entity.offset) ?? []
-    const closing = closes.get(entity.offset + entity.length) ?? []
-
-    opening.push(before)
-    // Closing markers run innermost first, and the innermost is whatever opened
-    // last, so each new one goes in front.
-    closing.unshift(after)
-    opens.set(entity.offset, opening)
-    closes.set(entity.offset + entity.length, closing)
-  }
-
-  const boundaries = [...new Set([...opens.keys(), ...closes.keys(), value.text.length])].sort(
-    (left, right) => left - right,
-  )
-
   let out = ''
   let from = 0
 
-  for (const at of boundaries) {
-    if (at > from) out += escapeText(value.text.slice(from, at))
-
-    out += (closes.get(at) ?? []).join('')
-    out += (opens.get(at) ?? []).join('')
+  for (const [at, run] of markerRuns(value, markersFor)) {
+    out += escapeText(value.text.slice(from, at)) + run.close + run.open
     from = at
   }
 
-  return from < value.text.length ? out + escapeText(value.text.slice(from)) : out
+  return out + escapeText(value.text.slice(from))
 }

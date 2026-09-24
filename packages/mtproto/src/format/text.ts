@@ -78,6 +78,84 @@ export function isEntityWithin(entity: TypeMessageEntity, length: number): boole
   return entity.offset >= 0 && entity.length > 0 && entity.offset + entity.length <= length
 }
 
+/** What is written at one position: the markers closing there, then those opening. */
+export interface MarkerRun {
+  readonly close: string
+  readonly open: string
+}
+
+/** A range placed in the text, with the markers written around it. */
+interface Placed {
+  readonly end: number
+  readonly markers: readonly [string, string]
+}
+
+/**
+ * The markers to write at each position, nested the way markup must be.
+ *
+ * Entities need not nest; markup does. A range that crosses another is closed
+ * where the other ends and opened again straight after, so every character
+ * reads back with the formatting it had — the crossing range as two ranges
+ * side by side, which formats the same text the same way.
+ */
+export function markerRuns(
+  value: FormattedText,
+  markersFor: (entity: TypeMessageEntity) => readonly [string, string] | undefined,
+): ReadonlyMap<number, MarkerRun> {
+  const starts = new Map<number, Placed[]>()
+  const ends = new Set<number>()
+
+  for (const entity of value.entities) {
+    const markers = markersFor(entity)
+    if (markers === undefined || !isEntityWithin(entity, value.text.length)) continue
+
+    const end = entity.offset + entity.length
+    starts.set(entity.offset, [...(starts.get(entity.offset) ?? []), { end, markers }])
+    ends.add(end)
+  }
+
+  const runs = new Map<number, MarkerRun>()
+  const stack: Placed[] = []
+  const positions = [...new Set([...starts.keys(), ...ends])].sort((left, right) => left - right)
+
+  for (const at of positions) {
+    const { close, open } = closeAt(stack, at)
+    let opening = open
+
+    // What ends later opens first, so it is outside what ends sooner.
+    for (const placed of [...(starts.get(at) ?? [])].sort((left, right) => right.end - left.end)) {
+      opening += placed.markers[0]
+      stack.push(placed)
+    }
+
+    runs.set(at, { close, open: opening })
+  }
+
+  return runs
+}
+
+/**
+ * Close whatever ends at `at`, and everything opened inside it that does not;
+ * those are opened again at once, in the order they were.
+ */
+function closeAt(stack: Placed[], at: number): MarkerRun {
+  const lowest = stack.findIndex((placed) => placed.end === at)
+  if (lowest === -1) return { close: '', open: '' }
+
+  let close = ''
+  const reopened: Placed[] = []
+  for (let index = stack.length - 1; index >= lowest; index -= 1) {
+    const placed = stack[index] as Placed
+    close += placed.markers[1]
+    if (placed.end !== at) reopened.unshift(placed)
+  }
+
+  stack.length = lowest
+  stack.push(...reopened)
+
+  return { close, open: reopened.map((placed) => placed.markers[0]).join('') }
+}
+
 /**
  * Drop entities that do not describe a range of the text.
  *

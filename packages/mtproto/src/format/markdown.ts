@@ -53,7 +53,7 @@
  */
 
 import type { TypeMessageEntity } from '../generated/api/types/index.js'
-import { assemble, type FormattedText, type Markup, withinText } from './text.js'
+import { assemble, type FormattedText, type Markup, markerRuns, withinText } from './text.js'
 
 /** Characters MarkdownV2 reserves anywhere in the text. */
 const SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g
@@ -81,6 +81,45 @@ function escapeMarkdown(text: string): string {
   return text.replace(SPECIAL, (character) => `\\${character}`)
 }
 
+/**
+ * Escape what the dialect reserves inside code and inside a link's target:
+ * the backslash, and whatever would end the span — a backtick or `)`.
+ */
+function escapeWithin(text: string, closer: string): string {
+  return text.replace(closer === '`' ? /[`\\]/g : /[)\\]/g, (character) => `\\${character}`)
+}
+
+/**
+ * Read up to an unescaped `closer`, resolving escapes on the way.
+ *
+ * Inside code and a link's target the dialect reserves only the backslash and
+ * the closer itself, and both are written escaped. Returns what was read and
+ * where scanning resumes, or `undefined` when nothing closes it.
+ */
+function readUntil(
+  markup: string,
+  from: number,
+  closer: string,
+): { readonly read: string; readonly end: number } | undefined {
+  let read = ''
+
+  for (let index = from; index < markup.length; index += 1) {
+    const character = markup[index] as string
+
+    if (character === '\\' && index + 1 < markup.length) {
+      read += markup[index + 1]
+      index += 1
+      continue
+    }
+
+    if (markup.startsWith(closer, index)) return { read, end: index + closer.length }
+
+    read += character
+  }
+
+  return undefined
+}
+
 interface Scan {
   text: string
   readonly entities: TypeMessageEntity[]
@@ -104,10 +143,10 @@ function takeCode(scan: Scan, markup: string, at: number): number | undefined {
   if (markup[at] !== '`') return undefined
 
   if (markup.startsWith('```', at)) {
-    const close = markup.indexOf('```', at + 3)
-    if (close === -1) return undefined
+    const block = readUntil(markup, at + 3, '```')
+    if (block === undefined) return undefined
 
-    const body = markup.slice(at + 3, close)
+    const body = block.read
     const newline = body.indexOf('\n')
     // A first line with no whitespace in it names the language; anything else
     // is the first line of the code.
@@ -123,18 +162,16 @@ function takeCode(scan: Scan, markup: string, at: number): number | undefined {
     })
     scan.text += code
 
-    return close + 3
+    return block.end
   }
 
-  const close = markup.indexOf('`', at + 1)
-  if (close === -1) return undefined
+  const span = readUntil(markup, at + 1, '`')
+  if (span === undefined) return undefined
 
-  const code = markup.slice(at + 1, close)
+  scan.entities.push({ _: 'messageEntityCode', offset: scan.text.length, length: span.read.length })
+  scan.text += span.read
 
-  scan.entities.push({ _: 'messageEntityCode', offset: scan.text.length, length: code.length })
-  scan.text += code
-
-  return close + 1
+  return span.end
 }
 
 /** Find the `]` that closes a `[` at `at`, counting nested brackets. */
@@ -194,17 +231,19 @@ function takeLink(scan: Scan, markup: string, at: number): number | undefined {
   const close = closingBracket(markup, bracket)
   if (close === -1 || markup[close + 1] !== '(') return undefined
 
-  const target = markup.indexOf(')', close + 2)
-  if (target === -1) return undefined
+  // A `)` or a backslash in the address is written escaped, as every
+  // interpolated address is; the escapes are markup, not part of the address.
+  const target = readUntil(markup, close + 2, ')')
+  if (target === undefined) return undefined
 
   // The label is markup in its own right, so a bold link is one call inside
   // another rather than a special case here.
   const label = fromMarkdown(markup.slice(bracket + 1, close))
   const offset = absorb(scan, label)
 
-  scan.entities.push(linkEntity(markup.slice(close + 2, target), offset, label.text.length))
+  scan.entities.push(linkEntity(target.read, offset, label.text.length))
 
-  return target + 1
+  return target.end
 }
 
 /**
@@ -333,11 +372,11 @@ function findClose(markup: string, from: number, marker: string): number {
 
     if (character === '`') {
       const fence = markup.startsWith('```', index) ? '```' : '`'
-      const close = markup.indexOf(fence, index + fence.length)
+      const code = readUntil(markup, index + fence.length, fence)
 
-      if (close === -1) return -1
+      if (code === undefined) return -1
 
-      index = close + fence.length - 1
+      index = code.end - 1
       continue
     }
 
@@ -435,7 +474,7 @@ function markersFor(entity: TypeMessageEntity): readonly [string, string] | unde
     case 'messageEntityPre':
       return [`\`\`\`${entity.language}\n`, '```']
     case 'messageEntityTextUrl':
-      return ['[', `](${entity.url})`]
+      return ['[', `](${escapeWithin(entity.url, ')')})`]
     case 'messageEntityMentionName':
       return ['[', `](tg://user?id=${entity.user_id})`]
     case 'messageEntityCustomEmoji':
@@ -515,9 +554,13 @@ function quoteMarks(value: FormattedText): QuoteMarks {
  * Write text and its entities back as Markdown markup.
  *
  * The inverse of {@link fromMarkdown} for everything this dialect can express.
- * Text is escaped except inside a code span, where a backslash is a backslash,
- * which is what makes the result safe to pass back through
- * {@link fromMarkdown}.
+ * Text is escaped; inside code only a backtick and a backslash are, as the
+ * dialect has it, and a link's address escapes `)` and a backslash. That is
+ * what makes the result safe to pass back through {@link fromMarkdown}, and
+ * through Telegram's own reading of MarkdownV2.
+ *
+ * Ranges that cross are closed and reopened where they cross, as
+ * {@link markerRuns} describes.
  *
  * One thing does not survive the trip, by choice rather than oversight. The
  * entities the server finds on its own — mentions, hashtags, bare links, phone
@@ -525,43 +568,26 @@ function quoteMarks(value: FormattedText): QuoteMarks {
  * would change nothing about the message.
  */
 export function toMarkdown(value: FormattedText): string {
-  const opens = new Map<number, string[]>()
-  const closes = new Map<number, string[]>()
-
-  for (const entity of value.entities) {
-    if (!usable(entity, value.text.length)) continue
-
-    const markers = markersFor(entity)
-    if (markers === undefined) continue
-
-    const opening = opens.get(entity.offset) ?? []
-    const closing = closes.get(entity.offset + entity.length) ?? []
-
-    opening.push(markers[0])
-    // Closing markers run innermost first, and the innermost opened last.
-    closing.unshift(markers[1])
-    opens.set(entity.offset, opening)
-    closes.set(entity.offset + entity.length, closing)
-  }
-
+  const runs = markerRuns(value, markersFor)
   const verbatim = verbatimAt(value)
   const quotes = quoteMarks(value)
 
   let out = ''
 
   for (let at = 0; at <= value.text.length; at += 1) {
-    out += (closes.get(at) ?? []).join('')
+    const run = runs.get(at)
+    out += run?.close ?? ''
     // After the closing markers, so a spoiler ending the last quoted line
     // closes before the mark that makes the quote expandable.
     out += quotes.marks.get(at) ?? ''
     out += quotes.opens.get(at) ?? ''
-    out += (opens.get(at) ?? []).join('')
+    out += run?.open ?? ''
 
     if (at === value.text.length) break
 
     const character = value.text[at] as string
 
-    out += verbatim[at] === true ? character : escapeMarkdown(character)
+    out += verbatim[at] === true ? escapeWithin(character, '`') : escapeMarkdown(character)
   }
 
   return out
