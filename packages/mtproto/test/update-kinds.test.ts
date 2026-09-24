@@ -222,6 +222,32 @@ describe('what each update is about', () => {
     ])
   })
 
+  it('reads a boost and a count of people waiting to join as about their chat', () => {
+    const boost = normalizeUpdate({
+      _: 'updateBotChatBoost',
+      peer: { _: 'peerChannel', channel_id: 9n },
+      boost: { _: 'boost', id: 'b', date: 1, expires: 2 },
+      qts: 1,
+    })
+    const waiting = normalizeUpdate({
+      _: 'updatePendingJoinRequests',
+      peer: { _: 'peerChannel', channel_id: 9n },
+      requests_pending: 2,
+      recent_requesters: [5n, 6n],
+    })
+
+    expect([boost.kind, boost.chat, boost.sender]).toEqual([
+      'mtproto:chat_boost',
+      { kind: 'channel', id: 9n },
+      undefined,
+    ])
+    expect([waiting.kind, waiting.chat, waiting.sender]).toEqual([
+      'mtproto:join_requests_pending',
+      { kind: 'channel', id: 9n },
+      undefined,
+    ])
+  })
+
   it('reads the forum topic a message was posted in', () => {
     const inTopic = normalizeUpdate({
       _: 'updateNewChannelMessage',
@@ -467,6 +493,66 @@ describe('a kind beyond messages, delivered', () => {
         silent: true,
       })
       expect(sent).toEqual([100])
+    } finally {
+      await instance.dispose()
+    }
+  }, 30_000)
+
+  it('forwards, pins and unpins the message an event carries, and reads who sent it', async () => {
+    const { instance, asked } = await recorded()
+    const looked: string[] = []
+
+    try {
+      await instance.account.peers.save({
+        kind: 'user',
+        id: 6n,
+        accessHash: 66n,
+        min: false,
+        usernames: [],
+      })
+      instance.account.on('message', async (event) => {
+        await event.forward({ kind: 'user', id: 6n })
+        await event.pin({ silent: true })
+        await event.unpin()
+        try {
+          await event.fetchSender()
+        } catch (error) {
+          // The datacenter here answers a lookup with nothing, which the
+          // account refuses by name rather than inventing a person.
+          looked.push((error as Error).name)
+        }
+      })
+
+      await instance.account.peers.save({
+        kind: 'user',
+        id: 5n,
+        accessHash: 55n,
+        min: false,
+        usernames: [],
+      })
+      await push(instance, {
+        _: 'updateShortMessage',
+        id: 9,
+        user_id: 5n,
+        message: 'keep this',
+        pts: 2,
+        pts_count: 1,
+        date: 1_700_000_000,
+      })
+      await settle(400)
+
+      expect(named(asked, 'messages.forwardMessages')).toMatchObject({
+        from_peer: { _: 'inputPeerUser', user_id: 5n },
+        to_peer: { _: 'inputPeerUser', user_id: 6n, access_hash: 66n },
+        id: [9],
+      })
+      const pins = asked.filter((query) => query._ === 'messages.updatePinnedMessage')
+      expect(pins.map((query) => [query['id'], query['silent'], query['unpin']])).toEqual([
+        [9, true, undefined],
+        [9, undefined, true],
+      ])
+      expect(named(asked, 'users.getUsers')).toBeDefined()
+      expect(looked).toHaveLength(1)
     } finally {
       await instance.dispose()
     }

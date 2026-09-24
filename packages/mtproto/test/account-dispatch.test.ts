@@ -385,6 +385,70 @@ describe('a conversation on an account', () => {
     }
   }, 30_000)
 
+  it('walks a scene one step per message, and keeps its place across a restart', async () => {
+    const trail: string[] = []
+    const positions = memory()
+    const plugin = () =>
+      conversation<MtprotoContext, { name?: string }>({
+        storage: positions as never,
+        scenes: [
+          {
+            name: 'form',
+            initial: () => ({}),
+            steps: [
+              (event, scene) => {
+                if (scene.fresh) {
+                  trail.push('asked for a name')
+                  return
+                }
+                scene.state.name = event.text ?? ''
+                scene.next()
+              },
+              (event, scene) => {
+                if (scene.fresh) {
+                  trail.push(`asked ${scene.state.name} for an age`)
+                  return
+                }
+                trail.push(`${scene.state.name} is ${event.text}`)
+                scene.leave()
+              },
+            ],
+          },
+        ],
+      })
+    const entering = async (event: MtprotoContext): Promise<void> => {
+      if (event.text === '/form') {
+        await (
+          event as unknown as { conversation: { enter(scene: string): Promise<void> } }
+        ).conversation.enter('form')
+      }
+    }
+
+    const first = await connected()
+    first.account.extend(plugin())
+    first.account.on('message', entering)
+    await push(first, message(2, '/form'))
+    await settle()
+    await push(first, message(3, 'Ada'))
+    await settle()
+    await first.account.stop()
+
+    // A second run of the same account, with the scene's place in the store.
+    const second = await connected({ datacenters: first.datacenters, stored: first.rawStored })
+
+    try {
+      second.account.extend(plugin())
+      second.account.on('message', entering)
+      await push(second, message(4, '36'))
+      await settle()
+
+      expect(trail).toEqual(['asked for a name', 'asked Ada for an age', 'Ada is 36'])
+    } finally {
+      await first.dispose()
+      await second.dispose()
+    }
+  }, 30_000)
+
   it('continues a durable flow in a fresh runtime, kept apart from the account’s own store', async () => {
     const runs = memory()
     const finished: string[] = []
