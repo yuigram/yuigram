@@ -10,7 +10,7 @@
  * calls it makes.
  */
 
-import { memory } from '@yuigram/core'
+import { memory, PeerError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { Account } from '../src/account.js'
 import { AuthKey } from '../src/message/auth-key.js'
@@ -284,7 +284,10 @@ describe('answering an update', () => {
     })
     await account.deliver(update())
 
-    expect((failure as Error).message).toMatch(/not known to this account/)
+    // Refused where `account.sendText` refuses it, since a reply is sent the
+    // same way.
+    expect(failure).toBeInstanceOf(PeerError)
+    expect((failure as Error).message).toMatch(/has not seen user 5/)
     await account.stop()
   })
 

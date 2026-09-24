@@ -48,7 +48,14 @@ export interface PeerRef {
 export interface NormalizedUpdate {
   /** Which event this is. */
   readonly kind: MtprotoEventKind
-  /** The conversation this concerns, where the update names one. */
+  /**
+   * The conversation this concerns, where the update names one.
+   *
+   * Only a conversation: somewhere things are said. A user whose status
+   * changed, a story being posted and a vote in a poll happen in none, and a
+   * `user_id` on an update is not taken to name one — only the updates that are
+   * said in a private chat by the person they name are read that way.
+   */
   readonly chat: PeerRef | undefined
   /**
    * Who caused it, where the update says.
@@ -58,14 +65,32 @@ export interface NormalizedUpdate {
    * moving has no author.
    */
   readonly sender: PeerRef | undefined
+  /**
+   * Whom it is about, where that is named apart from the conversation and the
+   * one who acted.
+   *
+   * A member promoted in a group is the target, the admin who promoted them is
+   * the sender, and the group is the chat. A user whose name or status changed
+   * is the target of an update said in no conversation.
+   */
+  readonly target: PeerRef | undefined
   /** The message, for the kinds that carry a whole one. */
   readonly message: TypeMessage | undefined
+  /** The messages of an album, in the order they were sent, for that kind alone. */
+  readonly album: readonly TypeMessage[] | undefined
   /** The messages a deletion names. */
   readonly messageIds: readonly number[] | undefined
   /** Message text, where the update carries a message with any. */
   readonly text: string | undefined
   /** When it happened, where the update says. Absent rather than invented. */
   readonly date: number | undefined
+  /**
+   * The forum topic a message was posted in.
+   *
+   * Only where the conversation has topics and the message says which; a
+   * message in the General topic of a forum names none, as Telegram sends it.
+   */
+  readonly topicId: number | undefined
   /** The untouched update. */
   readonly raw: TlValue
 }
@@ -74,36 +99,50 @@ export interface NormalizedUpdate {
 export function normalizeUpdate(update: TlValue): NormalizedUpdate {
   const kind = kindOf(update)
 
+  if (update._ === 'updateBotGuestChatQuery') return fromGuestQuery(update, kind)
   if (MESSAGE_UPDATES.has(update._)) return fromMessage(update, kind)
   if (SHORT_MESSAGE_UPDATES.has(update._)) return fromShortMessage(update, kind)
   if (EPHEMERAL_MESSAGE_UPDATES.has(update._)) return fromEphemeral(update, kind)
 
   if (update._ === 'updateDeleteEphemeralMessages') {
     return {
+      ...EMPTY,
       kind,
       chat: peerRefOf(update['peer']),
-      sender: undefined,
-      message: undefined,
       // Named `ids` here rather than `messages`, and meaningful only for the
       // person the messages were shown to.
       messageIds: readIntVector(update['ids']),
-      text: undefined,
-      date: undefined,
       raw: update,
     }
   }
 
+  if (update._ === 'updateBusinessBotCallbackQuery') return fromBusinessCallback(update, kind)
+
   return {
+    ...EMPTY,
     kind,
     chat: chatOf(update),
     sender: senderOf(update),
-    message: undefined,
+    target: targetOf(update),
     messageIds: readIntVector(update['messages']),
-    text: undefined,
     date: readDate(update['date']),
+    topicId: readTopic(update['top_msg_id']),
     raw: update,
   }
 }
+
+/** Every field absent, for the readers that fill in only some. */
+const EMPTY = {
+  chat: undefined,
+  sender: undefined,
+  target: undefined,
+  message: undefined,
+  album: undefined,
+  messageIds: undefined,
+  text: undefined,
+  date: undefined,
+  topicId: undefined,
+} as const
 
 /**
  * Which kind an update is.
@@ -135,16 +174,15 @@ function fromEphemeral(update: TlValue, kind: MtprotoEventKind): NormalizedUpdat
   const message = asValue(update['message'])
 
   return {
+    ...EMPTY,
     kind,
     // Absent in a guest chat, where the message belongs to a query rather than
     // to a conversation.
     chat: message === undefined ? undefined : peerRefOf(message['peer_id']),
     sender: message === undefined ? undefined : peerRefOf(message['from_id']),
-    message: undefined,
-    // A send is not a deletion, so this stays empty; the message's own number
-    // is in `raw`, where it belongs to the ephemeral message rather than to the
-    // conversation.
-    messageIds: undefined,
+    // A send is not a deletion, so `messageIds` stays empty; the message's own
+    // number is in `raw`, where it belongs to the ephemeral message rather than
+    // to the conversation.
     text: message === undefined ? undefined : readString(message['message']),
     date: message === undefined ? undefined : readDate(message['date']),
     raw: update,
@@ -161,6 +199,7 @@ function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate 
   const message = asValue(update['message']) as TypeMessage | undefined
 
   return {
+    ...EMPTY,
     kind,
     chat: peerRefOf(message?.peer_id),
     // Outgoing messages carry no author: the account itself sent them, and the
@@ -170,7 +209,6 @@ function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate 
         ? undefined
         : peerRefOf(message.from_id),
     message,
-    messageIds: undefined,
     // Only an ordinary message carries text. A service message describes
     // something that happened and an empty one is a hole where a message the
     // account cannot see used to be, and inventing an empty string for either
@@ -178,6 +216,49 @@ function fromMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate 
     text: message?._ === 'message' ? readString(message.message) : undefined,
     date:
       message === undefined || message._ === 'messageEmpty' ? undefined : readDate(message.date),
+    topicId: message === undefined ? undefined : topicOf(message),
+    raw: update,
+  }
+}
+
+/**
+ * Read a query about a guest chat.
+ *
+ * The message is what the bot is asked about, in a chat the bot is not a
+ * member of — so it names who wrote it but no conversation this account could
+ * answer in. The answer goes back through the query instead.
+ */
+function fromGuestQuery(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
+  const message = asValue(update['message']) as TypeMessage | undefined
+  const whole = message?._ === 'message' ? message : undefined
+
+  return {
+    ...EMPTY,
+    kind,
+    sender: whole === undefined ? undefined : peerRefOf(whole.from_id),
+    message,
+    text: whole === undefined ? undefined : readString(whole.message),
+    date: whole === undefined ? undefined : readDate(whole.date),
+    raw: update,
+  }
+}
+
+/**
+ * Read a button pressed under a business account's message.
+ *
+ * The person pressing is named by number, and the conversation is the one the
+ * message is in — which the update does not name beside it.
+ */
+function fromBusinessCallback(update: TlValue, kind: MtprotoEventKind): NormalizedUpdate {
+  const message = asValue(update['message']) as TypeMessage | undefined
+  const userId = readBigInt(update['user_id'])
+
+  return {
+    ...EMPTY,
+    kind,
+    chat: peerRefOf(message?.peer_id),
+    sender: userId === undefined ? undefined : { kind: 'user', id: userId },
+    message,
     raw: update,
   }
 }
@@ -213,26 +294,17 @@ function fromShortMessage(update: TlValue, kind: MtprotoEventKind): NormalizedUp
         : { kind: 'user', id: userId }
 
   return {
+    ...EMPTY,
     kind,
     chat,
     sender,
     // There is no message object to hand back — the update is the message.
-    message: undefined,
-    messageIds: undefined,
     text: readString(update['message']),
     date: readDate(update['date']),
     raw: update,
   }
 }
 
-/**
- * The conversation an update concerns.
- *
- * Every update names it differently, and some name it not at all: a deletion
- * outside a channel says only which message numbers went, because message
- * numbers are unique to the account outside channels and the peer is not needed
- * to find them.
- */
 /**
  * The updates whose `user_id` is the person asking rather than the subject.
  *
@@ -255,9 +327,61 @@ const ASKED_BY_USER: ReadonlySet<string> = new Set([
   'updateBotShippingQuery',
   'updateBotPrecheckoutQuery',
   'updateBotChatInviteRequester',
+  'updateBotPurchasedPaidMedia',
 ])
 
+/**
+ * The updates said in a private chat by the user they name.
+ *
+ * The only ones whose `user_id` is a conversation. Somebody typing to this
+ * account is typing in their chat with it, and a person stopping a bot does so
+ * in the bot's chat with them. Everything else carrying a `user_id` is about
+ * that user — a status, a name, a membership — and happens in no conversation
+ * the account could answer in.
+ */
+const SAID_IN_PRIVATE: ReadonlySet<string> = new Set(['updateUserTyping', 'updateBotStopped'])
+
+/**
+ * The updates whose `peer` is who acted rather than where.
+ *
+ * A vote names the voter, and a story names whoever posted it. Neither is a
+ * conversation, and reading the peer as one would lock and key state for a
+ * person under a chat that nobody said anything in.
+ */
+const PEER_IS_ACTOR: ReadonlySet<string> = new Set(['updateMessagePollVote', 'updateStory'])
+
+/**
+ * The updates whose `user_id` names who they are about.
+ *
+ * A membership change is about the member; the admin who made it, where there
+ * is one, is the sender. A user's name, status or photo changing is about that
+ * user.
+ */
+const ABOUT_USER: ReadonlySet<string> = new Set([
+  'updateChatParticipant',
+  'updateChannelParticipant',
+  'updateChatParticipantAdd',
+  'updateChatParticipantDelete',
+  'updateChatParticipantAdmin',
+  'updateChatParticipantRank',
+  'updateUserStatus',
+  'updateUserName',
+  'updateUserPhone',
+  'updateUserEmojiStatus',
+  'updateUser',
+])
+
+/**
+ * The conversation an update concerns.
+ *
+ * Every update names it differently, and some name it not at all: a deletion
+ * outside a channel says only which message numbers went, because message
+ * numbers are unique to the account outside channels and the peer is not needed
+ * to find them.
+ */
 function chatOf(update: TlValue): PeerRef | undefined {
+  if (PEER_IS_ACTOR.has(update._)) return undefined
+
   const direct = peerRefOf(update['peer'])
   if (direct !== undefined) return direct
 
@@ -282,11 +406,8 @@ function chatOf(update: TlValue): PeerRef | undefined {
   const nestedId = nested === undefined ? undefined : readBigInt(nested['chat_id'])
   if (nestedId !== undefined) return { kind: 'chat', id: nestedId }
 
-  // A query is not said in a conversation, so it has none rather than one made
-  // up from whoever asked.
-  if (ASKED_BY_USER.has(update._)) return undefined
+  if (!SAID_IN_PRIVATE.has(update._)) return undefined
 
-  // A user typing in a private chat: the user is the conversation.
   const userId = readBigInt(update['user_id'])
 
   return userId === undefined ? undefined : { kind: 'user', id: userId }
@@ -303,7 +424,17 @@ function senderOf(update: TlValue): PeerRef | undefined {
   const from = peerRefOf(update['from_id'])
   if (from !== undefined) return from
 
-  if (update._ === 'updateUserTyping' || update._ === 'updateUserStatus') {
+  if (PEER_IS_ACTOR.has(update._)) return peerRefOf(update['peer'])
+
+  // A reaction a bot is told about names who reacted, which may be a channel
+  // reacting anonymously rather than a person.
+  if (update._ === 'updateBotMessageReaction') return peerRefOf(update['actor'])
+
+  if (
+    update._ === 'updateUserTyping' ||
+    update._ === 'updateUserStatus' ||
+    update._ === 'updateBotStopped'
+  ) {
     const userId = readBigInt(update['user_id'])
     if (userId !== undefined) return { kind: 'user', id: userId }
   }
@@ -312,6 +443,13 @@ function senderOf(update: TlValue): PeerRef | undefined {
   // typed the query is who it is from, and there is no other candidate.
   if (ASKED_BY_USER.has(update._)) {
     const userId = readBigInt(update['user_id'])
+    if (userId !== undefined) return { kind: 'user', id: userId }
+  }
+
+  // A business account connecting names the person who connected it.
+  if (update._ === 'updateBotBusinessConnect') {
+    const connection = asValue(update['connection'])
+    const userId = connection === undefined ? undefined : readBigInt(connection['user_id'])
     if (userId !== undefined) return { kind: 'user', id: userId }
   }
 
@@ -329,6 +467,35 @@ function senderOf(update: TlValue): PeerRef | undefined {
   const inviter = readBigInt(update['inviter_id'])
 
   return inviter === undefined ? undefined : { kind: 'user', id: inviter }
+}
+
+/** Whom an update is about, where it names somebody apart from where and who. */
+function targetOf(update: TlValue): PeerRef | undefined {
+  if (!ABOUT_USER.has(update._)) return undefined
+
+  const userId = readBigInt(update['user_id'])
+
+  return userId === undefined ? undefined : { kind: 'user', id: userId }
+}
+
+/**
+ * The forum topic a message was posted in.
+ *
+ * Telegram marks a message in a topic by a flag on its reply header: the
+ * header's top message is the topic, or the message it answers is, when that
+ * is the topic's own first message.
+ */
+function topicOf(message: TypeMessage): number | undefined {
+  if (message._ === 'messageEmpty') return undefined
+
+  const header = asValue(message.reply_to)
+  if (header?._ !== 'messageReplyHeader' || header['forum_topic'] !== true) return undefined
+
+  return readTopic(header['reply_to_top_id']) ?? readTopic(header['reply_to_msg_id'])
+}
+
+function readTopic(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
 }
 
 /** Read a `Peer`, whichever of the three it is. */

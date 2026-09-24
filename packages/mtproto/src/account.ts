@@ -212,9 +212,9 @@ import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { QrOptions } from './network/qr.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
-import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
+import { contextFor, type MtprotoContext } from './normalize/context.js'
 import { isUpdateSource, type MtprotoEventKind, UPDATE_CONTAINERS } from './normalize/events.js'
-import type { PeerRef } from './normalize/normalize.js'
+import { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type {
   AllStoriesFilter,
@@ -565,6 +565,17 @@ export interface AccountOptions {
   readonly random?: (length: number) => Uint8Array
   /** Run something later, and return the way to cancel it. */
   readonly schedule?: (run: () => void, delayMs: number) => () => void
+  /**
+   * How long to wait after an album's latest part before handling it whole,
+   * in milliseconds. 250 unless given.
+   *
+   * Telegram sends an album as separate messages sharing a group, with nothing
+   * saying which is the last. So the album is handled once no further part has
+   * arrived for this long — longer delays a handler, shorter risks splitting an
+   * album whose parts arrive slowly. Nothing is gathered unless a handler could
+   * take `mtproto:album`.
+   */
+  readonly albumWindow?: number
 }
 
 /** What an account is once it has connected. */
@@ -690,6 +701,8 @@ export class Account<Ext = unknown> {
   #pluginWork: Promise<unknown> = Promise.resolve()
   /** Told when this account starts and when it begins to stop. */
   readonly #observers = new Set<HostObserver>()
+  /** Albums being gathered, until no further part arrives for a while. */
+  readonly #albums = new Map<string, Album>()
   /**
    * A session this account was built from, until it has been written down.
    *
@@ -729,6 +742,9 @@ export class Account<Ext = unknown> {
       // conversation's next message only finishes once whatever holds it lets
       // go, and the drain would otherwise spend the whole deadline on it.
       onStopping: async () => {
+        // An album still gathering is handled now, so the drain waits for it
+        // rather than the stop discarding parts that already arrived.
+        this.#flushAlbums()
         await this.#tell('stopping')
       },
       onStop: async () => {
@@ -5174,7 +5190,7 @@ export class Account<Ext = unknown> {
    * dispatcher entirely, so what an application installs runs around this
    * account's own middleware rather than sorting into it.
    */
-  async deliver(update: Parameters<typeof mtprotoContext>[0]): Promise<void> {
+  async deliver(update: TlValue): Promise<void> {
     // Installed by dispatch as well as by a start, as a bot does: an update fed
     // in without a start must not reach handlers whose plugins are missing.
     if (this.#plugins.pending > 0) await this.#installPlugins()
@@ -5186,7 +5202,15 @@ export class Account<Ext = unknown> {
       for (const notify of [...this.#loginTokenWatchers]) notify()
     }
 
-    const context = mtprotoContext(update, {
+    const normalized = normalizeUpdate(update)
+    this.#gather(normalized)
+
+    await this.#dispatch(this.#contextOf(normalized))
+  }
+
+  /** The context an event is handled with, able to act through this account. */
+  #contextOf(normalized: NormalizedUpdate): MtprotoContext & Ext {
+    return contextFor(normalized, {
       client: this,
       log: this.#log,
       // What lets a handler answer what it just heard. The account supplies the
@@ -5205,9 +5229,22 @@ export class Account<Ext = unknown> {
 
           return await download({ ...request, reach, references })
         },
+        // What the actions delegate to, so an answer is sent exactly as the
+        // account's own methods send one.
+        sending: this.#sending,
+        lookup: async (peer) => await this.peer(peer),
       },
     }) as MtprotoContext & Ext
+  }
 
+  /**
+   * Run the handlers for one event.
+   *
+   * Where an application's middleware surrounds this account: outside the
+   * dispatcher entirely, so what an application installs runs around this
+   * account's own middleware rather than sorting into it.
+   */
+  async #dispatch(context: MtprotoContext & Ext): Promise<void> {
     if (this.#surrounding === undefined) {
       await this.#dispatcher.dispatch(context)
 
@@ -5217,6 +5254,68 @@ export class Account<Ext = unknown> {
     await this.#surrounding(context, async () => {
       await this.#dispatcher.dispatch(context)
     })
+  }
+
+  /**
+   * Add a message to the album it belongs to, if anything could handle one.
+   *
+   * Each part has already been, or is about to be, handled as a message of its
+   * own; this only arranges for the album to be handled once as well. Nothing
+   * is held when no handler could take it, which is most programs.
+   */
+  #gather(normalized: NormalizedUpdate): void {
+    const message = normalized.message
+    if (normalized.kind !== 'message' || message?._ !== 'message') return
+    const group = message.grouped_id
+    const chat = normalized.chat
+    if (group === undefined || chat === undefined) return
+
+    const coverage = this.#dispatcher.collectKinds()
+    if (!coverage.opaque && !coverage.kinds.has('mtproto:album')) return
+
+    const key = `${chat.kind}:${chat.id}:${group}`
+    const album = this.#albums.get(key) ?? { parts: [], cancel: () => {} }
+    album.cancel()
+    album.parts.push(normalized)
+    album.cancel = (this.#options.schedule ?? defaultSchedule)(() => {
+      this.#flushAlbum(key)
+    }, this.#options.albumWindow ?? ALBUM_WINDOW)
+    this.#albums.set(key, album)
+  }
+
+  /** Handle one gathered album now. */
+  #flushAlbum(key: string): void {
+    const album = this.#albums.get(key)
+    if (album === undefined) return
+    this.#albums.delete(key)
+    album.cancel()
+
+    const parts = [...album.parts].sort(
+      (left, right) => Number(left.message?.['id'] ?? 0) - Number(right.message?.['id'] ?? 0),
+    )
+    const [first] = parts
+    if (first === undefined) return
+
+    const whole: NormalizedUpdate = {
+      ...first,
+      kind: 'mtproto:album',
+      album: parts.flatMap((part) => (part.message === undefined ? [] : [part.message])),
+      // An album's caption is on whichever part it was written on, usually
+      // one; the first that has one speaks for the album.
+      text: parts.find((part) => part.text !== undefined)?.text,
+    }
+
+    // Nothing awaits this: the timer that fired it has nobody to report to, so
+    // it is tracked like any other update and its handlers' errors go where
+    // theirs do.
+    this.#lifecycle.track(this.#dispatch(this.#contextOf(whole))).catch((error: unknown) => {
+      this.#log.error('unhandled error while dispatching an album', { error })
+    })
+  }
+
+  /** Handle every album still gathering. */
+  #flushAlbums(): void {
+    for (const key of [...this.#albums.keys()]) this.#flushAlbum(key)
   }
 
   /**
@@ -5517,6 +5616,15 @@ const defaultSchedule = (run: () => void, delayMs: number): (() => void) => {
 
 /** Where an account writes down which user it is. */
 const SELF = 'self'
+
+/** How long an album waits for its next part, unless an account says otherwise. */
+const ALBUM_WINDOW = 250
+
+/** An album being gathered. */
+interface Album {
+  readonly parts: NormalizedUpdate[]
+  cancel: () => void
+}
 
 /**
  * Which user an account last knew itself to be, from its own area.

@@ -49,10 +49,12 @@ import {
 } from '@yuigram/core'
 import type { Account, ConnectionStatus } from '../account.js'
 import { type MtprotoApi, rawApi } from '../api.js'
+import type { PeerView } from '../chats/peers.js'
 import type { DownloadRequest } from '../files/download.js'
 import { isStaleReference } from '../files/references.js'
 import type { NodeReadable, StreamOptions } from '../files/streams.js'
 import { streamOf } from '../files/streams.js'
+import type { TypeInputPeer } from '../generated/api/types/index.js'
 import type { Reach } from '../network/signin.js'
 import { type MtprotoContext, mtprotoContext } from '../normalize/context.js'
 import { type BoundCalls, type CallDefaults, withParams } from '../session/operations.js'
@@ -759,6 +761,14 @@ export class RemoteAccount {
           invoke: async (query) => (await this.#call('@call', [query])) as TlValue,
           random: (length) => globalThis.crypto.getRandomValues(new Uint8Array(length)),
           fetch: async (request, references) => await this.#fetch(request, references),
+          // The account's own operations, reached across the boundary the way
+          // every other call on this side is.
+          sending: {
+            api: this.api,
+            resolve: async (peer) => (await this.#call('resolve', [peer])) as TypeInputPeer,
+            random: (length) => globalThis.crypto.getRandomValues(new Uint8Array(length)),
+          },
+          lookup: async (peer) => (await this.#call('peer', [peer])) as PeerView,
         },
       })
 

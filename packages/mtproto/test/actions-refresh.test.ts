@@ -120,6 +120,17 @@ function context(answer: (query: TlValue) => TlValue) {
 
       return new Uint8Array(0)
     },
+    // Nothing here sends or looks a peer up; a case that did would say so.
+    sending: {
+      api: undefined as never,
+      resolve: async () => {
+        throw new Error('not used here')
+      },
+      random: (length) => new Uint8Array(length),
+    },
+    lookup: async () => {
+      throw new Error('not used here')
+    },
   }
 
   return { actions, asked, captured }

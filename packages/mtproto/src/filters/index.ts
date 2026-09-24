@@ -335,20 +335,6 @@ export function media(...kinds: readonly MediaKind[]): Filter<MtprotoContext> {
   )
 }
 
-/** Read callback data as text, where it is text. */
-function dataText(context: MtprotoContext): string | undefined {
-  const data = (context.raw as unknown as Record<string, unknown>)['data']
-  if (!(data instanceof Uint8Array)) return undefined
-
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(data)
-  } catch {
-    // Bytes that are not text are a button's own business; a text match
-    // cannot be about them.
-    return undefined
-  }
-}
-
 /**
  * A pressed button, or one whose data matches.
  *
@@ -362,7 +348,7 @@ export function callback(match?: TextMatch): Filter<MtprotoContext> {
       const context = contextOf(value)
       if (match === undefined) return true
 
-      const current = dataText(context)
+      const current = context.data
 
       return current !== undefined && matches(current, match)
     },

@@ -60,6 +60,34 @@ export const ACCOUNT_KINDS = [
   'mtproto:ephemeral_message_edited',
   'mtproto:ephemeral_messages_deleted',
   'mtproto:ephemeral_callback_query',
+  // Several messages sent together as one album, after the last has arrived.
+  // Each is also its own `message`; this is the same messages as one event,
+  // for a handler that answers an album once rather than once per item.
+  'mtproto:album',
+  'mtproto:poll',
+  'mtproto:poll_vote',
+  'mtproto:story',
+  // A person stopping a bot's private chat, or starting it again.
+  'mtproto:bot_stopped',
+  // A reaction a bot is told about: one person's change, or the new counts on
+  // a message whose reactions are anonymous.
+  'mtproto:bot_reaction',
+  'mtproto:bot_reaction_count',
+  'mtproto:chat_boost',
+  'mtproto:paid_media_purchased',
+  // A business account's chats, as a bot connected to it sees them. Their own
+  // kinds, because answering one goes through the connection rather than as
+  // the bot — a handler that took one for an ordinary message would reply
+  // from the wrong account.
+  'mtproto:business_connection',
+  'mtproto:business_message',
+  'mtproto:business_message_edited',
+  'mtproto:business_messages_deleted',
+  'mtproto:business_callback_query',
+  // A message a bot is asked to answer in a chat it is not a member of.
+  'mtproto:guest_query',
+  // How many people are waiting to be let into a chat this account manages.
+  'mtproto:join_requests_pending',
   RAW_KIND,
 ] as const
 
@@ -129,6 +157,21 @@ export const UPDATE_EVENTS: Readonly<Record<string, MtprotoEventKind>> = {
   updateDialogPinned: 'mtproto:dialog_pinned',
   updateFolderPeers: 'mtproto:folder',
   updatePhoneCall: 'mtproto:call',
+  updateMessagePoll: 'mtproto:poll',
+  updateMessagePollVote: 'mtproto:poll_vote',
+  updateStory: 'mtproto:story',
+  updateBotStopped: 'mtproto:bot_stopped',
+  updateBotMessageReaction: 'mtproto:bot_reaction',
+  updateBotMessageReactions: 'mtproto:bot_reaction_count',
+  updateBotChatBoost: 'mtproto:chat_boost',
+  updateBotPurchasedPaidMedia: 'mtproto:paid_media_purchased',
+  updateBotBusinessConnect: 'mtproto:business_connection',
+  updateBotNewBusinessMessage: 'mtproto:business_message',
+  updateBotEditBusinessMessage: 'mtproto:business_message_edited',
+  updateBotDeleteBusinessMessage: 'mtproto:business_messages_deleted',
+  updateBusinessBotCallbackQuery: 'mtproto:business_callback_query',
+  updateBotGuestChatQuery: 'mtproto:guest_query',
+  updatePendingJoinRequests: 'mtproto:join_requests_pending',
 }
 
 /**
@@ -165,6 +208,9 @@ export const MESSAGE_UPDATES: ReadonlySet<string> = new Set([
   'updateNewChannelMessage',
   'updateEditMessage',
   'updateEditChannelMessage',
+  // A business account's messages carry a whole one too, read the same way.
+  'updateBotNewBusinessMessage',
+  'updateBotEditBusinessMessage',
 ])
 
 /**

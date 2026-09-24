@@ -131,6 +131,18 @@ Namespaced, because they exist only on an `Account`:
 | `mtproto:shipping_query` | A checkout is asking what delivery options exist |
 | `mtproto:precheckout_query` | A payment is about to be taken and can still be refused |
 | `mtproto:join_request` | Somebody asked to be let into a conversation |
+| `mtproto:join_requests_pending` | How many people are waiting to be let into a chat this account manages |
+| `mtproto:album` | Several messages sent together, handled once after the last part |
+| `mtproto:poll` / `mtproto:poll_vote` | A poll's results changed; one person voted |
+| `mtproto:story` | A story was posted, edited or deleted |
+| `mtproto:bot_stopped` | A person stopped a bot's private chat, or started it again |
+| `mtproto:bot_reaction` / `mtproto:bot_reaction_count` | One person's reaction changed; anonymous counts changed |
+| `mtproto:chat_boost` | A chat the bot manages was boosted |
+| `mtproto:paid_media_purchased` | A person paid for media the bot sent |
+| `mtproto:business_connection` | A business account connected the bot, or changed what it may do |
+| `mtproto:business_message` / `_edited` / `mtproto:business_messages_deleted` | A business account's chats, as the connected bot sees them |
+| `mtproto:business_callback_query` | A button under a business account's message was pressed |
+| `mtproto:guest_query` | A bot is asked about a message in a chat it is not a member of |
 | `mtproto:raw` | Any TL update, unwrapped |
 
 Registering an `mtproto:*` handler on a `Bot` is a **type error**, not a silent no-op.
@@ -157,6 +169,14 @@ answer, and is usually the right one.
 | `mtproto:shipping_query` | `updateBotShippingQuery` | `account.answerShipping` | `query_id` | Checkout waits |
 | `mtproto:precheckout_query` | `updateBotPrecheckoutQuery` | `account.answerPrecheckout` | `query_id` | Checkout waits; last refusal point |
 | `mtproto:join_request` | `updateBotChatInviteRequester` | `account.decideJoinRequest` | chat + person | Stands until decided |
+| `mtproto:guest_query` | `updateBotGuestChatQuery` | `account.answerBotGuestChatQuery` | `query_id` | Expires |
+
+Each is also answerable from the event itself, which reads the identifier from the update so a
+handler does not: `event.answerCallback(answer?)`, `event.answerInline(results, answer?)`,
+`event.answerShipping(answer)`, `event.answerPrecheckout(refusal?)`, `event.answerGuest(result)`
+and `event.decideJoin(approved)`. Each refuses, by name, an event of a kind it does not answer.
+`event.queryId` is the identifier, and `event.data` a pressed button's data read as UTF-8 text —
+`undefined` where the bytes are not text, which stay readable under `event.raw.data`.
 
 **`mtproto:shipping_query`.** Sent only for an invoice that asked for a delivery address, and
 only to the account that issued it. `event.raw` carries the `payload` the invoice was created
@@ -186,6 +206,41 @@ inline query typed in a group is not a message to the bot. `updateBotCallbackQue
 `updateBotChatInviteRequester` do name one, and it is read. `event.sender` is the person asking
 in every case.
 
+#### Conversation, actor and subject
+
+Three fields, because an update can name three different peers and a handler has to be able to
+tell them apart:
+
+| Field | Meaning | Absent when |
+|---|---|---|
+| `chat` | The conversation: somewhere things are said, and what a reply, a session or a conversation key is scoped to | The update is said in no conversation |
+| `sender` | Who acted | Nobody is named as having acted, or this account did |
+| `target` | Whom it is about, where that is neither of the above | The update names nobody apart from where and who |
+
+A `user_id` on an update is **not** read as the conversation. Only two updates are said in the
+private chat of the user they name — somebody typing to this account, and somebody stopping a
+bot — and only those two read it that way. A user's status, name or phone changing is about that
+user (`target`) and happens in no conversation, so `chat` is `undefined` rather than a private
+chat nobody spoke in; a conversation invented there would give a status change a session, a lock
+and a scene position.
+
+Two updates name the actor where others name the place: a poll vote's `peer` is the voter and a
+story's `peer` is whoever posted it, so both are `sender` and neither has a `chat`. A reaction a
+bot is told about names who reacted in `actor`, which may be a channel reacting anonymously.
+
+A business account's messages have their own kinds because they are answered through the
+connection they arrived on rather than as the bot. `event.reply`, `event.send` and `event.edit`
+on one of them are sent inside `invokeWithBusinessConnection` with that connection's identifier,
+so the answer comes from the business account.
+
+`mtproto:album` is gathered from the messages of one `grouped_id` in one conversation. Telegram
+marks none of them as last, so the album is handled once no further part has arrived for
+`albumWindow` milliseconds (250 unless the account says otherwise); `event.album` holds the
+messages in order and `event.text` the caption, from whichever part carries one. Each part is
+still its own `message` event. Nothing is gathered unless a handler could take `mtproto:album`,
+and an album still gathering when the account stops is handled before the stop waits for
+handlers.
+
 #### Which field names the actor on a membership change
 
 `mtproto:membership` covers the seven constructors Telegram kept for one question, and they
@@ -202,9 +257,10 @@ always `user_id` and is reachable through `event.raw`. The actor is not:
 | `updateChatParticipantRank` | `chat_id` | not named | `user_id` |
 | `updateChatParticipants` | `participants.chat_id` | not named | the whole list |
 
-`event.sender` is the actor where one is named and `undefined` where none is. The three that name
-none really do not carry it: the basic-group forms predate `actor_id`, and reading `user_id` in
-its place would report the person who was removed as the person who removed them.
+`event.sender` is the actor where one is named and `undefined` where none is, and `event.target`
+is the subject. The three that name no actor really do not carry it: the basic-group forms predate
+`actor_id`, and reading `user_id` in its place would report the person who was removed as the
+person who removed them.
 
 ### 3.5 Framework events
 

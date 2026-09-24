@@ -21,8 +21,24 @@ import {
   PeerError,
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from '../api.js'
-import type { TypeMessage } from '../generated/api/types/index.js'
+import type { PeerView } from '../chats/peers.js'
+import type {
+  TypeInputBotInlineMessageID,
+  TypeInputBotInlineResult,
+  TypeInputMedia,
+  TypeMessage,
+} from '../generated/api/types/index.js'
 import { type BoundApi, boundApi, noPeer } from '../here.js'
+import type { CopyOptions } from '../messaging/compose.js'
+import type {
+  CallbackAnswer,
+  EditOptions,
+  ForwardOptions,
+  InlineAnswer,
+  MessageBody,
+  SendOptions,
+  ShippingAnswer,
+} from '../messaging/send.js'
 import { inputPeer } from '../network/peers.js'
 import type { TlValue } from '../tl/index.js'
 import { type ActionContext, updateActions } from './actions.js'
@@ -46,14 +62,33 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   readonly chat: PeerRef | undefined
   /** Who caused it, where the update says. */
   readonly sender: PeerRef | undefined
+  /**
+   * Whom it is about, where that is somebody apart from the conversation and
+   * the one who acted — the member an admin promoted, the user whose status
+   * changed.
+   */
+  readonly target: PeerRef | undefined
   /** The message, for the kinds that carry a whole one. */
   readonly message: TypeMessage | undefined
+  /** The messages of an album, in order, for `mtproto:album` alone. */
+  readonly album: readonly TypeMessage[] | undefined
   /** The messages a deletion names. */
   readonly messageIds: readonly number[] | undefined
   /** Message text, where there is any. */
   readonly text: string | undefined
   /** When it happened, where the update says. */
   readonly date: number | undefined
+  /** The forum topic a message was posted in, where the conversation has topics. */
+  readonly topicId: number | undefined
+  /**
+   * What a pressed button carried, read as text.
+   *
+   * Callback data is bytes over this transport. Data that is not UTF-8 text is
+   * left here as `undefined` and stays readable under `raw.data`.
+   */
+  readonly data: string | undefined
+  /** The query an answer goes back to, for the kinds that are questions. */
+  readonly queryId: bigint | undefined
   /** The untouched update, for everything this does not model. */
   readonly raw: TlValue
   /** The client this update arrived on. */
@@ -71,7 +106,21 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * them against the number the send was deduplicated by; the answer itself
    * stays reachable under `raw`.
    */
-  reply(text: string): Promise<SentMessage>
+  reply(body: MessageBody, options?: SendOptions): Promise<SentMessage>
+  /**
+   * Answer the message this event carries with media, and text beside it.
+   *
+   * The media is what `account.sendMedia` takes — a photo or document already
+   * on Telegram, or one `uploadMedia` has uploaded.
+   */
+  replyMedia(media: TypeInputMedia, body?: MessageBody, options?: SendOptions): Promise<SentMessage>
+  /**
+   * Say something in the conversation this event arrived in, answering nothing.
+   *
+   * For an event with a conversation and no message to quote — a person
+   * starting a bot again, a button pressed under an old message.
+   */
+  send(body: MessageBody, options?: SendOptions): Promise<SentMessage>
   /** React to the message this event carries. An empty emoji clears it. */
   react(emoji: string): Promise<TlValue>
   /**
@@ -82,7 +131,7 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * all — whose it is, and how long ago it was sent — is Telegram's to decide,
    * and it refuses rather than being guessed at here.
    */
-  edit(text: string): Promise<TlValue>
+  edit(body: MessageBody, options?: EditOptions): Promise<TlValue>
   /**
    * Delete the message this event carries, for everyone.
    *
@@ -109,6 +158,35 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * carries no file at all is refused by name.
    */
   download(): Promise<Uint8Array>
+  /** Forward the message this event carries, showing where it came from. */
+  forward(to: string | PeerRef, options?: ForwardOptions): Promise<void>
+  /** Send the message this event carries again, as this account's own. */
+  copy(to: string | PeerRef, options?: CopyOptions): Promise<SentMessage>
+  /** Pin the message this event carries in its conversation. */
+  pin(options?: { readonly silent?: boolean; readonly bothSides?: boolean }): Promise<void>
+  /** Unpin it. */
+  unpin(): Promise<void>
+  /**
+   * Answer a pressed button: with nothing, a notice, an alert or a link.
+   *
+   * A button that is not answered keeps its spinner until Telegram gives up
+   * on it.
+   */
+  answerCallback(answer?: CallbackAnswer): Promise<void>
+  /** Answer an inline query with results. */
+  answerInline(results: readonly TypeInputBotInlineResult[], answer?: InlineAnswer): Promise<void>
+  /** Answer a payment's shipping question. */
+  answerShipping(answer: ShippingAnswer): Promise<void>
+  /** Accept a payment, or refuse it with a reason the payer is shown. */
+  answerPrecheckout(refusal?: string): Promise<void>
+  /** Answer a guest chat query with one result, and learn the message it became. */
+  answerGuest(result: TypeInputBotInlineResult): Promise<TypeInputBotInlineMessageID>
+  /** Let the person asking to join in, or turn them away. */
+  decideJoin(approved: boolean): Promise<void>
+  /** Read who the conversation is, from Telegram. */
+  fetchChat(): Promise<PeerView>
+  /** Read who caused this event, from Telegram. */
+  fetchSender(): Promise<PeerView>
   /**
    * Call a method this build does not model, on the account this arrived on.
    *
@@ -168,10 +246,15 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
     transport: 'mtproto',
     chat: normalized.chat,
     sender: normalized.sender,
+    target: normalized.target,
     message: normalized.message,
+    album: normalized.album,
     messageIds: normalized.messageIds,
     text: normalized.text,
     date: normalized.date,
+    topicId: normalized.topicId,
+    data: dataOf(normalized.raw),
+    queryId: queryIdOf(normalized.raw),
     raw: normalized.raw,
     client: options.client,
     log: options.log,
@@ -218,11 +301,47 @@ function actionsFor(normalized: NormalizedUpdate, options: ContextOptions) {
 
   return {
     reply: refuse,
+    replyMedia: refuse,
+    send: refuse,
     react: refuse,
     edit: refuse,
     delete: refuse,
     download: refuse,
+    forward: refuse,
+    copy: refuse,
+    pin: refuse,
+    unpin: refuse,
+    answerCallback: refuse,
+    answerInline: refuse,
+    answerShipping: refuse,
+    answerPrecheckout: refuse,
+    answerGuest: refuse,
+    decideJoin: refuse,
+    fetchChat: refuse,
+    fetchSender: refuse,
     api: rawApi(refuse),
     here: boundApi({ invoke: refuse, peer: refuse }),
   }
+}
+
+/** Callback data, where the update carries some and it is text. */
+function dataOf(raw: TlValue): string | undefined {
+  const data = (raw as unknown as Record<string, unknown>)['data']
+  if (!(data instanceof Uint8Array)) return undefined
+
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(data)
+  } catch {
+    // Bytes that are not text are the button's own business, and a string
+    // made of replacement characters would compare equal to nothing a caller
+    // meant.
+    return undefined
+  }
+}
+
+/** The query an update asks, for the kinds that are answered by one. */
+function queryIdOf(raw: TlValue): bigint | undefined {
+  const id = (raw as unknown as Record<string, unknown>)['query_id']
+
+  return typeof id === 'bigint' ? id : undefined
 }

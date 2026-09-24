@@ -178,6 +178,30 @@ export const fromStaff = f.sender.id(...STAFF_IDS)
 expect(fromStaff(fixture)).toBe(true)
 ```
 
+### Account filters
+
+An account's events have their own `f`, in `@yuigram/mtproto/filters` (`yuigram/account-filters`
+from the facade), because they read a different transport: a chat is a sort of peer and a 64-bit
+number, a private message often arrives in a compact form with its fields spread across the
+update, and callback data is bytes.
+
+```
+f.kind(...kinds)            f.text(str | regex)          f.regex(pattern)   → event.match
+f.command(name | names | regex, { prefixes, username, ignoreCase })  → event.command, event.args
+f.chat(sort | id | ids)     f.sender(sort | id | ids)
+f.outgoing  f.incoming      f.reply  f.forward  f.mentioned  f.silent
+f.media(...kinds)           f.callback(str | regex)      f.inline(str | regex)
+f.and  f.or  f.not
+```
+
+A command carrying a `@username` suffix matches only when the filter was given that username:
+it was addressed to somebody, and nothing else says it was this account. `f.media()` does not
+count a link preview, which is media to Telegram and not to a reader, unless asked for by name.
+
+`account.on(kind, filter, handler)` registers behind both; `account.on(filter, handler)` behind
+the filter alone. Either way the filter's proof reaches the handler, and a kind nothing produces
+is refused where it is registered rather than never firing.
+
 ---
 
 ## 5. Routing
@@ -331,12 +355,21 @@ its own middleware, handlers and groups, reads the dependencies injected above i
 error it does not handle to its parent. `extend` copies another dispatcher's registrations in
 as a snapshot, and `clone` makes an independent copy.
 
+On an account the child is an `AccountRouter`, a set of registrations with no connection of its
+own: `account.addChild(router)`, or `account.extend(router)`, which does the same. A router takes
+the same registrations an account does, belongs to one parent at a time, and can be taken back out
+with `removeChild`; an update already being dispatched keeps it.
+
 ### Dependencies
 
 `inject(name, value)` makes a value reachable as `deps[name]` from the handlers of a dispatcher
 and its children. Each dispatcher tree has its own, so two clients in one process never share
 them, and reading a name that was not injected throws a `ConfigError` naming it. The names are
 typed by merging into the `Dependencies` interface.
+
+A value is kept as given — a promise stays a promise, for a resource that is opened
+asynchronously — and is the application's to close. A dispatcher does not own what it was
+handed, and stopping a client does not dispose of it.
 
 ---
 

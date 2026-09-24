@@ -337,6 +337,18 @@ accounts from having them advance each other's forms. An update the scope
 cannot be derived from — an inline query, a channel post with no sender — has
 no conversation, and reaches the ordinary handlers untouched.
 
+An account's peers are numbered separately for each sort, so its keys name the
+sort beside the number, and a 64-bit number is written out in full:
+
+```
+me:c:user:456:u:user:456        a private chat
+me:c:chat:456:u:user:456        basic group 456 — a different conversation
+me:c:channel:1234567890123:u:user:456
+```
+
+`userChatKey` writes a session key by the same rule. A Bot API key has no sort
+and stays exactly as it was.
+
 ### 6.2 Concurrency
 
 Updates for one conversation are serialised; different conversations run in
@@ -393,9 +405,17 @@ update reaches the handlers unless the waiter asked to be exclusive.
 
 One waiter per conversation: a second replaces the first, and the first is told
 so rather than left to never resolve. Entering or leaving a scene cancels an
-open waiter. Stopping the client does not: nothing tells a plugin that its
-client stopped, so an application calls `controls.cancelAll()` when it stops,
-and a handler still waiting then learns why.
+open waiter.
+
+Stopping an account does too. An account tells the plugins installed on it when
+it begins to stop, before it waits for the handlers still running, and the
+conversation plugin cancels every open waiter then — each handler still waiting
+gets a `WaitCancelledError` through the account's error handling — and refuses
+new ones until the account starts again. Without that the stop would wait for a
+handler that is waiting for a message nothing will deliver, and end at its
+deadline, unclean. A host that does not report its lifecycle — a bot, today, or
+a router — leaves it to the application, which calls `controls.cancelAll()`
+when it stops.
 
 ### 6.6 Flows
 
@@ -486,7 +506,7 @@ default, and at-least-once where an effect says repeating is safe.
 | `cancelFlow()`, `controls.flows.cancel()`, entering a scene, a reset, or another flow started | `WaitCancelledError` at the wait, so cleanup can run as effects; the run ends cancelled |
 | The same update delivered twice | Nothing: it is recognised by its update number, or by its message number and kind, and not used again |
 | The function throws | The run ends failed with the error kept; the error goes where a handler's would, or to `onProblem` when a deadline was driving it |
-| The client stops or the process exits | Nothing. The run stays as stored; `controls.flows.shutdown()` stops this process acting on deadlines, and the next process's `resume()` picks them up |
+| The client stops or the process exits | Nothing. The run stays as stored. An account's stop also stops this process acting on its deadlines, as `controls.flows.shutdown()` does; the next update in the conversation carries the run on, and `resume()` after a start re-arms its deadline |
 
 Stopping and cancelling are different on purpose. A deployment is not a reason
 to tell somebody their order was abandoned.

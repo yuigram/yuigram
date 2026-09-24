@@ -14,15 +14,45 @@
  */
 
 import { PeerError, ValidationError } from '@yuigram/core'
+import { rawApi } from '../api.js'
+import type { PeerView } from '../chats/peers.js'
 import type { DownloadRequest } from '../files/download.js'
 import { documentFile, photoFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'
-import type { TypeInputChannel, TypeInputPeer } from '../generated/api/types/index.js'
+import type {
+  TypeInputBotInlineMessageID,
+  TypeInputBotInlineResult,
+  TypeInputChannel,
+  TypeInputMedia,
+  TypeInputPeer,
+} from '../generated/api/types/index.js'
+import type { CopyOptions } from '../messaging/compose.js'
+import {
+  answerCallback,
+  answerInlineQuery,
+  answerPrecheckout,
+  answerShipping,
+  bodyOf,
+  type CallbackAnswer,
+  decideJoinRequest,
+  type EditOptions,
+  type ForwardOptions,
+  forwardMessages,
+  type InlineAnswer,
+  type MessageBody,
+  pinMessage,
+  type Sending,
+  type SendOptions,
+  type ShippingAnswer,
+  sendMedia,
+  sendText,
+} from '../messaging/send.js'
 import { inputChannel, inputPeer } from '../network/peers.js'
 import type { PeerKind, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
-import type { NormalizedUpdate } from './normalize.js'
-import { randomId, type SentMessage, sentMessage } from './sent.js'
+import { SHORT_MESSAGE_UPDATES } from './events.js'
+import type { NormalizedUpdate, PeerRef } from './normalize.js'
+import type { SentMessage } from './sent.js'
 
 /** Which of the two media a message can carry a file under. */
 type MediaKind = 'document' | 'photo'
@@ -44,15 +74,39 @@ export interface ActionContext {
    * came from can do that, and that is this layer.
    */
   fetch(request: DownloadRequest, references: ManagedLocation): Promise<Uint8Array>
+  /**
+   * The account's own way of sending, which the actions here delegate to.
+   *
+   * So a reply formats, quotes, schedules and attaches buttons exactly as
+   * `account.sendText` does, rather than through a second implementation that
+   * would drift from it.
+   */
+  readonly sending: Sending
+  /** Read who a peer is, as `account.peer` does. */
+  lookup(peer: PeerRef): Promise<PeerView>
 }
 
 /** The operations an update can be acted on with, bound to one update. */
 export interface UpdateActions {
-  reply(text: string): Promise<SentMessage>
+  reply(body: MessageBody, options?: SendOptions): Promise<SentMessage>
+  replyMedia(media: TypeInputMedia, body?: MessageBody, options?: SendOptions): Promise<SentMessage>
+  send(body: MessageBody, options?: SendOptions): Promise<SentMessage>
   react(emoji: string): Promise<TlValue>
-  edit(text: string): Promise<TlValue>
+  edit(body: MessageBody, options?: EditOptions): Promise<TlValue>
   delete(): Promise<TlValue>
   download(): Promise<Uint8Array>
+  forward(to: string | PeerRef, options?: ForwardOptions): Promise<void>
+  copy(to: string | PeerRef, options?: CopyOptions): Promise<SentMessage>
+  pin(options?: { readonly silent?: boolean; readonly bothSides?: boolean }): Promise<void>
+  unpin(): Promise<void>
+  answerCallback(answer?: CallbackAnswer): Promise<void>
+  answerInline(results: readonly TypeInputBotInlineResult[], answer?: InlineAnswer): Promise<void>
+  answerShipping(answer: ShippingAnswer): Promise<void>
+  answerPrecheckout(refusal?: string): Promise<void>
+  answerGuest(result: TypeInputBotInlineResult): Promise<TypeInputBotInlineMessageID>
+  decideJoin(approved: boolean): Promise<void>
+  fetchChat(): Promise<PeerView>
+  fetchSender(): Promise<PeerView>
 }
 
 /**
@@ -215,9 +269,20 @@ async function channelOf(
   return inputChannel(record)
 }
 
-/** The identifier of the message an update carries, where it carries one. */
+/**
+ * The identifier of the message an update is about, where it names one.
+ *
+ * A whole message carries its own. The compact form a private chat usually
+ * arrives in spreads it across the update, and a pressed button names the
+ * message it is under — which is the one a handler answering a button wants
+ * to edit.
+ */
 function messageIdOf(update: NormalizedUpdate, what: string): number {
-  const id = update.message?.['id']
+  const raw = update.raw as unknown as Record<string, unknown>
+  const id =
+    update.message?.['id'] ??
+    (SHORT_MESSAGE_UPDATES.has(update.raw._) ? raw['id'] : undefined) ??
+    (update.raw._ === 'updateBotCallbackQuery' ? raw['msg_id'] : undefined)
   if (typeof id !== 'number') {
     throw new ValidationError(`a '${update.kind}' event carries no message to ${what}`)
   }
@@ -225,8 +290,51 @@ function messageIdOf(update: NormalizedUpdate, what: string): number {
   return id
 }
 
+/** The conversation an update arrived in, for an action that needs one. */
+function chatOf(update: NormalizedUpdate, what: string): PeerRef {
+  const chat = update.chat
+  if (chat === undefined) {
+    throw new PeerError(`a '${update.kind}' event names no conversation to ${what}`)
+  }
+
+  return chat
+}
+
+/** The query an update asks, for the kinds that are answered by one. */
+function queryOf(update: NormalizedUpdate, kinds: readonly string[], what: string): bigint {
+  const id = (update.raw as unknown as Record<string, unknown>)['query_id']
+  if (!kinds.includes(update.raw._) || typeof id !== 'bigint') {
+    throw new ValidationError(`a '${update.kind}' event is not a query that ${what} answers`)
+  }
+
+  return id
+}
+
 /**
- * Bind the two operations to one update.
+ * The way to send for this update.
+ *
+ * A business account's message is answered through the connection it
+ * arrived on, so that the answer comes from that account rather than from the
+ * bot. Everything else is sent as the account itself.
+ */
+function sendingFor(
+  update: NormalizedUpdate,
+  context: ActionContext,
+): {
+  readonly sending: Sending
+  readonly invoke: (query: TlValue) => Promise<TlValue>
+} {
+  const connection = (update.raw as unknown as Record<string, unknown>)['connection_id']
+  if (typeof connection !== 'string') return { sending: context.sending, invoke: context.invoke }
+
+  const invoke = async (query: TlValue): Promise<TlValue> =>
+    await context.invoke({ _: 'invokeWithBusinessConnection', connection_id: connection, query })
+
+  return { sending: { ...context.sending, api: rawApi(invoke) }, invoke }
+}
+
+/**
+ * Bind the operations to one update.
  *
  * Nothing is resolved until an operation is called. A handler that reads an
  * update and answers nothing must not pay for a peer lookup, and one that runs
@@ -234,56 +342,70 @@ function messageIdOf(update: NormalizedUpdate, what: string): number {
  * given the update.
  */
 export function updateActions(update: NormalizedUpdate, context: ActionContext): UpdateActions {
+  const { sending, invoke } = sendingFor(update, context)
+  const within = (options: SendOptions | undefined): SendOptions | undefined =>
+    // A reply in a forum topic stays in that topic unless the caller moved it.
+    update.topicId === undefined || options?.topicId !== undefined
+      ? options
+      : { ...options, topicId: update.topicId }
+
   return {
-    async reply(text: string): Promise<SentMessage> {
+    async reply(body: MessageBody, options?: SendOptions): Promise<SentMessage> {
       // The message first: it is the cheaper check and the more specific
       // answer, and an event with nothing to answer is not about the peer.
-      const replyTo = messageIdOf(update, 'answer')
-      const peer = await peerOf(update, context)
+      const replyTo = options?.replyTo ?? messageIdOf(update, 'answer')
+      const chat = chatOf(update, 'answer in')
 
-      // Kept, because it is the only thing in the answer that says which of the
-      // messages described is the one this call sent.
-      const random = randomId(context.random)
-      const answer = await context.invoke({
-        _: 'messages.sendMessage',
-        peer,
-        message: text,
-        random_id: random,
-        reply_to: { _: 'inputReplyToMessage', reply_to_msg_id: replyTo },
-      })
-
-      return sentMessage(answer, random)
+      return await sendText(sending, chat, body, { ...within(options), replyTo })
     },
 
-    async edit(text: string): Promise<TlValue> {
+    async replyMedia(
+      media: TypeInputMedia,
+      body?: MessageBody,
+      options?: SendOptions,
+    ): Promise<SentMessage> {
+      const replyTo = options?.replyTo ?? messageIdOf(update, 'answer')
+      const chat = chatOf(update, 'answer in')
+
+      return await sendMedia(sending, chat, media, body, { ...within(options), replyTo })
+    },
+
+    async send(body: MessageBody, options?: SendOptions): Promise<SentMessage> {
+      return await sendText(sending, chatOf(update, 'send to'), body, within(options))
+    },
+
+    async edit(body: MessageBody, options?: EditOptions): Promise<TlValue> {
       // The same two things every operation here needs, read the same way: the
       // message the update carried, and the conversation it arrived in. What is
       // editable is Telegram's business — somebody else's message, or one past
       // the window, is refused there rather than guessed at here.
       const id = messageIdOf(update, 'edit')
       const peer = await peerOf(update, context)
+      const { message, entities } = bodyOf(body)
 
-      return await context.invoke({
+      return await invoke({
         _: 'messages.editMessage',
         peer,
         id,
-        message: text,
+        message,
+        ...(entities === undefined ? {} : { entities }),
+        ...(options?.media === undefined ? {} : { media: options.media }),
+        ...(options?.markup === undefined ? {} : { reply_markup: options.markup }),
+        ...(options?.noWebpagePreview === true ? { no_webpage: true } : {}),
+        ...(options?.invertMedia === true ? { invert_media: true } : {}),
       })
     },
 
     async delete(): Promise<TlValue> {
       const id = messageIdOf(update, 'delete')
-      const chat = update.chat
-      if (chat === undefined) {
-        throw new PeerError(`a '${update.kind}' event names no conversation to delete from`)
-      }
+      const chat = chatOf(update, 'delete from')
 
       // Two methods, and which applies is decided by what sort of conversation
       // the update arrived in. A channel keeps its messages under the channel
       // rather than in the account's own numbering, so the ordinary method
       // would name a message somewhere else entirely.
       if (chat.kind === 'channel') {
-        return await context.invoke({
+        return await invoke({
           _: 'channels.deleteMessages',
           channel: await channelOf(chat, context),
           id: [id],
@@ -294,7 +416,7 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
       // the only thing the other transport's `delete` means. Removing a message
       // from this account's own view alone is a different operation, and
       // `account.api.messages.deleteMessages` is where it lives.
-      return await context.invoke({
+      return await invoke({
         _: 'messages.deleteMessages',
         revoke: true,
         id: [id],
@@ -311,7 +433,7 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
       const msgId = messageIdOf(update, 'react to')
       const peer = await peerOf(update, context)
 
-      return await context.invoke({
+      return await invoke({
         _: 'messages.sendReaction',
         peer,
         msg_id: msgId,
@@ -319,6 +441,99 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
         // meaning the Bot API gives an empty one.
         reaction: emoji === '' ? [] : [{ _: 'reactionEmoji', emoticon: emoji }],
       })
+    },
+
+    async forward(to: string | PeerRef, options?: ForwardOptions): Promise<void> {
+      const id = messageIdOf(update, 'forward')
+      const from = chatOf(update, 'forward from')
+
+      await forwardMessages(context.sending, { from, to, ids: [id] }, options)
+    },
+
+    async copy(to: string | PeerRef, options?: CopyOptions): Promise<SentMessage> {
+      const id = messageIdOf(update, 'copy')
+      const from = chatOf(update, 'copy from')
+      // Loaded when a copy is made: rebuilding a message is a request of its
+      // own that nothing else here needs.
+      const { copyMessage } = await import('../messaging/compose.js')
+
+      return await copyMessage(context.sending, { from, id, to }, options)
+    },
+
+    async pin(options = {}): Promise<void> {
+      await pinMessage(sending, chatOf(update, 'pin in'), messageIdOf(update, 'pin'), options)
+    },
+
+    async unpin(): Promise<void> {
+      await pinMessage(sending, chatOf(update, 'unpin in'), messageIdOf(update, 'unpin'), {
+        unpin: true,
+      })
+    },
+
+    async answerCallback(answer?: CallbackAnswer): Promise<void> {
+      const id = queryOf(
+        update,
+        [
+          'updateBotCallbackQuery',
+          'updateInlineBotCallbackQuery',
+          'updateBusinessBotCallbackQuery',
+        ],
+        'answerCallback',
+      )
+
+      await answerCallback(context.sending, id, answer)
+    },
+
+    async answerInline(
+      results: readonly TypeInputBotInlineResult[],
+      answer?: InlineAnswer,
+    ): Promise<void> {
+      const id = queryOf(update, ['updateBotInlineQuery'], 'answerInline')
+
+      await answerInlineQuery(context.sending, id, results, answer)
+    },
+
+    async answerShipping(answer: ShippingAnswer): Promise<void> {
+      await answerShipping(
+        context.sending,
+        queryOf(update, ['updateBotShippingQuery'], 'answerShipping'),
+        answer,
+      )
+    },
+
+    async answerPrecheckout(refusal?: string): Promise<void> {
+      await answerPrecheckout(
+        context.sending,
+        queryOf(update, ['updateBotPrecheckoutQuery'], 'answerPrecheckout'),
+        refusal,
+      )
+    },
+
+    async answerGuest(result: TypeInputBotInlineResult): Promise<TypeInputBotInlineMessageID> {
+      const id = queryOf(update, ['updateBotGuestChatQuery'], 'answerGuest')
+      const { answerBotGuestChatQuery } = await import('../bots/config.js')
+
+      return await answerBotGuestChatQuery(context.sending, id, result)
+    },
+
+    async decideJoin(approved: boolean): Promise<void> {
+      if (update.raw._ !== 'updateBotChatInviteRequester' || update.sender === undefined) {
+        throw new ValidationError(`a '${update.kind}' event is not a request to join`)
+      }
+
+      await decideJoinRequest(context.sending, chatOf(update, 'let into'), update.sender, approved)
+    },
+
+    async fetchChat(): Promise<PeerView> {
+      return await context.lookup(chatOf(update, 'describe'))
+    },
+
+    async fetchSender(): Promise<PeerView> {
+      if (update.sender === undefined) {
+        throw new PeerError(`a '${update.kind}' event names nobody who caused it`)
+      }
+
+      return await context.lookup(update.sender)
     },
   }
 }
