@@ -503,6 +503,8 @@ describe('reading strictly, and leniently', () => {
       } catch (error) {
         return error
       }
+
+      return undefined
     })() as RichParseError
 
     expect(refusal).toBeInstanceOf(RichParseError)
