@@ -106,6 +106,9 @@ export {
   WaitTimeoutError,
 } from './conversation/waiters.js'
 export {
+  type AfterHook,
+  type BeforeHook,
+  type Dependencies,
   type Dispatchable,
   Dispatcher,
   type DispatcherOptions,
@@ -114,6 +117,8 @@ export {
   type KindCoverage,
   type OnOptions,
   type Priority,
+  Propagation,
+  type PropagationAction,
   type UseOptions,
 } from './dispatch/dispatcher.js'
 export {

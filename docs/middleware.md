@@ -297,6 +297,47 @@ Priority bands order *middleware*, not handlers. Handlers occupy one reserved sl
 the `normal` and `low` bands, so a session plugin registered `high` is correct wherever the
 application happens to install it.
 
+### Groups and propagation
+
+Where exclusivity is easier to state by position than by filters, a handler can join a
+numbered group: `on(match, handler, { group: 1 })`. Groups run in ascending order, and within a
+group only the first handler whose match accepts the update runs. A handler registered without
+a group is in none and keeps the rule above — it runs whenever it matches, in group 0's place.
+
+A handler steers what follows by what it returns, and only through these values — a returned
+string or message is never read as an instruction:
+
+| Returned | Effect |
+|---|---|
+| `Propagation.Continue` | In a group, the next matching handler of the same group runs too |
+| `Propagation.Stop` | No more of this dispatcher's handlers run; its children still do |
+| `Propagation.StopChildren` | No more handlers run here, and no child dispatcher runs |
+
+A `before` hook may return `Stop` or `StopChildren` to the same effect before any handler
+runs; an `after` hook is told whether any handler ran, and `dispatch` resolves to the same.
+
+### Registration while updates are in flight
+
+A dispatch works from the handlers registered when it began: one registered during it waits for
+the next update. `off` takes effect at once — a handler removed before its turn in a dispatch
+already running does not get one — while a handler already running finishes. A `once` handler
+runs once even when two matching updates evaluate its filter at the same moment: whichever
+match completes first takes it, and the other sees it gone.
+
+### Child dispatchers
+
+`addChild` puts one dispatcher inside another. A child runs after its parent's handlers with
+its own middleware, handlers and groups, reads the dependencies injected above it, and hands an
+error it does not handle to its parent. `extend` copies another dispatcher's registrations in
+as a snapshot, and `clone` makes an independent copy.
+
+### Dependencies
+
+`inject(name, value)` makes a value reachable as `deps[name]` from the handlers of a dispatcher
+and its children. Each dispatcher tree has its own, so two clients in one process never share
+them, and reading a name that was not injected throws a `ConfigError` naming it. The names are
+typed by merging into the `Dependencies` interface.
+
 ---
 
 ## 6. Context extension
@@ -377,12 +418,13 @@ app.onError((err, event) => {
 })
 ```
 
-**An error is either handled or propagates. It is never silent.** Three cases, in order:
+**An error is either handled or propagates. It is never silent.** The cases, in order:
 
 | Situation | Outcome |
 |---|---|
 | An `onError` handler is registered | Every catcher sees the error; dispatch continues |
-| No catcher, but the client owns a logger | Logged at `error` level; dispatch continues |
+| Every catcher returns `false`, or there is none, in a child dispatcher | The parent's catchers get it, by the same rule |
+| No dispatcher takes it, but the client owns a logger | Logged at `error` level; dispatch continues |
 | Neither — a bare dispatcher | Propagates to the caller of `dispatch` |
 
 Continuing is the right default for a client. The alternative — crashing the process — is
@@ -395,8 +437,10 @@ client logs a one-time warning naming the risk. And a `Dispatcher` used directly
 a catcher nor a logger, rethrows rather than swallowing — nothing has claimed responsibility
 for the error, so the caller inherits it.
 
-A catcher that throws is reported through the same channel but never re-enters the catchers,
-since an error handler cannot meaningfully report to itself.
+A catcher that throws is reported through the same channel — the parent, then the owner — but
+never re-enters the catchers that failed, since an error handler cannot meaningfully report to
+itself. Returning `false` is how a catcher declines an error it does not recognise, so it goes
+on to whoever can.
 
 ---
 

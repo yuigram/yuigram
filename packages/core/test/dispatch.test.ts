@@ -8,7 +8,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Dispatcher } from '../src/dispatch/dispatcher.js'
+import { Dispatcher, Propagation } from '../src/dispatch/dispatcher.js'
+import { ConfigError } from '../src/errors/errors.js'
 import { defineAsyncFilter, defineFilter } from '../src/filter/define.js'
 import type { Middleware } from '../src/middleware/compose.js'
 
@@ -420,5 +421,334 @@ describe('error responsibility', () => {
 
     expect(caught).toHaveLength(1)
     expect(reported).toEqual([])
+  })
+})
+
+/** A promise and the function that settles it. */
+function gate(): { readonly promise: Promise<void>; readonly open: () => void } {
+  let open: () => void = () => {}
+  const promise = new Promise<void>((resolve) => {
+    open = resolve
+  })
+
+  return { promise, open }
+}
+
+describe('once, with dispatches running alongside each other', () => {
+  it('runs a once-handler a single time when two matching updates evaluate its filter together', async () => {
+    const d = new Dispatcher<Ctx>()
+    const held = gate()
+    const slow = defineAsyncFilter('slow', async () => {
+      await held.promise
+      return true
+    })
+    let runs = 0
+    d.once(slow, () => {
+      runs += 1
+    })
+
+    const first = d.dispatch(ctx('message'))
+    const second = d.dispatch(ctx('message'))
+    held.open()
+    await Promise.all([first, second])
+
+    expect(runs).toBe(1)
+    expect(d.size).toBe(0)
+  })
+})
+
+describe('off, during a dispatch', () => {
+  it('stops a handler that has not had its turn yet, and lets a running one finish', async () => {
+    const d = new Dispatcher<Ctx>()
+    const trail: string[] = []
+    const later = (): void => {
+      trail.push('later')
+    }
+    d.on('message', async () => {
+      trail.push('first starts')
+      d.off(later)
+      d.off(first)
+      trail.push('first finishes')
+    })
+    const first = (): void => {
+      trail.push('removed while running')
+    }
+    d.on('message', first)
+    d.on('message', later)
+
+    await d.dispatch(ctx('message'))
+
+    expect(trail).toEqual(['first starts', 'first finishes'])
+  })
+})
+
+describe('groups', () => {
+  it('runs groups in ascending order, and only the first match in each', async () => {
+    const d = new Dispatcher<Ctx>()
+    d.on('message', (c) => void c.trail.push('g1 a'), { group: 1 })
+    d.on('message', (c) => void c.trail.push('g1 b'), { group: 1 })
+    d.on('message', (c) => void c.trail.push('g-1'), { group: -1 })
+    d.on('message', (c) => void c.trail.push('ungrouped'))
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['g-1', 'ungrouped', 'g1 a'])
+  })
+
+  it('lets the next handler of a group run when one returns Continue', async () => {
+    const d = new Dispatcher<Ctx>()
+    d.on(
+      'message',
+      (c) => {
+        c.trail.push('a')
+        return Propagation.Continue
+      },
+      { group: 0 },
+    )
+    d.on('message', (c) => void c.trail.push('b'), { group: 0 })
+    d.on('message', (c) => void c.trail.push('c'), { group: 0 })
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['a', 'b'])
+  })
+
+  it('passes over a group member whose filter declines, to the next that matches', async () => {
+    const d = new Dispatcher<Ctx>()
+    d.on(
+      defineFilter('never', () => false),
+      (c) => void c.trail.push('never'),
+      { group: 2 },
+    )
+    d.on('message', (c) => void c.trail.push('second'), { group: 2 })
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['second'])
+  })
+})
+
+describe('propagation', () => {
+  it('stops this dispatcher’s handlers on Stop, and still runs its children', async () => {
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    child.on('message', (c) => void c.trail.push('child'))
+    d.addChild(child)
+    d.on('message', (c) => {
+      c.trail.push('stopper')
+      return Propagation.Stop
+    })
+    d.on('message', (c) => void c.trail.push('after stop'))
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['stopper', 'child'])
+  })
+
+  it('skips the children too on StopChildren', async () => {
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    child.on('message', (c) => void c.trail.push('child'))
+    d.addChild(child)
+    d.on('message', () => Propagation.StopChildren)
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual([])
+  })
+
+  it('does not read a returned string as an instruction', async () => {
+    const d = new Dispatcher<Ctx>()
+    d.on('message', () => 'stop', { group: 0 })
+    d.on('message', (c) => void c.trail.push('next group'), { group: 1 })
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['next group'])
+  })
+
+  it('obeys a before hook that stops, and tells after hooks whether anything ran', async () => {
+    const d = new Dispatcher<Ctx>()
+    const told: boolean[] = []
+    d.before((c) => (c.text === 'skip' ? Propagation.Stop : undefined))
+    d.after((handled) => {
+      told.push(handled)
+    })
+    d.on('message', (c) => void c.trail.push('handled'))
+
+    expect(await d.dispatch(ctx('message', 'skip'))).toBe(false)
+    expect(await d.dispatch(ctx('message', 'go'))).toBe(true)
+    expect(told).toEqual([false, true])
+  })
+})
+
+describe('children', () => {
+  it('runs children after the parent, in the order they were added, each with its own middleware', async () => {
+    const d = new Dispatcher<Ctx>()
+    const one = new Dispatcher<Ctx>().use(tracer('one'))
+    const two = new Dispatcher<Ctx>()
+    one.on('message', (c) => void c.trail.push('one'))
+    two.on('message', (c) => void c.trail.push('two'))
+    d.addChild(one).addChild(two)
+    d.on('message', (c) => void c.trail.push('parent'))
+
+    const c = ctx('message')
+    const handled = await d.dispatch(c)
+
+    expect(handled).toBe(true)
+    expect(c.trail).toEqual(['parent', '>one', 'one', '<one', 'two'])
+  })
+
+  it('refuses a second parent and a cycle', () => {
+    const a = new Dispatcher<Ctx>()
+    const b = new Dispatcher<Ctx>()
+    const c = new Dispatcher<Ctx>()
+    a.addChild(b)
+    b.addChild(c)
+
+    expect(() => c.addChild(a)).toThrow(/cycle/)
+    expect(() => new Dispatcher<Ctx>().addChild(b)).toThrow(/already the child/)
+    expect(b.removeChild(c)).toBe(true)
+    expect(c.parent).toBeUndefined()
+  })
+
+  it('reports the kinds its children handle', () => {
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    child.on('callback_query', () => {})
+    d.addChild(child)
+
+    expect([...d.collectKinds().kinds]).toEqual(['callback_query'])
+  })
+})
+
+describe('where an error goes', () => {
+  it('goes from a child that has no catcher to the parent’s, and dispatch goes on', async () => {
+    const reported: unknown[] = []
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    const failure = new Error('child broke')
+    child.on('message', () => {
+      throw failure
+    })
+    child.on('message', (c) => void c.trail.push('sibling handler'))
+    d.addChild(child)
+    d.catch((error) => {
+      reported.push(error)
+    })
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(reported).toEqual([failure])
+    expect(c.trail).toEqual(['sibling handler'])
+  })
+
+  it('goes on upwards when a catcher declines it by returning false', async () => {
+    const seen: string[] = []
+    const d = new Dispatcher<Ctx>({ onUnhandled: () => void seen.push('owner') })
+    const child = new Dispatcher<Ctx>()
+    child.catch(() => {
+      seen.push('child declined')
+      return false
+    })
+    child.on('message', () => {
+      throw new Error('x')
+    })
+    d.addChild(child)
+
+    await d.dispatch(ctx('message'))
+
+    expect(seen).toEqual(['child declined', 'owner'])
+  })
+
+  it('treats what a failing catcher threw as unhandled, keeping the original handled', async () => {
+    const owner: unknown[] = []
+    const d = new Dispatcher<Ctx>({ onUnhandled: (error) => void owner.push(error) })
+    const broken = new Error('the catcher broke')
+    d.catch(() => {
+      throw broken
+    })
+    d.on('message', () => {
+      throw new Error('the handler broke')
+    })
+
+    await d.dispatch(ctx('message'))
+
+    expect(owner).toEqual([broken])
+  })
+
+  it('propagates to the caller when nothing anywhere takes it', async () => {
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    child.on('message', () => {
+      throw new Error('nobody takes this')
+    })
+    d.addChild(child)
+
+    await expect(d.dispatch(ctx('message'))).rejects.toThrow('nobody takes this')
+  })
+})
+
+describe('dependencies', () => {
+  it('reaches a value injected here or above, and names one that was not', () => {
+    const root = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    root.addChild(child)
+    root.inject({ db: 'the database' } as never)
+    child.inject('cache' as never, 'the cache' as never)
+
+    const deps = child.deps as unknown as Record<string, unknown>
+    expect(deps['db']).toBe('the database')
+    expect(deps['cache']).toBe('the cache')
+    expect('db' in deps).toBe(true)
+    expect(() => deps['missing']).toThrow(/no dependency named 'missing'/)
+    expect(() => (root.deps as unknown as Record<string, unknown>)['cache']).toThrow(ConfigError)
+  })
+
+  it('keeps each dispatcher tree’s own, with nothing shared through a global', () => {
+    const a = new Dispatcher<Ctx>().inject('db' as never, 'a' as never)
+    const b = new Dispatcher<Ctx>().inject('db' as never, 'b' as never)
+
+    expect((a.deps as unknown as Record<string, unknown>)['db']).toBe('a')
+    expect((b.deps as unknown as Record<string, unknown>)['db']).toBe('b')
+  })
+})
+
+describe('extend and clone', () => {
+  it('takes in another dispatcher’s handlers and middleware as a snapshot', async () => {
+    const d = new Dispatcher<Ctx>()
+    const other = new Dispatcher<Ctx>().use(tracer('other'))
+    other.on('message', (c) => void c.trail.push('from other'))
+    d.extend(other)
+    other.on('message', (c) => void c.trail.push('added later'))
+
+    const c = ctx('message')
+    await d.dispatch(c)
+
+    expect(c.trail).toEqual(['>other', 'from other', '<other'])
+  })
+
+  it('clones handlers, and children only when asked', async () => {
+    const d = new Dispatcher<Ctx>()
+    const child = new Dispatcher<Ctx>()
+    child.on('message', (c) => void c.trail.push('child'))
+    d.addChild(child)
+    d.on('message', (c) => void c.trail.push('own'))
+
+    const shallow = ctx('message')
+    await d.clone().dispatch(shallow)
+    const deep = ctx('message')
+    await d.clone(true).dispatch(deep)
+
+    expect(shallow.trail).toEqual(['own'])
+    expect(deep.trail).toEqual(['own', 'child'])
+    expect(child.parent).toBe(d)
   })
 })
