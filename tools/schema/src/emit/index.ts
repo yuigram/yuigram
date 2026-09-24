@@ -15,6 +15,7 @@ import { emitBindings } from './bindings.js'
 import { emitContexts } from './contexts.js'
 import { describeServiceDetection, emitEvents } from './events.js'
 import { emitFieldLists } from './field-lists.js'
+import { emitFormattable } from './formattable.js'
 import { emitMethods } from './methods.js'
 import { emitRegistrations } from './registrations.js'
 import type { EmittedFile } from './types.js'
@@ -31,6 +32,7 @@ export function emitAll(schema: BotApiSchema): EmittedFile[] {
     emitBindings(schema),
     emitRegistrations(schema),
     emitFieldLists(schema),
+    emitFormattable(schema),
   ]
 }
 

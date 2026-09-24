@@ -45,6 +45,11 @@
       "import": "./dist/worker.js",
       "default": "./dist/worker.js"
     },
+    "./markup": {
+      "types": "./dist/markup.d.ts",
+      "import": "./dist/markup.js",
+      "default": "./dist/markup.js"
+    },
     "./rich": {
       "types": "./dist/rich.d.ts",
       "import": "./dist/rich.js",
