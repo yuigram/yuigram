@@ -400,6 +400,27 @@ describe('turning one back into a download', () => {
     })
   })
 
+  it('names the owner of a profile photo by the kind of dialog its number is', () => {
+    const owned = (peerId: number) =>
+      (
+        locationOf({
+          ...IDENTITIES.profilePhotoBig,
+          where: {
+            ...IDENTITIES.profilePhotoBig.where,
+            source: { of: 'profilePhoto', big: true, peerId, accessHash: 99n },
+          },
+        } as never) as { peer: unknown }
+      ).peer
+
+    expect(owned(4242)).toEqual({ _: 'inputPeerUser', user_id: 4242n, access_hash: 99n })
+    expect(owned(-12345)).toEqual({ _: 'inputPeerChat', chat_id: 12345n })
+    expect(owned(-1001234567890)).toEqual({
+      _: 'inputPeerChannel',
+      channel_id: 1234567890n,
+      access_hash: 99n,
+    })
+  })
+
   it('builds a sticker-set location, with the version where there is one', () => {
     expect(locationOf(IDENTITIES.stickerSetVersion)).toMatchObject({
       _: 'inputStickerSetThumb',

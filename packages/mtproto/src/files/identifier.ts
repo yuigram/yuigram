@@ -49,6 +49,7 @@ import { ValidationError, YuigramError } from '@yuigram/core'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type {
   TypeInputFileLocation,
+  TypeInputPeer,
   TypeInputWebFileLocation,
 } from '../generated/api/types/index.js'
 
@@ -969,6 +970,27 @@ export function locationOf(identity: FileIdentity): TypeInputFileLocation {
   return photoLocation(identity, where.id, where.accessHash, where.source)
 }
 
+/** Where the Bot API's dialog numbers for channels begin, counting down: -1000000000000. */
+const CHANNEL_DIALOG_ZERO = -1_000_000_000_000
+
+/**
+ * The peer whose photo it is, from the dialog number a file identifier carries.
+ *
+ * The number is the Bot API's: a user as itself, a basic group as its id
+ * negated, and a channel or supergroup counted down from -1000000000000.
+ * Reading every one of them as a user asks for a user that does not exist.
+ */
+function photoOwner(dialog: number, accessHash: bigint): TypeInputPeer {
+  if (dialog > 0) return { _: 'inputPeerUser', user_id: BigInt(dialog), access_hash: accessHash }
+  if (dialog > CHANNEL_DIALOG_ZERO) return { _: 'inputPeerChat', chat_id: BigInt(-dialog) }
+
+  return {
+    _: 'inputPeerChannel',
+    channel_id: BigInt(CHANNEL_DIALOG_ZERO - dialog),
+    access_hash: accessHash,
+  }
+}
+
 /** The location for a photo, which depends on which picture it names. */
 function photoLocation(
   identity: FileIdentity,
@@ -999,11 +1021,7 @@ function photoLocation(
     case 'profilePhoto':
       return {
         _: 'inputPeerPhotoFileLocation',
-        peer: {
-          _: 'inputPeerUser',
-          user_id: BigInt(source.peerId),
-          access_hash: source.accessHash,
-        },
+        peer: photoOwner(source.peerId, source.accessHash),
         photo_id: id,
         ...(source.big ? { big: true as const } : {}),
       }
