@@ -185,3 +185,50 @@ describe('what the rule is configured to protect', () => {
     expect(TABLE.startsWith('packages/mtproto/src/generated/api/tables/')).toBe(true)
   })
 })
+
+describe('the optional entry points', () => {
+  it('reports an optional entry point of another package imported by name', () => {
+    const result = eagerSurfaces(
+      workspace(
+        module(ENTRY, [['./account.js', 'static']]),
+        module('packages/mtproto/src/account.ts', [['@yuigram/core/stream', 'static']]),
+      ),
+    )
+
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.file).toBe('packages/mtproto/src/account.ts')
+    expect(result.violations[0]?.message).toContain('@yuigram/core/stream')
+  })
+
+  it('lets one be loaded on demand or named for its types', () => {
+    const result = eagerSurfaces(
+      workspace(
+        module(ENTRY, [
+          ['@yuigram/core/format', 'dynamic'],
+          ['@yuigram/mtproto/worker', 'type'],
+        ]),
+      ),
+    )
+
+    expect(result.violations).toEqual([])
+  })
+
+  it('reports an optional module of the same package reached by path', () => {
+    const result = eagerSurfaces(workspace(module(ENTRY, [['./stream/index.js', 'static']])))
+
+    expect(result.violations[0]?.message).toContain('packages/mtproto/src/stream/')
+  })
+
+  it('constrains every main entry point', () => {
+    const entries = EAGER_SURFACES.map((surface) => surface.entry)
+
+    for (const entry of [
+      'packages/core/src/index.ts',
+      'packages/bot-api/src/index.ts',
+      'packages/mtproto/src/index.ts',
+      'packages/yuigram/src/index.ts',
+    ]) {
+      expect(entries).toContain(entry)
+    }
+  })
+})

@@ -372,9 +372,30 @@ interface EagerSurface {
   readonly entry: string
   /** Prefixes its static closure must not reach. */
   readonly excluded: readonly string[]
+  /**
+   * Package entry points its static closure must not import by name.
+   *
+   * The walk follows relative imports only, so an optional entry point of
+   * another package — `@yuigram/core/format` — is named here to be caught.
+   */
+  readonly forbidden?: readonly string[]
   /** Why the weight is kept out, shown when it appears. */
   readonly rationale: string
 }
+
+/** The optional entry points no main entry point may load by importing it. */
+const OPTIONAL_ENTRIES: readonly string[] = [
+  '@yuigram/core/format',
+  '@yuigram/core/stream',
+  '@yuigram/bot-api/markup',
+  '@yuigram/bot-api/rich',
+  '@yuigram/bot-api/stream',
+  '@yuigram/mtproto/stream',
+  '@yuigram/mtproto/worker',
+]
+
+const OPTIONAL_RATIONALE =
+  'Formatting, rich messages, streaming and the worker are entry points of their own, loaded by the programs that ask for them. A static edge from a main entry point puts them into the startup of every program that imports it.'
 
 export const EAGER_SURFACES: readonly EagerSurface[] = [
   {
@@ -386,6 +407,34 @@ export const EAGER_SURFACES: readonly EagerSurface[] = [
     ],
     rationale:
       'The codec tables are resolved when an account connects, not when the package is imported. A static edge to one of them is paid by every program that loads the framework, including bot-only programs that never speak MTProto.',
+  },
+  {
+    entry: 'packages/core/src/index.ts',
+    excluded: ['packages/core/src/format/', 'packages/core/src/stream/'],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/bot-api/src/index.ts',
+    excluded: [
+      'packages/bot-api/src/markup/',
+      'packages/bot-api/src/rich/',
+      'packages/bot-api/src/stream/',
+    ],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/mtproto/src/index.ts',
+    excluded: ['packages/mtproto/src/stream/', 'packages/mtproto/src/worker/'],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/yuigram/src/index.ts',
+    excluded: [],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
   },
 ]
 
@@ -420,6 +469,7 @@ function crossings(
   entry: SourceFile,
   sources: ReadonlyMap<string, SourceFile>,
   excluded: readonly string[],
+  forbidden: readonly string[] = [],
 ): Crossing[] {
   const found: Crossing[] = []
   const seen = new Set<string>([entry.path])
@@ -430,7 +480,18 @@ function crossings(
       if (ref.kind !== 'static') continue
 
       const target = resolveRelative(source.path, ref.specifier)
-      if (target === null) continue
+      if (target === null) {
+        const named = forbidden.find((entry) => ref.specifier === entry)
+        if (named !== undefined) {
+          found.push({
+            file: source.path,
+            line: ref.line,
+            specifier: ref.specifier,
+            crossed: named,
+          })
+        }
+        continue
+      }
 
       const crossed = excluded.find((prefix) => target.startsWith(prefix))
       if (crossed !== undefined) {
@@ -460,7 +521,7 @@ export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
     const entry = sources.get(surface.entry)
     if (entry === undefined) continue
 
-    for (const crossing of crossings(entry, sources, surface.excluded)) {
+    for (const crossing of crossings(entry, sources, surface.excluded, surface.forbidden)) {
       violations.push({
         file: crossing.file,
         line: crossing.line,
