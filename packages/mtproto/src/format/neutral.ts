@@ -32,13 +32,19 @@ const SIMPLE_BACK: Readonly<Record<string, EntityType>> = Object.fromEntries(
   Object.entries(SIMPLE).map(([type, name]) => [name, type as EntityType]),
 )
 
-/** A date-time format string as the flags of `messageEntityFormattedDate`. */
-function dateFlags(format: string | undefined) {
+/**
+ * A date-time format string as the flags of `messageEntityFormattedDate`.
+ *
+ * `r` is relative; otherwise `w` the day of the week, `d` or `D` the date and
+ * `t` or `T` the time, short or long. `R` and `W` are read as `r` and `w`,
+ * since markup written for other clients uses them.
+ */
+export function dateFlags(format: string | undefined) {
   const flags = format ?? ''
 
   return {
-    ...(flags.includes('r') ? { relative: true as const } : {}),
-    ...(flags.includes('w') ? { day_of_week: true as const } : {}),
+    ...(/[rR]/.test(flags) ? { relative: true as const } : {}),
+    ...(/[wW]/.test(flags) ? { day_of_week: true as const } : {}),
     ...(flags.includes('d') ? { short_date: true as const } : {}),
     ...(flags.includes('D') ? { long_date: true as const } : {}),
     ...(flags.includes('t') ? { short_time: true as const } : {}),
@@ -47,7 +53,7 @@ function dateFlags(format: string | undefined) {
 }
 
 /** The flags back as a format string, in the order Telegram's grammar puts them. */
-function dateFormat(entity: Record<string, unknown>): string {
+export function dateFormat(entity: Record<string, unknown>): string {
   if (entity['relative'] === true) return 'r'
 
   return (

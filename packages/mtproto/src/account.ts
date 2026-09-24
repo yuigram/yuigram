@@ -176,6 +176,7 @@ import type {
   TranslateOptions,
   Translation,
 } from './messaging/interact.js'
+import { addressMentions } from './messaging/mentions.js'
 import type {
   CallbackAnswer,
   EditOptions,
@@ -5466,7 +5467,9 @@ export class Account<Ext = unknown> {
    * are written down.
    */
   async #invoke(query: TlValue, options?: CallDefaults): Promise<TlValue> {
-    const answer = await this.#following(query, options)
+    // A mention formatted by any means goes out addressed with the hash this
+    // account holds; see `messaging/mentions.ts`.
+    const answer = await this.#following(await addressMentions(query, this.#peers), options)
     await this.#learn(answer)
 
     return answer

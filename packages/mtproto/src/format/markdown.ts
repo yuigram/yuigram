@@ -53,7 +53,49 @@
  */
 
 import type { TypeMessageEntity } from '../generated/api/types/index.js'
-import { assemble, type FormattedText, type Markup, markerRuns, withinText } from './text.js'
+import { signedHex } from './html.js'
+import { dateFlags, dateFormat } from './neutral.js'
+import {
+  type Assembled,
+  assemble,
+  checkMode,
+  type Dialect,
+  dedent,
+  type FormattedText,
+  type Markup,
+  type MarkupMode,
+  markerRuns,
+  type ParseSettings,
+  refuse,
+  restore,
+  sortEntities,
+  withinText,
+} from './text.js'
+
+/** What reading Markdown can be told. */
+export interface MarkdownParseOptions {
+  /**
+   * What happens to markup that is not well formed. `lenient` unless given.
+   *
+   * `strict` is MarkdownV2 as the Bot API enforces it: a reserved character
+   * that does not open or close markup must be escaped, and markup that opens
+   * must close.
+   */
+  readonly mode?: MarkupMode
+  /**
+   * What happens to whitespace. `keep` unless given.
+   *
+   * - `keep`: every space and line break is text.
+   * - `dedent`: kept, less the indentation every line of the template shares,
+   *   and the empty first and last lines a template written inside indented
+   *   code has.
+   * - `trim`: kept, less what is at the very start and end of the message.
+   */
+  readonly whitespace?: 'keep' | 'dedent' | 'trim'
+}
+
+/** A date's format: relative, or a day of the week, a date and a time in any order. */
+const TIME_FORMAT = /^(?:[rR]|[wWdDtT]*)$/
 
 /** Characters MarkdownV2 reserves anywhere in the text. */
 const SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g
@@ -125,6 +167,13 @@ interface Scan {
   readonly entities: TypeMessageEntity[]
 }
 
+/** What every level of one parse shares. */
+interface Reading {
+  readonly settings: ParseSettings
+  /** The whole markup, for a strict parse's message. */
+  readonly source: string
+}
+
 /** Append a parsed fragment at the current end, shifting its ranges to suit. */
 function absorb(scan: Scan, inner: FormattedText): number {
   const offset = scan.text.length
@@ -139,11 +188,19 @@ function absorb(scan: Scan, inner: FormattedText): number {
 }
 
 /** Read `` `code` `` and ```` ```lang\ncode``` ````, which take no markup inside. */
-function takeCode(scan: Scan, markup: string, at: number): number | undefined {
+function takeCode(
+  scan: Scan,
+  markup: string,
+  at: number,
+  reading: Reading,
+  base: number,
+): number | undefined {
   if (markup[at] !== '`') return undefined
 
   if (markup.startsWith('```', at)) {
-    const block = readUntil(markup, at + 3, '```')
+    const block =
+      readUntil(markup, at + 3, '```') ??
+      unfinished(markup, at + 3, reading, base + at, 'a code block')
     if (block === undefined) return undefined
 
     const body = block.read
@@ -165,13 +222,34 @@ function takeCode(scan: Scan, markup: string, at: number): number | undefined {
     return block.end
   }
 
-  const span = readUntil(markup, at + 1, '`')
+  const span =
+    readUntil(markup, at + 1, '`') ?? unfinished(markup, at + 1, reading, base + at, 'code')
   if (span === undefined) return undefined
 
   scan.entities.push({ _: 'messageEntityCode', offset: scan.text.length, length: span.read.length })
   scan.text += span.read
 
   return span.end
+}
+
+/**
+ * What to make of markup that opens and does not close.
+ *
+ * Nothing, in a lenient parse — the opener is then text. A strict parse
+ * refuses it. A partial one reads what there is as though it closed at the end,
+ * since the rest has not arrived yet.
+ */
+function unfinished(
+  markup: string,
+  from: number,
+  reading: Reading,
+  at: number,
+  what: string,
+): { readonly read: string; readonly end: number } | undefined {
+  refuse(reading.settings, `${what} opens here and is never closed`, at, reading.source)
+  if (reading.settings.mode !== 'partial') return undefined
+
+  return { read: markup.slice(from).replace(/\\$/, '').replace(/\\(.)/g, '$1'), end: markup.length }
 }
 
 /** Find the `]` that closes a `[` at `at`, counting nested brackets. */
@@ -196,20 +274,57 @@ function closingBracket(markup: string, at: number): number {
   return -1
 }
 
-/** The entity a `[label](target)` names, given where the label landed. */
-function linkEntity(target: string, offset: number, length: number): TypeMessageEntity {
-  const mentioned = /^tg:\/\/user\?id=(\d+)$/.exec(target)
+/**
+ * The entity a `[label](target)` names, given where the label landed.
+ *
+ * `tg://user?id=N` is a mention, and with `&hash=H` — the access hash in
+ * hexadecimal — one already in the form a send takes. `tg://emoji?id=N` is a
+ * custom emoji, whose identifier may be negative, and
+ * `tg://time?unix=N&format=F` a formatted date.
+ */
+function linkEntity(
+  target: string,
+  offset: number,
+  length: number,
+  reading: Reading,
+  at: number,
+): TypeMessageEntity {
+  const mentioned = /^tg:\/\/user\?id=(\d+)(?:&hash=(-?[0-9a-fA-F]+))?(?:&.*)?$/.exec(target)
 
   if (mentioned !== null) {
-    return {
-      _: 'messageEntityMentionName',
-      offset,
-      length,
-      user_id: BigInt(mentioned[1] as string),
-    }
+    const userId = BigInt(mentioned[1] as string)
+    const hash = mentioned[2]
+
+    return hash === undefined
+      ? { _: 'messageEntityMentionName', offset, length, user_id: userId }
+      : ({
+          _: 'inputMessageEntityMentionName',
+          offset,
+          length,
+          user_id: { _: 'inputUser', user_id: userId, access_hash: signedHex(hash) },
+        } as TypeMessageEntity)
   }
 
-  const emoji = /^tg:\/\/emoji\?id=(\d+)$/.exec(target)
+  const time = /^tg:\/\/time\?unix=(\d+)(?:&format=([^&]*))?$/.exec(target)
+
+  if (time !== null) {
+    const format = time[2]
+    const date = Number(time[1])
+
+    if ((format === undefined || TIME_FORMAT.test(format)) && Number.isSafeInteger(date)) {
+      return {
+        _: 'messageEntityFormattedDate',
+        offset,
+        length,
+        date,
+        ...dateFlags(format),
+      } as TypeMessageEntity
+    }
+
+    refuse(reading.settings, `'${target}' names no date this can format`, at, reading.source)
+  }
+
+  const emoji = /^tg:\/\/emoji\?id=(-?\d+)$/.exec(target)
 
   if (emoji !== null) {
     return {
@@ -224,24 +339,48 @@ function linkEntity(target: string, offset: number, length: number): TypeMessage
 }
 
 /** Read `[label](target)` and `![label](target)`, where the label may be formatted. */
-function takeLink(scan: Scan, markup: string, at: number): number | undefined {
+function takeLink(
+  scan: Scan,
+  markup: string,
+  at: number,
+  reading: Reading,
+  base: number,
+): number | undefined {
   const bracket = markup[at] === '!' ? at + 1 : at
   if (markup[bracket] !== '[') return undefined
 
+  const partial = reading.settings.mode === 'partial'
   const close = closingBracket(markup, bracket)
-  if (close === -1 || markup[close + 1] !== '(') return undefined
+
+  // A label still arriving is shown as the text it is so far.
+  if (close === -1) {
+    if (!partial) return undefined
+    absorb(scan, parseMarkup(markup.slice(bracket + 1), reading, base + bracket + 1))
+
+    return markup.length
+  }
+  if (markup[close + 1] !== '(') return undefined
 
   // A `)` or a backslash in the address is written escaped, as every
   // interpolated address is; the escapes are markup, not part of the address.
   const target = readUntil(markup, close + 2, ')')
-  if (target === undefined) return undefined
 
   // The label is markup in its own right, so a bold link is one call inside
   // another rather than a special case here.
-  const label = fromMarkdown(markup.slice(bracket + 1, close))
+  const label = parseMarkup(markup.slice(bracket + 1, close), reading, base + bracket + 1)
+
+  if (target === undefined) {
+    refuse(reading.settings, 'a link address is never closed', base + close + 1, reading.source)
+    if (!partial) return undefined
+    // An address still arriving is held back; its label is text until it has.
+    absorb(scan, label)
+
+    return markup.length
+  }
+
   const offset = absorb(scan, label)
 
-  scan.entities.push(linkEntity(target.read, offset, label.text.length))
+  scan.entities.push(linkEntity(target.read, offset, label.text.length, reading, base + at))
 
   return target.end
 }
@@ -253,7 +392,13 @@ function takeLink(scan: Scan, markup: string, at: number): number | undefined {
  * Telegram shows it. The collapsed variant has no marker here — see
  * {@link toMarkdown}.
  */
-function takeQuote(scan: Scan, markup: string, at: number): number | undefined {
+function takeQuote(
+  scan: Scan,
+  markup: string,
+  at: number,
+  reading: Reading,
+  base: number,
+): number | undefined {
   if (markup[at] !== '>') return undefined
 
   // At the start of a line of the *message*, not of the markup. A `>` mid
@@ -283,7 +428,7 @@ function takeQuote(scan: Scan, markup: string, at: number): number | undefined {
 
   // A run ending with `||` is the collapsed form. The mark is not part of what
   // the quote says, so it comes off the text rather than staying in it.
-  const { read: inner, marked } = readQuoteBody(lines.join('\n'))
+  const { read: inner, marked } = readQuoteBody(lines.join('\n'), reading, base + at + 1)
   const offset = absorb(scan, inner)
 
   scan.entities.push(
@@ -309,20 +454,33 @@ function takeQuote(scan: Scan, markup: string, at: number): number | undefined {
  * mark. An escaped pipe never reaches this, because a body ending in an escape
  * does not end in a pair to begin with.
  */
-function readQuoteBody(body: string): { readonly read: FormattedText; readonly marked: boolean } {
-  const whole = fromMarkdown(body)
+function readQuoteBody(
+  body: string,
+  reading: Reading,
+  base: number,
+): { readonly read: FormattedText; readonly marked: boolean } {
+  // Read leniently to tell the two apart: the reading that fails is the one
+  // being ruled out, and a strict parse refuses only what is left once it is.
+  const lenient: Reading = { ...reading, settings: { mode: 'lenient' } }
+  const whole = parseMarkup(body, lenient, base)
 
-  if (!body.endsWith('||')) return { read: whole, marked: false }
+  if (!body.endsWith('||')) return { read: parseMarkup(body, reading, base), marked: false }
 
-  const shorter = fromMarkdown(body.slice(0, -2))
+  const shorter = parseMarkup(body.slice(0, -2), lenient, base)
 
   return `${shorter.text}||` === whole.text
-    ? { read: shorter, marked: true }
-    : { read: whole, marked: false }
+    ? { read: parseMarkup(body.slice(0, -2), reading, base), marked: true }
+    : { read: parseMarkup(body, reading, base), marked: false }
 }
 
 /** Read a paired marker such as `*bold*`, where the content is markup too. */
-function takePair(scan: Scan, markup: string, at: number): number | undefined {
+function takePair(
+  scan: Scan,
+  markup: string,
+  at: number,
+  reading: Reading,
+  base: number,
+): number | undefined {
   for (const [marker, kind] of PAIRS) {
     if (!markup.startsWith(marker, at)) continue
 
@@ -334,10 +492,16 @@ function takePair(scan: Scan, markup: string, at: number): number | undefined {
     // as `ab`.
     if (marker === '_' && markup.startsWith('__', at)) return undefined
 
-    const close = findClose(markup, at + marker.length, marker)
+    const found = findClose(markup, at + marker.length, marker)
+    // A range still arriving runs to where the text ends for now.
+    const close = found === -1 && reading.settings.mode === 'partial' ? markup.length : found
     if (close === -1) continue
 
-    const inner = fromMarkdown(markup.slice(at + marker.length, close))
+    const inner = parseMarkup(
+      markup.slice(at + marker.length, close),
+      reading,
+      base + at + marker.length,
+    )
     const offset = absorb(scan, inner)
 
     // A pair with nothing between it formats nothing, and the zero-length range
@@ -349,7 +513,7 @@ function takePair(scan: Scan, markup: string, at: number): number | undefined {
     // is why `__` is excluded above.
     scan.entities.push({ _: kind, offset, length: inner.text.length } as TypeMessageEntity)
 
-    return close + marker.length
+    return Math.min(close + marker.length, markup.length)
   }
 
   return undefined
@@ -392,27 +556,11 @@ function findClose(markup: string, from: number, marker: string): number {
   return -1
 }
 
-/**
- * Read Markdown markup into text and the ranges formatted within it.
- *
- * ```ts
- * const body = fromMarkdown`Hello, *${name}*`
- *
- * await account.call(sendMessage({ peer, ...body }))
- * ```
- *
- * Called as a template tag, interpolated values are escaped and the literal
- * parts are not. Called with a plain string, nothing is escaped.
- *
- * Recognised: `*bold*`, `_italic_`, `__underline__`, `~strike~`, `||spoiler||`,
- * `` `code` ``, ```` ```language\ncode``` ````, `[text](url)` and a run of `>`
- * lines as a quote. A link target of `tg://user?id=N` becomes a mention and one
- * of `tg://emoji?id=N` a custom emoji. A backslash escapes what follows it.
- *
- * A marker that never closes stays in the text as written.
- */
-export function fromMarkdown(input: Markup, ...values: readonly unknown[]): FormattedText {
-  const markup = assemble(input, values, escapeMarkdown)
+/** Characters MarkdownV2 reserves, which strict reading refuses unescaped. */
+const RESERVED = /[_*[\]()~`>#+\-=|{}.!]/
+
+/** Read one level of markup: the whole message, or a label or range inside it. */
+function parseMarkup(markup: string, reading: Reading, base: number): FormattedText {
   const scan: Scan = { text: '', entities: [] }
 
   let at = 0
@@ -423,38 +571,127 @@ export function fromMarkdown(input: Markup, ...values: readonly unknown[]): Form
     if (character === '\\') {
       // The escape is not part of the message; what follows is, whatever it is.
       if (at + 1 < markup.length) scan.text += markup[at + 1]
+      else refuse(reading.settings, 'a backslash escapes nothing', base + at, reading.source)
       at += 2
       continue
     }
 
     const taken =
-      takeCode(scan, markup, at) ??
-      takeQuote(scan, markup, at) ??
-      takeLink(scan, markup, at) ??
-      takePair(scan, markup, at)
+      takeCode(scan, markup, at, reading, base) ??
+      takeQuote(scan, markup, at, reading, base) ??
+      takeLink(scan, markup, at, reading, base) ??
+      takePair(scan, markup, at, reading, base)
 
     if (taken !== undefined) {
       at = taken
       continue
     }
 
+    if (RESERVED.test(character)) {
+      refuse(
+        reading.settings,
+        `'${character}' is reserved and opens nothing that closes; escape it as '\\${character}'`,
+        base + at,
+        reading.source,
+      )
+    }
+
     scan.text += character
     at += 1
   }
 
-  scan.entities.sort(
-    (left, right) => left.offset - right.offset || right.length - left.length || order(left, right),
-  )
-
-  return withinText({ text: scan.text, entities: scan.entities })
+  return withinText({ text: scan.text, entities: sortEntities(scan.entities) })
 }
 
-/** Order two entities covering the same range, so the order is not arbitrary. */
-function order(left: TypeMessageEntity, right: TypeMessageEntity): number {
-  if (left._ === right._) return 0
+/** Where a template value placed after this much Markdown would land. */
+const DIALECT: Dialect = {
+  // After a label's `](` with no `)` since, a value is part of the address.
+  placement: (markup) => {
+    const opened = markup.lastIndexOf('](')
+    if (opened === -1) return 'text'
 
-  return left._ < right._ ? -1 : 1
+    return /(?<!\\)\)/.test(markup.slice(opened + 2)) ? 'text' : 'address'
+  },
+  escapeAddress: (text) => escapeWithin(text, ')'),
 }
+
+/** Take whitespace off the very start and end, moving the ranges with the text. */
+function trimmed(value: FormattedText): FormattedText {
+  const start = value.text.length - value.text.trimStart().length
+  const end = value.text.trimEnd().length
+  if (start === 0 && end === value.text.length) return value
+
+  const text = value.text.slice(start, Math.max(start, end))
+  const entities = value.entities.map((entity) => {
+    const from = Math.max(entity.offset - start, 0)
+    const to = Math.min(entity.offset + entity.length - start, text.length)
+
+    return { ...entity, offset: from, length: to - from }
+  })
+
+  return withinText({ text, entities })
+}
+
+/** A function that reads Markdown, called as a template tag or with a string. */
+export interface MarkdownReader {
+  (markup: string): FormattedText
+  (parts: TemplateStringsArray, ...values: readonly unknown[]): FormattedText
+  /** The same, told how to read. */
+  with(options: MarkdownParseOptions): MarkdownReader
+}
+
+function reader(options: MarkdownParseOptions): MarkdownReader {
+  const settings: ParseSettings = { mode: checkMode(options.mode) }
+
+  const read = (input: Markup, ...values: readonly unknown[]): FormattedText => {
+    const literal = typeof input === 'string' ? [input] : [...input]
+    const parts = options.whitespace === 'dedent' ? dedent(literal) : literal
+
+    // A string is markup written in full; a template's values are text.
+    const assembled: Assembled =
+      typeof input === 'string'
+        ? { markup: parts[0] ?? '', slots: [], token: { open: '', close: '' } }
+        : assemble(parts, values, DIALECT)
+
+    const parsed = restore(
+      parseMarkup(assembled.markup, { settings, source: assembled.markup }, 0),
+      assembled,
+    )
+
+    return options.whitespace === 'trim' ? trimmed(parsed) : parsed
+  }
+
+  return Object.assign(read as MarkdownReader, {
+    with: (more: MarkdownParseOptions) => reader({ ...options, ...more }),
+  })
+}
+
+/**
+ * Read Markdown markup into text and the ranges formatted within it.
+ *
+ * ```ts
+ * const body = fromMarkdown`Hello, *${name}*`
+ *
+ * await account.sendText(peer, body)
+ * ```
+ *
+ * Called as a template tag, an interpolated value is text wherever it lands,
+ * and a value that is itself formatted keeps its ranges inside whatever the
+ * markup puts around it. In a link's address a value is part of the address.
+ * `null`, `undefined`, `true` and `false` contribute nothing. Called with a
+ * plain string, the whole string is markup.
+ *
+ * Recognised: `*bold*`, `_italic_`, `__underline__`, `~strike~`, `||spoiler||`,
+ * `` `code` ``, ```` ```language\ncode``` ````, `[text](url)` and a run of `>`
+ * lines as a quote. A link target of `tg://user?id=N` becomes a mention, one of
+ * `tg://emoji?id=N` a custom emoji and one of `tg://time?unix=N&format=F` a
+ * formatted date. A backslash escapes what follows it.
+ *
+ * By default a marker that never closes stays in the text as written; how
+ * markup that is not well formed and whitespace are read is chosen with
+ * {@link MarkdownReader.with}.
+ */
+export const fromMarkdown: MarkdownReader = reader({})
 
 /** The markers that open and close an entity, or `undefined` for one with none. */
 function markersFor(entity: TypeMessageEntity): readonly [string, string] | undefined {
@@ -477,8 +714,20 @@ function markersFor(entity: TypeMessageEntity): readonly [string, string] | unde
       return ['[', `](${escapeWithin(entity.url, ')')})`]
     case 'messageEntityMentionName':
       return ['[', `](tg://user?id=${entity.user_id})`]
+    case 'inputMessageEntityMentionName': {
+      const user = entity.user_id
+
+      return user._ === 'inputUser'
+        ? ['[', `](tg://user?id=${user.user_id}&hash=${hexOf(user.access_hash)})`]
+        : undefined
+    }
     case 'messageEntityCustomEmoji':
       return ['![', `](tg://emoji?id=${entity.document_id})`]
+    case 'messageEntityFormattedDate': {
+      const format = dateFormat(entity as unknown as Record<string, unknown>)
+
+      return ['[', `](tg://time?unix=${entity.date}${format === '' ? '' : `&format=${format}`})`]
+    }
     default:
       // A blockquote is a prefix on every line rather than a pair, and is laid
       // out separately. Mentions, hashtags, bare links and the rest are found
@@ -486,6 +735,11 @@ function markersFor(entity: TypeMessageEntity): readonly [string, string] | unde
       // nothing about the message.
       return undefined
   }
+}
+
+/** A signed 64-bit hash in the hexadecimal a mention's address writes it in. */
+function hexOf(value: bigint): string {
+  return value < 0n ? `-${(-value).toString(16)}` : value.toString(16)
 }
 
 /** Whether an entity describes a range of this text. */

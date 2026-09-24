@@ -131,6 +131,7 @@ export {
   type ErrorOptions,
   FloodError,
   findCause,
+  MarkupParseError,
   NetworkError,
   PeerError,
   PluginConflictError,

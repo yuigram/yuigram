@@ -21,25 +21,14 @@
  * shown, and ranges still open are closed where the text currently ends.
  */
 
-import { ValidationError, YuigramError } from '../errors/errors.js'
+import { MarkupParseError, ValidationError } from '../errors/errors.js'
 import type { Entity, EntityType } from './entities.js'
 import { isHighSurrogate, isLowSurrogate } from './entities.js'
 import { Formatted } from './formatted.js'
 
-/** Raised by a strict parse, naming where in the source it failed. */
-export class MarkupParseError extends YuigramError {
-  override readonly name = 'MarkupParseError'
-
-  constructor(
-    message: string,
-    /** Where in the source, in UTF-16 code units. */
-    readonly offset: number,
-    /** What was being parsed. */
-    readonly source: string,
-  ) {
-    super(`${message} at offset ${offset}`)
-  }
-}
+// Defined with the other errors, so a formatter outside this entry point — an
+// account's, on the eager path — raises the same class a caller catches here.
+export { MarkupParseError }
 
 /** How a parse treats markup that is not well formed. */
 export type ParseMode = 'strict' | 'lenient' | 'partial'

@@ -128,9 +128,20 @@ export {
 } from './files/media.js'
 export type { NodeReadable, StreamOptions } from './files/streams.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
-export { fromHtml, toHtml } from './format/html.js'
-export { fromMarkdown, toMarkdown } from './format/markdown.js'
-export type { FormattedText, Markup } from './format/text.js'
+export {
+  fromHtml,
+  type HtmlParseOptions,
+  type HtmlReader,
+  type HtmlWriteOptions,
+  toHtml,
+} from './format/html.js'
+export {
+  fromMarkdown,
+  type MarkdownParseOptions,
+  type MarkdownReader,
+  toMarkdown,
+} from './format/markdown.js'
+export { type FormattedText, joinText, type Markup, type MarkupMode } from './format/text.js'
 export type {
   ForumSettings,
   NewTopic,

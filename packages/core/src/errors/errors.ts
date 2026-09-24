@@ -120,6 +120,26 @@ export class CancelledError extends YuigramError {
   override readonly name = 'CancelledError'
 }
 
+/**
+ * Raised by a strict parse of markup, naming where in the source it failed.
+ *
+ * One class for every dialect and every client, so a caller catches one thing
+ * whichever formatter refused.
+ */
+export class MarkupParseError extends YuigramError {
+  override readonly name = 'MarkupParseError'
+
+  constructor(
+    message: string,
+    /** Where in the source, in UTF-16 code units. */
+    readonly offset: number,
+    /** What was being parsed. */
+    readonly source: string,
+  ) {
+    super(`${message} at offset ${offset}`)
+  }
+}
+
 /** A plugin could not be installed. */
 export class PluginError extends YuigramError {
   override readonly name: string = 'PluginError'

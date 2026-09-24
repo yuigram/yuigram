@@ -52,6 +52,57 @@ value, which is split into the text and its entities field. A formatted value pa
 values above convert to and from them. Tests read the same fixtures through both, and the two
 readers agree.
 
+### 1.1 The account formatters
+
+They live on the main entry point, beside the account, and differ from `yuigram/markup` in one
+default: they read **leniently** unless told otherwise, because they are for markup a developer
+types. `fromHtml.with(options)` and `fromMarkdown.with(options)` return a reader told how to read:
+
+| Option | Values | Meaning |
+|---|---|---|
+| `mode` | `lenient` (default), `strict`, `partial` | The three modes above, with the same meanings. `strict` Markdown is MarkdownV2 as the Bot API enforces it: a reserved character that opens nothing must be escaped |
+| `whitespace` (HTML) | `keep` (default), `collapse`, `dedent` | `collapse` reads whitespace as a browser does, with `<br>` the line break and `&nbsp;` a space that stays; code and interpolated values keep theirs. `dedent` removes the indentation a template's lines share |
+| `whitespace` (Markdown) | `keep` (default), `dedent`, `trim` | `trim` takes whitespace off the ends of the message, moving the ranges with the text |
+
+A strict refusal is a `MarkupParseError` — the same class `yuigram/markup` raises, from the main
+entry point — carrying the offset in the markup and the markup itself.
+
+**Templates.** An interpolated value is text wherever it lands. A value that is itself formatted —
+what these return, or what the builders in `yuigram/markup` make — keeps its ranges, placed at its
+position in UTF-16 units and inside whatever range the markup puts around it; it is set aside
+before the markup is read and put back after, so its text is never read as markup. In an attribute
+or a link's address only its text is written, escaped. `null`, `undefined`, `true` and `false`
+contribute nothing. `joinText(pieces, separator)` joins formatted pieces the same way.
+
+**What they read beyond Telegram's own tags.** `<spoiler>`, `<emoji id>`, `<blockquote collapsible>`,
+`<br>`, `<tg-time unix format>` and `<time datetime format>` for a formatted date (Markdown:
+`[text](tg://time?unix=…&format=…)`), a closing tag in any spelling of the tag it closes, and an
+address beginning `//` as `http:`. A custom emoji identifier may be negative.
+
+**Mentions.** `tg://user?id=N` gives the received form of a mention, which names the person but
+cannot address them. An account turns it into the input form on its way out, with the access hash
+it holds, whatever built the message; a mention of somebody the account has never seen is refused
+with a `PeerError` before anything is sent, since Telegram would drop it. `tg://user?id=N&hash=H`,
+with the hash in hexadecimal, gives the input form directly, and both writers write it back.
+
+**Writing.** `toHtml(value, { highlight })` passes the code of a block that names its language to
+a highlighter and writes what it returns. `toHtml(value, { whitespace: 'collapse' })` writes line
+breaks as `<br>` and spaces that would collapse as `&nbsp;`, so the collapsing reader gives the
+same text back.
+
+**Choices worth knowing.**
+
+- HTML keeps whitespace by default, as Telegram's HTML does; the collapsing reading is an option.
+  In it a space before a closing tag is kept where a browser would keep it, rather than trimmed.
+- An unrecognised tag stays in the text as written, and an unclosed one runs to the end, rather
+  than being dropped. `strict` refuses both instead.
+- Markdown is MarkdownV2 — `*bold*`, `_italic_`, `__underline__` — so text escaped for a bot is safe
+  for an account and the reverse.
+- Inline code keeps its whitespace in the collapsing reading, as a code block does.
+- An interpolated `0` is written as `0`.
+- Named character references are the common ones, not the full HTML table.
+- A code block is written with its text escaped whether or not a highlighter is given.
+
 ## 2. Rich messages
 
 A rich message is blocks — headings, paragraphs, lists, tables, quotations, media, maps, buttons —
