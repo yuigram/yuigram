@@ -33,6 +33,11 @@
       "types": "./dist/format/index.d.ts",
       "import": "./dist/format/index.js",
       "default": "./dist/format/index.js"
+    },
+    "./stream": {
+      "types": "./dist/stream/index.d.ts",
+      "import": "./dist/stream/index.js",
+      "default": "./dist/stream/index.js"
     }
   },
   "browser": {
