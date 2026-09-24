@@ -44,6 +44,11 @@
       "types": "./dist/worker.d.ts",
       "import": "./dist/worker.js",
       "default": "./dist/worker.js"
+    },
+    "./rich": {
+      "types": "./dist/rich.d.ts",
+      "import": "./dist/rich.js",
+      "default": "./dist/rich.js"
     }
   },
   "main": "./dist/index.js",

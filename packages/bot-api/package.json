@@ -39,6 +39,11 @@
       "types": "./dist/webhook/index.d.ts",
       "import": "./dist/webhook/index.js",
       "default": "./dist/webhook/index.js"
+    },
+    "./rich": {
+      "types": "./dist/rich/index.d.ts",
+      "import": "./dist/rich/index.js",
+      "default": "./dist/rich/index.js"
     }
   },
   "browser": {

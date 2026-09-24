@@ -181,6 +181,8 @@ export interface RichMessageButton {
  * @see https://corefork.telegram.org/bots/api#richtext
  */
 export type RichText =
+  | string
+  | RichText[]
   | RichTextAnchor
   | RichTextAnchorLink
   | RichTextBankCardNumber
