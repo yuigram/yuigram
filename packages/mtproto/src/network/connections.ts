@@ -108,6 +108,11 @@ export interface ConnectionsOptions {
    * is invisible unless something says so.
    */
   readonly onFailure?: (origin: ManagedConnection, error: Error) => void
+  /**
+   * A connection moved to another state. Told once per change, in order, after
+   * the change has been made.
+   */
+  readonly onState?: (origin: ManagedConnection, state: ConnectionState) => void
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
   readonly now?: () => number
   /** Randomness for the jitter between attempts. */
@@ -297,6 +302,12 @@ class Logical implements ManagedConnection {
     return this.#state
   }
 
+  #enter(state: ConnectionState): void {
+    if (state === this.#state) return
+    this.#state = state
+    this.#options.onState?.(this, state)
+  }
+
   ready(options: { readonly signal?: AbortSignal } = {}): Promise<void> {
     if (this.#state === 'closed') {
       return Promise.reject(new CancelledError('the connection was closed'))
@@ -334,7 +345,7 @@ class Logical implements ManagedConnection {
 
   close(): void {
     if (this.#state === 'closed') return
-    this.#state = 'closed'
+    this.#enter('closed')
 
     this.#cancelTimer?.()
     this.#cancelTimer = undefined
@@ -383,7 +394,7 @@ class Logical implements ManagedConnection {
   #start(): void {
     if (this.#state !== 'idle') return
 
-    this.#state = 'connecting'
+    this.#enter('connecting')
     const abort = new AbortController()
     this.#abort = abort
     const attempt: Attempt = {}
@@ -436,7 +447,7 @@ class Logical implements ManagedConnection {
     this.#attempt = undefined
     this.#abort = undefined
     this.#channel = channel
-    this.#state = 'ready'
+    this.#enter('ready')
     this.#readyAt = this.#now()
 
     this.#settleAll(undefined)
@@ -502,7 +513,7 @@ class Logical implements ManagedConnection {
     this.#channel = undefined
     this.#attempt = undefined
     this.#abort = undefined
-    this.#state = 'waiting'
+    this.#enter('waiting')
 
     // Only a key that was actually presented can have been refused. An attempt
     // that failed before there was a channel has no key to answer for, whatever
@@ -528,7 +539,7 @@ class Logical implements ManagedConnection {
       if (this.#state !== 'waiting') return
 
       // The wait is over, so the connection is idle again and may start one.
-      this.#state = 'idle'
+      this.#enter('idle')
       this.#start()
     }, delay)
   }

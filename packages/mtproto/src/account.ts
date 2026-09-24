@@ -195,7 +195,7 @@ import {
   sendText,
   setTyping,
 } from './messaging/send.js'
-import type { Connections, ManagedConnection } from './network/connections.js'
+import type { ConnectionState, Connections, ManagedConnection } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
 import type { DcConfiguration, DcDirectory } from './network/dc.js'
 import type { Callable } from './network/migration.js'
@@ -439,6 +439,17 @@ const DEVICE: Omit<ClientInfo, 'apiId'> = {
 }
 
 /** How an account is built. */
+/**
+ * Where an account's link to Telegram stands, as a reader of its updates sees it.
+ *
+ * - `offline`: not started, stopped, or the connection carrying its updates was
+ *   lost and the next attempt is waiting.
+ * - `connecting`: that connection is being opened.
+ * - `updating`: connected, and asking what was missed while it was not.
+ * - `connected`: connected, and nothing is known to be missing.
+ */
+export type ConnectionStatus = 'offline' | 'connecting' | 'updating' | 'connected'
+
 export interface AccountOptions {
   /** The application this client is registered as. */
   readonly apiId: number
@@ -655,6 +666,12 @@ export class Account<Ext = unknown> {
 
   /** Everything that exists only while connected. */
   #network: Network | undefined
+  /** The state of the connection carrying this account's updates. */
+  #link: ConnectionState = 'idle'
+  /** Catch-ups under way. */
+  #catchingUp = 0
+  #status: ConnectionStatus = 'offline'
+  readonly #statusListeners = new Set<(status: ConnectionStatus) => void>()
   /** Installed by an application that holds this account. */
   #surrounding: Middleware<MtprotoContext & Ext> | undefined
   /**
@@ -802,6 +819,49 @@ export class Account<Ext = unknown> {
   /** Whether this account is connected. */
   get connected(): boolean {
     return this.#network !== undefined
+  }
+
+  /** Where this account's link to Telegram stands now. */
+  get connectionStatus(): ConnectionStatus {
+    return this.#status
+  }
+
+  /**
+   * Be told each time {@link Account.connectionStatus} changes.
+   *
+   * Told once per change, in the order the changes happen, and never told the
+   * status it already had. A listener that throws is logged and does not stop
+   * the others. Returns the way to stop listening.
+   */
+  onConnectionStatus(listener: (status: ConnectionStatus) => void): () => void {
+    this.#statusListeners.add(listener)
+
+    return () => {
+      this.#statusListeners.delete(listener)
+    }
+  }
+
+  /** Recompute the status, and tell the listeners if it changed. */
+  #observeStatus(): void {
+    const status = this.#statusNow()
+    if (status === this.#status) return
+    this.#status = status
+
+    for (const listener of [...this.#statusListeners]) {
+      try {
+        listener(status)
+      } catch (error) {
+        this.#log.error('a connection status listener failed', { error })
+      }
+    }
+  }
+
+  #statusNow(): ConnectionStatus {
+    if (this.#network === undefined) return 'offline'
+    if (this.#link === 'connecting') return 'connecting'
+    if (this.#link !== 'ready') return 'offline'
+
+    return this.#catchingUp > 0 ? 'updating' : 'connected'
   }
 
   /**
@@ -4770,6 +4830,7 @@ export class Account<Ext = unknown> {
     const primary = (origin: ManagedConnection): boolean =>
       isUpdateSource(origin, datacenters.directory.thisDc)
 
+    this.#link = 'idle'
     const connections = openConnections({
       datacenters,
       // What the server says without being asked. A connection reports every
@@ -4803,6 +4864,14 @@ export class Account<Ext = unknown> {
         // connection while a handler runs would make one slow handler a gap in
         // the stream.
         this.#lifecycle.track(this.feed(event.message.value))
+      },
+      // Only the connection carrying the stream decides the status: the others
+      // come and go with transfers and calls to other datacenters, and none of
+      // them being down means updates are not arriving.
+      onState: (origin, state) => {
+        if (!primary(origin)) return
+        this.#link = state
+        this.#observeStatus()
       },
       ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
       ...(this.#options.random === undefined ? {} : { random: this.#options.random }),
@@ -4887,6 +4956,8 @@ export class Account<Ext = unknown> {
 
     network.updates.close()
     network.connections.close()
+    this.#link = 'closed'
+    this.#observeStatus()
   }
 
   /**
@@ -4946,11 +5017,16 @@ export class Account<Ext = unknown> {
    * next gap it notices will also close.
    */
   async #catchUp(): Promise<void> {
+    this.#catchingUp += 1
+    this.#observeStatus()
     try {
       await this.#require().updates.recover()
       await this.#remember()
     } catch (error) {
       this.#log.error('updates', { error })
+    } finally {
+      this.#catchingUp -= 1
+      this.#observeStatus()
     }
   }
 
