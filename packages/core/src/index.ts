@@ -176,6 +176,17 @@ export {
   type StopOptions,
 } from './lifecycle/lifecycle.js'
 export {
+  type Limiter,
+  type LimiterOptions,
+  limiter,
+  type RateLimitDecision,
+  type RateLimitEntry,
+  type RateLimitInfo,
+  type RateLimitKey,
+  type RateLimitMiddlewareRule,
+  type RateLimitRule,
+} from './limit/rate-limit.js'
+export {
   consoleSink,
   createLogger,
   LOG_LEVELS,

@@ -15,6 +15,7 @@ import {
   defineFilter,
   defineFlow,
   type LogRecord,
+  limiter,
   memory,
   Propagation,
   ValidationError,
@@ -499,6 +500,44 @@ describe('a conversation on an account', () => {
     } finally {
       await first.dispose()
       await second.dispose()
+    }
+  }, 30_000)
+})
+
+describe('a rate limit on an account', () => {
+  it('counts each sender by their own peer, in the middleware and the filter alike', async () => {
+    const instance = await connected()
+    const limits = limiter<MtprotoContext>()
+    const handled: string[] = []
+    const refused: Array<[string, number]> = []
+
+    try {
+      instance.account.use(
+        limits.middleware({
+          limit: 2,
+          windowMs: 60_000,
+          onLimited: (_event, info) => void refused.push([info.key, info.count]),
+        }),
+      )
+      instance.account.on(
+        'message',
+        limits.filter({ limit: 1, windowMs: 60_000, bucket: 'report' }),
+        (event) => void handled.push(`report ${event.text}`),
+      )
+      instance.account.on('message', (event) => void handled.push(event.text ?? ''))
+
+      await burst(instance, message(2, 'a'), message(3, 'b'), message(4, 'c'), message(5, 'd', 6n))
+      await settle()
+
+      // Two private chats are dispatched side by side; each keeps its own order.
+      const of = (sender: readonly string[]) =>
+        handled.filter((entry) => sender.includes(entry.replace('report ', '')))
+      expect(of(['a', 'b', 'c'])).toEqual(['report a', 'a', 'b'])
+      expect(of(['d'])).toEqual(['report d', 'd'])
+      // A user's key names the kind of peer, so it cannot meet a chat's.
+      expect(refused).toEqual([['user:5', 3]])
+    } finally {
+      await instance.dispose()
     }
   }, 30_000)
 })

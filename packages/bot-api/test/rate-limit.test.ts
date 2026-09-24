@@ -8,7 +8,7 @@
  * handler.
  */
 
-import { createLogger, silentSink } from '@yuigram/core'
+import { createLogger, memory, type RateLimitEntry, silentSink } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { Bot } from '../src/bot.js'
 import type { Update } from '../src/generated/types/index.js'
@@ -220,6 +220,51 @@ describe('telling the user', () => {
     expect(seen[0]?.key).toBe('7')
     expect(seen[0]?.count).toBe(2)
     expect(seen[0]?.resetMs).toBeGreaterThan(0)
+  })
+})
+
+describe('where counts are kept', () => {
+  it('counts one user across two bots that share a store', async () => {
+    // Two instances behind one webhook each see part of a user's traffic;
+    // limited apart, the user would get twice the allowance.
+    const shared = memory<RateLimitEntry>()
+    const first = client().bot
+    const second = client().bot
+    let handled = 0
+
+    for (const bot of [first, second]) {
+      bot.use(rateLimit({ limit: 2, windowMs: 10_000, storage: shared }))
+      bot.onMessage(() => {
+        handled += 1
+      })
+    }
+
+    await first.handleUpdate(messageFrom(7, 1))
+    await second.handleUpdate(messageFrom(7, 2))
+    await first.handleUpdate(messageFrom(7, 3))
+
+    expect(handled).toBe(2)
+    expect((await shared.get('default:7'))?.count).toBe(3)
+  })
+
+  it('keeps a bucket’s allowance apart from the rest in the same store', async () => {
+    const shared = memory<RateLimitEntry>()
+    const { bot } = client()
+    const trail: string[] = []
+
+    bot.use(rateLimit({ limit: 1, windowMs: 10_000, storage: shared, bucket: 'strict' }))
+    bot.use(rateLimit({ limit: 3, windowMs: 10_000, storage: shared }))
+    bot.onMessage((message) => {
+      trail.push(message.text ?? '')
+    })
+
+    await bot.handleUpdate(messageFrom(7, 1))
+    await bot.handleUpdate(messageFrom(7, 2))
+
+    expect(trail).toEqual(['hi'])
+    expect((await shared.get('strict:7'))?.count).toBe(2)
+    // The looser limit counted only what the strict one let through.
+    expect((await shared.get('default:7'))?.count).toBe(1)
   })
 })
 

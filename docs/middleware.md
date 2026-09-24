@@ -371,6 +371,40 @@ A value is kept as given — a promise stays a promise, for a resource that is o
 asynchronously — and is the application's to close. A dispatcher does not own what it was
 handed, and stopping a client does not dispose of it.
 
+### Rate limits
+
+`limiter()` counts what one person asks for and refuses past an allowance. One counter serves
+four forms, on a bot and an account alike:
+
+```ts
+const limits = limiter<MessageContext>({ storage })
+
+bot.use(limits.middleware({ limit: 20, windowMs: 60_000 }))          // drop the rest
+bot.on(limits.filter({ limit: 1, windowMs: 3_600_000, bucket: 'report' }), report)
+const decision = await limits.check(event, { limit: 5, windowMs: 10_000 })
+await limits.wait(chatId, { limit: 1, windowMs: 1_000 }, signal)       // throttle instead
+```
+
+- **Who is counted** is the sender unless a `key` function says otherwise, so a person is
+  limited wherever they write and a busy group is not mistaken for abuse. An account's peers are
+  written with their kind (`user:5`), so a user and a chat with the same number are never counted
+  together. A context that names nobody — a channel post, an anonymous admin — is not counted:
+  the middleware lets it through and the filter matches it.
+- **Every attempt counts**, the refused ones included, so holding a key down does not earn a
+  fresh allowance. Windows are fixed: one opens with the first hit and closes `windowMs` later.
+- **Buckets** are counted apart. A limit on a costly command and a limit on everything else do
+  not spend each other's allowance, even in one store.
+- **A store** shared by several processes counts one person across all of them. Each record is
+  written to expire with its window. The store has no compare-and-set, so two processes counting
+  one key at the same instant can each let a hit through; within one process, hits on a key are
+  counted one at a time. The default store is in memory and is walked once a minute for windows
+  that closed, since most keys are never read again.
+- **Filters count when they are evaluated.** A handler behind a limit's filter spends the
+  allowance only on updates the dispatcher offered it, which is what makes a per-command limit
+  possible without a middleware that inspects commands.
+
+The Bot API's `rateLimit(options)` is the middleware form with its options in one object.
+
 ---
 
 ## 6. Context extension
