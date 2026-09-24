@@ -1,0 +1,48 @@
+/**
+ * What registering behind a filter tells the handler.
+ *
+ * A filter proves something about the event, and the registration applies the
+ * proof to the handler's context: nothing at runtime would notice if it did
+ * not, so it is pinned here.
+ */
+
+import { describe, expectTypeOf, it } from 'vitest'
+import type { Account } from '../src/account.js'
+import { f } from '../src/filters/index.js'
+import type { PeerRef } from '../src/normalize/normalize.js'
+import type { AccountRouter } from '../src/router.js'
+
+declare const account: Account
+declare const router: AccountRouter
+
+describe('a filter’s proof reaching the handler', () => {
+  it('narrows text, command arguments and captures', () => {
+    account.on(f.text(), (event) => {
+      expectTypeOf(event.text).toEqualTypeOf<string>()
+    })
+    account.on('message', f.command('start'), (event) => {
+      expectTypeOf(event.command).toEqualTypeOf<string>()
+      expectTypeOf(event.args).toEqualTypeOf<readonly string[]>()
+    })
+    router.on(f.regex(/x/), (event) => {
+      expectTypeOf(event.match).toEqualTypeOf<RegExpExecArray>()
+    })
+  })
+
+  it('narrows the chat and sender a peer filter requires', () => {
+    account.once('message', f.chat('user'), (event) => {
+      expectTypeOf(event.chat).toEqualTypeOf<PeerRef>()
+    })
+    account.on(f.sender(), (event) => {
+      expectTypeOf(event.sender).toEqualTypeOf<PeerRef>()
+    })
+  })
+
+  it('leaves the context as it is for a kind alone, and refuses one nothing produces', () => {
+    account.on('message', (event) => {
+      expectTypeOf(event.text).toEqualTypeOf<string | undefined>()
+    })
+    // @ts-expect-error — not a kind an account produces
+    account.on('mesage', () => {})
+  })
+})

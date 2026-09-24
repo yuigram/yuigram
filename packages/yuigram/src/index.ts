@@ -82,7 +82,9 @@ export * from '@yuigram/core'
 export {
   Account,
   type AccountContext,
+  type AccountFilterContext,
   type AccountOptions,
+  AccountRouter,
   type AddOptions,
   type AdminRights,
   type AlbumItem,

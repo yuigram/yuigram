@@ -59,6 +59,11 @@
       "types": "./dist/rich.d.ts",
       "import": "./dist/rich.js",
       "default": "./dist/rich.js"
+    },
+    "./account-filters": {
+      "types": "./dist/account-filters.d.ts",
+      "import": "./dist/account-filters.js",
+      "default": "./dist/account-filters.js"
     }
   },
   "main": "./dist/index.js",

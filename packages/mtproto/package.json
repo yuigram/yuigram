@@ -37,6 +37,11 @@
       "types": "./dist/stream/index.d.ts",
       "import": "./dist/stream/index.js",
       "default": "./dist/stream/index.js"
+    },
+    "./filters": {
+      "types": "./dist/filters/index.d.ts",
+      "import": "./dist/filters/index.js",
+      "default": "./dist/filters/index.js"
     }
   },
   "browser": {
