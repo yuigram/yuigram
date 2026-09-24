@@ -265,6 +265,15 @@ only where a method takes one, such as a sign-in prompt; a cancelled call is can
 host too; and a worker that goes away fails every call still waiting on it. Importing `yuigram`
 loads none of this. `docs/runtimes.md` §6 has the contract and what has been run where.
 
+An account says where its link to Telegram stands — `offline`, `connecting`, `updating` while
+it catches up, `connected` — through `connectionStatus` and `onConnectionStatus`, once per change
+and in order, decided by the connection that carries its updates alone. A worker passes every
+change to every caller as it happens. A tab that is closed without a word is let go at once: the
+caller holds a Web Lock for as long as its page lives, and the host is granted the same lock when
+the page is destroyed, which is also why a hidden, throttled page is never mistaken for a closed
+one. A caller counts its host gone only when a ping it actually sent goes unanswered, and a
+handle that has been ended is no longer held on the host.
+
 **Layer 229.** The committed schema follows the one Telegram's own client ships, which the
 documentation page lags behind. A conversation-list row may be a community, which has no peer
 and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;

@@ -47,7 +47,7 @@ import {
   type Middleware,
   type UseOptions,
 } from '@yuigram/core'
-import type { Account } from '../account.js'
+import type { Account, ConnectionStatus } from '../account.js'
 import { type MtprotoApi, rawApi } from '../api.js'
 import type { DownloadRequest } from '../files/download.js'
 import { isStaleReference } from '../files/references.js'
@@ -58,7 +58,7 @@ import { type MtprotoContext, mtprotoContext } from '../normalize/context.js'
 import { type BoundCalls, type CallDefaults, withParams } from '../session/operations.js'
 import type { PeerKind, PeerRecord, PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
-import type { Endpoint } from './endpoints.js'
+import { type Endpoint, type LockManagerLike, platformLocks } from './endpoints.js'
 import type { HostInfo } from './host.js'
 import {
   CALLBACKS,
@@ -67,7 +67,9 @@ import {
   type CallName,
   GETTERS,
   type GetterName,
+  HANDLE_KINDS,
   HANDLES,
+  type HandleKind,
   STREAMS,
   type StreamName,
 } from './methods.js'
@@ -173,7 +175,13 @@ export interface AttachOptions {
   readonly restore?: string
   /** How often to tell the host this caller is alive, in ms. */
   readonly pingEvery?: number
-  /** How long the host may go without a word before it counts as gone, in ms. */
+  /**
+   * How long a ping may go unanswered before the host counts as gone, in ms.
+   *
+   * Measured from a ping that was sent, not from the last word heard: a page
+   * whose timers the browser has slowed has not heard anything because it has
+   * not asked, and that is not the host's silence.
+   */
   readonly hostTimeout?: number
   /** How long to wait for the host to answer `hello` and `attach`, in ms. */
   readonly attachTimeout?: number
@@ -188,6 +196,13 @@ export interface AttachOptions {
    * only when its pings stop — up to a minute later.
    */
   readonly releaseOnPageHide?: boolean
+  /**
+   * The locks through which the host learns that this caller's context is
+   * gone. The runtime's own where it has them; `false` to rely on pings alone,
+   * which lets a closed tab go only once it has been silent for the host's
+   * `expireAfter`.
+   */
+  readonly locks?: LockManagerLike | false
   readonly log?: Logger
   /** Timers, supplied so tests need not wait in real time. */
   readonly schedule?: (run: () => void, delayMs: number) => () => void
@@ -257,7 +272,11 @@ export class RemoteAccount {
   readonly #cleanups: (() => void)[] = []
   #nextId = 1
   #lastHeard: number
+  /** When the oldest ping the host has not answered was sent. */
+  #pingSentAt: number | undefined
   #closed: Error | undefined
+  #status: ConnectionStatus = 'offline'
+  readonly #statusListeners = new Set<(status: ConnectionStatus) => void>()
   /** Updates handled, and how far the contiguous run of handled ones reaches. */
   readonly #handled = new Set<number>()
   #contiguous = 0
@@ -311,12 +330,14 @@ export class RemoteAccount {
       connection: this.connection,
       v: PROTOCOL_VERSION,
     })
+    const lock = await this.#holdLock()
     await this.#handshake('attach', {
       type: 'attach',
       connection: this.connection,
       account: this.#options.account,
       updates: this.#options.updates ?? true,
       ...(this.#options.restore === undefined ? {} : { restore: this.#options.restore }),
+      ...(lock === undefined ? {} : { lock }),
     })
 
     this.#startPinging()
@@ -348,6 +369,42 @@ export class RemoteAccount {
 
   #opening: { stage: 'hello' | 'attach'; settle(error?: Error): void } | undefined
 
+  /**
+   * Take a lock named for this connection and keep it until this caller ends.
+   *
+   * Taken before attaching, so the host's request for the same lock queues
+   * behind it. The name is the connection identifier, which is unguessable, so
+   * no other context can take or release it on this caller's behalf.
+   */
+  async #holdLock(): Promise<string | undefined> {
+    const locks =
+      this.#options.locks === false ? undefined : (this.#options.locks ?? platformLocks())
+    if (locks === undefined) return undefined
+
+    const name = `yuigram-caller:${this.connection}`
+    try {
+      await new Promise<void>((held, refused) => {
+        locks
+          .request(name, () => {
+            held()
+
+            return new Promise<void>((release) => {
+              this.#cleanups.push(release)
+            })
+          })
+          .catch(refused)
+      })
+    } catch (error) {
+      // An opaque origin, or a context without storage, refuses locks. Pings
+      // still let the host notice this caller going.
+      this.#log.debug('no lock for this caller; the host will rely on pings', { error })
+
+      return undefined
+    }
+
+    return name
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Receiving                                                                 */
   /* ------------------------------------------------------------------------ */
@@ -371,7 +428,11 @@ export class RemoteAccount {
         )
         break
       case 'attached':
+        this.#setStatus(message.status)
         if (this.#opening?.stage === 'attach') this.#opening.settle()
+        break
+      case 'status':
+        this.#setStatus(message.status)
         break
       case 'result':
         this.#settle(message.id, message.value)
@@ -634,7 +695,7 @@ export class RemoteAccount {
   /** A handle's stand-in: its fields as last reported, and its methods by name. */
   #handle(id: number, kind: string, fields: Readonly<Record<string, unknown>>): unknown {
     const current: Record<string, unknown> = { ...fields }
-    const invoke = async (method: string, args: readonly unknown[]): Promise<unknown> => {
+    const crossing = async (method: string, args: readonly unknown[]): Promise<unknown> => {
       const answer = (await this.#call('@handle', [id, method, ...args])) as {
         readonly value: unknown
         readonly fields: Readonly<Record<string, unknown>>
@@ -642,6 +703,31 @@ export class RemoteAccount {
       Object.assign(current, answer.fields)
 
       return answer.value
+    }
+
+    // The host forgets a handle once it has ended, so ending it again is
+    // answered here: once is what it means, as it is in-process. A failed end
+    // leaves the handle held, and may be tried again.
+    const ends: string | undefined = HANDLE_KINDS[kind as HandleKind]?.ends
+    let ending: Promise<unknown> | undefined
+    let ended = false
+    const invoke = async (method: string, args: readonly unknown[]): Promise<unknown> => {
+      if (method !== ends) return await crossing(method, args)
+      if (ended) return undefined
+
+      ending ??= crossing(method, args).then(
+        (value) => {
+          ended = true
+
+          return value
+        },
+        (error: unknown) => {
+          ending = undefined
+          throw error
+        },
+      )
+
+      return await ending
     }
 
     if (kind === 'stop') return async () => void (await invoke('call', []))
@@ -846,6 +932,39 @@ export class RemoteAccount {
   /* Liveness and leaving                                                      */
   /* ------------------------------------------------------------------------ */
 
+  /** The hosted account's connection status, as the host last reported it. */
+  get connectionStatus(): ConnectionStatus {
+    return this.#status
+  }
+
+  /**
+   * Be told each time the hosted account's connection status changes.
+   *
+   * The same promise as an account's own: once per change, in order. A caller
+   * that ends — detached, let go, or cut off from its host — is told `offline`,
+   * because it can no longer see the account at all.
+   */
+  onConnectionStatus(listener: (status: ConnectionStatus) => void): () => void {
+    this.#statusListeners.add(listener)
+
+    return () => {
+      this.#statusListeners.delete(listener)
+    }
+  }
+
+  #setStatus(status: ConnectionStatus): void {
+    if (status === this.#status) return
+    this.#status = status
+
+    for (const listener of [...this.#statusListeners]) {
+      try {
+        listener(status)
+      } catch (error) {
+        this.#log.warn('a connection status listener threw', { error })
+      }
+    }
+  }
+
   /** Be told what happens to this caller's standing with the host. */
   onEvent(listener: (event: RemoteEvent) => void): () => void {
     this.#listeners.add(listener)
@@ -872,13 +991,17 @@ export class RemoteAccount {
     const round = (): void => {
       if (this.#closed !== undefined) return
 
-      if (this.#now() - this.#lastHeard > timeout) {
-        this.#lose(`the host has not answered for ${timeout}ms`)
+      const now = this.#now()
+      const asked = this.#pingSentAt
+      const answered = asked === undefined || this.#lastHeard >= asked
+      if (!answered && now - asked > timeout) {
+        this.#lose(`the host has not answered a ping for ${timeout}ms`)
 
         return
       }
 
       this.#ack()
+      if (answered) this.#pingSentAt = now
       this.#endpoint.post({ type: 'ping', connection: this.connection })
       cancel = this.#schedule(round, every)
     }
@@ -929,6 +1052,7 @@ export class RemoteAccount {
     }
     for (const cleanup of this.#cleanups.splice(0)) cleanup()
     this.#opening?.settle(error)
+    this.#setStatus('offline')
   }
 
   /**

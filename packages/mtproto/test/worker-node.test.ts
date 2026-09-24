@@ -210,3 +210,116 @@ describe('a host in a worker thread', () => {
     expect(told).toEqual(['host-lost'])
   })
 })
+
+describe('what crosses the thread boundary besides calls', () => {
+  const location = {
+    _: 'inputDocumentFileLocation',
+    id: 1n,
+    access_hash: 1n,
+    file_reference: new Uint8Array(),
+    thumb_size: '',
+  } as never
+
+  it('tells this side each time the account in the other thread loses and regains its connection', {
+    timeout: 30_000,
+  }, async () => {
+    const { worker, ask } = startHost()
+    const account = await attachAccount(workerEndpoint(worker), { account: 'main' })
+    const told: string[] = []
+    account.onConnectionStatus((status) => told.push(status))
+    await account.connect()
+    await account.api.help.getNearestDc()
+    await until(() => told.includes('connected'), 'the account to be connected')
+
+    await ask({ type: 'drop', account: 'main' }, 'dropped')
+    await until(() => told.length >= 5, 'the account to reconnect')
+
+    expect(told).toEqual(['connecting', 'connected', 'offline', 'connecting', 'connected'])
+    expect(account.connectionStatus).toBe('connected')
+    await account.detach()
+  })
+
+  it('runs a sink this side supplied, called from the other thread in file order', {
+    timeout: 30_000,
+  }, async () => {
+    const { worker } = startHost()
+    const account = await attachAccount(workerEndpoint(worker), { account: 'main' })
+    await account.connect()
+
+    const offsets: number[] = []
+    const bytes: number[] = []
+    await account.downloadTo({
+      location,
+      dcId: 2,
+      size: 4096 * 5,
+      limit: 4096,
+      write: async (chunk: Uint8Array, offset: number) => {
+        offsets.push(offset)
+        bytes.push(...chunk)
+      },
+    })
+
+    expect(offsets).toEqual([0, 4096, 8192, 12288, 16384])
+    expect(bytes.every((byte, index) => byte === index % 251)).toBe(true)
+
+    const failing = account.downloadTo({
+      location,
+      dcId: 2,
+      size: 4096 * 5,
+      limit: 4096,
+      write: async () => {
+        throw new CancelledError('the disk is full')
+      },
+    })
+    await expect(failing).rejects.toThrow(CancelledError)
+    await account.detach()
+  })
+
+  it('holds a handle in the other thread until this side releases it', {
+    timeout: 30_000,
+  }, async () => {
+    const { worker, ask } = startHost()
+    const account = await attachAccount(workerEndpoint(worker), { account: 'main' })
+    await account.connect()
+
+    const stop = await account.stayOnline()
+    const holding = await ask<{ info: { handles: number } }>({ type: 'info' }, 'info')
+    await stop()
+    const released = await ask<{ info: { handles: number } }>({ type: 'info' }, 'info')
+
+    expect(holding.info.handles).toBe(1)
+    expect(released.info.handles).toBe(0)
+    await account.detach()
+  })
+
+  it('stops reading in the other thread when this side leaves a stream early', {
+    timeout: 30_000,
+  }, async () => {
+    const { worker, ask } = startHost()
+    const account = await attachAccount(workerEndpoint(worker), { account: 'main' })
+    await account.connect()
+
+    let chunks = 0
+    for await (const _ of account.downloadIterable({
+      location,
+      dcId: 2,
+      size: 4096 * 200,
+      limit: 4096,
+      concurrency: 1,
+    })) {
+      chunks += 1
+      if (chunks === 2) break
+    }
+    await settle(200)
+    const report = await ask<{ info: { streams: number }; fileReads: number }>(
+      { type: 'info' },
+      'info',
+    )
+
+    expect(chunks).toBe(2)
+    expect(report.info.streams).toBe(0)
+    // Read ahead by no more than the credit this side gave, far short of the file.
+    expect(report.fileReads).toBeLessThan(40)
+    await account.detach()
+  })
+})

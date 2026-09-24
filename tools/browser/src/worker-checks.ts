@@ -75,7 +75,12 @@ async function stats(account: string): Promise<{ connections: number; permanentK
 }
 
 /** A second tab attached to the same shared host, driven from here. */
-async function embedTab(workerName: string, account: string) {
+async function embedTab(
+  workerName: string,
+  account: string,
+  release: 'pagehide' | 'never' = 'pagehide',
+  script = '/worker-host.js',
+) {
   const frame = page.document.createElement('iframe')
   frame.style['display'] = 'none'
   const updates: string[] = []
@@ -101,7 +106,7 @@ async function embedTab(workerName: string, account: string) {
     }
   }
   page.addEventListener('message', listener)
-  frame.src = `/worker-tab?worker=${encodeURIComponent(workerName)}&account=${encodeURIComponent(account)}`
+  frame.src = `/worker-tab?worker=${encodeURIComponent(workerName)}&account=${encodeURIComponent(account)}&release=${release}&script=${encodeURIComponent(script)}`
   page.document.body.append(frame)
 
   await until(() => ready || failed !== undefined, 'the second tab to attach')
@@ -319,6 +324,102 @@ export async function runWorkerChecks(check: Check, expect: Expect): Promise<voi
 
     return `the closed tab was released with nothing left behind; this tab still answered '${answer._}'`
   })
+
+  await check("tells every tab the shared account's connection status", async () => {
+    const current = shared as AttachedAccount
+    const other = await embedTab(workerName, sharedName)
+    const theirs = await other.ask('status')
+    other.close()
+
+    expect(current.connectionStatus === 'connected', `this tab sees '${current.connectionStatus}'`)
+    expect(theirs === 'connected', `a tab attaching now sees '${String(theirs)}'`)
+
+    return `this tab and a tab attaching now both see '${String(theirs)}'`
+  })
+
+  await check('lets a destroyed tab go with nothing said, and keeps the other usable', async () => {
+    const current = shared as AttachedAccount
+    const silent = await embedTab(workerName, sharedName, 'never')
+    await silent.ask('connect')
+    await silent.ask('hold')
+    const lock = (await silent.ask('lock')) as { held: number; pending: number }
+    const before = await current.hostInfo()
+
+    // No release and no pagehide handler: the frame's document is simply destroyed.
+    const removed = Date.now()
+    silent.close()
+    await until(
+      async () => {
+        const info = await current.hostInfo()
+
+        return info.accounts.find((one) => one.id === sharedName)?.callers === 1
+      },
+      'the destroyed tab to be let go',
+      15_000,
+    )
+    const took = Date.now() - removed
+    await until(async () => (await current.hostInfo()).handles === 0, 'its handle to be released')
+    const after = await current.hostInfo()
+    const answer = (await current.api.help.getNearestDc()) as { _: string }
+    // Which platform signal arrived first. An engine that reports a closed port
+    // lets the tab go on that; the lock is what the others have.
+    const signal = (['port-closed', 'context-gone', 'expired', 'detached'] as const).find(
+      (reason) => after.departures[reason] > before.departures[reason],
+    )
+
+    expect(lock.held === 1 && lock.pending === 1, `the platform reports ${JSON.stringify(lock)}`)
+    expect(before.handles === 1, `the tab held ${before.handles} handles before it went`)
+    expect(took < 15_000, `it took ${took}ms`)
+    expect(
+      signal === 'port-closed' || signal === 'context-gone',
+      `the tab was let go as '${String(signal)}'`,
+    )
+
+    return `its lock held and the host waiting on it; let go ${took}ms after removal on '${String(signal)}', inside the 60s silence limit; handle released; this tab still answered '${answer._}'`
+  })
+
+  await check(
+    'lets a destroyed tab go on its lock alone, where the port says nothing',
+    async () => {
+      const script = '/worker-host.js?signals=locks'
+      const name = `${workerName}-locks`
+      const accountName = `locks-${run}`
+      const here = await attachAccount(openSharedWorker(script, { type: 'module', name }), {
+        account: accountName,
+      })
+      const silent = await embedTab(name, accountName, 'never', script)
+      await silent.ask('connect')
+      await silent.ask('hold')
+      const before = await here.hostInfo()
+
+      const removed = Date.now()
+      silent.close()
+      await until(
+        async () => {
+          const info = await here.hostInfo()
+
+          return info.accounts.find((one) => one.id === accountName)?.callers === 1
+        },
+        'the destroyed tab to be let go',
+        15_000,
+      )
+      const took = Date.now() - removed
+      await until(async () => (await here.hostInfo()).handles === 0, 'its handle to be released')
+      const after = await here.hostInfo()
+      await here.detach()
+
+      expect(
+        after.departures['context-gone'] === before.departures['context-gone'] + 1,
+        `departures went from ${JSON.stringify(before.departures)} to ${JSON.stringify(after.departures)}`,
+      )
+      expect(
+        after.departures['port-closed'] === before.departures['port-closed'],
+        'a port closing was acted on by a host told to ignore it',
+      )
+
+      return `with the port ignored, the lock alone let the tab go ${took}ms after removal ('context-gone'); its handle released`
+    },
+  )
 
   await check('keeps independent accounts apart on one shared host', async () => {
     const other = await attachAccount(

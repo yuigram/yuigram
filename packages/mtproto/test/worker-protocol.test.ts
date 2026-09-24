@@ -29,6 +29,7 @@ import {
   attachAccount,
   type HostOptions,
   HostUnavailableError,
+  type LockManagerLike,
   PROTOCOL_VERSION,
   portEndpoint,
   RemoteError,
@@ -600,9 +601,12 @@ describe('handles', () => {
     await until(() => online > 0, 'the presence to be said')
     expect(host.info().handles).toBe(1)
     await stop()
+    // Stopped, so the host no longer holds it; stopping again does nothing.
+    expect(host.info().handles).toBe(0)
+    await stop()
 
     await caller.stayOnline()
-    expect(host.info().handles).toBe(2)
+    expect(host.info().handles).toBe(1)
     await caller.detach()
     await settle()
 
@@ -809,6 +813,7 @@ describe('lifecycle', () => {
           type: 'attached',
           connection: message.connection,
           account: message.account,
+          status: 'connected',
         })
     }
     const timers: (() => void)[] = []
@@ -828,8 +833,15 @@ describe('lifecycle', () => {
     caller.onEvent((event) => told.push(event.kind))
 
     const waiting = caller.me()
-    now = 5_000
-    // The first timers belong to the opening exchanges; the ping is the last.
+    // The first timers belong to the opening exchanges; the ping round is the
+    // last. The first round sends a ping; only a later round finding it still
+    // unanswered past the timeout counts the host as gone.
+    now = 1_000
+    timers.at(-1)?.()
+    now = 3_500
+    timers.at(-1)?.()
+    expect(told).toEqual([])
+    now = 4_500
     timers.at(-1)?.()
 
     await expect(waiting).rejects.toThrow(HostUnavailableError)
@@ -965,6 +977,8 @@ function scriptedAccount() {
     name: 'scripted',
     state: 'running',
     unlisted: 'a plain value the getter list does not name',
+    connectionStatus: 'connected',
+    onConnectionStatus: () => () => {},
     surround: () => {},
     stop: async () => true,
     download: () => new Promise(() => {}),
@@ -1199,5 +1213,238 @@ describe('update flow control, end to end', () => {
     // Two at a time were let out; each acknowledgement made room for the next.
     expect(seen).toEqual([1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n])
     expect(host.info().callers).toBe(1)
+  })
+})
+
+describe('connection status across the boundary', () => {
+  it('tells a caller each change the hosted account makes, in order', async () => {
+    const { attach } = hosting()
+    const caller = await attach({ account: 'main' })
+    const told: string[] = []
+    caller.onConnectionStatus((status) => told.push(status))
+    expect(caller.connectionStatus).toBe('offline')
+
+    await online(caller)
+    await until(() => told.includes('connected'), 'the account to be connected')
+    await caller.stop()
+    await until(() => told.at(-1) === 'offline', 'the account to go offline')
+
+    expect(told).toEqual(['connecting', 'connected', 'offline'])
+  })
+
+  it('gives a caller attaching later the status as it is', async () => {
+    const { attach } = hosting()
+    const first = await attach({ account: 'main' })
+    await online(first)
+    await until(() => first.connectionStatus === 'connected', 'the first caller to see it')
+
+    const second = await attach({ account: 'main' })
+
+    expect(second.connectionStatus).toBe('connected')
+  })
+
+  it('stops telling a listener that stopped listening, and says offline once a caller ends', async () => {
+    const { attach } = hosting()
+    const caller = await attach({ account: 'main' })
+    const kept: string[] = []
+    const dropped: string[] = []
+    caller.onConnectionStatus((status) => kept.push(status))
+    const stop = caller.onConnectionStatus((status) => dropped.push(status))
+    stop()
+
+    await online(caller)
+    await until(() => kept.includes('connected'), 'the account to be connected')
+    await caller.detach()
+
+    expect(dropped).toEqual([])
+    expect(kept).toEqual(['connecting', 'connected', 'offline'])
+    expect(caller.connectionStatus).toBe('offline')
+  })
+})
+
+/**
+ * Web Locks, in one process.
+ *
+ * A lock is granted to the first request for its name and to each waiting one
+ * in turn as the holder lets go. `destroy` is what closing the context that
+ * holds a lock does: the lock goes, and the holder runs nothing more.
+ */
+class ContextLocks implements LockManagerLike {
+  readonly #queues = new Map<string, (() => void)[]>()
+  readonly #releases = new Map<string, () => void>()
+
+  request(name: string, callback: () => Promise<unknown>): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const queue = this.#queues.get(name) ?? []
+      this.#queues.set(name, queue)
+      queue.push(() => {
+        let released = false
+        const release = (): void => {
+          if (released) return
+          released = true
+          this.#releases.delete(name)
+          queue.shift()
+          queue[0]?.()
+        }
+        this.#releases.set(name, release)
+        callback().then(
+          (value) => {
+            resolve(value)
+            release()
+          },
+          (error: unknown) => {
+            reject(error)
+            release()
+          },
+        )
+      })
+      if (queue.length === 1) queue[0]?.()
+    })
+  }
+
+  destroy(name: string): void {
+    this.#releases.get(name)?.()
+  }
+
+  held(name: string): boolean {
+    return this.#releases.has(name)
+  }
+}
+
+describe('a caller whose context is watched through a lock', () => {
+  /** A host on manual time over a scripted account, and callers attached to it. */
+  function watched() {
+    const locks = new ContextLocks()
+    const sweeps: (() => void)[] = []
+    let now = 0
+    const scripted = scriptedAccount()
+    // A stream that says when it is closed, as a history read over the network would.
+    ;(scripted.account as unknown as Record<string, unknown>)['history'] = async function* () {
+      try {
+        for (let at = 0; ; at += 1) yield { n: at }
+      } finally {
+        scripted.stopped.push('history')
+      }
+    }
+    const host = new WorkerHost({
+      create: () => scripted.account,
+      locks,
+      expireAfter: 1_000,
+      sweepEvery: 500,
+      schedule: (run) => {
+        sweeps.push(run)
+
+        return () => {}
+      },
+      now: () => now,
+    })
+    opened.push({ close: () => host.close() })
+
+    const attach = async (options: Partial<AttachOptions> = {}): Promise<AttachedAccount> => {
+      const channel = new MessageChannel()
+      host.accept(portEndpoint(channel.port1))
+      opened.push({
+        close: () => {
+          channel.port1.close()
+          channel.port2.close()
+        },
+      })
+
+      return await attachAccount(portEndpoint(channel.port2), {
+        account: 'main',
+        locks,
+        // Its own timers never fire: a page the browser has stopped running timers for.
+        schedule: () => () => {},
+        ...options,
+      })
+    }
+
+    return {
+      host,
+      locks,
+      scripted,
+      attach,
+      /** Move the host's clock on and run its sweep. */
+      sweep(to: number): void {
+        now = to
+        for (const run of sweeps.splice(0)) run()
+      },
+    }
+  }
+
+  it('is let go when its context is destroyed, with everything it held', async () => {
+    const { host, locks, scripted, attach } = watched()
+    const survivor = await attach()
+    const doomed = await attach()
+    await doomed.stayOnline()
+    const reading = doomed.history('@someone')[Symbol.asyncIterator]()
+    await reading.next()
+    expect(host.info()).toMatchObject({ callers: 2, handles: 1, streams: 1 })
+
+    // No release, no pagehide, no word over the port: the context is simply gone.
+    locks.destroy(`yuigram-caller:${doomed.connection}`)
+    await until(() => scripted.stopped.length === 2, 'what the destroyed context held to be let go')
+
+    expect(host.info()).toMatchObject({ callers: 1, handles: 0, streams: 0, pendingCalls: 0 })
+    expect(host.info().departures).toMatchObject({ 'context-gone': 1, expired: 0, detached: 0 })
+    expect(scripted.stopped.sort()).toEqual(['history', 'presence'])
+    await expect(survivor.exportSession()).resolves.toBe('not-a-real-session')
+    await survivor.detach()
+  })
+
+  it('is kept while its context lives, however long it is silent', async () => {
+    const { host, attach, sweep } = watched()
+    const quiet = await attach()
+    const unwatched = await attach({ locks: false })
+
+    sweep(10 * 60_000)
+    await until(() => host.info().callers === 1, 'the unwatched caller to expire')
+
+    await expect(quiet.exportSession()).resolves.toBe('not-a-real-session')
+    await expect(unwatched.exportSession()).rejects.toThrow(LifecycleError)
+    expect(host.info().departures).toMatchObject({ expired: 1, 'context-gone': 0 })
+  })
+
+  it('gives its lock back when it detaches', async () => {
+    const { host, locks, attach } = watched()
+    const caller = await attach()
+    const name = `yuigram-caller:${caller.connection}`
+    expect(locks.held(name)).toBe(true)
+
+    await caller.detach()
+    await until(() => host.info().callers === 0, 'the caller to be let go')
+    await until(() => !locks.held(name), 'the lock to be free')
+  })
+})
+
+describe('a caller whose timers the browser slows', () => {
+  it('does not count its host gone for the time it spent not asking', async () => {
+    const timers: (() => void)[] = []
+    let now = 0
+    const { attach } = hosting()
+    const caller = await attach({
+      account: 'main',
+      pingEvery: 1_000,
+      hostTimeout: 3_000,
+      locks: false,
+      schedule: (run) => {
+        timers.push(run)
+
+        return () => {}
+      },
+      now: () => now,
+    })
+    const told: string[] = []
+    caller.onEvent((event) => told.push(event.kind))
+
+    // One round a minute, as a hidden tab gets; the host answers each ping.
+    for (let round = 1; round <= 5; round += 1) {
+      now = round * 60_000
+      timers.at(-1)?.()
+      await settle(20)
+    }
+
+    expect(told).toEqual([])
+    await expect(caller.read('state')).resolves.toBe('idle')
   })
 })

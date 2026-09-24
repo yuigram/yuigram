@@ -33,13 +33,15 @@
  */
 
 import { CancelledError, LifecycleError, PeerError, ValidationError } from '@yuigram/core'
-import type { Account } from '../account.js'
+import type { Account, ConnectionStatus } from '../account.js'
 import type { TlValue } from '../tl/index.js'
 import {
   acceptSharedConnections,
   dedicatedScopeEndpoint,
   type Endpoint,
   inSharedWorker,
+  type LockManagerLike,
+  platformLocks,
 } from './endpoints.js'
 import { BYTES, GETTERS, HANDLE_KINDS, type HandleKind, shapeOf } from './methods.js'
 import {
@@ -68,7 +70,13 @@ export interface HostOptions {
   create(account: string, restore: string | undefined): Account | Promise<Account>
   /** What to do when an account's last caller detaches. `keep` by default. */
   onLastDetached?: LastDetached | ((account: string) => LastDetached)
-  /** How long a caller may go without a word before it is let go, in ms. */
+  /**
+   * How long a caller may go without a word before it is let go, in ms.
+   *
+   * Not applied to a caller whose context the host watches through a lock: the
+   * lock is let go when that context is destroyed, and a hidden page whose
+   * timers the browser has slowed to one a minute is still there.
+   */
   expireAfter?: number
   /** How often callers are checked for that, in ms. */
   sweepEvery?: number
@@ -76,6 +84,11 @@ export interface HostOptions {
   window?: number
   /** Updates the host holds for one caller before letting it go. */
   backlog?: number
+  /**
+   * The locks through which a caller's context is watched. The runtime's own
+   * where it has them; `false` to watch callers by their pings alone.
+   */
+  locks?: LockManagerLike | false
   /** Timers, supplied so tests need not wait in real time. */
   schedule?: (run: () => void, delayMs: number) => () => void
   now?: () => number
@@ -97,7 +110,28 @@ export interface HostInfo {
   readonly handles: number
   /** Messages that were not messages of this protocol, and were dropped. */
   readonly malformed: number
+  /** Callers let go so far, by what told the host they were gone. */
+  readonly departures: Readonly<Record<Departure, number>>
 }
+
+/**
+ * What told the host a caller was gone.
+ *
+ * - `detached`: the caller said so.
+ * - `port-closed`: the platform reported the caller's port closed.
+ * - `context-gone`: the lock the caller held was let go without a word, which
+ *   is its browsing context being destroyed.
+ * - `expired`: nothing was heard from it for `expireAfter`.
+ * - `lagged`: it fell too far behind on updates.
+ * - `host-closed`: the host itself was closed.
+ */
+export type Departure =
+  | 'detached'
+  | 'port-closed'
+  | 'context-gone'
+  | 'expired'
+  | 'lagged'
+  | 'host-closed'
 
 /** One account the host is serving. */
 interface Hosted {
@@ -106,6 +140,8 @@ interface Hosted {
   making: Promise<Account> | undefined
   created: number
   readonly callers: Set<Caller>
+  /** Stops passing the account's connection status on. */
+  unwatch: (() => void) | undefined
 }
 
 /** A call a caller is waiting on. */
@@ -152,6 +188,8 @@ interface Caller {
   acknowledged: number
   readonly held: unknown[]
   released: boolean
+  /** Whether a lock tells the host when this caller's context is gone. */
+  witnessed: boolean
 }
 
 const defaultSchedule = (run: () => void, delayMs: number): (() => void) => {
@@ -170,6 +208,14 @@ export class WorkerHost {
   readonly #schedule: (run: () => void, delayMs: number) => () => void
   readonly #now: () => number
   #malformed = 0
+  readonly #departures: Record<Departure, number> = {
+    detached: 0,
+    'port-closed': 0,
+    'context-gone': 0,
+    expired: 0,
+    lagged: 0,
+    'host-closed': 0,
+  }
   #nextId = 1
   #sweep: (() => void) | undefined
   #closed = false
@@ -192,7 +238,7 @@ export class WorkerHost {
     })
     const stopWatching = endpoint.onGone(() => {
       for (const caller of [...this.#callers.values()]) {
-        if (caller.endpoint === endpoint) void this.#release(caller)
+        if (caller.endpoint === endpoint) void this.#release(caller, 'port-closed')
       }
     })
 
@@ -240,6 +286,7 @@ export class WorkerHost {
       streams: callers.reduce((sum, one) => sum + one.streams.size, 0),
       handles: callers.reduce((sum, one) => sum + one.handles.size, 0),
       malformed: this.#malformed,
+      departures: { ...this.#departures },
     }
   }
 
@@ -254,8 +301,12 @@ export class WorkerHost {
     this.#sweep?.()
     this.#sweep = undefined
 
-    for (const caller of [...this.#callers.values()]) await this.#release(caller)
-    for (const hosted of this.#hosted.values()) await hosted.account?.stop()
+    for (const caller of [...this.#callers.values()]) await this.#release(caller, 'host-closed')
+    for (const hosted of this.#hosted.values()) {
+      await hosted.account?.stop()
+      hosted.unwatch?.()
+      hosted.unwatch = undefined
+    }
   }
 
   /* ------------------------------------------------------------------------ */
@@ -326,6 +377,7 @@ export class WorkerHost {
       acknowledged: 0,
       held: [],
       released: false,
+      witnessed: false,
     })
     endpoint.post({ type: 'welcome', connection: message.connection, v: PROTOCOL_VERSION })
     this.#startSweeping()
@@ -362,7 +414,7 @@ export class WorkerHost {
         caller.endpoint.post({ type: 'pong', connection: caller.connection })
         break
       case 'release':
-        await this.#release(caller)
+        await this.#release(caller, 'detached')
         break
       default:
         break
@@ -393,8 +445,14 @@ export class WorkerHost {
     hosted.callers.add(caller)
 
     try {
-      await this.#accountOf(hosted, message.restore)
-      caller.endpoint.post({ type: 'attached', connection: caller.connection, account: hosted.id })
+      const account = await this.#accountOf(hosted, message.restore)
+      if (message.lock !== undefined) this.#watch(caller, message.lock)
+      caller.endpoint.post({
+        type: 'attached',
+        connection: caller.connection,
+        account: hosted.id,
+        status: account.connectionStatus,
+      })
     } catch (error) {
       hosted.callers.delete(caller)
       caller.hosted = undefined
@@ -417,6 +475,7 @@ export class WorkerHost {
       making: undefined,
       created: 0,
       callers: new Set(),
+      unwatch: undefined,
     }
     this.#hosted.set(id, hosted)
 
@@ -443,6 +502,11 @@ export class WorkerHost {
       account.surround(async (context, next) => {
         this.#forward(hosted, context.raw)
         await next()
+      })
+      // Passed on as it changes rather than read when asked, so a caller showing
+      // it is told the moment the account goes offline, in the order it did.
+      hosted.unwatch = account.onConnectionStatus((status) => {
+        this.#announceStatus(hosted, status)
       })
       hosted.account = account
 
@@ -647,6 +711,8 @@ export class WorkerHost {
             handle.target,
             decoded,
           )
+    // Ended, so there is nothing left for a departing caller to release.
+    if (method === HANDLE_KINDS[handle.kind].ends) caller.handles.delete(id as number)
 
     return { value: encodeValue(value), fields: fieldsOf(handle.kind, handle.target) }
   }
@@ -809,7 +875,7 @@ export class WorkerHost {
           connection: caller.connection,
           unacknowledged: caller.sent - caller.acknowledged + caller.held.length,
         })
-        void this.#release(caller)
+        void this.#release(caller, 'lagged')
       }
 
       return
@@ -841,6 +907,37 @@ export class WorkerHost {
     }
   }
 
+  #announceStatus(hosted: Hosted, status: ConnectionStatus): void {
+    for (const caller of hosted.callers) {
+      if (caller.released) continue
+      caller.endpoint.post({ type: 'status', connection: caller.connection, status })
+    }
+  }
+
+  /**
+   * Let a caller go when the lock it holds is let go.
+   *
+   * The caller took the lock before attaching, so this request waits behind it
+   * and is granted only once the caller releases it — by detaching, which has
+   * already let the caller go here — or once its context is destroyed, which
+   * says nothing over the port at all.
+   */
+  #watch(caller: Caller, name: string): void {
+    const locks =
+      this.#options.locks === false ? undefined : (this.#options.locks ?? platformLocks())
+    if (locks === undefined) return
+
+    caller.witnessed = true
+    locks
+      .request(name, async () => {
+        if (!caller.released) await this.#release(caller, 'context-gone')
+      })
+      .catch(() => {
+        // A lock that cannot be asked for leaves the caller to its pings.
+        caller.witnessed = false
+      })
+  }
+
   #announceStopped(hosted: Hosted): void {
     for (const caller of hosted.callers) {
       caller.endpoint.post({ type: 'stopped', connection: caller.connection, account: hosted.id })
@@ -859,9 +956,10 @@ export class WorkerHost {
    * touched. If it was the account's last caller, the host's policy decides
    * whether the account keeps running.
    */
-  async #release(caller: Caller): Promise<void> {
+  async #release(caller: Caller, reason: Departure): Promise<void> {
     if (caller.released) return
     caller.released = true
+    this.#departures[reason] += 1
     this.#callers.delete(caller.connection)
 
     for (const call of caller.calls.values())
@@ -898,10 +996,10 @@ export class WorkerHost {
       const now = this.#now()
 
       for (const caller of [...this.#callers.values()]) {
-        if (now - caller.lastSeen <= expireAfter) continue
+        if (caller.witnessed || now - caller.lastSeen <= expireAfter) continue
 
         caller.endpoint.post({ type: 'expired', connection: caller.connection })
-        void this.#release(caller)
+        void this.#release(caller, 'expired')
       }
 
       if (this.#callers.size > 0 && !this.#closed) this.#sweep = this.#schedule(round, every)

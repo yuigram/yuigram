@@ -191,3 +191,23 @@ export function inSharedWorker(scope: unknown): boolean {
 
   return shared !== undefined && scope instanceof shared
 }
+
+/**
+ * The part of the Web Locks API a worker boundary uses.
+ *
+ * A lock is held by a browsing context or a worker and let go when it asks, or
+ * when that context is destroyed — closing a tab lets go of every lock it
+ * held, without the tab running another line. Nothing else a page can hold
+ * says as plainly that it is gone, and nothing about a live page, however
+ * throttled or hidden, lets go of one.
+ */
+export interface LockManagerLike {
+  request(name: string, callback: () => Promise<unknown>): Promise<unknown>
+}
+
+/** The locks this runtime provides, if it provides them. */
+export function platformLocks(): LockManagerLike | undefined {
+  const locks = (globalThis as { navigator?: { locks?: LockManagerLike } }).navigator?.locks
+
+  return typeof locks?.request === 'function' ? locks : undefined
+}

@@ -362,13 +362,34 @@ the account and to nothing else; a caller attaching to an account that already e
 | `detach()` | This caller's calls are aborted, its callbacks refused, its streams closed and its handles released | This caller only |
 | `stop()` | The account stops | Every caller attached to it, each told `stopped` |
 | The last caller detaches | Whatever `onLastDetached` says: `'keep'` (the default), `'stop'`, or a function that decides | The account |
-| A caller falls silent | Released after `expireAfter` (60 s), and told `expired` if it is still listening | That caller only |
+| A caller's context is destroyed | Released at once, on whichever the platform reports first: its port closing, or its lock being let go | That caller only |
+| A caller falls silent | Released after `expireAfter` (60 s), and told `expired` if it is still listening — unless a lock shows its context is alive | That caller only |
 | The host goes away | Every waiting call fails with `HostUnavailableError`, and the caller is told `host-lost` | Every caller of that host |
 
 A host is noticed as gone three ways: the worker's own `error` or `exit`, the port's `close`
-where the platform has one, and silence — a caller pings every `pingEvery` (10 s) and gives up
-after `hostTimeout` (30 s) without an answer. The last is the one that always works, because a
-terminated browser worker sends nothing at all.
+where the platform has one, and an unanswered ping — a caller pings every `pingEvery` (10 s), and
+counts the host gone when a ping it sent has gone `hostTimeout` (30 s) without anything heard
+since. The last is the one that always works, because a terminated browser worker sends nothing
+at all. It is measured from the ping, not from the last word heard: a hidden tab whose timers the
+browser runs once a minute has heard nothing because it has asked nothing, and that is not the
+host's silence.
+
+**A caller that goes without a word.** A tab that is closed, crashes or is killed runs nothing on
+the way out, so a host cannot wait to be told. Where the platform has Web Locks, a caller takes a
+lock named for its connection before it attaches, and the host asks for the same lock; the host's
+request is granted when the caller detaches, which has already released it, or when the caller's
+browsing context is destroyed, which releases it without a word. A caller whose lock the host is
+watching is never expired for silence: a live page keeps its lock however long the browser
+throttles or hides it, and one that is frozen and later resumed finds itself still attached. The
+cost is the other way round — a frozen page that is never resumed holds what it held until the
+browser discards it.
+
+Chromium also reports a closed port when the page at its other end is destroyed, and the host acts
+on whichever signal arrives first. Firefox and Safari have locks and no such event, so there the
+lock is the signal; without locks — an opaque origin, a runtime that lacks them, or `locks: false`
+— a destroyed caller is released only once it has been silent for `expireAfter`. `HostInfo` counts
+the callers let go by what told the host they were gone: `detached`, `port-closed`,
+`context-gone`, `expired`, `lagged` and `host-closed`.
 
 Released handles are released by kind. Staying online or watching a chat is stopped, because
 nobody is left to stop it. A mini app is closed. A streaming draft and a takeout session are left
@@ -376,7 +397,14 @@ as they are: finishing either is a decision — sent or abandoned, succeeded or 
 host does not make it for a caller that is no longer there.
 
 A page that closes is released on `pagehide`, unless the page went into the back-forward cache
-and may come back. Pass `releaseOnPageHide: false` to leave that to expiry.
+and may come back. Pass `releaseOnPageHide: false` to leave that to the platform signals above.
+
+**Connection status.** An account reports where its link to Telegram stands — `offline`,
+`connecting`, `updating` while it asks what it missed, and `connected` — and tells listeners each
+change once, in order. The host passes every change to every caller of the account as it happens,
+and a caller attaching later is given the status as it is. `connectionStatus` and
+`onConnectionStatus` behave on a caller as they do on the account; a caller that ends — detached,
+let go, or cut off from its host — reports `offline`, because it can no longer see the account.
 
 ### 6.2 Which worker where
 
@@ -435,7 +463,11 @@ the host sends no further ahead than it was asked. Leaving a `for await` early c
 iterator on the host.
 
 **Handles** — a streaming draft, an open mini app, a takeout session, the function that stops
-staying online — cross as a handle with a fixed list of methods and the fields it had.
+staying online — cross as a handle with a fixed list of methods and the fields it had. Each kind
+has one method that ends it — `stop`, `close`, `finish`, or calling the stop function — and once
+that has run the host forgets the handle, so stopping what a caller started does not leave it held
+until the caller detaches. Ending it again is answered on the caller's side and does nothing, as
+it does in-process.
 
 **Bytes.** What the host sends as bytes — a download's result, a chunk of a download stream,
 what a sink is handed — is copied into a buffer allocated for the purpose and that buffer is
@@ -480,14 +512,27 @@ the method is for; the host itself never logs it.
   results here.
 - **Node, `worker_threads`** — the host on another thread: calls, a `FloodError` with its wait, an
   update pushed down the session in the other thread, a file streamed in order, one account shared
-  by two callers and made once, cancellation, and a terminated worker failing every waiting call.
+  by two callers and made once, cancellation, and a terminated worker failing every waiting call;
+  the connection status going `offline` and back to `connected` when the datacenter drops the
+  connection in the other thread; a sink on this side called in file order, and failing the
+  transfer when it throws; a presence handle held until released from this side; and a stream left
+  early, after which the other thread read no further than the credit it was given.
 - **A browser, a dedicated `Worker`** — the key exchange and an encrypted call in the worker over
   a real WebSocket, a pushed update dispatched on the page, cancellation leaving nothing pending,
   a call after a stop refused as `LifecycleError`, a session exported and restored in a new worker
   with the same key, and a terminated worker failing its calls.
 - **A browser, a `SharedWorker`** — the page and a second browsing context attached to one host:
   one account made once, one long-lived key at the datacenter, one update handled in both, one
-  context closed and released with nothing left behind while the other still works, a second
-  account kept apart on the same host, and a stop reaching every caller.
+  context closed and released with nothing left behind while the other still works, the connection
+  status seen by both, a second account kept apart on the same host, and a stop reaching every
+  caller. A second context holding a presence handle and never releasing was removed with nothing
+  said over the port: Chromium's port `close` let it go within milliseconds, and with the host
+  told to ignore ports — standing in for an engine without that event — its lock alone did, as
+  `context-gone`, with its handle released.
 
-Not run: Bun, Deno, Firefox, Safari, any mobile browser, and Telegram itself.
+What the protocol tests cover and a browser cannot show on demand: a watched caller that stays
+silent for ten minutes is kept while an unwatched one expires, and a caller whose timers run once a
+minute does not count its host gone.
+
+Not run: Bun, Deno, Firefox, Safari, any mobile browser, a page hidden or frozen by the browser
+itself, and Telegram itself.

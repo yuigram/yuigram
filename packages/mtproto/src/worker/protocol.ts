@@ -9,7 +9,7 @@
  * ```
  *   caller                                  host
  *     hello {v}                  ───────>   welcome {v} | mismatch {v}
- *     attach {account}           ───────>   attached
+ *     attach {account, lock?}    ───────>   attached {status}
  *     call {id, method, args}    ───────>   result {id} | failure {id}
  *     abort {id}                 ───────>   (the call rejects as cancelled)
  *                                <───────   callback {id, slot, args}
@@ -17,6 +17,7 @@
  *                                <───────   update {seq, update}
  *     ack {seq}                  ───────>
  *     pull {stream, credit}      ───────>   item {stream} ... | end | failure
+ *                                <───────   status {status}
  *     ping                       ───────>   pong
  *     release                    ───────>   (everything this caller held goes)
  *                                <───────   stopped | expired | lagged
@@ -55,6 +56,7 @@ import {
   ValidationError,
   YuigramError,
 } from '@yuigram/core'
+import type { ConnectionStatus } from '../account.js'
 import { CommunityLinkRequestView, CommunityPeerView } from '../communities/communities.js'
 import {
   ChatEventView,
@@ -91,6 +93,14 @@ export type CallerMessage =
       readonly updates: boolean
       /** Handed to the host's factory the first time this account is made, and never logged. */
       readonly restore?: string
+      /**
+       * A Web Lock this caller holds for as long as its browsing context lives.
+       *
+       * Where there are locks, the host asks for the same one: it is granted
+       * when the caller lets it go or its context is destroyed, which a closed
+       * tab does without a word. A live page, however throttled, keeps it.
+       */
+      readonly lock?: string
     }
   | {
       readonly type: 'call'
@@ -130,7 +140,19 @@ export type CallerMessage =
 export type HostMessage =
   | { readonly type: 'welcome'; readonly connection: string; readonly v: number }
   | { readonly type: 'mismatch'; readonly connection: string; readonly v: number }
-  | { readonly type: 'attached'; readonly connection: string; readonly account: string }
+  | {
+      readonly type: 'attached'
+      readonly connection: string
+      readonly account: string
+      /** The account's connection status at the moment this caller attached. */
+      readonly status: ConnectionStatus
+    }
+  | {
+      readonly type: 'status'
+      readonly connection: string
+      /** The account's connection status changed to this. */
+      readonly status: ConnectionStatus
+    }
   | {
       readonly type: 'result'
       readonly connection: string
@@ -188,6 +210,15 @@ const isText = (value: unknown): value is string => typeof value === 'string' &&
 const isCount = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 
+const STATUSES: ReadonlySet<unknown> = new Set<ConnectionStatus>([
+  'offline',
+  'connecting',
+  'updating',
+  'connected',
+])
+
+const isStatus = (value: unknown): value is ConnectionStatus => STATUSES.has(value)
+
 /** A check on the fields one type of message carries, beyond its type and connection. */
 type Shape = (data: Record<string, unknown>) => boolean
 
@@ -199,7 +230,8 @@ const CALLER_SHAPES: Readonly<Record<string, Shape>> = {
   attach: (data) =>
     isText(data['account']) &&
     typeof data['updates'] === 'boolean' &&
-    (data['restore'] === undefined || typeof data['restore'] === 'string'),
+    (data['restore'] === undefined || typeof data['restore'] === 'string') &&
+    (data['lock'] === undefined || isText(data['lock'])),
   call: (data) =>
     isCount(data['id']) &&
     isText(data['method']) &&
@@ -218,7 +250,8 @@ const CALLER_SHAPES: Readonly<Record<string, Shape>> = {
 const HOST_SHAPES: Readonly<Record<string, Shape>> = {
   welcome: (data) => isCount(data['v']),
   mismatch: (data) => isCount(data['v']),
-  attached: (data) => isText(data['account']),
+  attached: (data) => isText(data['account']) && isStatus(data['status']),
+  status: (data) => isStatus(data['status']),
   stopped: (data) => isText(data['account']),
   result: (data) => isCount(data['id']),
   failure: (data) => isCount(data['id']) && isError(data['error']),

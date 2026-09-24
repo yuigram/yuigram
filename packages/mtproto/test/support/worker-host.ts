@@ -19,6 +19,8 @@ import { type MockAccount, mockAccount } from './mock-account.js'
 
 const control = (workerData as { control: import('node:worker_threads').MessagePort }).control
 const made = new Map<string, MockAccount>()
+/** Parts of a file the datacenters were asked for, so a case can see reading stop. */
+let fileReads = 0
 
 /** What the datacenters answer. Enough for the cases in the suite, and no more. */
 function answer(query: TlValue): TlValue | undefined {
@@ -27,8 +29,9 @@ function answer(query: TlValue): TlValue | undefined {
   }
   if (query._ === 'help.getAppConfig') throw new TelegramError('FLOOD_WAIT_7 (420)')
   if (query._ === 'upload.getFile') {
+    fileReads += 1
     const offset = Number(query['offset'])
-    const size = 4096 * 5
+    const size = Math.max(4096 * 5, Number(query['offset']) + Number(query['limit']))
     const end = Math.min(offset + Number(query['limit']), size)
     const bytes = new Uint8Array(Math.max(0, end - offset))
     for (let at = 0; at < bytes.length; at += 1) bytes[at] = (offset + at) % 251
@@ -51,38 +54,63 @@ const host = serveAccounts(
   parentPort,
 )
 
-control.on(
-  'message',
-  async (message: { readonly type: string; readonly account?: string; readonly user?: bigint }) => {
-    if (message.type === 'push') {
-      const mock = made.get(message.account ?? 'main')
-      const datacenter = mock?.datacenter(2)
-      for (const connection of [...(datacenter?.connections ?? [])].reverse() as MockConnection[]) {
-        if (!connection.open()) continue
-        const bytes = connection.peer.push({
-          _: 'updateShort',
-          update: {
-            _: 'updateUserTyping',
-            user_id: message.user ?? 1n,
-            action: { _: 'sendMessageTypingAction' },
-          },
-          date: 1_700_000_000,
-        })
-        if (bytes === undefined) continue
-        connection.push(bytes)
-        control.postMessage({ type: 'pushed' })
+interface Instruction {
+  readonly type: string
+  readonly account?: string
+  readonly user?: bigint
+}
 
-        return
-      }
-      control.postMessage({ type: 'not-pushed' })
-    }
+/** The open connections to an account's home datacenter, newest first. */
+function connectionsOf(account: string | undefined): MockConnection[] {
+  const datacenter = made.get(account ?? 'main')?.datacenter(2)
 
-    if (message.type === 'info') {
-      control.postMessage({
-        type: 'info',
-        info: host.info(),
-        connections: [...made].map(([name, mock]) => [name, mock.datacenter(2).connections.length]),
-      })
-    }
-  },
-)
+  return [...(datacenter?.connections ?? [])].reverse() as MockConnection[]
+}
+
+/** Seal a typing update on the newest connection that can carry one, and send it down. */
+function push(message: Instruction): void {
+  for (const connection of connectionsOf(message.account)) {
+    if (!connection.open()) continue
+    const bytes = connection.peer.push({
+      _: 'updateShort',
+      update: {
+        _: 'updateUserTyping',
+        user_id: message.user ?? 1n,
+        action: { _: 'sendMessageTypingAction' },
+      },
+      date: 1_700_000_000,
+    })
+    if (bytes === undefined) continue
+    connection.push(bytes)
+    control.postMessage({ type: 'pushed' })
+
+    return
+  }
+  control.postMessage({ type: 'not-pushed' })
+}
+
+/**
+ * End every open connection to the account the way a vanished peer ends one,
+ * so the account in this thread has to notice and reconnect.
+ */
+function drop(message: Instruction): void {
+  for (const connection of connectionsOf(message.account)) {
+    if (connection.open()) connection.fail(new Error('the datacenter dropped the connection'))
+  }
+  control.postMessage({ type: 'dropped' })
+}
+
+function report(): void {
+  control.postMessage({
+    type: 'info',
+    info: host.info(),
+    fileReads,
+    connections: [...made].map(([name, mock]) => [name, mock.datacenter(2).connections.length]),
+  })
+}
+
+control.on('message', (message: Instruction) => {
+  if (message.type === 'push') push(message)
+  if (message.type === 'drop') drop(message)
+  if (message.type === 'info') report()
+})

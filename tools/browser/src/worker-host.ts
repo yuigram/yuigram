@@ -10,12 +10,21 @@
  * Each account connects over a WebSocket to a datacenter of its own on the
  * server that served this script, named in the query, so two accounts are two
  * datacenters and neither can see the other's traffic.
+ *
+ * Served as `worker-host.js?signals=locks`, the host ignores a port closing.
+ * Chromium reports a closed port when the page holding its other end is
+ * destroyed; Firefox and Safari report nothing, and leave a lock as the only
+ * sign. Ignoring the port is how this check stands in for them.
  */
 
 import { serverRsaKey } from '../../../packages/mtproto/src/auth/keys.js'
 import { connectWebSocket } from '../../../packages/mtproto/src/network/websocket.js'
 import { Account, createLogger, memory } from '../../../packages/yuigram/src/index.js'
-import { serveAccounts } from '../../../packages/yuigram/src/worker.js'
+import {
+  acceptSharedConnections,
+  type HostOptions,
+  WorkerHost,
+} from '../../../packages/yuigram/src/worker.js'
 
 interface Config {
   readonly dc: number
@@ -24,14 +33,20 @@ interface Config {
 }
 
 const scope = globalThis as unknown as {
-  readonly location: { host: string; hostname: string; port: string; protocol: string }
+  readonly location: {
+    host: string
+    hostname: string
+    port: string
+    protocol: string
+    search: string
+  }
 }
 const configured: Promise<Config> = fetch('/config').then(
   async (response) => (await response.json()) as Config,
 )
 const startedAt = Date.now()
 
-serveAccounts({
+const hostOptions: HostOptions = {
   // Keep an account running when its last caller leaves: a tab that closes
   // should not take the account from the next one to open.
   onLastDetached: 'keep',
@@ -76,4 +91,19 @@ serveAccounts({
       ? new Account(options as never)
       : Account.fromString(restore, options as never)
   },
-})
+}
+
+const host = new WorkerHost(hostOptions)
+
+if (new URLSearchParams(scope.location.search).get('signals') === 'locks') {
+  acceptSharedConnections(globalThis, (endpoint) => {
+    host.accept({
+      post: (message, transfer) => endpoint.post(message, transfer),
+      listen: (handler) => endpoint.listen(handler),
+      close: () => endpoint.close(),
+      onGone: () => () => {},
+    })
+  })
+} else {
+  host.listen()
+}

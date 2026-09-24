@@ -34,11 +34,13 @@ export {
   acceptSharedConnections,
   dedicatedScopeEndpoint,
   type Endpoint,
+  type LockManagerLike,
   portEndpoint,
   sharedWorkerEndpoint,
   workerEndpoint,
 } from './endpoints.js'
 export {
+  type Departure,
   type HostInfo,
   type HostOptions,
   type LastDetached,

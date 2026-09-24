@@ -30,6 +30,8 @@
  * - `downloadAsStream` and `downloadAsNodeStream` are built on the caller's side
  *   over the `downloadIterable` stream, so the bytes cross once.
  * - `closeWebview` closes a handle, which the handle does itself.
+ * - `connectionStatus` and `onConnectionStatus` are kept on the caller's side
+ *   from the status the host pushes as it changes.
  * - `deliver` injects an update into the host's own dispatch.
  */
 
@@ -343,20 +345,33 @@ export const STREAMS = [
   'storyViewers',
 ] as const
 
-/** The handle kinds, what each exposes, and what releasing an orphaned one does. */
+/**
+ * The handle kinds: what each exposes, which of its methods ends it, and what
+ * releasing an orphaned one does.
+ *
+ * Once the ending method has run, the host forgets the handle, so a caller that
+ * stops what it started does not keep holding it until it detaches. Calling the
+ * ending method again is a no-op on the caller's side, as it is in-process.
+ */
 export const HANDLE_KINDS = {
   /** A streaming draft: written to until stopped. Nothing runs between writes. */
-  draft: { fields: ['key', 'stopped', 'text'], methods: ['write', 'stop'], release: 'none' },
+  draft: {
+    fields: ['key', 'stopped', 'text'],
+    methods: ['write', 'stop'],
+    ends: 'stop',
+    release: 'none',
+  },
   /** An open mini app, prolonged on a timer until it is closed. */
   webview: {
     fields: ['url', 'queryId', 'fullscreen', 'open'],
     methods: ['close'],
+    ends: 'close',
     release: 'close',
   },
   /** An export in progress. Ending it is explicit, so a vanished caller leaves it as it was. */
-  takeout: { fields: ['id'], methods: ['call', 'finish'], release: 'none' },
+  takeout: { fields: ['id'], methods: ['call', 'finish'], ends: 'finish', release: 'none' },
   /** A function that stops something the host is doing on the caller's behalf. */
-  stop: { fields: [], methods: ['call'], release: 'call' },
+  stop: { fields: [], methods: ['call'], ends: 'call', release: 'call' },
 } as const
 
 export type HandleKind = keyof typeof HANDLE_KINDS
