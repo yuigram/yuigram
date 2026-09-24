@@ -50,6 +50,11 @@
       "import": "./dist/markup.js",
       "default": "./dist/markup.js"
     },
+    "./stream": {
+      "types": "./dist/stream.d.ts",
+      "import": "./dist/stream.js",
+      "default": "./dist/stream.js"
+    },
     "./rich": {
       "types": "./dist/rich.d.ts",
       "import": "./dist/rich.js",
