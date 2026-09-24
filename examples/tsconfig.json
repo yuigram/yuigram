@@ -45,6 +45,9 @@
     },
     {
       "path": "16-durable-flows"
+    },
+    {
+      "path": "17-streaming"
     }
   ]
 }

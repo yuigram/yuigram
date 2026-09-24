@@ -31,6 +31,7 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 14 | [conversations](14-conversations) | Scenes, prompts and typed buttons, with state that belongs to one conversation |
 | 15 | [worker](15-worker) | An account on another thread, attached to through a port |
 | 16 | [durable flows](16-durable-flows) | A conversation as one function that resumes after a restart, with a rehearsal across two processes |
+| 17 | [streaming](17-streaming) | An answer shown as a draft while it is written, a rich stream, and the stop button, with an offline rehearsal |
 
 ## The gap at 11
 

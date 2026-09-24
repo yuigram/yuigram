@@ -63,6 +63,11 @@ Every Bot API capability is reachable — all 185 methods and 388 objects are ge
 typed. Two conveniences are still to come in v0.x: keyboard builders (pass the typed markup
 object meanwhile) and streaming upload (buffer the file meanwhile).
 
+Three entry points load only when imported: `yuigram/markup` for formatted text whose
+interpolated values are never markup, `yuigram/rich` for rich messages built from blocks or
+read from rich Markdown and HTML, and `yuigram/stream` for an answer shown as a draft while a
+model writes it, over a bot or an account. See [docs/formatting.md](docs/formatting.md).
+
 ### The design target
 
 ```ts

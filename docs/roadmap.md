@@ -302,6 +302,12 @@ change in the minor position and nothing between the two was published.
     [runtimes.md](runtimes.md) §6
   - Durable flows: a conversation written as one function whose journal survives a restart, with
     effects that are not repeated behind the application's back. See [sessions.md](sessions.md) §6.6
+  - Formatting and rich messages as entry points of their own: formatted text with readers and
+    writers for both dialects, rich messages from builders or read from either rich dialect, and
+    streaming an answer as drafts and messages over both transports. See
+    [formatting.md](formatting.md)
+  - A connection status on every account, carried across a worker, and a worker host that lets a
+    closed tab go at once without mistaking a hidden one for it. See [runtimes.md](runtimes.md) §6
   - Still to come in this phase: the storage drivers below
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4

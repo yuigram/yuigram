@@ -274,6 +274,26 @@ the page is destroyed, which is also why a hidden, throttled page is never mista
 one. A caller counts its host gone only when a ping it actually sent goes unanswered, and a
 handle that has been ended is no longer held on the host.
 
+**Formatted text.** `yuigram/markup` builds a message's text and entities rather than markup
+for Telegram to parse: builders for every entity, `format` for composing them, and `html` and
+`md` template tags whose interpolated values are always text. Both readers follow Telegram's
+rules for their dialect, refuse what it does not allow with an offset, and can read text that is
+still arriving; both writers produce markup that reads back to the same formatting. With the
+`markup()` plugin, any of the 119 formatted parameters takes a formatted value directly.
+
+**Rich messages.** `yuigram/rich` builds rich messages from blocks and rich text — the Bot API's
+own data, so built and hand-written blocks mix — and refuses what Telegram would. `Rich` wraps a
+message in any of its three forms. `parseRichMarkdown` and `parseRichHtml` read either dialect
+into blocks, strictly by default and within Telegram's limits, and `toMarkdown` and `toHtml`
+convert between every form.
+
+**Streaming.** `yuigram/stream` shows an answer while it is written: a draft that grows in a
+private chat and a message each time a window fills or the answer ends, from any model SDK's
+stream without depending on one. Drafts are paced and back off, flood waits are honoured, a final
+message is retried only when Telegram said to wait, and every way of ending early has a stated
+outcome. A reader's stop is honoured only for the stream that showed that draft. An account
+streams through its own drafts with `streamTo`.
+
 **Layer 229.** The committed schema follows the one Telegram's own client ships, which the
 documentation page lags behind. A conversation-list row may be a community, which has no peer
 and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;
