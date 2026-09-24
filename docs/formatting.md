@@ -227,13 +227,20 @@ client, so a stop meant for a stream that has ended reaches nothing, and a strea
 stopped from another chat. A well-formed stop is not authorisation of anything else.
 
 Over MTProto, `streamTo(account, peer, source)` runs the same engine over an account's streaming
-drafts. A reader's stop is recognised by the typing update carrying `sendMessageStopDraftAction`
-with one of the stream's own draft keys — as the schema describes it; that update has not been
-observed from Telegram's servers.
+drafts, with the same defaults. The draft opens empty before the first text arrives — a rich one
+with Telegram's thinking block — as the Bot API's does; `thinkingPlaceholder: false` leaves it
+closed until there is text. The numbers `onPiece` reports are handed out per account, as a bot's
+are per client, so two streams running at once never report the same one; what a reader's client
+keys a draft by is the random 64-bit value the account draws for it. A reader's stop is recognised
+by the typing update carrying `sendMessageStopDraftAction` with one of the stream's own draft keys,
+from the person the stream is writing to — as the schema describes it. That update has been
+driven through an encrypted connection from a mock datacenter, but not observed from Telegram's
+servers.
 
 ### 3.4 What has been run
 
 The engine against a hand-driven clock and a transport that records every request; the Bot API
 plugin through the real HTTP encoding path, against a local server; the MTProto adapter against a
-recorded account; and the rehearsal in `examples/17-streaming`. No stream has been sent to
-Telegram, and no model provider was called.
+recorded account, and a real account against a mock datacenter, which receives the drafts and
+sends the reader's stop over the encrypted connection; and the rehearsal in
+`examples/17-streaming`. No stream has been sent to Telegram, and no model provider was called.

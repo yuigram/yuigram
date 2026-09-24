@@ -156,6 +156,7 @@ describe('streaming from an account', () => {
     await streamTo(surface, '@someone', ['one two three four five six'], {
       maxLength: 10,
       editInterval: 1,
+      thinkingPlaceholder: false,
     })
 
     expect(sends.map((send) => send.text).join('')).toBe('one two three four five six')
@@ -209,6 +210,72 @@ describe('streaming from an account', () => {
     ).toBe(true)
     const last = sends.at(-1) as { options: { markup?: unknown } }
     expect(last.options.markup).toBe(markup)
+  })
+
+  it('opens the draft empty before the first text, as a bot’s stream does', async () => {
+    const { surface, writes, sends } = account()
+
+    await streamTo(surface, '@someone', ['hello'], { editInterval: 1 })
+
+    expect(writes[0]).toMatchObject({ text: '', entities: [] })
+    expect(sends.map((send) => send.text)).toEqual(['hello'])
+  })
+
+  it('opens a rich draft with the thinking block', async () => {
+    const written: unknown[] = []
+    const { surface } = account()
+    const rich: StreamingAccount = {
+      ...surface,
+      createRichStreamingDraft: async () =>
+        ({
+          key: 1n,
+          stopped: false,
+          write: async (content: unknown) => {
+            written.push(content)
+          },
+          stop: async () => {},
+        }) as never,
+    }
+
+    await streamTo(rich, '@someone', ['# Title'], { rich: true, editInterval: 1 })
+
+    expect(written[0]).toEqual({
+      blocks: {
+        _: 'inputRichMessage',
+        blocks: [{ _: 'pageBlockThinking', text: { _: 'textPlain', text: '…' } }],
+      },
+    })
+  })
+
+  it('numbers drafts across an account, so two streams at once never share a number', async () => {
+    const { surface } = account()
+    const first = feed()
+    const second = feed()
+    const numbers: number[][] = [[], []]
+
+    const one = streamTo(surface, '@a', first.source, {
+      editInterval: 1,
+      maxLength: 10,
+      onPiece: (_text, id) => void numbers[0]?.push(id),
+    })
+    const two = streamTo(surface, '@b', second.source, {
+      editInterval: 1,
+      maxLength: 10,
+      onPiece: (_text, id) => void numbers[1]?.push(id),
+    })
+    for (const chunk of ['aaaa ', 'bbbb ', 'cccc ']) {
+      first.push(chunk)
+      second.push(chunk)
+      await settle(20)
+    }
+    first.end()
+    second.end()
+    await Promise.all([one, two])
+
+    const [a = [], b = []] = numbers
+    expect(a.length).toBeGreaterThan(0)
+    expect(b.length).toBeGreaterThan(0)
+    expect(a.filter((id) => b.includes(id))).toEqual([])
   })
 })
 

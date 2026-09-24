@@ -83,6 +83,13 @@ export interface AccountStreamOptions {
   readonly maxLength?: number
   readonly editInterval?: number
   readonly maxEditBackoff?: number
+  /**
+   * Open the draft before the first text arrives: empty, or, for a rich
+   * message, Telegram's thinking block. True, as on the Bot API, whose empty
+   * draft is the same request made on a bot's behalf. A draft that fails is
+   * retried like any other and never ends the stream.
+   */
+  readonly thinkingPlaceholder?: boolean
   readonly canStop?: boolean
   /** When the reader stops it, send what was written so far as a message. */
   readonly keepOnStop?: boolean
@@ -105,17 +112,35 @@ interface Run {
   readonly stop: StopController
 }
 
+/** What an account's streams share. */
+interface Registry {
+  /** The streams running now, for the stop button to find. */
+  readonly runs: Set<Run>
+  /**
+   * The last draft number handed out on this account.
+   *
+   * Per account rather than per stream, as a bot's are per client: two
+   * streams running at once never report the same number for different
+   * drafts. The number is the stream's own; what the reader's client keys a
+   * draft by is the random value the account draws for it.
+   */
+  drafts: number
+}
+
 /** The streams running on each account, and whether its listener is installed. */
-const registries = new WeakMap<StreamingAccount, Set<Run>>()
+const registries = new WeakMap<StreamingAccount, Registry>()
+
+/** The largest draft number before counting starts again, as a bot's does. */
+const MAX_DRAFT = 0x7fff_ffff
 
 /** The one listener an account gets, however many streams it runs. */
-function registryOf(account: StreamingAccount): Set<Run> {
-  let runs = registries.get(account)
-  if (runs !== undefined) return runs
+function registryOf(account: StreamingAccount): Registry {
+  const existing = registries.get(account)
+  if (existing !== undefined) return existing
 
-  runs = new Set()
-  registries.set(account, runs)
-  const live = runs
+  const registry: Registry = { runs: new Set(), drafts: 0 }
+  registries.set(account, registry)
+  const live = registry.runs
 
   account.on('mtproto:typing', ((context: { readonly raw?: unknown }) => {
     const update = (context.raw ?? {}) as {
@@ -135,7 +160,7 @@ function registryOf(account: StreamingAccount): Set<Run> {
     }
   }) as never)
 
-  return runs
+  return registry
 }
 
 function formatOf(options: AccountStreamOptions): StreamFormat {
@@ -161,7 +186,16 @@ function bodyOf(payload: StreamPayload | undefined): FormattedText {
 }
 
 function richOf(payload: StreamPayload | undefined): RichContent {
-  if (payload === undefined || payload.kind !== 'rich') return { markdown: '' }
+  if (payload === undefined || payload.kind !== 'rich') {
+    // Before any text, a rich draft shows Telegram's thinking block, which
+    // exists for exactly this.
+    return {
+      blocks: {
+        _: 'inputRichMessage',
+        blocks: [{ _: 'pageBlockThinking', text: { _: 'textPlain', text: '…' } }],
+      },
+    }
+  }
 
   return payload.dialect === 'html' ? { html: payload.source } : { markdown: payload.source }
 }
@@ -199,11 +233,11 @@ export async function streamTo(
     canStop: options.canStop === true,
     stop: new StopController(),
   }
-  const live = registryOf(account)
+  const registry = registryOf(account)
+  const live = registry.runs
 
   // Each window is a draft of its own; opened the first time it is written.
   const handles = new Map<number, Promise<TextDraft | StreamingDraft<RichContent>>>()
-  let counter = 0
   const handleFor = (id: number) => {
     let handle = handles.get(id)
     if (handle === undefined) {
@@ -228,9 +262,9 @@ export async function streamTo(
       source,
       format,
       nextDraftId: () => {
-        counter += 1
+        registry.drafts = registry.drafts >= MAX_DRAFT ? 1 : registry.drafts + 1
 
-        return counter
+        return registry.drafts
       },
       stop: run.stop,
       onStop: options.keepOnStop === true ? 'send' : 'discard',
@@ -243,8 +277,7 @@ export async function streamTo(
       ...(options.onPiece === undefined ? {} : { onPiece: options.onPiece }),
       ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
       ...(options.onError === undefined ? {} : { onError: options.onError }),
-      // An account draft shows text only; there is no empty placeholder to write.
-      thinkingPlaceholder: false,
+      thinkingPlaceholder: options.thinkingPlaceholder !== false,
       transport: {
         draft: async (payload, id) => {
           const handle = await handleFor(id)
