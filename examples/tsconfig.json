@@ -48,6 +48,9 @@
     },
     {
       "path": "17-streaming"
+    },
+    {
+      "path": "18-account-handlers"
     }
   ]
 }

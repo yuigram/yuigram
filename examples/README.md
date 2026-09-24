@@ -32,6 +32,7 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 15 | [worker](15-worker) | An account on another thread, attached to through a port |
 | 16 | [durable flows](16-durable-flows) | A conversation as one function that resumes after a restart, with a rehearsal across two processes |
 | 17 | [streaming](17-streaming) | An answer shown as a draft while it is written, a rich stream, and the stop button, with an offline rehearsal |
+| 18 | [account handlers](18-account-handlers) | An account's filters, handler groups, a router, a dependency and a form that survives a restart, checked against a stand-in datacenter |
 
 ## The gap at 11
 

@@ -195,6 +195,15 @@ export interface MockAccountOptions
    * them.
    */
   readonly bootstrap?: DcConfiguration
+  /**
+   * Build the account from the settings, rather than with this package's own
+   * class.
+   *
+   * For a case running code written against the published entry points — an
+   * example — whose routers and plugins belong to that build: it builds the
+   * account from the same one, so the two are parts of one program.
+   */
+  readonly make?: (settings: AccountOptions) => Account
 }
 
 /** What a case gets to drive and observe. */
@@ -237,6 +246,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     api,
     session,
     bootstrap: given,
+    make,
     ...rest
   } = options
   const key = shared ?? createServerKey()
@@ -330,7 +340,8 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
   } satisfies AccountOptions
 
   const account =
-    session === undefined ? new Account(settings) : Account.fromString(session, settings)
+    make?.(settings) ??
+    (session === undefined ? new Account(settings) : Account.fromString(session, settings))
 
   return {
     account,
