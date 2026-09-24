@@ -597,46 +597,7 @@ function parse(assembled: Assembled, options: HtmlParseOptions): FormattedText {
     readText(scan, markup.slice(at, upTo), at, assembled.token)
     if (next === -1) break
 
-    // A tag's name follows its `<` at once, as in HTML itself. `2 < 3` is a
-    // comparison, and reading on to the next `>` would swallow whatever real
-    // tag came after it.
-    const after = markup[next + 1]
-    if (after !== undefined && !/[a-z/]/i.test(after)) {
-      refuse(settings, "a '<' that starts no tag", next, markup)
-      addText(scan, '<')
-      at = next + 1
-      continue
-    }
-
-    const end = markup.indexOf('>', next)
-
-    // A `<` with no `>` after it is not a tag at all.
-    if (end === -1) {
-      if (
-        settings.mode === 'partial' &&
-        /^<\/?(?:[a-z][a-z0-9-]*(?:\s[^<]*)?)?$/i.test(markup.slice(next))
-      ) {
-        // A tag still arriving: held back rather than shown as text.
-        break
-      }
-      refuse(settings, "a '<' that starts no tag", next, markup)
-      readText(scan, markup.slice(next), next, assembled.token)
-      break
-    }
-
-    const raw = markup.slice(next + 1, end)
-    at = end + 1
-
-    if (raw.trim() === '') {
-      refuse(settings, "a '<' that starts no tag", next, markup)
-      addText(scan, `<${raw}>`)
-      continue
-    }
-
-    const kept = raw.trimStart().startsWith('/')
-      ? takeClose(scan, raw.trim(), next)
-      : takeOpen(scan, raw, next)
-    if (kept !== '') addText(scan, kept)
+    at = takeTag(scan, next, assembled.token)
   }
 
   // Whatever is still open at the end runs to the end.
@@ -647,6 +608,63 @@ function parse(assembled: Assembled, options: HtmlParseOptions): FormattedText {
   closeThrough(scan, 0)
 
   return restore(withinText({ text: scan.text, entities: sortEntities(scan.entities) }), assembled)
+}
+
+/**
+ * Read the tag a `<` starts, and say where reading resumes.
+ *
+ * The end of the markup where nothing more can be read.
+ */
+function takeTag(
+  scan: Scan,
+  next: number,
+  token: { readonly open: string; readonly close: string },
+): number {
+  const markup = scan.markup
+  const settings = scan.settings
+
+  // A tag's name follows its `<` at once, as in HTML itself. `2 < 3` is a
+  // comparison, and reading on to the next `>` would swallow whatever real
+  // tag came after it.
+  const after = markup[next + 1]
+  if (after !== undefined && !/[a-z/]/i.test(after)) {
+    refuse(settings, "a '<' that starts no tag", next, markup)
+    addText(scan, '<')
+
+    return next + 1
+  }
+
+  const end = markup.indexOf('>', next)
+
+  // A `<` with no `>` after it is not a tag at all.
+  if (end === -1) {
+    const arriving =
+      settings.mode === 'partial' &&
+      /^<\/?(?:[a-z][a-z0-9-]*(?:\s[^<]*)?)?$/i.test(markup.slice(next))
+    // A tag still arriving is held back rather than shown as text.
+    if (!arriving) {
+      refuse(settings, "a '<' that starts no tag", next, markup)
+      readText(scan, markup.slice(next), next, token)
+    }
+
+    return markup.length
+  }
+
+  const raw = markup.slice(next + 1, end)
+
+  if (raw.trim() === '') {
+    refuse(settings, "a '<' that starts no tag", next, markup)
+    addText(scan, `<${raw}>`)
+
+    return end + 1
+  }
+
+  const kept = raw.trimStart().startsWith('/')
+    ? takeClose(scan, raw.trim(), next)
+    : takeOpen(scan, raw, next)
+  if (kept !== '') addText(scan, kept)
+
+  return end + 1
 }
 
 /**
