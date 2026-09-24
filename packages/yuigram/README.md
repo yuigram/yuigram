@@ -79,7 +79,7 @@ message with no text.
 - **Inbound rate limiting.** `rateLimit({ limit, windowMs })` caps what one user can ask of
   the bot, and leaves what to tell them to you. `limiter()` offers the same count as a filter,
   a check or a wait, in named buckets, kept in any store several instances share.
-- **The whole Bot API, typed.** All 185 methods and 388 objects generated from a committed
+- **The whole Bot API, typed.** All 185 methods and 400 objects generated from a committed
   schema snapshot, every one cancellable. `bot.api.call()` reaches anything newer than the
   installed schema, so a Telegram release never blocks you.
 - **Routing that knows Telegram.** `/start` matches every bot in a group and `/start@otherbot`

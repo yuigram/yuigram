@@ -50,7 +50,7 @@ schema, so what Telegram guarantees arrives guaranteed and what it leaves option
 optional.
 
 Commands and routing, filters, middleware, sessions, storage, file downloads, long polling,
-webhooks with framework adapters, a typed surface generated from Bot API 10.2, and a testing
+webhooks with framework adapters, a typed surface generated from Bot API 10.3, and a testing
 harness that drives the real pipeline with only the network replaced. See
 [examples](examples).
 
@@ -59,9 +59,8 @@ filled in — `message.banChatMember({ user_id })`, `message.sendPhoto({ photo }
 event kind has a named registration. Both are generated from the schema, so the surface is
 complete without being maintained by hand.
 
-Every Bot API capability is reachable — all 185 methods and 388 objects are generated and
-typed. Two conveniences are still to come in v0.x: keyboard builders (pass the typed markup
-object meanwhile) and streaming upload (buffer the file meanwhile).
+Every Bot API capability is reachable — all 185 methods and 400 objects are generated and
+typed, with keyboard builders over the markup objects and uploads streamed from disk.
 
 Three entry points load only when imported: `yuigram/markup` for formatted text whose
 interpolated values are never markup, `yuigram/rich` for rich messages built from blocks or
