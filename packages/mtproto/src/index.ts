@@ -106,8 +106,11 @@ export {
   fileFor,
   fileIdOfDocument,
   fileIdOfPhoto,
+  inputDocumentOf,
+  inputPhotoOf,
   locationOf,
   looksLikeFileId,
+  mediaOf,
   readFileId,
   uniqueFileId,
   webLocationOf,
@@ -127,6 +130,13 @@ export {
   uploadedPhoto,
 } from './files/media.js'
 export type { NodeReadable, StreamOptions } from './files/streams.js'
+export {
+  detectMimeType,
+  fileNameOf,
+  inferMimeType,
+  isProbablyText,
+  mimeTypeOfName,
+} from './files/types.js'
 export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
 export {
   fromHtml,
@@ -223,7 +233,15 @@ export {
   sendText,
   setTyping,
 } from './messaging/send.js'
-export { inputChannel, inputPeerFromMessage } from './network/peers.js'
+export {
+  inputChannel,
+  inputPeer,
+  inputPeerFromMessage,
+  peerOfInput,
+  readPeerReference,
+  toInputChannel,
+  toInputUser,
+} from './network/peers.js'
 export type { QrOptions, QrSteps } from './network/qr.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export {
@@ -349,6 +367,7 @@ export {
   walkStarsTransactions,
   walkStoryViewers,
 } from './paging/walk.js'
+export { normalizePhone } from './phone.js'
 export type {
   BoostChance,
   BusinessIntro,

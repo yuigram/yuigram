@@ -311,6 +311,55 @@ export function inputPeerFromMessage(options: {
       }
 }
 
+/**
+ * The user an input peer names, as a method addressing a person takes one.
+ *
+ * {@link userFor}, refusing rather than answering nothing: a caller converting
+ * a reference it holds wants to be told when it holds the wrong kind.
+ */
+export function toInputUser(peer: TypeInputPeer): TypeInputUser {
+  const user = userFor(peer)
+  if (user === undefined) throw new PeerError(`'${peer._}' does not name a user`)
+
+  return user
+}
+
+/** The channel an input peer names, as a channel method takes one. Refused for anything else. */
+export function toInputChannel(peer: TypeInputPeer): TypeInputChannel {
+  const channel = channelFor(peer)
+  if (channel === undefined) throw new PeerError(`'${peer._}' does not name a channel`)
+
+  return channel
+}
+
+/**
+ * Which peer an input peer names: its kind and its identifier.
+ *
+ * The access information is what the input form adds and this drops, since a
+ * `PeerRef` names a peer rather than addressing it. `inputPeerSelf` names this
+ * account, and is read only when its identifier is given; `inputPeerEmpty`
+ * names nothing and is refused.
+ */
+export function peerOfInput(peer: TypeInputPeer, self?: bigint): { kind: PeerKind; id: bigint } {
+  switch (peer._) {
+    case 'inputPeerUser':
+    case 'inputPeerUserFromMessage':
+      return { kind: 'user', id: peer.user_id }
+    case 'inputPeerChat':
+      return { kind: 'chat', id: peer.chat_id }
+    case 'inputPeerChannel':
+    case 'inputPeerChannelFromMessage':
+      return { kind: 'channel', id: peer.channel_id }
+    case 'inputPeerSelf':
+      if (self === undefined) {
+        throw new PeerError("'inputPeerSelf' names this account, whose identifier was not given")
+      }
+      return { kind: 'user', id: self }
+    default:
+      throw new PeerError(`'${peer._}' names no peer`)
+  }
+}
+
 /** Which peer a `peerUser` / `peerChat` / `peerChannel` names. */
 export function readPeerReference(value: unknown): { kind: PeerKind; id: bigint } {
   if (typeof value !== 'object' || value === null) {

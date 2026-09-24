@@ -125,10 +125,11 @@ describe('asking for a code', () => {
       },
     })
 
-    const state = await sendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+70000000000' })
+    const state = await sendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+7 (000) 000-00-00' })
 
+    // The digits alone: what a person types around them is taken out.
     expect(dcs.at(2, 'auth.sendCode')[0]?.query).toMatchObject({
-      phone_number: '+70000000000',
+      phone_number: '70000000000',
       api_id: 1234,
       api_hash: 'hash',
     })
@@ -337,7 +338,7 @@ describe('proving the code', () => {
     const state = await signIn({ ...API, reach: dcs.reach, dcId: 2, ...step })
 
     expect(dcs.at(2, 'auth.signIn')[0]?.query).toMatchObject({
-      phone_number: '+7',
+      phone_number: '7',
       phone_code_hash: 'abc',
       phone_code: '11111',
     })

@@ -38,6 +38,7 @@ import type {
   TypePhotoSize,
 } from '../generated/api/types/index.js'
 import type { DownloadRequest } from './download.js'
+import { inferMimeType } from './types.js'
 import type { UploadedFile } from './upload.js'
 
 /**
@@ -267,16 +268,18 @@ export function uploadedPhoto(file: UploadedFile): TypeInputMedia {
   return { _: 'inputMediaUploadedPhoto', file: file.file }
 }
 
-/** What a document needs beyond the bytes, and nothing can work out for it. */
+/** What a document says about itself beyond the bytes. */
 export interface UploadedDocumentOptions {
   /**
    * What the bytes are.
    *
-   * Required, because the protocol requires it and nothing here can discover
-   * it: guessing from a filename would be inventing a fact about the content,
-   * and reading the content would be a decoder this project does not have.
+   * Told from the file where it is not given: from the signature its first
+   * bytes carry, which most formats put there so nothing has to guess; then
+   * from the name's extension; then as plain text, if the bytes are UTF-8
+   * text; and otherwise as `application/octet-stream`. Given, it wins — the
+   * caller may know better, and a type stated is never second-guessed.
    */
-  readonly mimeType: string
+  readonly mimeType?: string
   /**
    * What to call it, recorded as a filename attribute.
    *
@@ -320,15 +323,17 @@ export interface UploadedDocumentOptions {
  */
 export function uploadedDocument(
   file: UploadedFile,
-  options: UploadedDocumentOptions,
+  options: UploadedDocumentOptions = {},
 ): TypeInputMedia {
   const named: TypeDocumentAttribute[] =
     options.name === undefined ? [] : [{ _: 'documentAttributeFilename', file_name: options.name }]
+  // The name given here, or the one the parts travelled under.
+  const name = options.name ?? (file.file.name === '' ? undefined : file.file.name)
 
   return {
     _: 'inputMediaUploadedDocument',
     file: file.file,
-    mime_type: options.mimeType,
+    mime_type: inferMimeType({ stated: options.mimeType, head: file.head, name }),
     // The caller's own attributes last, so one naming the file itself wins
     // over the convenience above rather than being silently outranked by it.
     attributes: [...named, ...(options.attributes ?? [])],

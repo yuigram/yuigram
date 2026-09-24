@@ -64,6 +64,11 @@
       "types": "./dist/account-filters.d.ts",
       "import": "./dist/account-filters.js",
       "default": "./dist/account-filters.js"
+    },
+    "./account-utils": {
+      "types": "./dist/account-utils.d.ts",
+      "import": "./dist/account-utils.js",
+      "default": "./dist/account-utils.js"
     }
   },
   "main": "./dist/index.js",

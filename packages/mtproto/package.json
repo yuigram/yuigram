@@ -42,6 +42,11 @@
       "types": "./dist/filters/index.d.ts",
       "import": "./dist/filters/index.js",
       "default": "./dist/filters/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
     }
   },
   "browser": {

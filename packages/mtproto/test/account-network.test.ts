@@ -2398,7 +2398,7 @@ describe('an account signing in', () => {
     // datacenter it is talking to, and which application it is.
     const sent = asked.find((entry) => entry.query._ === 'auth.sendCode')
     expect(sent?.dcId).toBe(2)
-    expect(sent?.query['phone_number']).toBe(PHONE)
+    expect(sent?.query['phone_number']).toBe(PHONE.slice(1))
     expect(sent?.query['api_id']).toBe(10_000)
     expect(sent?.query['api_hash']).toBe('mock-api-hash')
     await instance.dispose()

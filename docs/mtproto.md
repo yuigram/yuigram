@@ -2092,17 +2092,27 @@ beside it depends on what is being sent:
 | Media | What names the bytes | What else is required | Where it comes from |
 |---|---|---|---|
 | Photo, uploaded | `inputMediaUploadedPhoto` | nothing | — |
-| Document, uploaded | `inputMediaUploadedDocument` | content type | the caller |
+| Document, uploaded | `inputMediaUploadedDocument` | content type | the caller, or the file's first bytes |
 | Video, audio, voice, animation | as a document | content type, and duration/dimensions/waveform | the caller |
 | Photo already on Telegram | `inputMediaPhoto` | nothing | the message it arrived in |
 | Document already on Telegram | `inputMediaDocument` | nothing | the message it arrived in |
 
 The photo row is the only uploaded one that needs nothing: the datacenter decodes the image,
 produces the sizes and records the dimensions, so there is nothing a client could usefully
-state. Every other uploaded row needs at least a content type, which is a fact about the bytes
-that nothing on this side can discover — guessing from a filename invents it, and reading the
-bytes means a decoder. The rows below it need more of the same kind, so they are attributes the
-caller supplies and this passes through unchanged.
+state. Every other uploaded row needs at least a content type. A caller who knows it says so,
+and that always wins. Otherwise `uploadedDocument` tells it from the file, without decoding
+anything: most formats begin with a signature written there so nothing has to guess, and an
+upload keeps its first 512 bytes as it sends the first part — so a source that can only be read
+once is not read again. Where the content says nothing the name's extension is used, then plain
+text if the bytes are UTF-8 text, and otherwise `application/octet-stream`. An animated sticker is
+the one case where the name outranks the content: it is gzip to anything reading its bytes.
+`detectMimeType`, `mimeTypeOfName`, `isProbablyText`, `fileNameOf` and `inferMimeType` are the
+same steps, public. The rows below it need facts only decoding the format could give —
+durations, dimensions, a waveform — so they are attributes the caller supplies and this passes
+through unchanged.
+
+Parts are always 512 KiB, the largest the protocol allows, whatever the file's size: fewer
+requests for the same bytes, and every size of file within the part-count limit.
 
 Nothing optional is set on any of them. A spoiler, a self-destruct timer, a video cover and a
 thumbnail are choices about the send rather than facts about the file.
@@ -2122,7 +2132,12 @@ download location — so an account speaking MTProto can read one, write one, an
 with every client that uses them.
 
 Yuigram reads and writes them: `readFileId`, `writeFileId`, `locationOf` and `fileFor`, plus
-`fileIdOfPhoto` and `fileIdOfDocument` for a value this account already has in hand.
+`fileIdOfPhoto` and `fileIdOfDocument` for a value this account already has in hand. To send the
+file again, `inputDocumentOf`, `inputPhotoOf` and `mediaOf` build the input forms from an
+identifier — its identifier and access hash exactly as written, 64 bits each, and its reference
+as it was, which is subject to everything below. A profile picture, a sticker set's picture and a
+document's thumbnail are named through what owns them rather than as media, and the kinds only a
+secret chat or Passport uses are refused.
 
 **There are two identifiers and they are not the same thing.**
 
@@ -2180,6 +2195,25 @@ else. So the test fixtures are strings produced by an independent implementation
 format and checked in, compared byte for byte in both directions across every layout the format
 has, together with the unique identifier for each. None of them names a real file: the ids,
 access hashes and URLs are invented.
+
+### What needs no account
+
+`@yuigram/mtproto/utils` holds the conversions that work on values already in hand, each
+synchronous, on an entry point of its own:
+
+| | |
+| --- | --- |
+| `decodeWaveform`, `encodeWaveform` | A voice note's waveform: five-bit samples packed from the lowest bit up. Encoding refuses a sample outside 0–31 rather than masking it |
+| `strippedToJpeg` | A stripped thumbnail as a JPEG. The shared header is built from the JPEG standard's example tables (quality 20, 4:2:0), not carried as bytes |
+| `inflatePath`, `outlineSvg` | A sticker outline's packed path, and an SVG document around it |
+| `richTextToFormatted`, `formattedToRichText` | An Instant View page's rich text to and from text with ranges. A page's own marks — subscript, superscript, highlighting, anchors — keep their text only |
+| `walkPageBlocks`, `pageMedia` | A page's blocks in reading order, and the photo or document a block names among those the page carries |
+| `readInlineMessageId`, `writeInlineMessageId` | The string form of an inline message's identifier |
+
+On the main entry point, because sending and signing in use them: the file-type helpers above,
+`normalizePhone` — the digits of a number, with `+`, brackets, spaces and dashes taken out and no
+country ever assumed — and `inputPeer`, `toInputUser`, `toInputChannel` and `peerOfInput`, which
+convert between the forms a peer takes and refuse the wrong kind rather than answering nothing.
 
 ---
 

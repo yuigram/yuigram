@@ -30,6 +30,7 @@
 import { SessionError, TelegramError, ValidationError } from '@yuigram/core'
 import { answerPasswordChallenge, readPasswordChallenge } from '../auth/password.js'
 import type { SrpOptions } from '../crypto/srp.js'
+import { normalizePhone } from '../phone.js'
 import { MigrationError } from '../session/dispatcher.js'
 import type { TlValue } from '../tl/index.js'
 import { type Callable, transferAuthorization } from './migration.js'
@@ -190,7 +191,7 @@ export async function sendCode(
 ): Promise<SignInState> {
   const { value, dcId } = await followingRedirections(options, () => ({
     _: 'auth.sendCode',
-    phone_number: options.phone,
+    phone_number: normalizePhone(options.phone),
     api_id: options.apiId,
     api_hash: options.apiHash,
     settings: { _: 'codeSettings' },
@@ -240,7 +241,7 @@ export async function resendCode(
 ): Promise<SignInState> {
   const { value, dcId } = await followingRedirections(options, () => ({
     _: 'auth.resendCode',
-    phone_number: options.phone,
+    phone_number: normalizePhone(options.phone),
     phone_code_hash: options.phoneCodeHash,
     ...(options.reason === undefined ? {} : { reason: options.reason }),
   }))
@@ -286,7 +287,7 @@ export async function signIn(
   try {
     const { value, dcId } = await followingRedirections(options, () => ({
       _: 'auth.signIn',
-      phone_number: options.phone,
+      phone_number: normalizePhone(options.phone),
       phone_code_hash: options.phoneCodeHash,
       phone_code: options.code,
     }))

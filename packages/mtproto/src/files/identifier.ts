@@ -48,8 +48,11 @@
 import { ValidationError, YuigramError } from '@yuigram/core'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type {
+  TypeInputDocument,
   TypeInputFileLocation,
+  TypeInputMedia,
   TypeInputPeer,
+  TypeInputPhoto,
   TypeInputWebFileLocation,
 } from '../generated/api/types/index.js'
 
@@ -1236,6 +1239,110 @@ function documentKind(
   if (mime === 'video/mp4' || mime === 'image/gif') return 'animation'
 
   return 'document'
+}
+
+/**
+ * The kinds that only a secret chat, Passport or an upload in progress can
+ * use. This project has none of those, and a document reference built from one
+ * would name a file no ordinary call can send.
+ */
+const UNSENDABLE: ReadonlySet<FileKind> = new Set<FileKind>([
+  'encrypted',
+  'encryptedThumbnail',
+  'secure',
+  'secureRaw',
+  'temp',
+])
+
+/** An identity from what a caller has: the identifier, or what reading one gave. */
+function identityOf(file: string | FileIdentity): FileIdentity {
+  return typeof file === 'string' ? readFileId(file) : file
+}
+
+/**
+ * The reference an identifier was written with, or an empty one.
+ *
+ * Empty rather than refused: a request may still be answered from a reference
+ * the server can find for itself. A reference that is present has not been
+ * made fresh by being read back — if it has expired, Telegram refuses the call
+ * with `FILE_REFERENCE_EXPIRED` and the file has to be found again, from the
+ * message or the place it came from.
+ */
+function referenceOf(identity: FileIdentity): Uint8Array {
+  return identity.reference ?? new Uint8Array(0)
+}
+
+/**
+ * The document an identifier names, as a call that sends or reads one takes it.
+ *
+ * ```ts
+ * await account.sendMedia(peer, { _: 'inputMediaDocument', id: inputDocumentOf(fileId) })
+ * ```
+ *
+ * The identifier and the hash are exactly what the identifier carries — both
+ * 64-bit and kept whole — and nothing is looked up or made up. Refused for an
+ * identifier naming a photo, a file on another server, or a kind only a
+ * secret chat or Passport could use.
+ */
+export function inputDocumentOf(file: string | FileIdentity): TypeInputDocument {
+  const identity = identityOf(file)
+  const where = identity.where
+
+  if (where.at !== 'document' || UNSENDABLE.has(identity.kind)) {
+    throw new FileIdError(
+      `a '${identity.kind}' identifier does not name a document that can be sent`,
+    )
+  }
+
+  return {
+    _: 'inputDocument',
+    id: where.id,
+    access_hash: where.accessHash,
+    file_reference: referenceOf(identity),
+  }
+}
+
+/**
+ * The photo an identifier names, as a call that sends one takes it.
+ *
+ * Only an identifier for a photo itself, in any of its sizes: a profile picture
+ * or a sticker set's picture is named through its owner rather than as a
+ * photo, and a document's thumbnail is part of the document.
+ */
+export function inputPhotoOf(file: string | FileIdentity): TypeInputPhoto {
+  const identity = identityOf(file)
+  const where = identity.where
+
+  if (where.at !== 'photo' || identity.kind !== 'photo' || where.source.of !== 'thumbnail') {
+    throw new FileIdError(`a '${identity.kind}' identifier does not name a photo that can be sent`)
+  }
+
+  return {
+    _: 'inputPhoto',
+    id: where.id,
+    access_hash: where.accessHash,
+    file_reference: referenceOf(identity),
+  }
+}
+
+/**
+ * Media to send again, from an identifier.
+ *
+ * ```ts
+ * await account.sendMedia(peer, mediaOf(fileId), 'Again.')
+ * ```
+ *
+ * A photo is sent as a photo and everything else as the document it is, which
+ * keeps what the document was — a sticker stays a sticker, a voice note a
+ * voice note — because those are attributes of the document on Telegram's
+ * side rather than something the identifier has to say.
+ */
+export function mediaOf(file: string | FileIdentity): TypeInputMedia {
+  const identity = identityOf(file)
+
+  return identity.where.at === 'photo'
+    ? { _: 'inputMediaPhoto', id: inputPhotoOf(identity) }
+    : { _: 'inputMediaDocument', id: inputDocumentOf(identity) }
 }
 
 /** Refused rather than silently accepted, because an identity is public input. */

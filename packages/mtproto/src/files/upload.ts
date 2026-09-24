@@ -112,7 +112,19 @@ export interface UploadedFile {
   readonly size: number
   /** The datacenter the parts ended up on. */
   readonly dcId: number
+  /**
+   * The first bytes of the file, as they were sent.
+   *
+   * Kept from the first part rather than read again, so a source that can be
+   * read only once is not read twice: they are what `uploadedDocument` tells
+   * the file's type from when it is not given one. Absent from a file named
+   * some other way, which then has its type told from its name alone.
+   */
+  readonly head?: Uint8Array
 }
+
+/** How many of a file's first bytes are kept for telling what it is. */
+const HEAD = 512
 
 /**
  * Send a file and hand back what names it.
@@ -152,6 +164,7 @@ export async function upload(options: UploadOptions): Promise<UploadedFile> {
     parts: outcome.parts,
     size: outcome.size,
     dcId: transfer.dcId,
+    head: transfer.head,
   }
 }
 
@@ -175,6 +188,8 @@ interface Outcome {
 class Transfer {
   #dcId: number
   #redirections = 0
+  /** The file's first bytes, copied from the first part as it is read. */
+  #head: Uint8Array = new Uint8Array(0)
 
   constructor(
     private readonly options: UploadOptions,
@@ -186,6 +201,15 @@ class Transfer {
 
   get dcId(): number {
     return this.#dcId
+  }
+
+  get head(): Uint8Array {
+    return this.#head
+  }
+
+  /** Keep the start of the first part; a copy, so the part itself can go. */
+  #keep(index: number, bytes: Uint8Array): void {
+    if (index === 0) this.#head = bytes.slice(0, HEAD)
   }
 
   /**
@@ -218,6 +242,7 @@ class Transfer {
           )
         }
         if (!big) seen[index] = bytes
+        this.#keep(index, bytes)
 
         await this.#sendPart({ index, bytes, total: big ? parts : undefined })
       }
@@ -255,6 +280,7 @@ class Transfer {
 
     for (;;) {
       const bytes = await this.options.source.read(index * this.partSize, this.partSize)
+      this.#keep(index, bytes)
       size += bytes.length
       const more = bytes.length > 0
 
