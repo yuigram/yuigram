@@ -31,19 +31,28 @@
 
 import type { Guard, KV } from '@yuigram/core'
 import {
+  type AfterHook,
+  type BeforeHook,
   createLogger,
+  type Dependencies,
   type Dispatchable,
   Dispatcher,
   type ErrorHandler,
+  type FilterMeta,
   file,
   type Handler,
+  type HostObserver,
   Lifecycle,
   LifecycleError,
   type Logger,
   type Middleware,
+  type MiddlewareHost,
   NetworkError,
   namespaced,
+  type OnOptions,
   PeerError,
+  type Plugin,
+  PluginRegistry,
   SessionError,
   type StopOptions,
   TelegramError,
@@ -204,7 +213,7 @@ import type { Pools } from './network/pools.js'
 import type { QrOptions } from './network/qr.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { type MtprotoContext, mtprotoContext } from './normalize/context.js'
-import { isUpdateSource, UPDATE_CONTAINERS } from './normalize/events.js'
+import { isUpdateSource, type MtprotoEventKind, UPDATE_CONTAINERS } from './normalize/events.js'
 import type { PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type {
@@ -307,6 +316,7 @@ import {
   walkStoryViewers,
 } from './paging/walk.js'
 import type { BoostChance, BusinessIntro, LinkMessage, WorkHours } from './premium/premium.js'
+import { type AccountFilterContext, AccountRouter, dispatcherOf, register } from './router.js'
 import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 import {
   cancelRecoveryEmail,
@@ -674,6 +684,12 @@ export class Account<Ext = unknown> {
   readonly #statusListeners = new Set<(status: ConnectionStatus) => void>()
   /** Installed by an application that holds this account. */
   #surrounding: Middleware<MtprotoContext & Ext> | undefined
+  /** Plugins given to {@link Account.extend}, installed when the account starts. */
+  readonly #plugins = new PluginRegistry<Account<Ext>>()
+  /** One installation at a time; see {@link Account.#installPlugins}. */
+  #pluginWork: Promise<unknown> = Promise.resolve()
+  /** Told when this account starts and when it begins to stop. */
+  readonly #observers = new Set<HostObserver>()
   /**
    * A session this account was built from, until it has been written down.
    *
@@ -702,7 +718,19 @@ export class Account<Ext = unknown> {
     this.#area = namespaced(options.storage, areaFor(this.name))
     this.#peers = peerStore(namespaced(this.#through(), 'peers:'))
     this.#lifecycle = new Lifecycle({
-      onStart: () => this.#open(),
+      onStart: async () => {
+        // Before anything is claimed, so a plugin that throws fails the start
+        // with nothing to give back.
+        await this.#installPlugins()
+        await this.#open()
+        await this.#tell('started')
+      },
+      // Before in-flight work is waited for: a handler suspended on a
+      // conversation's next message only finishes once whatever holds it lets
+      // go, and the drain would otherwise spend the whole deadline on it.
+      onStopping: async () => {
+        await this.#tell('stopping')
+      },
       onStop: async () => {
         this.#stopPresence?.()
         for (const close of [...this.#held]) close()
@@ -4657,11 +4685,82 @@ export class Account<Ext = unknown> {
     return this
   }
 
-  /** Handle events of a kind. */
-  on(kind: string | readonly string[], handler: Handler<MtprotoContext & Ext>): this {
-    this.#dispatcher.on(kind, handler)
+  /**
+   * Handle events of a kind, or of several.
+   *
+   * ```ts
+   * account.on('message', (event) => event.reply('Seen.'))
+   * ```
+   *
+   * The last argument places the handler: `group` makes it one of a set where
+   * only the first match runs, and `once` removes it after it has run. See
+   * `docs/middleware.md` §5.
+   */
+  on<K extends MtprotoEventKind>(
+    kind: K | readonly K[],
+    handler: Handler<MtprotoContext & Ext>,
+    options?: OnOptions,
+  ): this
+  /**
+   * Handle what a filter matches.
+   *
+   * The handler's context is what the filter proves: `f.text()` hands it a
+   * context whose `text` is a string. Give a composed filter a name before
+   * registering it, for the reason `Bot.on` gives.
+   */
+  on<F extends FilterMeta>(
+    filter: F,
+    handler: Handler<AccountFilterContext<F> & Ext>,
+    options?: OnOptions,
+  ): this
+  /** Handle events of a kind that a filter also matches. */
+  on<K extends MtprotoEventKind, F extends FilterMeta>(
+    kind: K | readonly K[],
+    filter: F,
+    handler: Handler<AccountFilterContext<F> & Ext>,
+    options?: OnOptions,
+  ): this
+  on(...args: unknown[]): this {
+    register(this.#dispatcher, args, false)
 
     return this
+  }
+
+  /**
+   * As {@link Account.on}, for a handler that runs once and is removed.
+   *
+   * Once means once: two updates arriving together cannot both run it.
+   */
+  once<K extends MtprotoEventKind>(
+    kind: K | readonly K[],
+    handler: Handler<MtprotoContext & Ext>,
+    options?: OnOptions,
+  ): this
+  once<F extends FilterMeta>(
+    filter: F,
+    handler: Handler<AccountFilterContext<F> & Ext>,
+    options?: OnOptions,
+  ): this
+  once<K extends MtprotoEventKind, F extends FilterMeta>(
+    kind: K | readonly K[],
+    filter: F,
+    handler: Handler<AccountFilterContext<F> & Ext>,
+    options?: OnOptions,
+  ): this
+  once(...args: unknown[]): this {
+    register(this.#dispatcher, args, true)
+
+    return this
+  }
+
+  /**
+   * Remove a handler.
+   *
+   * At once, including from an update being dispatched now that has not
+   * reached it yet. A handler already running finishes.
+   */
+  off(handler: Handler<never>): boolean {
+    return this.#dispatcher.off(handler as Handler<MtprotoContext & Ext>)
   }
 
   /** Handle new messages. */
@@ -4669,11 +4768,109 @@ export class Account<Ext = unknown> {
     return this.on('message', handler)
   }
 
-  /** Be told about anything a handler threw. */
+  /** Run before this account's handlers; returning `Propagation.Stop` skips them. */
+  before(hook: BeforeHook<MtprotoContext & Ext>): this {
+    this.#dispatcher.before(hook)
+
+    return this
+  }
+
+  /** Run after this account's handlers and routers, told whether any handler ran. */
+  after(hook: AfterHook<MtprotoContext & Ext>): this {
+    this.#dispatcher.after(hook)
+
+    return this
+  }
+
+  /**
+   * Be told about anything a handler threw.
+   *
+   * Including what a router's handlers threw that the router did not take. A
+   * catcher returning `false` passes the error on; with none taking it, it is
+   * logged at `error` level on this account's logger.
+   */
   catch(handler: ErrorHandler<MtprotoContext & Ext>): this {
     this.#dispatcher.catch(handler)
 
     return this
+  }
+
+  /**
+   * Add a router, to run after this account's own handlers.
+   *
+   * Its middleware wraps only its own handlers, and it reads what this account
+   * injected. A router belongs to one parent at a time.
+   */
+  addChild(router: AccountRouter<Ext>): this {
+    this.#dispatcher.addChild(dispatcherOf(router as AccountRouter<never>))
+
+    return this
+  }
+
+  /** Take a router back out. Updates already being dispatched keep it. */
+  removeChild(router: AccountRouter<Ext>): boolean {
+    return this.#dispatcher.removeChild(dispatcherOf(router as AccountRouter<never>))
+  }
+
+  /**
+   * Make a value reachable as `deps[name]` from this account and its routers.
+   *
+   * Scoped to this account: a second account in the same process has its own,
+   * and nothing is shared through a global. The names are typed by merging into
+   * `Dependencies`. A value is kept as given — a promise stays a promise — and
+   * is the application's to close; the account does not own it.
+   */
+  inject<K extends keyof Dependencies & string>(name: K, value: Dependencies[K]): this
+  inject(dependencies: Partial<Dependencies>): this
+  inject(first: string | Partial<Dependencies>, value?: unknown): this {
+    if (typeof first === 'string') {
+      this.#dispatcher.inject(first as keyof Dependencies & string, value as never)
+    } else {
+      this.#dispatcher.inject(first)
+    }
+
+    return this
+  }
+
+  /** What was injected. Reading a name nobody injected throws a `ConfigError`. */
+  get deps(): Dependencies {
+    return this.#dispatcher.deps
+  }
+
+  /**
+   * Install a plugin, or add a router.
+   *
+   * A plugin is installed when the account starts, in dependency order, or
+   * before the first update if one arrives first. One that needs only
+   * somewhere to put middleware — the session and conversation plugins — is
+   * installable here and on a bot alike.
+   */
+  extend(router: AccountRouter<Ext>): this
+  extend(plugin: Plugin<string, unknown, Account<Ext>>): this
+  extend(plugin: Plugin<string, unknown, MiddlewareHost>): this
+  extend(extension: AccountRouter<Ext> | Plugin<string, unknown, never>): this {
+    if (extension instanceof AccountRouter) return this.addChild(extension)
+
+    this.#plugins.add(extension as unknown as Plugin<string, unknown, Account<Ext>>)
+
+    return this
+  }
+
+  /**
+   * Be told when this account starts and when it begins to stop.
+   *
+   * How a plugin lets go of what it holds between updates. `stopping` runs
+   * before the stop waits for handlers still running, and what it returns is
+   * awaited within the stop's deadline; `started` runs on every start,
+   * including a restart. An observer that throws is logged and the rest are
+   * still told: a failing observer must not keep connections open.
+   */
+  observe(observer: HostObserver): () => void {
+    this.#observers.add(observer)
+
+    return () => {
+      this.#observers.delete(observer)
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -4978,6 +5175,10 @@ export class Account<Ext = unknown> {
    * account's own middleware rather than sorting into it.
    */
   async deliver(update: Parameters<typeof mtprotoContext>[0]): Promise<void> {
+    // Installed by dispatch as well as by a start, as a bot does: an update fed
+    // in without a start must not reach handlers whose plugins are missing.
+    if (this.#plugins.pending > 0) await this.#installPlugins()
+
     // A QR sign-in waiting on a token learns of the approval here. Told before
     // the handlers run and without waiting for them: a sign-in should not be
     // held up by what an application does with an unrelated update.
@@ -5016,6 +5217,36 @@ export class Account<Ext = unknown> {
     await this.#surrounding(context, async () => {
       await this.#dispatcher.dispatch(context)
     })
+  }
+
+  /**
+   * Install whatever is queued, never twice at a time.
+   *
+   * Serialized on one chain, as a bot's are: two updates arriving before the
+   * first start would otherwise both see the same queue and install it twice.
+   */
+  #installPlugins(): Promise<unknown> {
+    this.#pluginWork = this.#pluginWork.then(() => this.#plugins.install(this))
+
+    return this.#pluginWork
+  }
+
+  /**
+   * Tell every observer about a transition.
+   *
+   * Every one is told even when one throws, and what threw is logged: the
+   * transition is happening regardless, and an observer that failed to let go
+   * of something is worth an operator's attention but not worth leaving the
+   * network open for.
+   */
+  async #tell(transition: 'started' | 'stopping'): Promise<void> {
+    for (const observer of [...this.#observers]) {
+      try {
+        await observer[transition]?.()
+      } catch (error) {
+        this.#log.error(`an observer failed on ${transition}`, { error })
+      }
+    }
   }
 
   /**

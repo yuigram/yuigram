@@ -81,6 +81,8 @@ export type {
 } from './conversation/flows.js'
 export {
   type Addressed,
+  type AddressedPeer,
+  addressPart,
   type ConversationKeyFn,
   ConversationLocks,
   type ConversationScope,
@@ -187,6 +189,7 @@ export {
 export { isSensitiveKey, REDACTED, redact, redactString } from './log/redact.js'
 export {
   compose,
+  type HostObserver,
   type Middleware,
   MiddlewareError,
   type MiddlewareHost,

@@ -345,6 +345,7 @@ export type {
   OpenHours,
   WorkHours,
 } from './premium/premium.js'
+export { type AccountFilterContext, AccountRouter } from './router.js'
 export type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 export {
   cancelRecoveryEmail,

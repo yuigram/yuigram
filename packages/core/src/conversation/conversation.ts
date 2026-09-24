@@ -173,8 +173,15 @@ export interface FlowControls<C> {
  *
  * Mostly for defining scenes after the plugin is installed, and for shutting
  * down: `cancelAll` rejects every open waiter, so a client stopping does not
- * leave suspended handlers holding a promise nobody will settle. Nothing calls
- * it automatically; an application calls it when it stops its client.
+ * leave suspended handlers holding a promise nobody will settle.
+ *
+ * On a host that reports its lifecycle — an account does — the plugin does this
+ * itself when the host begins to stop: open waiters are cancelled, new ones are
+ * refused until it starts again, and flows stop acting on deadlines. None of
+ * that cancels a durable flow; a run stays stored and carries on with the next
+ * update in its conversation, and `flows.resume()` after a restart re-arms its
+ * deadline. On a host that does not report it, the application
+ * calls `cancelAll` and `flows.shutdown` when it stops its client.
  */
 export interface ConversationControls<C extends ConversationContext, S> {
   /** Define another scene. */
@@ -198,6 +205,25 @@ export interface ConversationControls<C extends ConversationContext, S> {
 export function createConversation<C extends ConversationContext, S = unknown>(
   options: ConversationOptions<C, S>,
 ): { readonly middleware: Middleware<C>; readonly controls: ConversationControls<C, S> } {
+  const { middleware, controls } = createParts(options)
+
+  return { middleware, controls }
+}
+
+/** What the plugin does when its host starts and stops. */
+interface HostLifecycle {
+  started(): void
+  stopping(): Promise<void>
+}
+
+/** The middleware, the controls, and what a host's lifecycle drives. */
+function createParts<C extends ConversationContext, S>(
+  options: ConversationOptions<C, S>,
+): {
+  readonly middleware: Middleware<C>
+  readonly controls: ConversationControls<C, S>
+  readonly lifecycle: HostLifecycle
+} {
   const scope = options.scope ?? DEFAULT_SCOPE
   checkScope(scope)
 
@@ -275,6 +301,18 @@ export function createConversation<C extends ConversationContext, S = unknown>(
 
   return {
     middleware,
+    lifecycle: {
+      started: () => {
+        waiters.open()
+      },
+      stopping: async () => {
+        waiters.close('the client is stopping')
+        // Deadlines only: a stored run is not cancelled by its client going
+        // away. The next update in its conversation carries it on, and
+        // `flows.resume()` after a restart re-arms its deadline.
+        if (engine !== undefined) (await engine).shutdown()
+      },
+    },
     controls: {
       addScene: (definition) => {
         scenes.add(definition)
@@ -477,7 +515,7 @@ export function conversation<C extends ConversationContext, S = unknown>(
    */
   readonly controls: ConversationControls<C, S>
 } {
-  const { middleware, controls } = createConversation(options)
+  const { middleware, controls, lifecycle } = createParts(options)
 
   return {
     // Two conversations under different properties are two plugins, so the
@@ -486,6 +524,14 @@ export function conversation<C extends ConversationContext, S = unknown>(
     controls,
     install(host: MiddlewareHost) {
       host.use(middleware as Middleware<never>)
+      host.observe?.({
+        started: () => {
+          lifecycle.started()
+        },
+        stopping: async () => {
+          await lifecycle.stopping()
+        },
+      })
 
       return controls
     },

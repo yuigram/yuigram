@@ -119,6 +119,28 @@ describe('which conversation an update belongs to', () => {
   })
 })
 
+describe('a conversation over a transport whose ids repeat across sorts of peer', () => {
+  /** An MTProto-shaped update: bigint ids, each with the sort of peer it names. */
+  const peered = (chat: { kind: string; id: bigint }, sender: { kind: string; id: bigint }) =>
+    ({ client: { name: 'me' }, chat, sender }) as never
+
+  it('keeps user 5 and basic group 5 apart, and writes a 64-bit id in full', () => {
+    const inPrivate = conversationKey(peered({ kind: 'user', id: 5n }, { kind: 'user', id: 5n }))
+    const inGroup = conversationKey(peered({ kind: 'chat', id: 5n }, { kind: 'user', id: 5n }))
+    const large = conversationKey(
+      peered({ kind: 'channel', id: 9_007_199_254_740_993n }, { kind: 'user', id: 5n }),
+    )
+
+    expect(inPrivate).toBe('me:c:user:5:u:user:5')
+    expect(inGroup).toBe('me:c:chat:5:u:user:5')
+    expect(large).toBe('me:c:channel:9007199254740993:u:user:5')
+  })
+
+  it('leaves a key with no sort of peer exactly as it was', () => {
+    expect(conversationKey(update({ chat: -100123, user: 10 }))).toBe('bot:c:-100123:u:10')
+  })
+})
+
 describe('running one conversation at a time', () => {
   it('serialises the same key and lets different ones overlap', async () => {
     const locks = new ConversationLocks()
@@ -764,6 +786,44 @@ describe('the plugin', () => {
     expect(installed).toHaveLength(1)
     expect(plugin.name).toBe('conversation')
     expect(controls.waiting).toBe(0)
+  })
+
+  it('lets go of open waits when its host begins to stop, and takes new ones after a start', async () => {
+    let observer: import('../src/index.js').HostObserver | undefined
+    let installed: ((context: never, next: () => Promise<void>) => unknown) | undefined
+    const host = {
+      use(middleware: (context: never, next: () => Promise<void>) => unknown) {
+        installed = middleware
+      },
+      observe(given: import('../src/index.js').HostObserver) {
+        observer = given
+      },
+    }
+    const plugin = conversation<ConversationContext>({ storage: memory() })
+    const controls = await plugin.install(host as never)
+    const middleware = installed as NonNullable<typeof installed>
+
+    const asking = update({ user: 10 })
+    await run(middleware, asking)
+    const waiting = held(asking).wait({ match: () => true })
+    expect(controls.waiting).toBe(1)
+
+    await observer?.stopping?.()
+    await expect(waiting).rejects.toThrow(WaitCancelledError)
+    expect(controls.waiting).toBe(0)
+
+    // An update still being handled while the host drains cannot open a wait
+    // nothing will answer.
+    const late = update({ user: 11 })
+    await run(middleware, late)
+    await expect(held(late).wait({ match: () => true })).rejects.toThrow(/client is stopping/)
+
+    observer?.started?.()
+    const again = update({ user: 12 })
+    await run(middleware, again)
+    const answered = held(again).wait({ match: () => true })
+    await run(middleware, update({ user: 12, text: 'hello' }))
+    await expect(answered).resolves.toBeDefined()
   })
 
   it('names itself by its property, so two are not a conflict', () => {

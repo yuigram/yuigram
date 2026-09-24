@@ -23,11 +23,25 @@
 
 import { ValidationError } from '../errors/errors.js'
 
+/**
+ * A chat or a sender, as much of one as a key reads.
+ *
+ * `kind` is for a transport whose numbers are unique only within a sort of
+ * peer. Over MTProto a user, a basic group and a channel are numbered
+ * separately, so user 5 and group 5 are two conversations; a key built from
+ * the number alone would give them one position and one lock. The Bot API
+ * folds the sort into the number and names none.
+ */
+export interface AddressedPeer {
+  readonly id?: number | string | bigint | undefined
+  readonly kind?: string | undefined
+}
+
 /** What an update has to carry for a conversation key to be derived from it. */
 export interface Addressed {
   readonly client: { readonly name: string }
-  readonly chat?: { readonly id?: number | string | undefined } | undefined
-  readonly sender?: { readonly id?: number | string | undefined } | undefined
+  readonly chat?: AddressedPeer | undefined
+  readonly sender?: AddressedPeer | undefined
   /** The forum topic, where the transport models one. */
   readonly topicId?: number | undefined
 }
@@ -61,8 +75,8 @@ export function conversationKey(
   context: Addressed,
   scope: ConversationScope = DEFAULT_SCOPE,
 ): string | undefined {
-  const chat = context.chat?.id
-  const user = context.sender?.id
+  const chat = addressPart(context.chat)
+  const user = addressPart(context.sender)
   const topic = context.topicId
 
   const parts: (string | number)[] = [context.client.name]
@@ -101,6 +115,22 @@ export function conversationKey(
  * that has been running for a month holds no more entries than it has
  * conversations happening at that moment.
  */
+/**
+ * How a chat or a sender is written into a key.
+ *
+ * The number alone where no sort is named, which keeps every key the Bot API
+ * has already stored where it was; the sort and the number where one is. A
+ * 64-bit number is written out in full rather than rounded through a float.
+ */
+export function addressPart(peer: AddressedPeer | undefined): string | number | undefined {
+  const id = peer?.id
+  if (id === undefined) return undefined
+
+  const written = typeof id === 'bigint' ? id.toString() : id
+
+  return peer?.kind === undefined ? written : `${peer.kind}:${written}`
+}
+
 export class ConversationLocks {
   /** The tail of each key's queue: what the next arrival waits on. */
   readonly #queues = new Map<string, Promise<unknown>>()

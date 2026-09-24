@@ -17,6 +17,7 @@
  */
 
 import type { BaseContext } from '../context/types.js'
+import { type AddressedPeer, addressPart } from '../conversation/identity.js'
 import type { Middleware, MiddlewareHost } from '../middleware/compose.js'
 import type { Plugin } from '../plugin/plugin.js'
 import type { KV } from '../storage/types.js'
@@ -333,12 +334,14 @@ async function persist<C extends BaseContext & SessionFlavor<V>, V>(
  */
 export function userChatKey(
   context: Pick<BaseContext, 'kind'> & {
-    chat?: { id?: number | undefined } | undefined
-    sender?: { id?: number | undefined } | undefined
+    chat?: AddressedPeer | undefined
+    sender?: AddressedPeer | undefined
   },
 ): string | undefined {
-  const chat = context.chat?.id
-  const sender = context.sender?.id
+  // The same rule a conversation key writes a peer by, so an account's user 5
+  // and its basic group 5 get two sessions, and a 64-bit id keeps every digit.
+  const chat = addressPart(context.chat)
+  const sender = addressPart(context.sender)
 
   if (chat === undefined && sender === undefined) return undefined
   return `${chat ?? 'nochat'}:${sender ?? 'nosender'}`

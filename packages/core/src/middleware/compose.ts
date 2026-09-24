@@ -145,4 +145,25 @@ export function when<C>(
  */
 export interface MiddlewareHost {
   use(middleware: Middleware<never>): unknown
+  /**
+   * Be told when the host starts and when it begins to stop.
+   *
+   * Optional, because a router has no lifecycle of its own. A plugin holding
+   * work open between updates — a conversation waiting for the next message —
+   * uses it to let go when the client stops, rather than relying on the
+   * application to remember to.
+   */
+  observe?(observer: HostObserver): unknown
+}
+
+/** What a plugin can be told about the lifecycle of the host it is on. */
+export interface HostObserver {
+  /** The host is up and taking updates, including after a restart. */
+  readonly started?: () => unknown
+  /**
+   * The host has begun to stop, and has not yet waited for the work in flight.
+   *
+   * What is returned is awaited, within the stop's deadline.
+   */
+  readonly stopping?: () => unknown
 }

@@ -489,4 +489,23 @@ describe('userChatKey', () => {
     expect(userChatKey({ kind: 'message', chat: { id: 1 } })).toBe('1:nosender')
     expect(userChatKey({ kind: 'message', sender: { id: 2 } })).toBe('nochat:2')
   })
+
+  it('keeps an MTProto user and basic group of the same number apart, with every digit', () => {
+    const inPrivate = userChatKey({
+      kind: 'message',
+      chat: { kind: 'user', id: 5n },
+      sender: { kind: 'user', id: 5n },
+    })
+    const inGroup = userChatKey({
+      kind: 'message',
+      chat: { kind: 'chat', id: 5n },
+      sender: { kind: 'user', id: 5n },
+    })
+
+    expect(inPrivate).toBe('user:5:user:5')
+    expect(inGroup).toBe('chat:5:user:5')
+    expect(
+      userChatKey({ kind: 'message', chat: { kind: 'channel', id: 9_007_199_254_740_993n } }),
+    ).toBe('channel:9007199254740993:nosender')
+  })
 })

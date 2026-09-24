@@ -180,6 +180,8 @@ const defaultSchedule = (run: () => void, delayMs: number): (() => void) => {
  */
 export class WaiterRegister<C extends Addressed> {
   readonly #pending = new Map<string, Pending>()
+  /** Why new waits are refused, while the client is stopping. */
+  #closed: string | undefined
   readonly #scope: ConversationScope
   readonly #key: ConversationKeyFn | undefined
   readonly #schedule: (run: () => void, delayMs: number) => () => void
@@ -217,6 +219,10 @@ export class WaiterRegister<C extends Addressed> {
     // One waiter per conversation: the one already there is told rather than
     // left to never resolve.
     this.#pending.get(key)?.fail(new WaitCancelledError('another waiter replaced this one'))
+
+    // A wait opened while the client stops would hold the stop until its
+    // deadline, since nothing is left to answer it.
+    if (this.#closed !== undefined) throw new WaitCancelledError(this.#closed)
 
     return await new Promise<T | undefined>((resolve, reject) => {
       let settled = false
@@ -293,6 +299,17 @@ export class WaiterRegister<C extends Addressed> {
   /** Cancel every open waiter, for a client that is shutting down. */
   cancelAll(reason = 'the client stopped'): void {
     for (const entry of [...this.#pending.values()]) entry.fail(new WaitCancelledError(reason))
+  }
+
+  /** Cancel every open waiter and refuse new ones until {@link WaiterRegister.open}. */
+  close(reason = 'the client is stopping'): void {
+    this.#closed = reason
+    this.cancelAll(reason)
+  }
+
+  /** Take waits again, after the client has started. */
+  open(): void {
+    this.#closed = undefined
   }
 
   /**
