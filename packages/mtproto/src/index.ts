@@ -202,6 +202,12 @@ export type {
   TranslateOptions,
   Translation,
 } from './messaging/interact.js'
+export {
+  CALLBACK_DATA_LIMIT,
+  callbackButton,
+  inlineKeyboard,
+  urlButton,
+} from './messaging/keyboards.js'
 export type {
   CallbackAnswer,
   EditOptions,

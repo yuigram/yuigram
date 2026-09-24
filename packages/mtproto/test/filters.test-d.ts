@@ -29,6 +29,19 @@ describe('a filter’s proof reaching the handler', () => {
     })
   })
 
+  it('types what a callback-data schema read', () => {
+    const vote = {
+      matches: (_data: string) => true,
+      unpack: (_data: string): { answer: 'yes' | 'no'; poll: number } | undefined => undefined,
+    }
+    account.on(f.callbackData(vote, { answer: 'yes' }), (event) => {
+      expectTypeOf(event.payload).toEqualTypeOf<{ answer: 'yes' | 'no'; poll: number }>()
+      expectTypeOf(event.data).toEqualTypeOf<string>()
+    })
+    // @ts-expect-error — not a value the field can hold
+    f.callbackData(vote, { answer: 'maybe' })
+  })
+
   it('narrows the chat and sender a peer filter requires', () => {
     account.once('message', f.chat('user'), (event) => {
       expectTypeOf(event.chat).toEqualTypeOf<PeerRef>()

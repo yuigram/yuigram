@@ -12,6 +12,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { fromHtml } from '../src/format/html.js'
+import { callbackButton, inlineKeyboard, urlButton } from '../src/messaging/keyboards.js'
 import type { MtprotoContext } from '../src/normalize/context.js'
 import { normalizeUpdate } from '../src/normalize/normalize.js'
 import type { TlValue } from '../src/tl/index.js'
@@ -348,6 +349,14 @@ async function recorded(
 const named = (asked: readonly TlValue[], method: string): TlValue | undefined =>
   asked.find((query) => query._ === method)
 
+describe('buttons', () => {
+  it('refuses data a button cannot carry', () => {
+    expect(() => callbackButton('x', '')).toThrow(/1 to 64 bytes/)
+    expect(() => callbackButton('x', 'é'.repeat(33))).toThrow(/this is 66/)
+    expect(callbackButton('x', new Uint8Array(64)).type).toMatchObject({ data: new Uint8Array(64) })
+  })
+})
+
 describe('a kind beyond messages, delivered', () => {
   it('reaches its handler, and the handler answers a pressed button and edits its message', async () => {
     const { instance, asked } = await recorded()
@@ -357,7 +366,11 @@ describe('a kind beyond messages, delivered', () => {
       instance.account.on('mtproto:callback_query', async (event) => {
         seen.push(event.data)
         await event.answerCallback({ text: 'Bought.' })
-        await event.edit(fromHtml('<b>Sold out</b>'))
+        await event.edit(fromHtml('<b>Sold out</b>'), {
+          markup: inlineKeyboard([
+            [callbackButton('Again', 'buy:43'), urlButton('Shop', 'https://e.com')],
+          ]),
+        })
       })
 
       await push(
@@ -385,6 +398,27 @@ describe('a kind beyond messages, delivered', () => {
         id: 3,
         message: 'Sold out',
         entities: [{ _: 'messageEntityBold', offset: 0, length: 8 }],
+        // The buttons, as the datacenter decoded them.
+        reply_markup: {
+          _: 'replyInlineMarkup',
+          rows: [
+            {
+              _: 'keyboardInlineButtonRow',
+              buttons: [
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Again',
+                  type: { _: 'inlineButtonTypeCallback', data: new TextEncoder().encode('buy:43') },
+                },
+                {
+                  _: 'keyboardInlineButton',
+                  text: 'Shop',
+                  type: { _: 'inlineButtonTypeUrl', url: 'https://e.com' },
+                },
+              ],
+            },
+          ],
+        },
       })
     } finally {
       await instance.dispose()

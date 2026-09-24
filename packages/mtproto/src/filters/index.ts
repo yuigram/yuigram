@@ -352,7 +352,85 @@ export function callback(match?: TextMatch): Filter<MtprotoContext> {
 
       return current !== undefined && matches(current, match)
     },
-    { kinds: ['mtproto:callback_query', 'mtproto:ephemeral_callback_query'] },
+    {
+      kinds: [
+        'mtproto:callback_query',
+        'mtproto:ephemeral_callback_query',
+        'mtproto:business_callback_query',
+      ],
+    },
+  )
+}
+
+/**
+ * What a callback-data schema offers a filter: whether data is its, and what
+ * the data says. The Bot API's `defineCallbackData` is one; so is anything
+ * with the same two members.
+ */
+export interface CallbackSchema<State> {
+  matches(data: string): boolean
+  unpack(data: string): State | undefined
+}
+
+/** What a field of the data must be: a value, one of several, or text matching a pattern. */
+export type FieldMatch<Value> = Value | readonly Value[] | (Value extends string ? RegExp : never)
+
+function fieldMatches(value: unknown, wanted: unknown): boolean {
+  if (Array.isArray(wanted)) return wanted.includes(value)
+  if (wanted instanceof RegExp) {
+    wanted.lastIndex = 0
+
+    return typeof value === 'string' && wanted.test(value)
+  }
+
+  return value === wanted
+}
+
+/**
+ * A pressed button whose data a schema reads, and whose fields hold what was
+ * asked.
+ *
+ * ```ts
+ * const vote = defineCallbackData('vote').literal('answer', ['yes', 'no'])
+ * account.on(f.callbackData(vote, { answer: 'yes' }), (event) => event.payload.answer)
+ * ```
+ *
+ * What the schema read is `event.payload`, typed. Reading the data is not
+ * trusting it: a button's data comes back from whoever pressed it.
+ */
+export function callbackData<State extends object>(
+  schema: CallbackSchema<State>,
+  fields: { readonly [K in keyof State]?: FieldMatch<State[K]> } = {},
+): Filter<MtprotoContext, { data: string; payload: State }> {
+  return defineFilter<MtprotoContext, { data: string; payload: State }>(
+    'callbackData',
+    (value) => {
+      const context = contextOf(value)
+      const data = context.data
+      if (data === undefined || !schema.matches(data)) return false
+
+      const payload = schema.unpack(data)
+      if (payload === undefined) return false
+
+      for (const [field, wanted] of Object.entries(fields)) {
+        if (!fieldMatches((payload as Record<string, unknown>)[field], wanted)) return false
+      }
+
+      Object.defineProperty(context, 'payload', {
+        value: payload,
+        configurable: true,
+        enumerable: true,
+      })
+
+      return true
+    },
+    {
+      kinds: [
+        'mtproto:callback_query',
+        'mtproto:ephemeral_callback_query',
+        'mtproto:business_callback_query',
+      ],
+    },
   )
 }
 
@@ -391,6 +469,7 @@ export const f = Object.freeze({
   silent,
   media,
   callback,
+  callbackData,
   inline,
   and,
   or,

@@ -187,6 +187,44 @@ describe('queries', () => {
   })
 })
 
+describe('callback data read by a schema', () => {
+  /** A schema of the shape a callback-data builder has: `vote:<answer>:<poll>`. */
+  const vote = {
+    matches: (data: string) => data.startsWith('vote:'),
+    unpack: (data: string) => {
+      const [, answer, poll] = data.split(':')
+      return answer === undefined || poll === undefined ? undefined : { answer, poll: Number(poll) }
+    },
+  }
+  const pressed = (data: string) =>
+    event({
+      _: 'updateBotCallbackQuery',
+      query_id: 1n,
+      user_id: 5n,
+      peer: { _: 'peerUser', user_id: 5n },
+      msg_id: 3,
+      chat_instance: 9n,
+      data: new TextEncoder().encode(data),
+    })
+
+  it('matches the schema’s data, hands over what it read, and holds fields to what was asked', () => {
+    const yes = pressed('vote:yes:7')
+
+    expect(f.callbackData(vote)(yes)).toBe(true)
+    expect((yes as MtprotoContext & { payload: unknown }).payload).toEqual({
+      answer: 'yes',
+      poll: 7,
+    })
+    expect(f.callbackData(vote, { answer: 'no' })(pressed('vote:yes:7'))).toBe(false)
+    expect(f.callbackData(vote, { answer: ['yes', 'maybe'], poll: 7 })(pressed('vote:yes:7'))).toBe(
+      true,
+    )
+    expect(f.callbackData(vote, { answer: /^y/ })(pressed('vote:yes:7'))).toBe(true)
+    expect(f.callbackData(vote)(pressed('other:1'))).toBe(false)
+    expect(f.callbackData(vote)(pressed('vote:'))).toBe(false)
+  })
+})
+
 describe('composition', () => {
   it('combines, and keeps the kinds a registration can skip on', () => {
     const privateText = f.and(f.chat('user'), f.text())
