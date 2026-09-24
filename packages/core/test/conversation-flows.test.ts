@@ -12,6 +12,8 @@
  * Crossing a real process boundary is what `examples/16-durable-flows` does.
  */
 
+import { setFlagsFromString } from 'node:v8'
+import { runInNewContext } from 'node:vm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   type ConversationContext,
@@ -1083,5 +1085,109 @@ describe('what a flow may keep', () => {
     })
 
     expect(String(failures[0])).toMatch(/no flows are configured/)
+  })
+})
+
+describe('a pass that stopped at a wait', () => {
+  /**
+   * A flow that notes, pass by pass, reaching its first wait and getting past
+   * it. Every pass runs the function from the top; one that stops at a wait is
+   * abandoned there, and must never get past it later.
+   */
+  function traced() {
+    let passes = 0
+    const trail: string[] = []
+    const effects: string[] = []
+    const frames: WeakRef<object>[] = []
+    const definition = defineFlow<Ctx>({
+      name: 'traced',
+      run: async (flow) => {
+        passes += 1
+        const pass = passes
+        // Held by this pass's suspended frame, across the wait, and by nothing else.
+        const frame = { pass, padding: new Array<number>(256).fill(pass) }
+        frames.push(new WeakRef(frame))
+        trail.push(`waiting@${pass}`)
+        const first = await flow.wait('first', {
+          ...text,
+          validate: (value) => value === 'yes' || 'say yes',
+          timeout: 60_000,
+        })
+        trail.push(`past@${frame.pass}`)
+        await flow.effect('once', () => {
+          effects.push(first)
+
+          return null
+        })
+        await flow.wait('second', text)
+
+        return null
+      },
+    })
+
+    return { definition, trail, effects, frames, passes: () => passes }
+  }
+
+  const liveTimers = (timers: readonly { cancelled: boolean }[]): number =>
+    timers.filter((timer) => !timer.cancelled).length
+
+  it('never gets past the wait later, whatever happens to the run afterwards', async () => {
+    const flow = traced()
+    const { deliver, controls, timers, advance } = runtime(durable(), [flow.definition], {
+      handler: async (context) => {
+        if (context.text === '/go') await context.conversation.start(flow.definition)
+      },
+    })
+
+    await deliver(update('/go'))
+    for (let answer = 0; answer < 5; answer += 1) await deliver(update('no'))
+    // One deadline at a time, however often the wait was reached again.
+    expect(liveTimers(timers)).toBe(1)
+
+    await deliver(update('yes'))
+    await controls.flows?.cancel('bot:c:1:u:10', 'done with it')
+    await controls.flows?.shutdown()
+    await advance(120_000)
+    await settle(50)
+
+    const stopped = [1, 2, 3, 4, 5, 6]
+    expect(flow.passes()).toBe(8)
+    for (const pass of stopped) expect(flow.trail).not.toContain(`past@${pass}`)
+    // The answering pass got past it, and so did the cancelling one, replaying.
+    expect(flow.trail.filter((entry) => entry.startsWith('past@'))).toEqual(['past@7', 'past@8'])
+    expect(flow.effects).toEqual(['yes'])
+    expect(liveTimers(timers)).toBe(0)
+  })
+
+  it('lets go of every pass it abandoned, however many times the run is resumed', async () => {
+    setFlagsFromString('--expose-gc')
+    const gc = runInNewContext('gc') as () => void
+    const collect = async (): Promise<void> => {
+      for (let round = 0; round < 4; round += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        gc()
+      }
+    }
+
+    const flow = traced()
+    const { deliver, timers } = runtime(durable(), [flow.definition], {
+      handler: async (context) => {
+        if (context.text === '/go') await context.conversation.start(flow.definition)
+      },
+    })
+    // Something held on purpose, so a count of zero means collected rather than
+    // a count that cannot see anything.
+    const held = { padding: new Array<number>(256).fill(0) }
+    const control = new WeakRef(held)
+
+    await deliver(update('/go'))
+    for (let answer = 0; answer < 200; answer += 1) await deliver(update('no'))
+    await collect()
+
+    const alive = flow.frames.filter((frame) => frame.deref() !== undefined).length
+    expect(flow.passes()).toBe(201)
+    expect(control.deref()).toBe(held)
+    expect(alive).toBeLessThanOrEqual(1)
+    expect(liveTimers(timers)).toBe(1)
   })
 })

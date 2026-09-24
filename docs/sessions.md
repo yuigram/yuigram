@@ -439,6 +439,18 @@ writing a durable conversation as one function:
   on every resume. A message, a write, the clock and a random number are
   effects, and their results are recorded.
 
+**What happens to the run that stopped.** A pass that reaches a wait it cannot
+answer stops there by awaiting a promise created with no way to settle it — not
+by throwing, so a `catch` around a wait's timeout cannot catch the stop and carry
+on. Nothing can ever resume that frame: the next update, deadline or cancellation
+starts a new pass from the top, and the abandoned one, referred to by nothing,
+is collected. A test resumes one run two hundred times and forces a collection
+with at most one of the abandoned frames left; another checks that no pass which
+stopped at a wait ever gets past it later — through rejected answers, the
+answer, a cancellation and a shutdown — and that the one effect after the wait
+ran once. A run holds at most one deadline timer in a process, re-armed as the
+wait is reached again, and none once it has ended or the process has shut down.
+
 A definition that changes its steps changes its `version`. A run started under
 a version the definition does not `accept` is left as it is and reported. A
 change that slipped through without a new version is caught when the replay
