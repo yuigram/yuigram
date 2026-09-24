@@ -12,10 +12,12 @@ import { describe, expect, it } from 'vitest'
 import { FloodError } from '../src/errors/errors.js'
 import { MarkupParseError } from '../src/format/index.js'
 import {
+  DEFAULT_LIMITS,
   fromBytes,
   fromEventEmitter,
   normalizeSource,
   runStream,
+  STREAM_DEFAULTS,
   StopController,
   type StreamClock,
   type StreamPayload,
@@ -228,6 +230,31 @@ function setup(options: Partial<Parameters<typeof runStream>[0]> = {}) {
 
   return { clock, feed, sink, errors, running }
 }
+
+describe('defaults', () => {
+  it('states the limits and timing a stream uses unless told otherwise', () => {
+    expect(DEFAULT_LIMITS).toEqual({ text: 4096, rich: 32768, blocks: 500 })
+    expect(STREAM_DEFAULTS).toEqual({
+      editInterval: 250,
+      maxEditBackoff: 4000,
+      draftTtl: 30_000,
+      draftSafety: 2_000,
+      maxFloodWait: 60,
+    })
+  })
+
+  it('waits the stated interval between drafts when given none', async () => {
+    const { clock, feed, sink, running } = setup()
+    await flush()
+    feed.push('a')
+    await clock.advance(STREAM_DEFAULTS.editInterval - 1)
+    expect(sink.drafts()).toHaveLength(1)
+    await clock.advance(1)
+    expect(sink.drafts().map((call) => call.text)).toEqual(['', 'a'])
+    feed.end()
+    await running
+  })
+})
 
 describe('drafts', () => {
   it('shows a placeholder, then the text, then sends it once as a message', async () => {

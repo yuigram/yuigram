@@ -11,6 +11,7 @@ export {
   type EarlyEnd,
   type RunStreamOptions,
   runStream,
+  STREAM_DEFAULTS,
   StopController,
   type StreamClock,
   type StreamResult,

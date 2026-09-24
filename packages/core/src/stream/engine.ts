@@ -52,6 +52,20 @@ import {
   type WindowLimits,
 } from './windows.js'
 
+/** The timing a stream uses unless told otherwise. */
+export const STREAM_DEFAULTS = {
+  /** The shortest time between two drafts, in milliseconds. */
+  editInterval: 250,
+  /** The longest that interval grows to after failed drafts, in milliseconds. */
+  maxEditBackoff: 4000,
+  /** How long a draft stays on the reader's screen, in milliseconds. */
+  draftTtl: 30_000,
+  /** How long before that a window is sent as a message, in milliseconds. */
+  draftSafety: 2_000,
+  /** The longest flood wait a message is retried after, in seconds. */
+  maxFloodWait: 60,
+} as const
+
 /** Where a stream's drafts and messages go. */
 export interface StreamTransport<Message = unknown> {
   /**
@@ -298,11 +312,16 @@ class StreamRun<Message> {
     const format = options.format ?? { kind: 'plain' }
     const limits = { ...DEFAULT_LIMITS, ...options.limits }
     this.#window = createWindow(format, limits)
-    this.#editInterval = options.editInterval ?? 250
+    this.#editInterval = options.editInterval ?? STREAM_DEFAULTS.editInterval
     this.#interval = this.#editInterval
-    this.#maxBackoff = Math.max(this.#editInterval, options.maxEditBackoff ?? 4000)
-    this.#ttl = (options.draftTtl ?? 30_000) - (options.draftSafety ?? 2_000)
-    this.#maxFloodWait = options.maxFloodWait ?? 60
+    this.#maxBackoff = Math.max(
+      this.#editInterval,
+      options.maxEditBackoff ?? STREAM_DEFAULTS.maxEditBackoff,
+    )
+    this.#ttl =
+      (options.draftTtl ?? STREAM_DEFAULTS.draftTtl) -
+      (options.draftSafety ?? STREAM_DEFAULTS.draftSafety)
+    this.#maxFloodWait = options.maxFloodWait ?? STREAM_DEFAULTS.maxFloodWait
     this.#highWater = (format.kind === 'rich' ? limits.rich : limits.text) * 2
 
     options.signal?.addEventListener('abort', this.#onOuter, { once: true })

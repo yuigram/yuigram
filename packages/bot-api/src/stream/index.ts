@@ -128,8 +128,11 @@ interface Run {
   readonly stop: StopController
 }
 
-/** The largest draft identity: a positive 32-bit integer. */
-const DRAFT_ID_MAX = 0x7fffffff
+/**
+ * The largest draft identity this plugin allocates: a positive 32-bit
+ * integer, so it fits whichever width Telegram stores the identity in.
+ */
+export const DRAFT_ID_MAX = 0x7fffffff
 
 /** The engine's format for a stream's options, refusing a contradiction. */
 function formatOf(options: StreamOptions): StreamFormat {
