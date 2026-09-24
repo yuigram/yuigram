@@ -688,7 +688,17 @@ export class Account<Ext = unknown> {
     this.#options = options
     this.name = options.name ?? 'account'
     this.#log = options.log ?? createLogger()
-    this.#dispatcher = new Dispatcher<MtprotoContext & Ext>()
+    this.#dispatcher = new Dispatcher<MtprotoContext & Ext>({
+      onUnhandled: (error, context) => {
+        // Updates are dispatched off the back of the connection and nobody
+        // awaits them, so with no error handler registered this is the only
+        // trace a failing handler leaves.
+        this.#log.error('unhandled error while dispatching an update', {
+          kind: context.kind,
+          error,
+        })
+      },
+    })
     this.#area = namespaced(options.storage, areaFor(this.name))
     this.#peers = peerStore(namespaced(this.#through(), 'peers:'))
     this.#lifecycle = new Lifecycle({
