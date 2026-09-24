@@ -294,10 +294,12 @@ describe('the message', () => {
     })
   })
 
-  it('converts between forms only where it can', () => {
+  it('converts between forms, reading markup into blocks on the way', () => {
     expect(rich(h1('T')).toMarkdown()).toBe('# T')
     expect(rich(h1('T')).toHtml()).toBe('<h1>T</h1>')
-    expect(() => rich.html('<p>x</p>').toMarkdown()).toThrow(RichError)
+    expect(rich.html('<h1>T</h1><p>x <b>y</b></p>').toMarkdown()).toBe('# T\n\nx **y**')
+    expect(rich.markdown('# T\n\nx **y**').toHtml()).toBe('<h1>T</h1>\n<p>x <b>y</b></p>')
+    expect(() => rich.html('<p>x').toMarkdown()).toThrow(RichError)
     expect(() => new Rich('blocks', [])).toThrow(/at least one block/)
   })
 })

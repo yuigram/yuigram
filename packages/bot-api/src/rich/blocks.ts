@@ -39,7 +39,10 @@ import {
   buttonOf,
   isEmptyRichText,
   type RichContent,
+  reference,
+  referenceLink,
   richText,
+  superscript,
 } from './text.js'
 
 /** What a block builder accepts where blocks go: blocks, text, or both. */
@@ -466,6 +469,57 @@ export function document(
   return { type: 'document', document: media, ...captionOf(options) } as InputRichBlock
 }
 
+/** What kind of media a block holds. */
+export type MediaKind = 'photo' | 'video' | 'animation' | 'audio' | 'voice_note' | 'document'
+
+/**
+ * The kind of media an address holds, by what it ends in, as the
+ * documentation's examples have it: a `.gif` is an animation and an `.ogg` a
+ * voice note. Anything not recognisably a picture, a video or a sound is a
+ * document.
+ */
+export function mediaKindOf(address: string): MediaKind {
+  const extension = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(address)?.[1]?.toLowerCase() ?? ''
+  if (['jpg', 'jpeg', 'png', 'webp', 'bmp', 'heic'].includes(extension)) return 'photo'
+  if (extension === 'gif') return 'animation'
+  if (['mp4', 'mov', 'webm', 'mkv', 'm4v'].includes(extension)) return 'video'
+  if (['ogg', 'oga', 'opus'].includes(extension)) return 'voice_note'
+  if (['mp3', 'm4a', 'aac', 'flac', 'wav'].includes(extension)) return 'audio'
+
+  return 'document'
+}
+
+/**
+ * A media block of the kind asked for, or — for an address given without one —
+ * of the kind the address ends in.
+ */
+export function media(
+  file: PayloadFile,
+  options: MediaOptions & { readonly kind?: MediaKind } = {},
+): InputRichBlock {
+  const { kind: asked, ...rest } = options
+  const kind = asked ?? (typeof file === 'string' ? mediaKindOf(file) : 'document')
+  const plain = {
+    ...(rest.caption === undefined ? {} : { caption: rest.caption }),
+    ...(rest.credit === undefined ? {} : { credit: rest.credit }),
+  }
+
+  switch (kind) {
+    case 'photo':
+      return photo(file, rest)
+    case 'video':
+      return video(file, rest)
+    case 'animation':
+      return animation(file, rest)
+    case 'audio':
+      return audio(file, plain)
+    case 'voice_note':
+      return voiceNote(file, plain)
+    default:
+      return document(file, plain)
+  }
+}
+
 /** Photos and videos shown together. */
 export function collage(
   items: readonly InputRichBlock[],
@@ -482,6 +536,23 @@ export function slideshow(
   return { type: 'slideshow', blocks: [...items], ...captionOf(options) } as InputRichBlock
 }
 
+/** A map's size: each side 0 to 10000, together at most 10000, neither more than 20 times the other. */
+function checkMapSize(width: number | undefined, height: number | undefined): void {
+  for (const side of [width, height]) {
+    if (side !== undefined && (!Number.isInteger(side) || side < 0 || side > 10_000)) {
+      throw new ValidationError('a map is 0 to 10000 wide and high')
+    }
+  }
+  if (width === undefined || height === undefined) return
+  if (width + height > 10_000)
+    throw new ValidationError('a map is at most 10000 wide and high together')
+  if (Math.max(width, height) > 20 * Math.max(1, Math.min(width, height))) {
+    throw new ValidationError(
+      'a map is at most 20 times as wide as it is high, or the other way round',
+    )
+  }
+}
+
 /** A map of a place. */
 export function map(
   latitude: number,
@@ -496,6 +567,13 @@ export function map(
       'a place is a latitude from -90 to 90 and a longitude from -180 to 180',
     )
   }
+  if (
+    options.zoom !== undefined &&
+    (!Number.isInteger(options.zoom) || options.zoom < 0 || options.zoom > 24)
+  ) {
+    throw new ValidationError('a map is zoomed from 0 to 24')
+  }
+  checkMapSize(options.width, options.height)
 
   return {
     type: 'map',
@@ -506,6 +584,9 @@ export function map(
     ...captionOf(options),
   } as InputRichBlock
 }
+
+/** The most buttons one row holds. */
+export const MAX_BUTTONS_PER_ROW = 8
 
 /** A row of buttons of its own, aligned as asked. */
 export function buttons(
@@ -518,13 +599,36 @@ export function buttons(
   )[],
   options: { readonly align?: Align } = {},
 ): InputRichBlock {
-  if (row.length === 0) throw new ValidationError('a row of buttons needs at least one')
+  if (row.length === 0 || row.length > MAX_BUTTONS_PER_ROW) {
+    throw new ValidationError(`a row holds 1 to ${MAX_BUTTONS_PER_ROW} buttons, not ${row.length}`)
+  }
 
   return {
     type: 'buttons',
     buttons: row.map((entry) => ('label' in entry ? buttonOf(entry.label, entry.action) : entry)),
     ...(options.align === undefined ? {} : { align: options.align }),
   } as InputRichBlock
+}
+
+/* -------------------------------------------------------------------------- */
+/* Footnotes                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A reference to a footnote, shown as its label in superscript. `label` is the
+ * id unless given; rich Markdown's `[^id]` numbers them in order instead.
+ */
+export function footnoteRef(id: string, label: RichContent = id): RichText {
+  return referenceLink(superscript(label), id)
+}
+
+/** A footnote: a paragraph opening with its label, which its references link to. */
+export function footnote(
+  id: string,
+  definition: RichContent,
+  label: RichContent = id,
+): InputRichBlock {
+  return paragraph([reference(superscript(label), id), ' ', definition])
 }
 
 /** Aliases, for the names other tools use. */

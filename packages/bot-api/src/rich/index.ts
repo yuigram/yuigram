@@ -19,10 +19,17 @@
 
 import type { BlockContent } from './blocks.js'
 import * as blocks from './blocks.js'
+import { measureRich } from './limits.js'
+import { parseRichHtml } from './parse-html.js'
+import { parseRichMarkdown } from './parse-markdown.js'
 import { compose, html, markdown, Rich } from './rich.js'
 import * as text from './text.js'
 
 export * from './blocks.js'
+export { RichParseError } from './errors.js'
+export { measureRich, overLimit, RICH_LIMITS, type RichMeasure } from './limits.js'
+export { parseRichHtml, parseRichHtmlText, type RichParseOptions } from './parse-html.js'
+export { parseRichMarkdown, parseRichMarkdownText } from './parse-markdown.js'
 export { compose, html, markdown, Rich, RichError, type RichForm, type RichTag } from './rich.js'
 export {
   blockHtml,
@@ -52,6 +59,9 @@ export const rich: typeof compose &
     readonly md: typeof markdown
     readonly html: typeof html
     readonly Rich: typeof Rich
+    readonly parseMarkdown: typeof parseRichMarkdown
+    readonly parseHtml: typeof parseRichHtml
+    readonly measure: typeof measureRich
   } = Object.assign((...content: BlockContent[]) => compose(...content), {
   ...blocks,
   ...text,
@@ -59,4 +69,7 @@ export const rich: typeof compose &
   md: markdown,
   html,
   Rich,
+  parseMarkdown: parseRichMarkdown,
+  parseHtml: parseRichHtml,
+  measure: measureRich,
 })

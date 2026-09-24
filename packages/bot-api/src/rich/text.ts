@@ -47,8 +47,9 @@ function isFormatted(value: unknown): value is Formatted {
 /**
  * Content as one rich text value.
  *
- * Arrays are flattened, empty parts dropped, and a single part is returned as
- * itself rather than wrapped.
+ * Arrays are flattened, empty parts dropped, strings next to each other joined,
+ * and a single part is returned as itself rather than wrapped — so the same
+ * content always has the same shape, however it was put together.
  */
 export function richText(content: RichContent): RichText {
   const parts: RichText[] = []
@@ -56,11 +57,14 @@ export function richText(content: RichContent): RichText {
   const add = (value: RichContent): void => {
     if (value === null || value === undefined || value === false) return
     if (typeof value === 'number') {
-      parts.push(String(value))
+      add(String(value))
       return
     }
     if (typeof value === 'string') {
-      if (value.length > 0) parts.push(value)
+      if (value.length === 0) return
+      const last = parts.length - 1
+      if (typeof parts[last] === 'string') parts[last] = `${parts[last] as string}${value}`
+      else parts.push(value)
       return
     }
     if (Array.isArray(value)) {
@@ -167,6 +171,16 @@ export function textMention(content: RichContent, user: User | number): RichText
   const person: User = typeof user === 'number' ? { id: user, is_bot: false, first_name: '' } : user
 
   return { type: 'text_mention', text: richText(content), user: person } as RichText
+}
+
+/** A line break inside running text. */
+export function br(): RichText {
+  return '\n'
+}
+
+/** Items one after another, with `separator` between each two. */
+export function join(items: readonly RichContent[], separator: RichContent = ', '): RichText {
+  return richText(items.flatMap((item, index) => (index === 0 ? [item] : [separator, item])))
 }
 
 /** A custom emoji; `alternative` is what shows where it cannot. */

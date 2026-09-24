@@ -15,7 +15,6 @@
  * ```
  */
 
-import { ValidationError } from '@yuigram/core'
 import type {
   InputRichBlock,
   InputRichMessage,
@@ -24,6 +23,9 @@ import type {
 } from '../generated/types/index.js'
 import { richMessage } from '../payloads.js'
 import { type BlockContent, blocksOf, isBlock } from './blocks.js'
+import { RichError } from './errors.js'
+import { parseRichHtml, type RichParseOptions } from './parse-html.js'
+import { parseRichMarkdown } from './parse-markdown.js'
 import {
   blockHtml,
   blockMarkdown,
@@ -40,8 +42,7 @@ import { type RichContent, richText } from './text.js'
 /** The three forms a rich message takes. */
 export type RichForm = 'blocks' | 'markdown' | 'html'
 
-/** Raised for a rich message that cannot be what it was asked to be. */
-export class RichError extends ValidationError {}
+export { RichError } from './errors.js'
 
 /** A rich message in one form, with the options every form shares. */
 export class Rich {
@@ -103,26 +104,47 @@ export class Rich {
   }
 
   /**
+   * The same message as blocks, read out of its markup with the media it names.
+   *
+   * Telegram reads markup itself, and sending it as written is the faithful
+   * way to send it. Reading it here is for checking it before it is sent — a
+   * strict read refuses what the grammar does not have, and what is over a
+   * limit — and for building on it or converting it. `lenient` keeps what
+   * cannot be read as text instead.
+   */
+  toBlocks(options: Pick<RichParseOptions, 'lenient'> = {}): Rich {
+    if (this.form === 'blocks') return this
+
+    const read = { media: this.media, ...options }
+    const blocks =
+      this.form === 'markdown'
+        ? parseRichMarkdown(this.content as string, read)
+        : parseRichHtml(this.content as string, read)
+
+    return new Rich('blocks', blocks, [], {
+      rtl: this.#rtl,
+      skipEntityDetection: this.#skipDetection,
+    })
+  }
+
+  /**
    * The message as rich Markdown.
    *
-   * Blocks are written out; a message already in Markdown is itself. HTML is
-   * not rewritten as Markdown, since nothing here reads HTML into blocks.
+   * A message already in Markdown is itself; blocks are written out, and HTML
+   * is read into blocks first. What Markdown has no syntax for is written as
+   * the HTML tags rich Markdown accepts.
    */
   toMarkdown(): string {
     if (this.form === 'markdown') return this.content as string
-    if (this.form === 'html')
-      throw new RichError('this message is written in HTML and is not converted to Markdown')
 
-    return toRichMarkdown(this.content as readonly InputRichBlock[]).source
+    return toRichMarkdown(this.toBlocks().content as readonly InputRichBlock[]).source
   }
 
   /** The message as rich HTML, on the same terms as {@link Rich.toMarkdown}. */
   toHtml(): string {
     if (this.form === 'html') return this.content as string
-    if (this.form === 'markdown')
-      throw new RichError('this message is written in Markdown and is not converted to HTML')
 
-    return toRichHtml(this.content as readonly InputRichBlock[]).source
+    return toRichHtml(this.toBlocks().content as readonly InputRichBlock[]).source
   }
 }
 
