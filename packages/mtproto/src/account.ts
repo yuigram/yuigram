@@ -533,8 +533,22 @@ export interface AccountOptions {
    * whether a claim left behind can be adopted without being asked from exactly
    * that, and a guard claiming more than it excludes turns a refusal into two
    * runs writing one area.
+   *
+   * A store that leases areas itself — `@yuigram/sqlite` and `@yuigram/redis`
+   * do — needs nothing here: its lease covers every process that reaches the
+   * same database, and the store refuses a superseded run's writes.
    */
   readonly storageGuard?: Guard
+  /**
+   * How long this account's lease on a store that leases areas outlives a run
+   * that stopped without releasing it, in milliseconds. 30 seconds unless
+   * given; renewed every third of that while the account runs.
+   *
+   * The time a crashed run keeps the next one waiting, and nothing more: a run
+   * paused for longer — a debugger, a machine asleep — finds its writes refused
+   * by the store and stops, rather than writing over its successor.
+   */
+  readonly storageLeaseMs?: number
   /**
    * The server keys a first key exchange may be answered with.
    *
@@ -3365,6 +3379,9 @@ export class Account<Ext = unknown> {
       name: this.name,
       holder: `${String(Date.now().toString(36))}-${toHex(randomBytes(8))}`,
       ...(this.#options.storageGuard === undefined ? {} : { guard: this.#options.storageGuard }),
+      ...(this.#options.storageLeaseMs === undefined
+        ? {}
+        : { leaseMs: this.#options.storageLeaseMs }),
     })
 
     try {
@@ -5083,6 +5100,19 @@ export class Account<Ext = unknown> {
         ? {}
         : { takeOver: this.#options.takeOverStorage }),
       ...(this.#options.storageGuard === undefined ? {} : { guard: this.#options.storageGuard }),
+      ...(this.#options.storageLeaseMs === undefined
+        ? {}
+        : { leaseMs: this.#options.storageLeaseMs }),
+      onLost: (error) => {
+        // Another run owns the area now, and nothing this one writes will land:
+        // its place in the stream would stop advancing while it kept handling
+        // updates the other run handles too. So it stops.
+        this.#log.error('another run took over this account’s storage; stopping', {
+          account: this.name,
+          error,
+        })
+        void this.stop().catch(() => undefined)
+      },
     })
 
     this.#lease = lease

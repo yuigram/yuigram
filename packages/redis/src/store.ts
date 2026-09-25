@@ -12,12 +12,21 @@
  * clients write may see a key twice or miss one written after it began, and
  * both are said by Redis's own contract for SCAN.
  *
- * As with every store: this keeps an MTProto account's state, and does not
- * stop two processes running one account against it.
+ * An area of the store can also be leased to one holder at a time across
+ * every client of the server, with each write through the lease checked on the
+ * server in the same script that makes it; `lease.ts` says how. That is what an
+ * MTProto account keeping its state here uses to stay the only run writing it.
  */
 
-import { type DescribedKV, type KVInfo, StorageError, ValidationError } from '@yuigram/core'
+import {
+  type DescribedKV,
+  type KVInfo,
+  type LeasableKV,
+  StorageError,
+  ValidationError,
+} from '@yuigram/core'
 import { literalPattern, type RedisClient, type RedisSend, sender } from './client.js'
+import { leaseArea } from './lease.js'
 
 /** Options for {@link redisStore}. */
 export interface RedisStoreOptions {
@@ -31,10 +40,18 @@ export interface RedisStoreOptions {
   readonly namespace?: string
   /** How many keys a SCAN step asks for while listing or clearing. 500 unless given. */
   readonly scanCount?: number
+  /**
+   * What the keys recording leases on areas of this store begin with.
+   * `yuigram:lease:` unless given.
+   *
+   * Kept apart from `namespace`, so that listing or clearing the store never
+   * reaches a lease — clearing one would let a token be granted twice.
+   */
+  readonly leaseNamespace?: string
 }
 
 /** A store over Redis, with every optional operation of the contract. */
-export interface RedisStore<V = unknown> extends DescribedKV<V> {
+export interface RedisStore<V = unknown> extends DescribedKV<V>, LeasableKV<V> {
   has(key: string): Promise<boolean>
   clear(prefix?: string): Promise<void>
   keys(prefix?: string): AsyncIterable<string>
@@ -59,6 +76,7 @@ export function redisStore<V = unknown>(
   const send = sender(client)
   const namespace = options.namespace ?? 'yuigram:kv:'
   const scanCount = options.scanCount ?? 500
+  const leases = options.leaseNamespace ?? 'yuigram:lease:'
   const info: KVInfo = { driver: 'redis', persistent: true }
 
   if (namespace.length === 0) {
@@ -70,10 +88,17 @@ export function redisStore<V = unknown>(
   if (!Number.isInteger(scanCount) || scanCount < 1) {
     throw new ValidationError(`a SCAN count is a positive whole number, not ${scanCount}`)
   }
+  if (leases.length === 0 || leases.startsWith(namespace) || namespace.startsWith(leases)) {
+    // Overlapping, clearing the store could remove a token and let it be
+    // granted again.
+    throw new ValidationError(
+      `a Redis store's lease namespace is non-empty and apart from its namespace, not '${leases}'`,
+    )
+  }
 
   const at = (key: string): string => namespace + key
 
-  return {
+  const store: RedisStore<V> = {
     info,
 
     async get(key) {
@@ -141,7 +166,25 @@ export function redisStore<V = unknown>(
         yield key.slice(namespace.length)
       }
     },
+
+    lease: (prefix, leaseOptions) =>
+      leaseArea(
+        {
+          send,
+          namespace,
+          leases,
+          scanCount,
+          store,
+          scan: (full) => scan(send, full, scanCount),
+          encode,
+          attempt: (operation, args) => attempt(send, operation, args),
+        },
+        prefix,
+        leaseOptions,
+      ),
   }
+
+  return store
 }
 
 /** Every key beginning with `prefix`, walked with SCAN. */

@@ -79,6 +79,8 @@
     "@yuigram/core": "workspace:*"
   },
   "devDependencies": {
-    "@yuigram/sqlite": "workspace:*"
+    "@yuigram/redis": "workspace:*",
+    "@yuigram/sqlite": "workspace:*",
+    "ioredis": "6.0.0"
   }
 }

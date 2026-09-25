@@ -41,16 +41,24 @@
  * land after it — so the area handed back refuses writes the moment the lease
  * is over, rather than trusting that nothing is in flight.
  *
+ * **A store that fences, where there is one.** A store that can lease an area
+ * of itself — SQLite, Redis — is asked for a lease as well as the guard, and
+ * then answers for every process that reaches it: the lease is numbered above
+ * every one before it, and the store checks that number in the same atomic step
+ * as every write. A run paused past its lease, whose successor has begun, finds
+ * its writes refused by the store rather than landing. Its lease is renewed
+ * while it runs, and the caller is told once when it is lost.
+ *
  * **What is still not promised.** A guard reaches as far as it reaches, and
  * says so. `navigator.locks` covers every page of an origin, which is also
  * everyone who can reach that origin's storage, so a browser gets real mutual
  * exclusion. Everywhere else the guard is a registry inside one process: it
- * excludes two `Account`s in that process exactly, and a second process opened
- * over the same directory not at all. For that case the claim record is what is
- * left — it turns silent corruption into a refusal naming the account that
- * holds the area — and `takeOverStorage` is how a caller that knows the other
- * run is gone says so. None of that is exclusion, and this module does not call
- * it exclusion.
+ * excludes two `Account`s in that process exactly, and — over a store that does
+ * not lease — a second process opened over the same directory not at all. For
+ * that case the claim record is what is left — it turns silent corruption into
+ * a refusal naming the account that holds the area — and `takeOverStorage` is
+ * how a caller that knows the other run is gone says so. None of that is
+ * exclusion, and this module does not call it exclusion.
  *
  * **What a takeover is, and what it is not.** The invariant is that a successor
  * must not begin using an area while the run before it can still complete a
@@ -74,41 +82,49 @@
  * the browser, and that is the second row — reached by an ordinary acquire,
  * with no flag and nobody asked to confirm anything.
  *
+ * Over a store that leases, a takeover from another process is safe for the
+ * reason a drain is: the store refuses every write the superseded run makes
+ * from the moment the new lease is granted, so nothing it began can land after
+ * its successor starts.
+ *
  * The limit this leaves is the honest one, and it is a limit of the adapter
  * rather than of the guard: where the other run is in **another process** over a
- * persistent store, nothing here can see it at all — not to drain it, and not
- * to know whether it exists. `takeOverStorage` is a caller's assertion that it
- * has ended, and a run that has ended cannot complete a write. A run that has
- * *not* ended was never excluded by a process-scoped guard in the first place,
- * which is what {@link AreaLease.scope} reports so that nothing downstream
- * assumes otherwise. See §4 of `docs/storage.md`.
+ * persistent store that does not lease, nothing here can see it at all — not to
+ * drain it, and not to know whether it exists. `takeOverStorage` is a caller's
+ * assertion that it has ended, and a run that has ended cannot complete a
+ * write. A run that has *not* ended was never excluded by a process-scoped
+ * guard in the first place, which is what {@link AreaLease.scope} reports so
+ * that nothing downstream assumes otherwise. See §4 of `docs/storage.md`.
  */
 
 import {
+  canLease,
   type DescribedKV,
   defaultGuard,
   type Guard,
-  type GuardHold,
   type GuardScope,
   type KV,
+  type LeasableKV,
   namespaced,
   type SetOptions,
-  YuigramError,
+  StorageOwnershipError,
+  type StoreLease,
+  ValidationError,
 } from '@yuigram/core'
+
+export { StorageOwnershipError }
 
 /** Where an account's own area begins. */
 const AREA = 'accounts:'
+
+/** How long a store lease outlives a run that stopped without releasing it. */
+const DEFAULT_LEASE_MS = 30_000
 
 /** What the claim is stored under, inside the area. */
 const CLAIM = 'claim'
 
 /** The prefixes an account used before areas existed. */
 const LEGACY_PREFIXES = ['auth:', 'dcs:', 'peers:', 'updates:'] as const
-
-/** Raised when a store is already spoken for, or is no longer this run's. */
-export class StorageOwnershipError extends YuigramError {
-  override readonly name = 'StorageOwnershipError'
-}
 
 /** What an account writes to say it holds an area. */
 interface Claim {
@@ -204,6 +220,22 @@ export interface ClaimOptions {
    * the runtime advertises.
    */
   readonly guard?: Guard
+  /**
+   * How long a store lease outlives a run that stopped without releasing it,
+   * in milliseconds. 30 seconds unless given; renewed every third of that.
+   *
+   * Used only where the store leases areas itself. It bounds how long a crashed
+   * run keeps its successor waiting, not whether a late write can land: a run
+   * that was paused past it is refused by the store, not trusted.
+   */
+  readonly leaseMs?: number
+  /**
+   * Told once, when a store lease turns out to be lost — a renewal or a write
+   * found a later holder, or the lease expired while this run was paused.
+   * Nothing this run writes lands after that; what to do about it is the
+   * caller's.
+   */
+  readonly onLost?: (error: StorageOwnershipError) => void
 }
 
 /** An account's area, for as long as this run owns it. */
@@ -221,11 +253,14 @@ export interface AreaLease {
   /**
    * How far the exclusion around this area actually reaches.
    *
-   * `origin` means every page of a web origin, which is everyone who can reach
-   * that origin's storage. `process` means this process and nothing outside it.
-   * Reported so that nothing downstream assumes more than was established.
+   * `store` means everyone who reaches the same database, whichever process or
+   * machine: the store leases the area and refuses a superseded holder's
+   * writes itself. `origin` means every page of a web origin, which is everyone
+   * who can reach that origin's storage. `process` means this process and
+   * nothing outside it. Reported so that nothing downstream assumes more than
+   * was established.
    */
-  readonly scope: GuardScope
+  readonly scope: GuardScope | 'store'
   /** Give up the area, leaving its contents where they are. */
   release(): Promise<void>
 }
@@ -271,7 +306,12 @@ function guardName(store: KV<unknown>, name: string): string {
  * before a takeover lands after it, into an area another run now owns, and the
  * exclusion bought by the guard is spent between the check and the write.
  */
-function fenced(area: KV<unknown>, hold: GuardHold, name: string): Fenced {
+function fenced(
+  area: KV<unknown>,
+  held: () => boolean,
+  name: string,
+  refused: (error: StorageOwnershipError) => void,
+): Fenced {
   const refuse = (): never => {
     throw new StorageOwnershipError(
       `this run no longer owns the storage for the account '${name}', so the write was ` +
@@ -295,11 +335,15 @@ function fenced(area: KV<unknown>, hold: GuardHold, name: string): Fenced {
    * mutation there is a window a takeover could fall into.
    */
   const mutating = async <T>(run: () => Promise<T>): Promise<T> => {
-    if (!hold.held) refuse()
+    if (!held()) refuse()
     inFlight += 1
 
     try {
       return await run()
+    } catch (error) {
+      // The store's own refusal: a lease it fences is no longer this run's.
+      if (error instanceof StorageOwnershipError) refused(error)
+      throw error
     } finally {
       inFlight -= 1
       if (inFlight === 0) {
@@ -360,8 +404,10 @@ async function* empty(): AsyncIterable<string> {
  */
 export async function claimArea(store: KV<unknown>, options: ClaimOptions): Promise<AreaLease> {
   const guard = options.guard ?? defaultGuard()
-  const area = namespaced(store, areaFor(options.name))
-  const exclusive = coversEveryReader(guard, store)
+  // A store that leases its own areas answers for every process that reaches
+  // it, which no guard beside it can.
+  const leasable = canLease(store)
+  const exclusive = leasable || coversEveryReader(guard, store)
 
   // A takeover through a guard that cannot answer for the holder it replaces is
   // the one thing this refuses outright. Its whole job is to let a successor
@@ -380,68 +426,179 @@ export async function claimArea(store: KV<unknown>, options: ClaimOptions): Prom
   const hold = await guard.acquire(guardName(store, options.name), {
     ...(options.takeOver === true ? { steal: true } : {}),
   })
+  if (hold === undefined) throw refusedByGuard(guard, options)
 
-  if (hold === undefined) {
-    // A plain refusal and a refused takeover are different situations and get
-    // different answers. Being refused *while asking to take over* means the
-    // area is held by a run this guard can see but cannot reach into — another
-    // page of this origin — so the holder is live, and there is nothing to
-    // recover from.
-    throw new StorageOwnershipError(
-      options.takeOver === true
-        ? `taking the storage for the account '${options.name}' over was refused: another ` +
-            `${guard.scope === 'origin' ? 'page of this browser origin' : 'holder in this process'}` +
-            ' still holds the area, and a run that still holds it is a run that is still ' +
-            'writing to it. `takeOverStorage` recovers an area a previous run left behind; ' +
-            'it does not take one away from a run that is going. Close that page, or wait ' +
-            'for it to stop — an area whose holder has genuinely gone is reopened without ' +
-            'any flag at all.'
-        : `the account '${options.name}' is already open on this storage in this ` +
-            `${guard.scope === 'origin' ? 'browser origin' : 'process'}. Two runs writing one ` +
-            'area overwrite each other’s authorization keys. Give this account a store or a ' +
-            'name of its own, or stop the run that has it.',
-    )
+  // With the guard held, so two contenders in this process do not both ask the
+  // store; the store settles it between processes.
+  let fence: StoreLease | undefined
+  try {
+    fence = leasable ? await leaseFromStore(store, options) : undefined
+  } catch (error) {
+    await hold.release()
+    throw error
   }
 
-  const guarded = fenced(area, hold, options.name)
+  const area = fence?.storage ?? namespaced(store, areaFor(options.name))
+  const held = (): boolean => hold.held && (fence?.held ?? true)
+
+  let stopRenewing = (): void => {}
+  let reported = false
+  const lost = (error: StorageOwnershipError): void => {
+    stopRenewing()
+    if (reported) return
+    reported = true
+    options.onLost?.(error)
+  }
+
+  const guarded = fenced(area, held, options.name, lost)
   // Registered before anything is written, so a takeover arriving at any point
   // from here on waits for what this run has in flight.
   hold.drains(async () => await guarded.quiet())
 
   try {
-    await settleClaim({ area, store, options, exclusive })
+    await settleClaim({ area: fence === undefined ? area : guarded, store, options, exclusive })
   } catch (error) {
     // The guard is given back before the failure travels, or a caller that
     // handles the refusal and retries would find the name held by the attempt
     // that refused.
+    await fence?.release().catch(() => undefined)
     await hold.release()
     throw error
+  }
+
+  if (fence !== undefined) {
+    stopRenewing = keepRenewed(fence, options.leaseMs ?? DEFAULT_LEASE_MS, () =>
+      lost(
+        new StorageOwnershipError(
+          `the lease on the storage for the account '${options.name}' was lost: another ` +
+            'run took the area over, or this one was paused past its lease. The store ' +
+            'refuses every write this run makes from now on.',
+        ),
+      ),
+    )
   }
 
   return {
     storage: guarded,
     get held() {
-      return hold.held
+      return held()
     },
-    scope: guard.scope,
+    scope: fence === undefined ? guard.scope : 'store',
     async release() {
-      // Drained first. Handing the area on while this run still has a write
-      // inside the adapter is exactly the case the fence cannot catch: it was
-      // admitted while this run owned the area, and it would land after the
-      // next one had started.
-      await guarded.quiet()
+      stopRenewing()
+      reported = true
 
-      // Only a run that still owns the area may clear the claim. One that was
-      // superseded — possibly while draining, just above — must not free what
-      // took it over.
-      if (hold.held) {
-        const current = await readClaim(area)
-        if (current?.holder === options.holder) await area.set(CLAIM, { name: options.name })
+      try {
+        // Drained first. Handing the area on while this run still has a write
+        // inside the adapter is exactly the case the fence cannot catch: it was
+        // admitted while this run owned the area, and it would land after the
+        // next one had started.
+        await guarded.quiet()
+
+        // Only a run that still owns the area may clear the claim. One that was
+        // superseded — possibly while draining, just above — must not free what
+        // took it over.
+        if (held()) await unclaim(area, options)
+        await fence?.release()
+      } finally {
+        await hold.release()
       }
-
-      await hold.release()
     },
   }
+}
+
+/**
+ * Why the guard refused, in words that say what to do.
+ *
+ * A plain refusal and a refused takeover are different situations and get
+ * different answers. Being refused *while asking to take over* means the area
+ * is held by a run this guard can see but cannot reach into — another page of
+ * this origin — so the holder is live, and there is nothing to recover from.
+ */
+function refusedByGuard(guard: Guard, options: ClaimOptions): StorageOwnershipError {
+  return new StorageOwnershipError(
+    options.takeOver === true
+      ? `taking the storage for the account '${options.name}' over was refused: another ` +
+          `${guard.scope === 'origin' ? 'page of this browser origin' : 'holder in this process'}` +
+          ' still holds the area, and a run that still holds it is a run that is still ' +
+          'writing to it. `takeOverStorage` recovers an area a previous run left behind; ' +
+          'it does not take one away from a run that is going. Close that page, or wait ' +
+          'for it to stop — an area whose holder has genuinely gone is reopened without ' +
+          'any flag at all.'
+      : `the account '${options.name}' is already open on this storage in this ` +
+          `${guard.scope === 'origin' ? 'browser origin' : 'process'}. Two runs writing one ` +
+          'area overwrite each other’s authorization keys. Give this account a store or a ' +
+          'name of its own, or stop the run that has it.',
+  )
+}
+
+/**
+ * Lease the account's area from a store that fences, or refuse naming why.
+ *
+ * A takeover steals: safe here as nowhere else, because the store refuses the
+ * superseded run's writes from the moment the new lease is granted, so nothing
+ * it had begun can land after its successor starts.
+ */
+async function leaseFromStore(
+  store: LeasableKV<unknown>,
+  options: ClaimOptions,
+): Promise<StoreLease> {
+  const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS
+  if (!Number.isInteger(leaseMs) || leaseMs <= 0) {
+    throw new ValidationError(
+      `a storage lease lasts a positive whole number of milliseconds, not ${leaseMs}`,
+    )
+  }
+
+  const lease = await store.lease(areaFor(options.name), {
+    holder: options.holder,
+    ttlMs: leaseMs,
+    ...(options.takeOver === true ? { steal: true } : {}),
+  })
+  if (lease !== undefined) return lease
+
+  throw new StorageOwnershipError(
+    `the account '${options.name}' is open on this storage in another process: its ` +
+      'lease on the area is live. Stop that run, or pass `takeOverStorage` to supersede ' +
+      'it — the store then refuses every write the other run makes. A run that stopped ' +
+      'without releasing loses its lease on its own once it lapses.',
+  )
+}
+
+/**
+ * Renew a lease every third of its lifetime, until told to stop.
+ *
+ * A renewal that could not reach the store is tried again at the next tick; if
+ * the lease lapses meanwhile, that one finds it gone and says so.
+ */
+function keepRenewed(lease: StoreLease, leaseMs: number, gone: () => void): () => void {
+  const timer = setInterval(
+    () => {
+      lease.renew().then(
+        (kept) => {
+          if (!kept) gone()
+        },
+        () => undefined,
+      )
+    },
+    Math.max(1, Math.floor(leaseMs / 3)),
+  )
+  // Renewing is not a reason for a process to stay alive.
+  ;(timer as { unref?: () => void }).unref?.()
+
+  return () => clearInterval(timer)
+}
+
+/** Say this run no longer holds the area, if the claim still names it. */
+async function unclaim(area: KV<unknown>, options: ClaimOptions): Promise<void> {
+  const current = await readClaim(area)
+  if (current?.holder !== options.holder) return
+
+  await area.set(CLAIM, { name: options.name }).catch((error: unknown) => {
+    // Lost between the check and the write, which the store refused: the claim
+    // is the successor's now, and so is what it says.
+    if (!(error instanceof StorageOwnershipError)) throw error
+  })
 }
 
 /** Judge the stored claim and write this run's, with the guard held. */

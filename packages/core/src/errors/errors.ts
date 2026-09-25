@@ -73,6 +73,19 @@ export class StorageError extends YuigramError {
   override readonly name = 'StorageError'
 }
 
+/**
+ * A store, or an area of one, is already spoken for, or is no longer this
+ * run's.
+ *
+ * Raised when an account finds its area held by another run, and by a store
+ * that fences an area when a write arrives from a holder whose lease a later
+ * one has superseded — the write is refused rather than landing where another
+ * run is now keeping state.
+ */
+export class StorageOwnershipError extends YuigramError {
+  override readonly name = 'StorageOwnershipError'
+}
+
 /** A peer could not be resolved, or its access hash is no longer valid. */
 export class PeerError extends YuigramError {
   override readonly name = 'PeerError'

@@ -12,7 +12,7 @@
 
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { limiter, StorageError } from '@yuigram/core'
+import { limiter, StorageError, StorageOwnershipError } from '@yuigram/core'
 import { Redis } from 'ioredis'
 import { createClient } from 'redis'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -233,6 +233,115 @@ describe.skipIf(url === undefined)('against a real server', () => {
       if (first !== undefined) expect(first[0]).toBeGreaterThan(limit)
     }
   }, 60_000)
+
+  it(
+    'leases an area to one holder at a time, numbering every grant above the last',
+    withEach(async ({ name, client }) => {
+      const options = {
+        namespace: `${namespace}${name}:leased:`,
+        leaseNamespace: `${namespace}${name}:leases:`,
+      }
+      const first = redisStore(client, options)
+      const second = redisStore(client, options)
+
+      const held = await first.lease('accounts:a:', { holder: 'one', ttlMs: 5_000 })
+      expect(held?.token).toBe(1)
+      expect(await second.lease('accounts:a:', { holder: 'two', ttlMs: 5_000 })).toBeUndefined()
+      expect(await second.lease('accounts:b:', { holder: 'two', ttlMs: 5_000 })).toBeDefined()
+
+      await held?.storage.set('auth:2', { key: [1] })
+      await held?.storage.set('brief', 1, { ttl: 5 })
+      expect(await second.get('accounts:a:auth:2')).toEqual({ key: [1] })
+      const listed: string[] = []
+      for await (const key of held?.storage.keys?.() ?? []) listed.push(key)
+      expect(listed.sort()).toEqual(['auth:2', 'brief'])
+
+      // Leases are kept outside the store: clearing it reaches neither the
+      // lease nor its count.
+      await second.clear()
+      expect(await second.lease('accounts:a:', { holder: 'two', ttlMs: 5_000 })).toBeUndefined()
+      await held?.release()
+      expect((await second.lease('accounts:a:', { holder: 'two', ttlMs: 5_000 }))?.token).toBe(2)
+    }),
+  )
+
+  it(
+    'refuses a holder whose lease lapsed or was superseded, and leaves the successor’s writes',
+    withEach(async ({ name, client }) => {
+      const options = {
+        namespace: `${namespace}${name}:fenced:`,
+        leaseNamespace: `${namespace}${name}:fences:`,
+      }
+      const store = redisStore(client, options)
+
+      const lapsing = await store.lease('area:', { holder: 'lapsing', ttlMs: 300 })
+      await lapsing?.storage.set('state', 'before')
+      await pause(400)
+      // Nobody else has asked, and the late write is still refused.
+      await expect(lapsing?.storage.set('state', 'late')).rejects.toBeInstanceOf(
+        StorageOwnershipError,
+      )
+      expect(await lapsing?.renew()).toBe(false)
+
+      const old = await store.lease('area:', { holder: 'old', ttlMs: 5_000 })
+      const next = await store.lease('area:', { holder: 'next', ttlMs: 5_000, steal: true })
+      expect([old?.token, next?.token]).toEqual([2, 3])
+      await next?.storage.set('state', 'next')
+
+      for (const write of [
+        () => old?.storage.set('state', 'old'),
+        () => old?.storage.delete('state'),
+        () => old?.storage.clear?.(),
+      ]) {
+        await expect(write()).rejects.toBeInstanceOf(StorageOwnershipError)
+      }
+      expect(old?.held).toBe(false)
+      await old?.release()
+
+      expect(await store.get('area:state')).toBe('next')
+      expect(await next?.renew()).toBe(true)
+      await next?.release()
+    }),
+  )
+
+  it('refuses a write already sent when a successor took over before the server ran it', async () => {
+    const owner = new Redis(url as string)
+    const other = new Redis(url as string)
+    const options = {
+      namespace: `${namespace}inflight:`,
+      leaseNamespace: `${namespace}inflight-leases:`,
+    }
+
+    try {
+      const lease = await redisStore(owner, options).lease('area:', {
+        holder: 'owner',
+        ttlMs: 5_000,
+      })
+      await lease?.storage.set('state', 'owner')
+
+      // The owner's connection is busy for a second, so its next command waits
+      // on the server, sent but not yet run.
+      const blocked = owner.blpop(`${namespace}inflight-nothing`, 1)
+      const write = lease?.storage.set('state', 'in flight').catch((error: unknown) => error)
+      await pause(150)
+
+      const successor = await redisStore(other, options).lease('area:', {
+        holder: 'successor',
+        ttlMs: 5_000,
+        steal: true,
+      })
+      await successor?.storage.set('state', 'successor')
+      await blocked
+
+      // Run after the grant, so refused — which it could only be if it ran
+      // after, since before the grant the owner's lease was current.
+      expect(await write).toBeInstanceOf(StorageOwnershipError)
+      expect(await redisStore(other, options).get('area:state')).toBe('successor')
+    } finally {
+      await owner.quit()
+      await other.quit()
+    }
+  })
 
   it('reports an unreachable server as a storage error, keeping the client error', async () => {
     const dead = new Redis('redis://127.0.0.1:1', {

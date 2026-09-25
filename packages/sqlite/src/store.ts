@@ -18,13 +18,41 @@
  * row is invisible to every read from the moment it expires and is deleted
  * when read or swept.
  *
- * What this does not do is exclude a second process from an account's area.
- * Two processes can open the same file, and nothing here stops them both
- * running one account; it says it is persistent, which is what tells the
- * account layer not to take a process-local guard for more than it is.
+ * **Leases.** An area of the table — an account's, say — can be leased to one
+ * holder at a time across every connection to the file, whichever process or
+ * program holds it. The lease is a row in a second table, and it fences: every
+ * write through a lease runs in a transaction that takes the write lock first,
+ * checks the lease is still the current one, and only then writes. So a holder
+ * that was paused while its lease expired and another took it cannot land a
+ * write afterwards, however late it wakes.
+ *
+ * ```
+ *   yuigram_kv_leases
+ *   ┌──────────────┬───────────────┬──────────────┬──────────────┐
+ *   │ area TEXT PK │ token INTEGER │ holder TEXT  │ expires_at   │  NULL holder = released
+ *   └──────────────┴───────────────┴──────────────┴──────────────┘
+ * ```
+ *
+ * The token only grows. A released or expired lease keeps its row, so the next
+ * grant is numbered above every one before it and an old holder's token never
+ * becomes current again; clearing the store leaves the leases alone for the
+ * same reason. Expiry is read from the clock of whoever asks, which is one
+ * clock for processes on one host — the only way a SQLite file is safely
+ * shared.
  */
 
-import { type DescribedKV, type KVInfo, StorageError, ValidationError } from '@yuigram/core'
+import {
+  type DescribedKV,
+  type KV,
+  type KVInfo,
+  type LeasableKV,
+  type LeaseOptions,
+  type SetOptions,
+  StorageError,
+  StorageOwnershipError,
+  type StoreLease,
+  ValidationError,
+} from '@yuigram/core'
 import { type SqliteDatabase, type SqliteStatement, tableName } from './driver.js'
 
 /** Options for {@link sqliteStore}. */
@@ -44,7 +72,7 @@ export interface SqliteStoreOptions {
 }
 
 /** A store over a SQLite table, with every optional operation of the contract. */
-export interface SqliteStore<V = unknown> extends DescribedKV<V> {
+export interface SqliteStore<V = unknown> extends DescribedKV<V>, LeasableKV<V> {
   has(key: string): Promise<boolean>
   clear(prefix?: string): Promise<void>
   keys(prefix?: string): AsyncIterable<string>
@@ -61,6 +89,12 @@ export interface SqliteStore<V = unknown> extends DescribedKV<V> {
 
 interface Row {
   readonly value: string
+  readonly expires_at: number | bigint | null
+}
+
+interface LeaseRow {
+  readonly token: number | bigint
+  readonly holder: string | null
   readonly expires_at: number | bigint | null
 }
 
@@ -89,8 +123,10 @@ export function sqliteStore<V = unknown>(
 ): SqliteStore<V> {
   const table = tableName(options.table ?? 'yuigram_kv')
   const now = options.now ?? (() => Date.now())
+  const leases = `${table}_leases`
   const info: KVInfo = { driver: 'sqlite', persistent: true }
   let closed = false
+  let leasesReady = false
 
   attempt('create the table', () =>
     database.exec(
@@ -121,7 +157,36 @@ export function sqliteStore<V = unknown>(
     if (closed) throw new StorageError(`the SQLite store is closed, so it cannot ${operation}`)
   }
 
-  return {
+  /**
+   * A write of one entry, checked and encoded now and run when called.
+   *
+   * Split so that a lease can run it inside its own transaction: what can be
+   * refused without touching the database is refused before the write lock is
+   * taken.
+   */
+  const writing = (key: string, value: unknown, setOptions?: SetOptions): (() => unknown) => {
+    const text = encode(key, value)
+    const ttl = setOptions?.ttl
+    if (ttl !== undefined && (!Number.isFinite(ttl) || ttl <= 0)) {
+      throw new ValidationError(`a time to live is a positive number of seconds, not ${ttl}`)
+    }
+    const expiresAt = ttl === undefined ? null : now() + Math.round(ttl * 1000)
+
+    return () =>
+      prepared(
+        `INSERT INTO ${table} (key, value, expires_at) VALUES (?, ?, ?)
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
+      ).run(key, text, expiresAt)
+  }
+
+  const clearing = (prefix: string | undefined): (() => unknown) =>
+    prefix === undefined
+      ? () => prepared(`DELETE FROM ${table}`).run()
+      : // A comparison on the leading characters rather than LIKE, which would
+        // read `_` and `%` in a prefix as wildcards and clear the wrong keys.
+        () => prepared(`DELETE FROM ${table} WHERE ${UNDER}`).run(prefix, prefix)
+
+  const store: SqliteStore<V> = {
     info,
 
     async get(key) {
@@ -146,19 +211,7 @@ export function sqliteStore<V = unknown>(
 
     async set(key, value, setOptions) {
       open('write')
-      const text = encode(key, value)
-      const ttl = setOptions?.ttl
-      if (ttl !== undefined && (!Number.isFinite(ttl) || ttl <= 0)) {
-        throw new ValidationError(`a time to live is a positive number of seconds, not ${ttl}`)
-      }
-      const expiresAt = ttl === undefined ? null : now() + Math.round(ttl * 1000)
-
-      attempt(`write '${key}'`, () =>
-        prepared(
-          `INSERT INTO ${table} (key, value, expires_at) VALUES (?, ?, ?)
-           ON CONFLICT (key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at`,
-        ).run(key, text, expiresAt),
-      )
+      attempt(`write '${key}'`, writing(key, value, setOptions))
     },
 
     async delete(key) {
@@ -176,15 +229,7 @@ export function sqliteStore<V = unknown>(
 
     async clear(prefix) {
       open('clear')
-      if (prefix === undefined) {
-        attempt('clear', () => prepared(`DELETE FROM ${table}`).run())
-        return
-      }
-      // A comparison on the leading characters rather than LIKE, which would
-      // read `_` and `%` in a prefix as wildcards and clear the wrong keys.
-      attempt(`clear '${prefix}'`, () =>
-        prepared(`DELETE FROM ${table} WHERE ${UNDER}`).run(prefix, prefix),
-      )
+      attempt(prefix === undefined ? 'clear' : `clear '${prefix}'`, clearing(prefix))
     },
 
     async *keys(prefix) {
@@ -213,6 +258,33 @@ export function sqliteStore<V = unknown>(
       return before - count()
     },
 
+    async lease(prefix, leaseOptions) {
+      open('lease an area')
+      checkLease(leaseOptions)
+      leaseTable()
+
+      const token = transaction(`lease '${prefix}'`, () => {
+        const row = prepared(`SELECT token, holder, expires_at FROM ${leases} WHERE area = ?`).get(
+          prefix,
+        ) as LeaseRow | undefined
+        const live =
+          row !== undefined && row.holder !== null && (millis(row.expires_at) ?? 0) > now()
+        if (live && leaseOptions.steal !== true) return undefined
+
+        // Above every grant before it, including released and expired ones,
+        // which is why their rows are kept.
+        const next = (row === undefined ? 0 : Number(row.token)) + 1
+        prepared(
+          `INSERT INTO ${leases} (area, token, holder, expires_at) VALUES (?, ?, ?, ?)
+           ON CONFLICT (area) DO UPDATE SET
+             token = excluded.token, holder = excluded.holder, expires_at = excluded.expires_at`,
+        ).run(prefix, next, leaseOptions.holder, now() + leaseOptions.ttlMs)
+        return next
+      })
+
+      return token === undefined ? undefined : leased(prefix, token, leaseOptions.ttlMs)
+    },
+
     async close() {
       if (closed) return
       closed = true
@@ -221,11 +293,146 @@ export function sqliteStore<V = unknown>(
     },
   }
 
+  return store
+
   function count(): number {
     const row = attempt('count', () =>
       prepared(`SELECT count(*) AS total FROM ${table}`).get(),
     ) as { readonly total: number | bigint }
     return Number(row.total)
+  }
+
+  /** The lease table, created the first time anything is leased. */
+  function leaseTable(): void {
+    if (leasesReady) return
+    attempt('create the lease table', () =>
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS ${leases} (
+           area TEXT PRIMARY KEY NOT NULL,
+           token INTEGER NOT NULL,
+           holder TEXT,
+           expires_at INTEGER
+         ) WITHOUT ROWID`,
+      ),
+    )
+    leasesReady = true
+  }
+
+  /**
+   * Run statements as one transaction that holds the write lock from its start.
+   *
+   * `IMMEDIATE` rather than the default, which takes the lock only at the first
+   * write: a check followed by a write is exactly the pair another connection
+   * must not get between, and waiting for the lock up front — within the busy
+   * timeout — is what makes the pair one step. Nothing awaits inside, so no
+   * other operation on this connection can interleave either.
+   */
+  function transaction<T>(operation: string, run: () => T): T {
+    attempt(operation, () => database.exec('BEGIN IMMEDIATE'))
+    try {
+      const result = attempt(operation, run)
+      attempt(operation, () => database.exec('COMMIT'))
+      return result
+    } catch (error) {
+      try {
+        database.exec('ROLLBACK')
+      } catch {
+        // Already rolled back by the failure itself.
+      }
+      throw error
+    }
+  }
+
+  /** A granted lease: the area through its fence, and the means to keep or give it up. */
+  function leased(prefix: string, token: number, ttlMs: number): StoreLease {
+    let held = true
+
+    /** Whether this lease is the area's current one, read inside a transaction. */
+    const current = (): boolean =>
+      prepared(
+        `SELECT 1 AS current FROM ${leases}
+         WHERE area = ? AND token = ? AND holder IS NOT NULL AND expires_at > ?`,
+      ).get(prefix, token, now()) !== undefined
+
+    const fenced = (operation: string, run: () => unknown): void => {
+      open(operation)
+      transaction(operation, () => {
+        if (!current()) {
+          held = false
+          throw new StorageOwnershipError(
+            `the store refused to ${operation}: the lease on '${prefix}' is no longer this ` +
+              "holder's — a later one was granted, or it was released or expired — and " +
+              'writing now would land in an area another holder may be keeping',
+          )
+        }
+        run()
+      })
+    }
+
+    const storage: KV<unknown> = {
+      get: (key) => store.get(prefix + key),
+      has: (key) => store.has(prefix + key),
+      async *keys(inner) {
+        for await (const key of store.keys(prefix + (inner ?? ''))) {
+          yield key.slice(prefix.length)
+        }
+      },
+      async set(key, value, setOptions) {
+        const write = writing(prefix + key, value, setOptions)
+        fenced(`write '${key}'`, write)
+      },
+      async delete(key) {
+        fenced(`delete '${key}'`, () =>
+          prepared(`DELETE FROM ${table} WHERE key = ?`).run(prefix + key),
+        )
+      },
+      async clear(inner) {
+        fenced('clear', clearing(prefix + (inner ?? '')))
+      },
+    }
+
+    return {
+      token,
+      storage,
+      get held() {
+        return held
+      },
+      async renew() {
+        if (!held) return false
+        open('renew a lease')
+        const row = attempt(`renew the lease on '${prefix}'`, () =>
+          prepared(
+            `UPDATE ${leases} SET expires_at = ?
+             WHERE area = ? AND token = ? AND holder IS NOT NULL AND expires_at > ?
+             RETURNING token`,
+          ).get(now() + ttlMs, prefix, token, now()),
+        )
+        if (row === undefined) held = false
+        return held
+      },
+      async release() {
+        held = false
+        if (closed) return
+        // Only this grant's row: a successor's is left exactly as it is.
+        attempt(`release the lease on '${prefix}'`, () =>
+          prepared(
+            `UPDATE ${leases} SET holder = NULL, expires_at = NULL WHERE area = ? AND token = ?`,
+          ).run(prefix, token),
+        )
+      },
+    }
+  }
+}
+
+/** Refuse a lease request that could never be kept. */
+function checkLease(options: LeaseOptions): void {
+  if (typeof options.holder !== 'string' || options.holder.length === 0) {
+    throw new ValidationError('a lease names its holder')
+  }
+  if (!Number.isInteger(options.ttlMs) || options.ttlMs <= 0) {
+    throw new ValidationError(
+      `a lease lasts a positive whole number of milliseconds, not ${options.ttlMs}`,
+    )
   }
 }
 
@@ -258,7 +465,13 @@ function attempt<T>(operation: string, run: () => T): T {
   try {
     return run()
   } catch (error) {
-    if (error instanceof StorageError || error instanceof ValidationError) throw error
+    if (
+      error instanceof StorageError ||
+      error instanceof StorageOwnershipError ||
+      error instanceof ValidationError
+    ) {
+      throw error
+    }
     throw new StorageError(`SQLite could not ${operation}`, { cause: error })
   }
 }

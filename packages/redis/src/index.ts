@@ -15,4 +15,5 @@ export type {
   SendCommandClient,
 } from './client.js'
 export { HIT_SCRIPT, type RedisCounterOptions, redisCounter } from './counter.js'
+export { LEASE_SCRIPT } from './lease.js'
 export { type RedisStore, type RedisStoreOptions, redisStore } from './store.js'

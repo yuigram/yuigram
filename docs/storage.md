@@ -107,8 +107,9 @@ counter's failure — a locked file past its busy timeout, a connection refused 
 asked for the hit as a `StorageError` with the driver's error as its cause; nothing is let
 through by default when the count cannot be taken.
 
-Neither package extends this to account ownership. Two processes can still open one MTProto
-account's area in the same file or Redis database; see below.
+Both stores also lease areas of themselves, checked with every write, which is what keeps two
+processes from running one MTProto account over the same file or Redis database; see
+[stores that lease their areas](#stores-that-lease-their-areas).
 
 ## 3. Composition
 
@@ -273,16 +274,17 @@ doing that together both read "free" before either writes. Both then start, both
 own the area, and the store keeps whichever wrote last while both keep writing.
 
 So the name is taken through a **guard** before anything is read or written, and the guard is
-whatever the environment actually provides:
+whatever the environment actually provides — or, where the store can do it, the store itself:
 
-| Runtime | Primitive | What it excludes |
+| Runtime or store | Primitive | What it excludes |
 | --- | --- | --- |
 | A browser page | `navigator.locks` (Web Locks API) | Every page, tab and worker of the origin — which is also everyone who can reach that origin's storage |
+| A store that leases — `sqliteStore`, `redisStore` | A lease the store records and checks with every write | Every process and machine that reaches the same database file or Redis server |
 | Everywhere else | A registry inside the process | Two `Account`s in this process, exactly. Nothing outside it |
 
-**The reach is reported, not assumed.** `AreaLease.scope` is `origin` or `process`, and nothing
-downstream may treat one as the other. A registry says nothing about a second process opened
-over the same directory, and claiming otherwise would be worse than not excluding at all,
+**The reach is reported, not assumed.** `AreaLease.scope` is `store`, `origin` or `process`, and
+nothing downstream may treat one as another. A registry says nothing about a second process
+opened over the same directory, and claiming otherwise would be worse than not excluding at all,
 because a caller would stop being careful. A caller with a better primitive than the runtime
 advertises — a database advisory lock, a lock file — supplies it as `storageGuard`.
 
@@ -308,7 +310,8 @@ the run it is superseding.
 | Take-over inside one process | ✓ | ✓ |
 | Take-over inside one browser page | ✓ | ✓ |
 | Take-over from another page of an origin | ✓ | refused — see below |
-| Take-over from another process | ✓ | the caller's assertion — see below |
+| Take-over from another process, over a store that leases | ✓, by the store | not needed: the store refuses what arrives late — see below |
+| Take-over from another process, over any other persistent store | ✓ | the caller's assertion — see below |
 
 **A take-over that cannot drain is refused rather than forced.** The invariant is that a
 successor must not begin using an area while the run before it can still complete a conflicting
@@ -333,30 +336,69 @@ answer for — both holds are in that realm — so the one being replaced is dra
 as two in one process are. `Guard.drainsOnSteal` is where that property is declared, and a guard
 supplied from outside that answers `false` is refused a take-over outright.
 
-The fifth row is the one genuine limit, and it belongs to the adapter rather than to the guard:
-with a persistent store behind a process-wide guard, another process cannot be seen at all —
-not to drain it, and not to know whether it exists. `takeOverStorage` there is a caller's
-assertion that the other run has **ended**, and a run that has ended cannot complete a write. A
-run that has not ended was never excluded by a process-wide guard in the first place, which is
-what `AreaLease.scope` reports. A caller who wants that row closed supplies a `storageGuard`
-whose reach covers the other process — a database advisory lock, a lock file — and the same
-rules then apply to it.
+### Stores that lease their areas
 
-**Crash recovery stays ordinary.** A page that closes takes its locks with it, and a process
-that dies takes its registry with it — so where the guard's reach covers everyone who could
-hold the area, being granted the name *is* the evidence that the previous run is gone, and the
+`sqliteStore` and `redisStore` close the fifth row themselves. Each can lease an area of itself
+to one holder at a time, and an account given one takes its area through that lease as well as
+through the process guard:
+
+| | SQLite | Redis |
+| --- | --- | --- |
+| Where the lease lives | a `<table>_leases` row: area, token, holder, expiry | `<leaseNamespace><namespace><area>:owner`, expiring with the lease, and `…:token` |
+| A grant | one `BEGIN IMMEDIATE` transaction: refuse if a live lease exists, else count the token up and record the holder | one script: refuse if an owner is set, else `INCR` the token and set the owner |
+| A write through the lease | one `BEGIN IMMEDIATE` transaction: check the lease is current, then write | one script: compare the owner with this holder's, then write |
+| Whose clock expires it | the writer's; processes sharing a file share a host | the server's |
+
+**The fence is the token, not the expiry.** Every grant is numbered above every one before it —
+released and expired leases keep their count, and clearing the store does not reach it — and
+every write is checked against the current number in the same atomic step that makes it. A run
+that was paused while its lease lapsed and another run took the area — a debugger, a stalled
+disk, a machine asleep — cannot tell by itself that it is late, and does not need to: its write
+arrives with an old number and the store refuses it with `StorageOwnershipError`. So does a write
+it had already sent: on Redis, a command queued on the server behind a slow one runs after the
+successor's grant and is refused there. Nothing it began lands after its successor starts,
+which is what a drain is for, arrived at without seeing the other process at all.
+
+**Expiry is only liveness.** A running account renews its lease every third of
+`storageLeaseMs` (30 seconds unless given). One that stops releases it, and the next run starts
+at once. One that dies without stopping loses it when it lapses, and the next run starts then
+with no flag — the claim record it left behind is adopted, because the lease is the evidence
+that nobody holds the area. `takeOverStorage: true` over a store that leases skips that wait by
+superseding the live lease, which is safe here as nowhere else: the superseded run's writes are
+refused from that moment, it learns so at its next renewal or write, and it stops itself.
+
+A lease shorter than the longest stretch the process computes without yielding lapses during
+that stretch. A key exchange is the longest in this package, a few hundred milliseconds, which is
+why the default is measured in seconds; an account that loses its lease this way stops, the
+same as one that was superseded.
+
+Leases on nested prefixes do not exclude each other, and a store that wraps another — `tiered`,
+`encrypted` — does not offer the capability, because a lease's writes go to the store beneath and
+would skip the cache or the encryption. `namespaced` passes it through. On Redis every fenced
+script touches the owner key and the keys it writes together, so fenced areas need one server or
+a primary with its replicas, not a cluster.
+
+**Crash recovery stays ordinary.** A page that closes takes its locks with it, a process that
+dies takes its registry with it, and a lease lapses — so where the reach covers everyone who
+could hold the area, being granted it *is* the evidence that the previous run is gone, and the
 claim it left behind is adopted without anybody being asked. That covers a browser (origin
-reach) and an in-memory store (which cannot be reached from another process anyway).
+reach), a store that leases (store reach) and an in-memory store (which cannot be reached from
+another process anyway).
 
-Where it does not — a directory or a database behind a process-wide guard — a claim naming
-another run may well be a live one, so the account refuses and says exactly that.
-`takeOverStorage: true` is how a caller who knows the other run is gone says so. It cannot take
-a *different* account's area: that is not a stale claim, it is the wrong store.
+Where it does not — a directory, or a database adapter without leases, behind a process-wide
+guard — a claim naming another run may well be a live one, so the account refuses and says
+exactly that. `takeOverStorage: true` is how a caller who knows the other run is gone says so,
+and there it is a caller's assertion that the other run has **ended**: a run that has ended
+cannot complete a write, and a run that has not was never excluded by a process-wide guard in
+the first place, which is what `AreaLease.scope` reports. It cannot take a *different* account's
+area: that is not a stale claim, it is the wrong store.
 
-**What is still not promised.** Nothing here stops a process that ignores all of it. A generic
-KV adapter has no compare-and-set and no lock, so what excludes two runs over one is the guard
-and nothing else — and outside a browser that is one process. That is a limitation, stated,
-rather than exclusivity implied.
+**What is still not promised.** Nothing here stops a process that ignores all of it — one that
+writes to the table or the keys directly rather than through a lease. A generic KV adapter has
+no compare-and-set and no lock, so over one of those what excludes two runs is the guard and
+nothing else — and outside a browser that is one process. That is a limitation, stated, rather
+than exclusivity implied. An adapter that can check and write in one step offers `lease` to lift
+it; see `LeasableKV`.
 
 Cleanup is scoped the same way, and holds the area while it happens. `logOut()` stops the
 account first — so nothing reaches for a key about to go — and then takes a lease of its own
