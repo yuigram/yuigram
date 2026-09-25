@@ -13,6 +13,7 @@ export {
   Account,
   type AccountContext,
   type AccountOptions,
+  type SessionImportOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
 export type {
@@ -410,6 +411,13 @@ export type {
   TakeoutSession,
 } from './session/operations.js'
 export type { PortableSession } from './session.js'
+export {
+  readSession,
+  type SessionAddress,
+  type SessionFormat,
+  type TransferredSession,
+  writeSession,
+} from './session.js'
 export type {
   MaskPoint,
   MySetsPage,

@@ -35,6 +35,9 @@
 
 import { SessionError } from '@yuigram/core'
 import { fromBase64, toBase64 } from './crypto/encoding.js'
+import { readTlSession, type SessionAddress, writeTlSession } from './session-tl.js'
+
+export type { SessionAddress } from './session-tl.js'
 
 /** The only layout this build writes, and the only one it reads. */
 const VERSION = 0x01
@@ -194,4 +197,85 @@ function decodeBase64(session: string): Uint8Array {
   }
 
   return fromBase64(session)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Formats                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The layouts a session string can be in.
+ *
+ * - `'portable'` — this library's own: a fixed 348 characters, the key and
+ *   where it belongs, and nothing else.
+ * - `'tl-v3'` — the version-3 TL record other MTProto libraries write: URL-safe
+ *   base64, with the datacenter's address and, optionally, the account's user.
+ */
+export type SessionFormat = 'portable' | 'tl-v3'
+
+/** What a session string carries, in whichever layout it came. */
+export interface TransferredSession extends PortableSession {
+  /** Addresses of the account's datacenter the string named, if it named any. */
+  readonly addresses: readonly SessionAddress[]
+  /** Which user the account is, if the string said. */
+  readonly self?: { readonly id: bigint; readonly isBot: boolean } | undefined
+}
+
+/**
+ * Read a session string in a named layout.
+ *
+ * The layout is named rather than guessed: a string is an account, and one
+ * read as a layout it is not in would be somebody else's. Reading one in the
+ * wrong layout fails with a message saying which layout it looks like.
+ */
+export function readSession(
+  text: string,
+  options: { readonly format?: SessionFormat } = {},
+): TransferredSession {
+  const format = options.format ?? 'portable'
+
+  if (format === 'tl-v3') {
+    try {
+      return readTlSession(text)
+    } catch (error) {
+      if (looksPortable(text)) {
+        throw new SessionError(
+          "this is not a version-3 session string; it looks like this library's own, read with format 'portable'",
+          { cause: error },
+        )
+      }
+      throw error
+    }
+  }
+
+  try {
+    return { ...decodeSession(text), addresses: [] }
+  } catch (error) {
+    if (looksTl(text)) {
+      throw new SessionError(
+        "this session string looks like a version-3 TL session; read it with format 'tl-v3'",
+        { cause: error },
+      )
+    }
+    throw error
+  }
+}
+
+/** Write a session string in a named layout. */
+export function writeSession(
+  session: TransferredSession,
+  options: { readonly format: SessionFormat },
+): string {
+  if (options.format === 'tl-v3') return writeTlSession(session)
+  return encodeSession(session)
+}
+
+/** Whether text has the shape of this library's own layout. */
+function looksPortable(text: string): boolean {
+  return text.length === ENCODED_SIZE && text.startsWith('A') && text.endsWith('==')
+}
+
+/** Whether text has the shape of a version-3 TL string: URL-safe, starting with byte 3. */
+function looksTl(text: string): boolean {
+  return /^Aw[A-Za-z0-9_-]+$/.test(text.trim())
 }

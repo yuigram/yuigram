@@ -371,9 +371,36 @@ describe('what an imported session does to a store', () => {
     await account.stop()
   })
 
-  it('replaces an authorization already held for its own datacenter', async () => {
+  it('refuses to put itself over a different authorization for its own datacenter', async () => {
+    // That authorization is somebody's signed-in account.
     const storage = memory()
     await storage.set(inArea('auth:dc2:key'), Buffer.from(key(99)).toString('base64'))
+    await storage.set(inArea('auth:dc4:key'), Buffer.from(key(98)).toString('base64'))
+
+    const account = Account.fromString(SESSION, { ...options(), storage })
+    await expect(account.connect()).rejects.toThrow(/already holds a different authorization/)
+
+    // Nothing was cleared on the way to finding out.
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(99)).toString('base64'))
+    expect(await storage.get(inArea('auth:dc4:key'))).toBe(Buffer.from(key(98)).toString('base64'))
+    await account.stop()
+  })
+
+  it('replaces an authorization for its own datacenter when told to', async () => {
+    const storage = memory()
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(99)).toString('base64'))
+
+    const account = Account.fromString(SESSION, { ...options(), storage, replace: true })
+    await account.connect()
+
+    expect(await storage.get(inArea('auth:dc2:key'))).toBe(Buffer.from(key(1)).toString('base64'))
+    await account.stop()
+  })
+
+  it('imports over the same authorization it already holds without being told', async () => {
+    // A string imported on every start into a store that kept it the last time.
+    const storage = memory()
+    await storage.set(inArea('auth:dc2:key'), Buffer.from(key(1)).toString('base64'))
 
     const account = Account.fromString(SESSION, { ...options(), storage })
     await account.connect()

@@ -277,12 +277,48 @@ to survive a restart — a key with a lifetime, the peers it learns and the addr
 are all written while it works. `memory()` is what to pass when there is nowhere to write; the
 string is then the only thing that has to survive, which is the point of having one.
 
-Importing is authoritative: any authorization already in the supplied store for a datacenter
-this account could reach is cleared before the imported key is installed, so an account built
-from one session can never end up using a key left behind by another.
+Importing never silently replaces an account. If the supplied store already holds a different
+authorization for the session's own datacenter, the first connection refuses with
+`SessionError` and leaves the store untouched; `replace: true` puts the session in its place. The
+same key already there — a string imported on every start into a store that kept it — is simply
+used. Once importing goes ahead, any authorization in the store for another datacenter this
+account could reach is cleared before the imported key is installed, so an account built from
+one session can never end up using a key left behind by another. Two runs importing into one
+area at once are refused by the ownership guard, like any two runs of one account.
 
 The first connection after an import negotiates a key with a lifetime and has the imported key
 vouch for it; the long-lived exchange is skipped because that is what the string carried.
+
+### Strings from other libraries
+
+The version-3 TL session string other MTProto libraries write is read and written as
+`format: 'tl-v3'`; the layout is always named, since a string read as a layout it is not in
+would be somebody else's account.
+
+```ts
+const me = Account.fromString(process.env.SESSION!, { ...options, format: 'tl-v3' })
+const carried = await me.exportSession({ format: 'tl-v3' })
+
+const converted = writeSession(readSession(text, { format: 'tl-v3' }), { format: 'portable' })
+```
+
+```
+byte 0     version, 3
+int32      flags: bit 0 a user follows, bit 1 (older strings) test network, bit 2 a media address follows
+bytes      address: version 1 or 2, dc, flags (IPv6, media only, test network), host, port
+bytes      media address, if flagged
+int53      user id, then a Bool: is a bot, if flagged
+bytes      the 256-byte authorization key
+           URL-safe base64 without padding; the standard alphabet and padding are read too
+```
+
+What it carries beyond the key is used, not trusted over the caller: an address is added to the
+bootstrap only for a datacenter the bootstrap has none for, and the user is written down as this
+account's own. Exporting includes the user only when both its identifier and whether it is a
+bot are known, since the layout records both. Every field is checked on the way in — the version,
+unknown flags, lengths, the datacenter, the port, the network of each address, the Bool, the key's
+size — and nothing may follow the key. A string in the wrong layout is refused with a message
+naming the layout it looks like, and no message repeats what it read.
 
 ### Encryption at rest
 

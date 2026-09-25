@@ -212,7 +212,7 @@ import {
 } from './messaging/send.js'
 import type { ConnectionState, Connections, ManagedConnection } from './network/connections.js'
 import type { Datacenters, DatacentersOptions } from './network/datacenters.js'
-import type { DcConfiguration, DcDirectory } from './network/dc.js'
+import type { DcAddress, DcConfiguration, DcDirectory } from './network/dc.js'
 import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
@@ -350,7 +350,12 @@ import type {
   TakeoutSession,
 } from './session/operations.js'
 import { withParams } from './session/operations.js'
-import { decodeSession, encodeSession, type PortableSession } from './session.js'
+import {
+  readSession,
+  type SessionFormat,
+  type TransferredSession,
+  writeSession,
+} from './session.js'
 import type {
   MySetsPage,
   NewSticker,
@@ -722,7 +727,7 @@ export class Account<Ext = unknown> {
    * it, and the store learns about it on the way up, before anything reads an
    * authorization.
    */
-  #importing: PortableSession | undefined
+  #importing: (TransferredSession & { readonly replace: boolean }) | undefined
 
   constructor(options: AccountOptions) {
     this.#options = options
@@ -816,8 +821,12 @@ export class Account<Ext = unknown> {
    * The string is read here and now, so a malformed one fails where it was
    * passed rather than at the first connection.
    */
-  static fromString<Ext = unknown>(session: string, options: AccountOptions): Account<Ext> {
-    const imported = decodeSession(session)
+  static fromString<Ext = unknown>(
+    session: string,
+    options: AccountOptions & SessionImportOptions,
+  ): Account<Ext> {
+    const { format, replace, ...accountOptions } = options
+    const imported = readSession(session, format === undefined ? {} : { format })
 
     if (imported.testMode !== options.bootstrap.testMode) {
       // Addresses for one network and a key from the other cannot be made to
@@ -829,13 +838,18 @@ export class Account<Ext = unknown> {
     }
 
     const account = new Account<Ext>({
-      ...options,
+      ...accountOptions,
       // The session names the datacenter its key belongs to, which is this
       // account's own. A bootstrap says where to start looking, not whose key
-      // this is.
-      bootstrap: { ...options.bootstrap, thisDc: imported.dcId },
+      // this is; where the session also says where that datacenter is, the
+      // address is added unless the bootstrap already has one for it.
+      bootstrap: {
+        ...options.bootstrap,
+        thisDc: imported.dcId,
+        options: withSessionAddresses(options.bootstrap.options, imported),
+      },
     })
-    account.#importing = imported
+    account.#importing = { ...imported, replace: replace === true }
 
     return account
   }
@@ -856,7 +870,7 @@ export class Account<Ext = unknown> {
    * Reads what has been written down rather than what is in flight, so it needs
    * no connection, changes nothing, and gives the same answer twice.
    */
-  async exportSession(): Promise<string> {
+  async exportSession(options: { readonly format?: SessionFormat } = {}): Promise<string> {
     const storage = this.#area
     const authorization = authorizationStore(namespaced(storage, 'auth:'))
     const configuration = await datacenterStore(namespaced(storage, 'dcs:')).load()
@@ -869,11 +883,32 @@ export class Account<Ext = unknown> {
       )
     }
 
-    return encodeSession({
-      dcId,
-      testMode: configuration?.testMode ?? this.#options.bootstrap.testMode,
-      authKey: key,
-    })
+    const known = [...(configuration?.options ?? []), ...this.#options.bootstrap.options].filter(
+      (address) => address.id === dcId && !address.cdn,
+    )
+    const selfId = await readSelfId(storage)
+    const selfBot = await storage.get(SELF_BOT)
+
+    return writeSession(
+      {
+        dcId,
+        testMode: configuration?.testMode ?? this.#options.bootstrap.testMode,
+        authKey: key,
+        addresses: known.map(({ id, host, port, ipv6, mediaOnly }) => ({
+          id,
+          host,
+          port,
+          ipv6,
+          mediaOnly,
+        })),
+        // Only when both are known: the layout records whether the account is
+        // a bot beside who it is, and a guess would be carried as a fact.
+        ...(selfId !== undefined && typeof selfBot === 'boolean'
+          ? { self: { id: selfId, isBot: selfBot } }
+          : {}),
+      },
+      { format: options.format ?? 'portable' },
+    )
   }
 
   /** How far through its lifecycle this account has got. */
@@ -3445,9 +3480,9 @@ export class Account<Ext = unknown> {
     // happens before anything would think to ask. Read structurally: the step
     // this wraps is generic over what each returns, and only some of them
     // describe a user.
-    const reached = state as { kind?: unknown; user?: { id?: unknown } }
+    const reached = state as { kind?: unknown; user?: { id?: unknown; bot?: unknown } }
     if (reached.kind === 'authorized' && typeof reached.user?.id === 'bigint') {
-      await this.#rememberSelf(reached.user.id)
+      await this.#rememberSelf(reached.user.id, reached.user.bot === true)
     }
 
     return state
@@ -3553,13 +3588,15 @@ export class Account<Ext = unknown> {
    * Reported rather than thrown: knowing this is a convenience, and a store
    * that would not take it must not fail the call that learned it.
    */
-  async #rememberSelf(id: bigint): Promise<void> {
-    if (this.#selfId === id) return
+  async #rememberSelf(id: bigint, isBot?: boolean): Promise<void> {
+    if (this.#selfId === id && isBot === undefined) return
 
     this.#selfId = id
 
     try {
       await this.#area.set(SELF, id.toString())
+      // Kept beside the identifier because a session string carries both.
+      if (isBot !== undefined) await this.#area.set(SELF_BOT, isBot)
     } catch (error) {
       this.#log.warn('could not write down which user this account is', { error })
     }
@@ -5196,6 +5233,17 @@ export class Account<Ext = unknown> {
     const imported = this.#importing
     if (imported === undefined) return
 
+    // An authorization already here for this datacenter that is not the one
+    // being imported is somebody's signed-in account. It is kept unless the
+    // caller said to replace it, and nothing is cleared before that is known.
+    const existing = await authorization.key(imported.dcId)
+    if (existing !== undefined && !sameBytes(existing, imported.authKey) && !imported.replace) {
+      throw new SessionError(
+        `the storage for the account '${this.name}' already holds a different authorization for ` +
+          `datacenter ${imported.dcId}; import with replace: true to put this session in its place`,
+      )
+    }
+
     // Cleared before it is used, so a failure part-way leaves an account that
     // authorizes from nothing rather than one holding somebody else's key.
     this.#importing = undefined
@@ -5214,6 +5262,7 @@ export class Account<Ext = unknown> {
     for (const dcId of reachable) await authorization.forget(dcId)
 
     await authorization.setKey(imported.dcId, imported.authKey)
+    if (imported.self !== undefined) await this.#rememberSelf(imported.self.id, imported.self.isBot)
   }
 
   /**
@@ -5671,6 +5720,64 @@ const defaultSchedule = (run: () => void, delayMs: number): (() => void) => {
 
 /** Where an account writes down which user it is. */
 const SELF = 'self'
+
+/** Whether the user this account is, is a bot. */
+const SELF_BOT = 'selfBot'
+
+/** Options for {@link Account.fromString}, beside the account's own. */
+export interface SessionImportOptions {
+  /** The layout the string is in. `'portable'`, this library's own, unless given. */
+  readonly format?: SessionFormat
+  /**
+   * Put this session in place of a different authorization the store already
+   * holds for its datacenter. Without it, finding one is an error, since that
+   * authorization is somebody's signed-in account.
+   */
+  readonly replace?: boolean
+}
+
+/** Whether two keys are the same key. */
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false
+  }
+  return true
+}
+
+/**
+ * A bootstrap's addresses, with the ones a session string named added for a
+ * datacenter the bootstrap has none for. The bootstrap is the caller's
+ * statement of where to go, and is not overridden.
+ */
+function withSessionAddresses(
+  bootstrap: readonly DcAddress[],
+  session: TransferredSession,
+): readonly DcAddress[] {
+  const added = session.addresses
+    .filter(
+      (address) =>
+        !bootstrap.some(
+          (known) => known.id === address.id && known.mediaOnly === address.mediaOnly,
+        ),
+    )
+    .map(
+      (address): DcAddress => ({
+        id: address.id,
+        host: address.host,
+        port: address.port,
+        ipv6: address.ipv6,
+        mediaOnly: address.mediaOnly,
+        tcpoOnly: false,
+        cdn: false,
+        static: false,
+        thisPortOnly: false,
+        secret: undefined,
+      }),
+    )
+
+  return added.length === 0 ? bootstrap : [...bootstrap, ...added]
+}
 
 /** How long an album waits for its next part, unless an account says otherwise. */
 const ALBUM_WINDOW = 250

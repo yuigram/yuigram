@@ -352,6 +352,7 @@ export {
   readPeers,
   readProfile,
   readReaction,
+  readSession,
   readStickerSet,
   readStory,
   readUser,
@@ -369,6 +370,9 @@ export {
   type SendOptions,
   type SentMessage,
   type SentScheduled,
+  type SessionAddress,
+  type SessionFormat,
+  type SessionImportOptions,
   type ShippingAnswer,
   type SignInState,
   type SimilarChannelsPage,
@@ -431,6 +435,7 @@ export {
   type TopicRef,
   type TopicWalkOptions,
   type TotalPrecision,
+  type TransferredSession,
   type TranslateOptions,
   type Translation,
   thumbnail,
@@ -482,6 +487,7 @@ export {
   webLocationOf,
   whoAmI,
   writeFileId,
+  writeSession,
 } from '@yuigram/mtproto'
 
 /**
