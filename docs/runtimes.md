@@ -9,18 +9,20 @@ not.
 
 | Capability | Node 22+ | Bun | Deno | Workers / Edge | Browser |
 | --- | --- | --- | --- | --- | --- |
-| Bot API — Fetch-shaped webhook | **run** | expected | expected | expected | n/a |
-| Bot API — sending, and every method | **run** | expected | expected | expected | expected¹ |
+| Bot API — Fetch-shaped webhook | **run** | **run** | **run** | **run** | n/a |
+| Bot API — a call over `fetch`, and its cancellation | **run** | **run** | **run** | **run** | expected¹ |
+| Bot API — every method | **run** | expected | expected | expected | expected¹ |
 | Bot API — long-polling | **run** | expected | expected | n/a² | expected¹ |
 | Bot API — files by `Blob` or stream | **run** | expected | expected | expected | expected¹ |
 | Bot API — files by filesystem path | **run** | expected | expected³ | no | no |
 | Entities — reading messages, users, chats | **run** | expected | expected | expected | expected |
 | Formatting — HTML and Markdown, both ways | **run** | expected | expected | expected | expected |
-| Storage — `memory()` | **run** | expected | expected | expected | expected |
-| Storage — `file()` | **run** | expected | expected³ | no | no |
-| Storage — `encrypted()` | **run** | expected | expected | no⁴ | no |
+| Storage — `memory()` | **run** | **run** | **run** | **run** | expected |
+| Storage — `file()` | **run** | **run** | **run**³ | no | no |
+| Storage — `encrypted()` | **run** | **run**⁸ | **run** | no⁴ | no |
+| Storage — `@yuigram/sqlite`, fenced leases included | **run** | **run** (`node:sqlite`) | **run** (`node:sqlite`) | no | no |
 | Storage — `web()`, over `localStorage` | expected⁵ | expected | expected | no | **run** |
-| MTProto — accounts, in full | **run** | expected | expected | expected⁶ | **run**⁷ |
+| MTProto — accounts, in full | **run** | **run**⁹ | **run**⁹ | **run**⁶ ⁹ | **run**⁷ |
 
 ¹ Telegram's Bot API does not send CORS headers, so a browser page cannot call it directly. The
 code runs; the request is what the browser refuses. This matters for embedding Yuigram in a
@@ -41,10 +43,18 @@ and is not claimed here.
 caller. The default reaches `localStorage` and says so when there is none.
 
 ⁶ A worker resolves the same substitutions a browser does, and the bundle reaches no Node built-in.
-Nothing has been executed on one; §5 says what that leaves.
+Executed in workerd, locally, through Miniflare; not on Cloudflare's network, and not on Vercel
+Edge. §5.3 says what that leaves.
 
 ⁷ Executed, and broken down step by step in §5. What needs an authorized session is marked there
 as not run rather than claimed.
+
+⁸ After a fix this run found: Bun reports a successful scrypt derivation with `undefined` where Node
+reports `null`, and the store took that for a failure.
+
+⁹ A key exchanged, an encrypted call answered and an update pushed down the session dispatched, over
+the runtime's own connection to the mock datacenter, and a stop that closes it — §5.3. Signing in
+needs credentials, and is not run anywhere.
 
 ---
 
@@ -57,9 +67,9 @@ serves the framework to one and reports what it did. §5 breaks the browser colu
 step, because "it runs in a browser" is too coarse a claim to be worth much.
 
 **expected** — inferred from the complete list of platform APIs the code reaches, checked against
-what the runtime documents. It is a reasoned prediction, not a result. Bun and Deno are not
-installed on the machine these measurements were taken on, so nothing in those columns has been
-executed, and this document does not pretend otherwise.
+what the runtime documents. It is a reasoned prediction, not a result. Bun, Deno and workerd have
+been executed against for the rows marked run, by `tools/runtime-matrix` (§5.3); every other mark in
+those columns is still inference, and this document does not pretend otherwise.
 
 ### 2.1 How the Node-reach is measured
 
@@ -255,21 +265,21 @@ broken down rather than given a single mark.
 
 | Step | Node 22 | Bun | Deno | Workers / Edge | Browser |
 | --- | --- | --- | --- | --- | --- |
-| The module graph loads | **run** | expected | expected | expected | **run** |
-| Crypto against published vectors | **run** | expected | expected | expected | **run** |
+| The module graph loads | **run** | **run** | **run** | **run** | **run** |
+| Crypto against published vectors | **run** | **run** | **run** | **run** | **run** |
 | Both backends agree byte for byte | **run** | n/a | n/a | n/a | n/a |
 | Protocol over a fake transport | **run** | expected | expected | expected | n/a¹ |
-| A real socket carries bytes both ways | **run** | expected | expected | expected | **run** |
-| The key exchange completes over one | **run** | expected | expected | expected | **run** |
-| An account negotiates and binds a temporary key | **run** | expected | expected | expected | **run** |
-| An encrypted call is answered | **run** | expected | expected | expected | **run** |
-| An update is normalized and dispatched | **run** | expected | expected | expected | **run** |
-| The datacenter pushes one down the session | **run** | expected | expected | expected | **run** |
+| A real socket carries bytes both ways | **run** | **run** | **run** | **run** | **run** |
+| The key exchange completes over one | **run** | **run** | **run** | **run** | **run** |
+| An account negotiates and binds a temporary key | **run** | **run** | **run** | **run** | **run** |
+| An encrypted call is answered | **run** | **run** | **run** | **run** | **run** |
+| An update is normalized and dispatched | **run** | **run** | **run** | **run** | **run** |
+| The datacenter pushes one down the session | **run** | **run** | **run** | **run** | **run** |
 | Updates ingested from the wire and routed | **run** | expected | expected | expected | **not run**² |
 | A session survives in storage | **run** | expected | expected | expected | **run** |
 | Two accounts share one store without colliding | **run** | expected | expected | expected | **run** |
 | A second run of one account is refused | **run** | expected | expected | expected | **run** |
-| Stopping closes what was held | **run** | expected | expected | expected | **run** |
+| Stopping closes what was held | **run** | **run** | **run** | **run**⁴ | **run** |
 | Against Telegram itself | **not run**³ | **not run**³ | **not run**³ | **not run**³ | **not run**³ |
 
 ¹ The browser check talks to a datacenter over a real socket instead, which is a stronger claim
@@ -281,9 +291,14 @@ this check does not have. The dispatch half is run in a browser; the ingestion h
 
 ³ No credentials. Nothing in this repository has been pointed at Telegram's production network.
 
-**Bun and Deno remain unexecuted.** Neither is installed on the machine this was developed on, so
-every mark in those columns is inference from what the code reaches rather than a run. The
-substitution table in §4.1 is what the inference rests on; §5.2 says what it does not cover.
+⁴ The worker's socket is closed from the worker's side. The local proxy Miniflare puts between a
+worker and the network does not pass a WebSocket close frame on — a bare `WebSocket` closed from a
+worker shows the same — so the datacenter's side of the close is not observed there.
+
+The Bun, Deno and Workers columns come from `tools/runtime-matrix`, §5.3. Rows still marked
+expected there were not part of that run: the in-process fake transport is the unit suite's path,
+and the storage-ownership and ingestion rows need what the browser check builds and the matrix
+does not.
 
 ### 5.1 How the browser column was established
 
@@ -308,14 +323,44 @@ and base64 on four live paths; and the five-second prime validation above.
 
 ### 5.2 What is still inference
 
-- **Bun and Deno have not been executed against.** Neither is installed on the machine these
-  measurements come from. Their columns are inference from the API list, and the browser result
-  raises the confidence without replacing it: both provide `node:crypto`, so both take the
-  platform path rather than the one that was just exercised.
-- **No edge platform has been executed against** — Cloudflare Workers, Vercel Edge. They resolve the same substitutions a
-  browser does, which is what the `bundle/browser-builtins` benchmark holds, but a bundle that
-  reaches nothing forbidden is not a program that ran.
+- **Only a local workerd has run the edge column.** Cloudflare's network and Vercel Edge have not;
+  they resolve the same substitutions, which is what makes the local run informative rather than
+  sufficient.
 - **The long-polling loop is not exercised off Node**, only bundled.
+- **Files by path, `Blob` or stream through the Bot API** are not exercised off Node.
+- **Every row marked expected** in the tables above.
+
+### 5.3 How the Bun, Deno and Workers columns were established
+
+`tools/runtime-matrix` builds and packs the packages, installs the archives into a temporary
+directory the way an application would, and runs one set of checks under each runtime against a
+fresh mock datacenter hosted by the tool — the test suite's own peer, doing the real exchange:
+
+```sh
+YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… pnpm --filter @yuigram/runtime-matrix run matrix
+```
+
+| Check | Node 22.20 | Bun 1.4.2 | Deno 2.9.6 | workerd (Miniflare 4.20260730.0) |
+| --- | --- | --- | --- | --- |
+| Every published entry point resolves and imports | 26 entries | 26 entries | 26 entries | bundled: 269 modules, no Node built-in |
+| AES-256, AES-CTR, SHA-1, SHA-256, MD5, PBKDF2 against published vectors | `node:crypto` | `node:crypto` | `node:crypto` | `portable` |
+| A Bot API call over the runtime's `fetch` | ✓ | ✓ | ✓ | ✓ |
+| A Fetch-shaped webhook reading a two-chunk stream | ✓ | ✓ | ✓ | ✓ |
+| A call cancelled by its `AbortSignal` | ✓ | ✓ | ✓ | ✓ |
+| `memory()` with expiry | ✓ | ✓ | ✓ | ✓ |
+| `file()` and `encrypted()` across instances | ✓ | ✓ (after the fix) | ✓ | not offered |
+| `@yuigram/sqlite`: values, expiry, a fenced lease | ✓ | ✓ | ✓ | not offered |
+| Key from PEM, key exchange, encrypted call, pushed update dispatched | TCP | TCP | TCP | WebSocket |
+| Stop closes the connection | ✓ | ✓ | ✓ | ✓ from the worker's side |
+
+Bun and Deno are taken from `YUIGRAM_BUN` and `YUIGRAM_DENO` or `PATH`; Miniflare, a large download,
+from the directory `YUIGRAM_MINIFLARE` names rather than from this repository's dependencies. A
+runtime that cannot be found is reported as not run. The worker is bundled with esbuild for the
+browser platform under the `worker` and `browser` conditions, with compatibility date 2026-07-01,
+and reaches the WebSocket connector by path, because the connector is not a public export. Deno
+runs with `--allow-all`. These were run on Windows x64.
+
+The run found one defect, fixed: `encrypted()` rejected every write on Bun (footnote ⁸ above).
 
 Closing any of these means running against that runtime in continuous integration, which is the
 honest way to turn an "expected" into a "run".

@@ -114,6 +114,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/yuigram
 
+  tools/runtime-matrix:
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   tools/schema:
     devDependencies:
       node-html-parser:

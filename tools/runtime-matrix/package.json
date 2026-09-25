@@ -1,0 +1,17 @@
+{
+  "name": "@yuigram/runtime-matrix",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs the published packages on Node, Bun, Deno and an edge worker, and reports what worked",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "matrix": "tsx src/run.ts"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
