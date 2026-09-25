@@ -507,6 +507,13 @@ describe('sending and settling gifts', () => {
     expect(page.gifts).toHaveLength(1)
   })
 
+  it('reads a unique gift by its slug', async () => {
+    const gift = { _: 'starGiftUnique', id: 1n, gift_id: 2n, title: 'Cake', slug: 'Cake-1', num: 1 }
+    const client = fake([{ _: 'payments.uniqueStarGift', gift, users: [], chats: [] }])
+    expect(await uniqueGift(client, 'Cake-1')).toBe(gift)
+    expect(sent(client, 'payments.getUniqueStarGift')).toEqual({ slug: 'Cake-1' })
+  })
+
   it('refuses a slug that does not name a unique gift', async () => {
     const client = fake([
       { _: 'payments.uniqueStarGift', gift: { _: 'starGift', id: 1n }, users: [] },
@@ -749,6 +756,12 @@ describe('the business surface', () => {
     await editBusinessLink(client, 'x', 'bye')
 
     expect(sent(client, 'account.editBusinessChatLink')).toMatchObject({ slug: 'x' })
+  })
+
+  it('deletes a business link by its slug', async () => {
+    const client = fake([true])
+    await deleteBusinessLink(client, 'x-slug')
+    expect(sent(client, 'account.deleteBusinessChatLink')).toEqual({ slug: 'x-slug' })
   })
 
   it('raises when Telegram declines to delete a link', async () => {

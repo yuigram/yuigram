@@ -438,6 +438,17 @@ describe('posting and reading stories', () => {
     expect(sent(client, 'stories.togglePinned')).toMatchObject({ id: [7], pinned: true })
   })
 
+  it('archives and unarchives a peer’s stories through one flag', async () => {
+    const client = fake([true, true])
+    await setPeerStoriesArchived(client, '@a', true)
+    await setPeerStoriesArchived(client, '@a', false)
+    expect(client.asked.map((one) => [one.method, one.params['hidden']])).toEqual([
+      ['stories.togglePeerStoriesHidden', true],
+      ['stories.togglePeerStoriesHidden', false],
+    ])
+    expect(client.asked[0]?.params['peer']).toBeDefined()
+  })
+
   it('raises when Telegram declines to archive a peer’s stories', async () => {
     // The call answers a plain boolean, and a false that was ignored would
     // read as success.

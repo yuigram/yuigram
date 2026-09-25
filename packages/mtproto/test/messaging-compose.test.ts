@@ -24,7 +24,7 @@ import {
   sendScheduledMessages,
   uploadMedia,
 } from '../src/messaging/compose.js'
-import { quoteOf, type Sending, sameTopic, sendText } from '../src/messaging/send.js'
+import { quoteOf, type Sending, sameTopic, sendMedia, sendText } from '../src/messaging/send.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
 
 interface Call {
@@ -819,6 +819,24 @@ describe('a quote', () => {
     const refused = scripted()
     await expect(sendText(refused, '@someone', 'yes', { quote })).rejects.toThrow(/needs replyTo/)
     expect(refused.resolved).toEqual([])
+  })
+
+  it('carries the same reply header on media as on text', async () => {
+    const client = scripted()
+    const quote = quoteOf({ text: 'hello brave world', entities: [bold] }, 0, 5)
+
+    await sendMedia(client, '@someone', { _: 'inputMediaDice', emoticon: '🎲' }, undefined, {
+      replyTo: 3,
+      quote,
+    })
+
+    expect(called(client, 'messages.sendMedia')?.['reply_to']).toEqual({
+      _: 'inputReplyToMessage',
+      reply_to_msg_id: 3,
+      quote_text: 'hello',
+      quote_entities: [{ _: 'messageEntityBold', offset: 0, length: 5 }],
+      quote_offset: 0,
+    })
   })
 
   it('answers a message in another conversation, naming that conversation', async () => {

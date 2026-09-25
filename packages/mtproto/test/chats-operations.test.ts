@@ -11,15 +11,15 @@ import { PeerError, SessionError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
 import type { Chatting } from '../src/chats/common.js'
-import { deleteFolder, setFolderOrder } from '../src/chats/folders.js'
+import { createFolder, deleteFolder, setFolderOrder } from '../src/chats/folders.js'
 import {
   exportInviteLink,
   joinChatlist,
   previewChatlist,
   readInviteLink,
 } from '../src/chats/invites.js'
-import { deleteHistory, deleteMemberHistory } from '../src/chats/lifecycle.js'
-import { previewChat } from '../src/chats/lookup.js'
+import { deleteChannel, deleteHistory, deleteMemberHistory } from '../src/chats/lifecycle.js'
+import { fetchDialogs, messageAuthor, previewChat } from '../src/chats/lookup.js'
 import {
   reorderChatUsernames,
   setChatColor,
@@ -33,6 +33,7 @@ import {
 import {
   creatorAfterLeave,
   joinChat,
+  leaveChat,
   setMemberRank,
   transferOwnership,
 } from '../src/chats/members.js'
@@ -496,5 +497,100 @@ describe('folders, invites and lookups', () => {
     const client = fake({ 'payments.getUniqueStarGiftValueInfo': worth })
     expect(await giftValue(client as never, 'Gift-1')).toBe(worth)
     expect(sent(client, 'payments.getUniqueStarGiftValueInfo')).toEqual({ slug: 'Gift-1' })
+  })
+})
+
+describe('leaving, deleting and reading the list', () => {
+  it('leaves a basic group by removing itself, and a channel through the channel call', async () => {
+    const group = fake({ 'messages.deleteChatUser': UPDATES }, GROUP)
+    await leaveChat(group, 'g', { deleteHistory: true })
+    expect(group.asked).toEqual([
+      {
+        method: 'messages.deleteChatUser',
+        params: { chat_id: 3n, user_id: { _: 'inputUserSelf' }, revoke_history: true },
+      },
+    ])
+    expect(group.fed).toEqual([UPDATES])
+
+    const channel = fake({ 'channels.leaveChannel': UPDATES })
+    await leaveChat(channel, '@news')
+    expect(channel.asked).toEqual([
+      {
+        method: 'channels.leaveChannel',
+        params: { channel: { _: 'inputChannel', channel_id: 10n, access_hash: 99n } },
+      },
+    ])
+  })
+
+  it('deletes a channel through the channel call, and refuses a basic group', async () => {
+    const client = fake({ 'channels.deleteChannel': UPDATES })
+    await deleteChannel(client, '@news')
+    expect(sent(client, 'channels.deleteChannel')).toEqual({
+      channel: { _: 'inputChannel', channel_id: 10n, access_hash: 99n },
+    })
+    expect(client.fed).toEqual([UPDATES])
+    await expect(deleteChannel(fake({}, GROUP), 'g')).rejects.toBeInstanceOf(PeerError)
+  })
+
+  it('reads the dialogs of named conversations in one request, and asks nothing for none', async () => {
+    const dialog = {
+      _: 'dialog',
+      peer: { _: 'peerChannel', channel_id: 10n },
+      top_message: 5,
+      read_inbox_max_id: 4,
+      read_outbox_max_id: 4,
+      unread_count: 1,
+      unread_mentions_count: 0,
+      unread_reactions_count: 0,
+      notify_settings: { _: 'peerNotifySettings' },
+    }
+    const client = fake({
+      'messages.getPeerDialogs': {
+        _: 'messages.peerDialogs',
+        dialogs: [dialog],
+        messages: [],
+        chats: [],
+        users: [],
+        state: { _: 'updates.state', pts: 1, qts: 0, date: 0, seq: 0, unread_count: 0 },
+      },
+    })
+
+    const dialogs = await fetchDialogs(client, ['@news'])
+
+    expect(sent(client, 'messages.getPeerDialogs')).toEqual({
+      peers: [{ _: 'inputDialogPeer', peer: CHANNEL }],
+    })
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0]?.raw).toBe(dialog)
+    const none = fake({})
+    expect(await fetchDialogs(none, [])).toEqual([])
+    expect(none.asked).toEqual([])
+  })
+
+  it('makes a folder from the conversations it names, with its title as text', async () => {
+    const client = fake({ 'messages.updateDialogFilter': { _: 'boolTrue' } })
+    await createFolder(client, { id: 5, title: 'Work', included: ['@news'], excluded: ['@ann'] })
+    expect(sent(client, 'messages.updateDialogFilter')).toEqual({
+      id: 5,
+      filter: {
+        _: 'dialogFilter',
+        id: 5,
+        title: { _: 'textWithEntities', text: 'Work', entities: [] },
+        pinned_peers: [],
+        include_peers: [CHANNEL],
+        exclude_peers: [USER],
+      },
+    })
+  })
+
+  it('names who wrote a signed post', async () => {
+    const client = fake({
+      'channels.getMessageAuthor': { _: 'user', id: 55n, first_name: 'Writer' },
+    })
+    expect((await messageAuthor(client, '@news', 9))?.id).toBe(55n)
+    expect(sent(client, 'channels.getMessageAuthor')).toEqual({
+      channel: { _: 'inputChannel', channel_id: 10n, access_hash: 99n },
+      id: 9,
+    })
   })
 })
