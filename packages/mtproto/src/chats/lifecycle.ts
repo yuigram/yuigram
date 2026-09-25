@@ -26,9 +26,10 @@
 import { ValidationError } from '@yuigram/core'
 import { ChatView } from '../entities/peer.js'
 import type { TypeUpdates } from '../generated/api/types/index.js'
+import { channelFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { Chatting } from './common.js'
-import { applyUpdates, asChannel, asUser, groupIdOf } from './common.js'
+import { applyUpdates, asChannel, asUser, groupIdOf, removeInStages } from './common.js'
 
 /** How a new conversation starts out. */
 export interface NewChat {
@@ -211,22 +212,41 @@ export interface HistoryRemoval {
  * By default this removes the conversation from the list as well.
  * `keepChat` leaves the conversation and empties it, which is the difference
  * between "I am done with this person" and "start again".
+ *
+ * A private chat or basic group is emptied in as many stages as Telegram asks
+ * for, and this returns once the last is done. A channel or supergroup takes
+ * the channel call instead, where `forEveryone` removes the history for every
+ * member.
  */
 export async function deleteHistory(
   client: Chatting,
   chat: string | PeerRef,
   options: HistoryRemoval = {},
 ): Promise<void> {
-  const answer = await client.api.messages.deleteHistory({
-    peer: await client.resolve(chat),
-    max_id: options.upTo ?? 0,
-    ...(options.forEveryone === true ? { revoke: true } : {}),
-    ...(options.keepChat === true ? { just_clear: true } : {}),
-  })
+  const peer = await client.resolve(chat)
+  const channel = channelFor(peer)
 
-  // Answered with how far the removal got rather than with updates, because a
-  // long history is removed in stages and the caller may have to ask again.
-  void answer
+  // A channel or supergroup keeps its history under a call of its own, which
+  // removes it in one request and answers with updates; `keepChat` has no
+  // meaning there, since leaving is a separate operation.
+  if (channel !== undefined) {
+    const answer = await client.api.channels.deleteHistory({
+      channel,
+      max_id: options.upTo ?? 0,
+      ...(options.forEveryone === true ? { for_everyone: true } : {}),
+    })
+    await applyUpdates(client, answer)
+    return
+  }
+
+  await removeInStages(client, peer, () =>
+    client.api.messages.deleteHistory({
+      peer,
+      max_id: options.upTo ?? 0,
+      ...(options.forEveryone === true ? { revoke: true } : {}),
+      ...(options.keepChat === true ? { just_clear: true } : {}),
+    }),
+  )
 }
 
 /**
@@ -245,10 +265,13 @@ export async function deleteMemberHistory(
   chat: string | PeerRef,
   member: string | PeerRef,
 ): Promise<void> {
-  const answer = await client.api.channels.deleteParticipantHistory({
-    channel: await asChannel(client, chat, "removing one member's messages"),
-    participant: await client.resolve(member),
-  })
+  const channel = await asChannel(client, chat, "removing one member's messages")
+  const peer = await client.resolve(chat)
+  const participant = await client.resolve(member)
 
-  void answer
+  // Removed in stages like any long history, and each stage advances the
+  // channel's own sequence.
+  await removeInStages(client, peer, () =>
+    client.api.channels.deleteParticipantHistory({ channel, participant }),
+  )
 }

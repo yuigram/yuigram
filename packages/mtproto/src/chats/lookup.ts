@@ -190,7 +190,13 @@ export async function previewChat(
     username: username.replace(/^@/, ''),
   })
 
-  const found = answer.chats.find((chat) => chat._ === 'chat' || chat._ === 'channel')
+  // The conversation the name belongs to, not the first one in the answer: an
+  // answer can carry others beside it, such as a channel's discussion group.
+  // A name that belongs to a person names no conversation.
+  const peer = answer.peer
+  if (peer._ === 'peerUser') return undefined
+  const id = peer._ === 'peerChannel' ? peer.channel_id : peer.chat_id
+  const found = answer.chats.find((chat) => chat._ !== 'chatEmpty' && chat.id === id)
 
   return found === undefined ? undefined : new ChatView(found)
 }

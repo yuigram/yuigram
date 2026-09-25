@@ -100,7 +100,7 @@ export async function startDatacenter(): Promise<Datacenter> {
       () => socket.end(),
       () => open,
     )
-    socket.on('data', (data) => stream.write(new Uint8Array(data)))
+    socket.on('data', (data: Buffer) => stream.write(new Uint8Array(data)))
     socket.on('close', () => {
       sockets.delete(socket)
       open = false

@@ -31,7 +31,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyAffected, applyUpdates, type Chatting } from '../chats/common.js'
+import { applyUpdates, type Chatting, removeInStages } from '../chats/common.js'
 import { ForumTopicView } from '../entities/chat.js'
 import type { TypeForumTopic } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
@@ -277,18 +277,14 @@ export async function deleteTopicHistory(
   topic: TopicRef,
 ): Promise<number> {
   const peer = await client.resolve(chat)
-  const answer = await client.api.messages.deleteTopicHistory({
-    peer,
-    top_msg_id: topicId(topic),
-  })
 
   // Not an updates container, so it cannot be fed as one. What it carries is a
   // position and a count in the channel's own sequence — a forum is always a
-  // channel — and the account needs both, applied there, or it will chase a gap
-  // this call opened.
-  await applyAffected(client, peer, answer)
-
-  return answer.pts_count
+  // channel — and a long thread is removed in stages, each asked for again
+  // until Telegram says the last is done.
+  return await removeInStages(client, peer, () =>
+    client.api.messages.deleteTopicHistory({ peer, top_msg_id: topicId(topic) }),
+  )
 }
 
 /**

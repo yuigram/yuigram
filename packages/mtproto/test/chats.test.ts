@@ -631,7 +631,7 @@ describe('making and unmaking conversations', () => {
   it('keeps the conversation when only its history was asked to go', async () => {
     const client = fake([{ _: 'messages.affectedHistory', pts: 1, pts_count: 0, offset: 0 }])
 
-    await deleteHistory(client, '@someone', { keepChat: true, forEveryone: true })
+    await deleteHistory(client, '@somebody', { keepChat: true, forEveryone: true })
 
     expect(sent(client, 'messages.deleteHistory')).toMatchObject({
       just_clear: true,

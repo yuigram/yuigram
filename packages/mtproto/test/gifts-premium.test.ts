@@ -515,6 +515,33 @@ describe('sending and settling gifts', () => {
     await expect(uniqueGift(client, 'a-slug')).rejects.toThrow(/does not name a unique gift/)
   })
 
+  it('reads saved gifts by every kind of reference, in one request', async () => {
+    const saved = { _: 'savedStarGift', date: 1, gift: { _: 'starGift', id: 5n } }
+    const client = fake([
+      {
+        _: 'payments.savedStarGifts',
+        count: 3,
+        gifts: [saved, saved, saved],
+        chats: [],
+        users: [],
+      },
+    ])
+
+    const gifts = await fetchSavedGifts(client, [
+      'a-slug',
+      { message: 12 },
+      { owner: '@a', saved: 99n },
+    ])
+
+    expect(client.asked).toHaveLength(1)
+    expect(sent(client, 'payments.getSavedStarGift')?.['stargift']).toEqual([
+      { _: 'inputSavedStarGiftSlug', slug: 'a-slug' },
+      { _: 'inputSavedStarGiftUser', msg_id: 12 },
+      { _: 'inputSavedStarGiftChat', peer: expect.any(Object), saved_id: 99n },
+    ])
+    expect(gifts).toHaveLength(3)
+  })
+
   it('asks nothing to read no saved gifts', async () => {
     const client = fake([])
 

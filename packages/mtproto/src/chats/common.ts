@@ -31,7 +31,7 @@
  * that is answered with updates hands them to the account.
  */
 
-import { PeerError } from '@yuigram/core'
+import { PeerError, SessionError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
 import type {
   TypeChatAdminRights,
@@ -178,6 +178,45 @@ export async function applyAffected(
           }
         : { _: 'updateDeleteMessages', messages: [], pts: answer.pts, pts_count: answer.pts_count },
   })
+}
+
+/**
+ * Repeat a removal Telegram carries out in stages, until it says it is done.
+ *
+ * A long history is not removed by one request. The answer's `offset` above
+ * zero is Telegram asking for the same request again, and it falls as the
+ * removal proceeds; a caller that stopped after the first answer would report
+ * success for a history that was only partly removed. Each stage's position is
+ * applied to the account as it arrives, as any other removal's is.
+ *
+ * Answers how many messages went. A stage whose offset does not fall is
+ * refused rather than repeated forever: the request would never finish.
+ */
+export async function removeInStages(
+  client: Chatting,
+  peer: TypeInputPeer,
+  request: () => Promise<{
+    readonly pts: number
+    readonly pts_count: number
+    readonly offset: number
+  }>,
+): Promise<number> {
+  let removed = 0
+  let previous = Number.POSITIVE_INFINITY
+
+  for (;;) {
+    const answer = await request()
+    await applyAffected(client, peer, answer)
+    removed += answer.pts_count
+
+    if (answer.offset <= 0) return removed
+    if (answer.offset >= previous) {
+      throw new SessionError(
+        `Telegram asked for a removal to be repeated without it progressing (offset ${answer.offset})`,
+      )
+    }
+    previous = answer.offset
+  }
 }
 
 /** What an administrator may do. Anything left out is a right they do not have. */
