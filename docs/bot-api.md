@@ -125,6 +125,36 @@ bot.api.sendMessage({ chat_id, text })      // typed from the schema
 bot.api.call('newMethod', { … })            // works before regeneration
 ```
 
+### Defaults
+
+A bot's calls start from its defaults, in three layers:
+
+```ts
+Bot.fromToken(token, {
+  defaults: {
+    '*': { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+    sendMessage: { protect_content: true },
+  },
+})
+```
+
+| Layer | Applies to | Wins over |
+| --- | --- | --- |
+| `'*'` | methods whose schema takes the parameter; seven are settable here: `parse_mode`, `link_preview_options`, `disable_notification`, `protect_content`, `allow_paid_broadcast`, `message_effect_id`, `business_connection_id` | nothing |
+| a method's key | that method, with any of its parameters, typed from the schema | `'*'` |
+| the call | that call | both — including `false`, `null`, `''`, and `undefined`, which is how one call opts out of a default |
+
+Which methods take which of the seven is generated from the schema, so a `'*'` default never
+lands on `getMe`. A method newer than the schema, reached through `call()`, gets its own key's
+defaults and none of the `'*'` ones. Defaults are copied when the bot is made and again into
+each call, so a hook that adjusts `link_preview_options` on one call leaves the next alone, and
+two bots given one object never share it. A defaulted `parse_mode` is left off a call that
+carries its own ranges — `entities`, `caption_entities`, or a formatted value — and a
+`parse_mode` the call passes itself is always kept. Hooks see the parameters with defaults
+applied, a retry sends the same ones, and an upload sends them as fields beside the file.
+
+Parameters written at the top level, the form defaults took before, still apply to every call.
+
 ### HTTP client
 
 Native `fetch` on Node 22, behind a `HttpClient` interface so it can be replaced for proxying,

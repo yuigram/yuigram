@@ -11,6 +11,7 @@
 
 import { type Hook, YuigramError } from '@yuigram/core'
 import type { CallOptions } from './api-options.js'
+import { type MethodDefaults, prepareDefaults, withDefaults } from './defaults.js'
 import { toError, toNetworkError } from './errors.js'
 import type { ApiMethods } from './generated/api.js'
 import type { ApiRequest, HttpClient } from './http/client.js'
@@ -92,8 +93,12 @@ export type ApiHook = Hook<ApiCall>
 export interface CreateApiOptions {
   /** Transport to send through. */
   readonly client: HttpClient
-  /** Merged into every call, unless the call site supplies the parameter. */
-  readonly defaults?: Readonly<Record<string, unknown>>
+  /**
+   * Applied to calls before hooks see them: `'*'` where a method takes the
+   * parameter, a method's own key for that method, and the call's own values
+   * over both. Parameters given at the top level apply to every call.
+   */
+  readonly defaults?: MethodDefaults | Readonly<Record<string, unknown>>
   /** Observes every call, for instrumentation. */
   readonly onCall?: (request: ApiRequest) => void
   /**
@@ -153,7 +158,8 @@ async function invoke<T>(
  * The proxy is the entire runtime. Everything else is types.
  */
 export function createApi(options: CreateApiOptions): RawApi {
-  const { client, defaults = {}, onCall, hooks } = options
+  const { client, onCall, hooks } = options
+  const defaults = prepareDefaults(options.defaults)
 
   /** Run one call through the hook chain, then the transport. */
   const send = async <T>(
@@ -204,7 +210,7 @@ export function createApi(options: CreateApiOptions): RawApi {
 
       if (property === 'call') {
         return (method: string, params: Record<string, unknown> = {}, options?: CallOptions) =>
-          send(method, { ...defaults, ...params }, options)
+          send(method, withDefaults(defaults, method, params), options)
       }
 
       // Runtimes and libraries probe objects for these before deciding what
@@ -221,7 +227,7 @@ export function createApi(options: CreateApiOptions): RawApi {
       if (PROBED_PROPERTIES.has(property)) return Reflect.get(target, property) as unknown
 
       return (params: Record<string, unknown> = {}, options?: CallOptions) =>
-        send(property, { ...defaults, ...params }, options)
+        send(property, withDefaults(defaults, property, params), options)
     },
 
     has(target, property) {

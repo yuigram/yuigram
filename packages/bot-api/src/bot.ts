@@ -40,6 +40,7 @@ import {
 } from '@yuigram/core'
 import { type ApiHook, createApi, type RawApi } from './api.js'
 import type { ParsedCommand } from './command.js'
+import type { MethodDefaults } from './defaults.js'
 import {
   type AnyEventContext,
   type CallbackQueryContext,
@@ -86,8 +87,16 @@ export interface BotOptions {
   readonly name?: string
   /** Logger. Defaults to a console logger at `info`. */
   readonly log?: Logger
-  /** Merged into every API call. */
-  readonly defaults?: Readonly<Record<string, unknown>>
+  /**
+   * Parameters this bot's calls start from.
+   *
+   * `'*'` sets parameters for every method that takes them — `parse_mode`,
+   * `link_preview_options`, `disable_notification`, `protect_content`,
+   * `allow_paid_broadcast`, `message_effect_id`, `business_connection_id` — and
+   * a method's own key sets any of its parameters. What a call passes wins,
+   * including `false`, `null` and `undefined`.
+   */
+  readonly defaults?: MethodDefaults
   /**
    * Update kinds to subscribe to, or `'auto'` to derive them from the
    * registered handlers.

@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path'
 import type { BotApiSchema } from '../bot-api/ir.js'
 import { emitBindings } from './bindings.js'
 import { emitContexts } from './contexts.js'
+import { emitDefaults } from './defaults.js'
 import { describeServiceDetection, emitEvents } from './events.js'
 import { emitFieldLists } from './field-lists.js'
 import { emitFormattable } from './formattable.js'
@@ -33,6 +34,7 @@ export function emitAll(schema: BotApiSchema): EmittedFile[] {
     emitRegistrations(schema),
     emitFieldLists(schema),
     emitFormattable(schema),
+    emitDefaults(schema),
   ]
 }
 
