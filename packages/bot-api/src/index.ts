@@ -161,6 +161,13 @@ export {
 } from './input-file.js'
 export { InlineKeyboard, Keyboard } from './keyboards.js'
 export { type MediaOptions, media } from './media.js'
+export {
+  CACHEABLE_METHODS,
+  type MediaCache,
+  type MediaCacheOptions,
+  type MediaKind,
+  mediaCache,
+} from './media-cache.js'
 export { type NormalizedUpdate, normalizeUpdate, UNKNOWN_KIND } from './normalize.js'
 export {
   type AlbumCaption,

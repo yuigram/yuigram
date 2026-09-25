@@ -40,6 +40,45 @@ export type StreamSource = ReadableStream<Uint8Array> | AsyncIterable<Uint8Array
 export interface MediaOptions {
   /** MIME type, when it is known and worth stating. */
   readonly contentType?: string
+  /**
+   * What a media cache calls this file, in place of what it would work out.
+   *
+   * A name makes a single-use stream cacheable, which it otherwise is not,
+   * since its bytes cannot be read twice to be digested. `false` keeps this
+   * file out of the cache, for something that should be uploaded fresh every
+   * time.
+   */
+  readonly cacheKey?: string | false
+}
+
+/**
+ * What a media cache may know about a file: where it came from, what it was
+ * told to call it, and whether its bytes can be read more than once.
+ */
+export interface MediaOrigin {
+  readonly path?: string
+  readonly cacheKey?: string | false
+  readonly replayable: boolean
+}
+
+/** Origins of the files made here, kept beside them rather than on them. */
+const ORIGINS = new WeakMap<object, MediaOrigin>()
+
+/** Where a file made by `media` came from, if it was made there. */
+export function originOf(file: unknown): MediaOrigin | undefined {
+  return typeof file === 'object' && file !== null ? ORIGINS.get(file) : undefined
+}
+
+function remember<T extends object>(
+  file: T,
+  origin: { readonly path?: string; readonly replayable: boolean },
+  options: MediaOptions,
+): T {
+  ORIGINS.set(file, {
+    ...origin,
+    ...(options.cacheKey === undefined ? {} : { cacheKey: options.cacheKey }),
+  })
+  return file
 }
 
 /** Guess a filename from a path, for the multipart part name. */
@@ -60,15 +99,19 @@ export function path(
 ): NamedFile {
   if (filePath === '') throw new ValidationError('a file path cannot be empty')
 
-  return {
-    // An async generator function returns its iterator without running the
-    // body, so the file opens on the first read rather than here.
-    get data(): AsyncIterable<Uint8Array> {
-      return readFile(filePath)
+  return remember(
+    {
+      // An async generator function returns its iterator without running the
+      // body, so the file opens on the first read rather than here.
+      get data(): AsyncIterable<Uint8Array> {
+        return readFile(filePath)
+      },
+      filename: options.filename ?? basename(filePath),
+      ...(options.contentType === undefined ? {} : { contentType: options.contentType }),
     },
-    filename: options.filename ?? basename(filePath),
-    ...(options.contentType === undefined ? {} : { contentType: options.contentType }),
-  }
+    { path: filePath, replayable: true },
+    options,
+  )
 }
 
 /** Stream a file's bytes, opening it on first read. */
@@ -112,11 +155,15 @@ export function buffer(
   filename: string,
   options: MediaOptions = {},
 ): NamedFile {
-  return {
-    data,
-    filename,
-    ...(options.contentType === undefined ? {} : { contentType: options.contentType }),
-  }
+  return remember(
+    {
+      data,
+      filename,
+      ...(options.contentType === undefined ? {} : { contentType: options.contentType }),
+    },
+    { replayable: true },
+    options,
+  )
 }
 
 /** A stream of bytes from anywhere. */
@@ -130,38 +177,54 @@ export function stream(
   // A factory can be asked twice, so it is replayable and needs no guard: a
   // retry simply opens a second stream.
   if (typeof source === 'function') {
-    return {
-      get data(): StreamSource {
-        return source()
+    return remember(
+      {
+        get data(): StreamSource {
+          return source()
+        },
+        filename,
+        ...contentType,
       },
-      filename,
-      ...contentType,
-    }
+      { replayable: true },
+      options,
+    )
   }
 
   // A stream is read once and is then empty. Encoding happens per attempt, so
   // a retried request would re-encode this one and send nothing — an upload
   // that silently succeeds with no bytes. Marking it single-use lets the
   // encoder refuse the second attempt with an error naming the cause.
-  return markSingleUse({ data: source, filename, ...contentType }, filename)
+  return remember(
+    markSingleUse({ data: source, filename, ...contentType }, filename),
+    { replayable: false },
+    options,
+  )
 }
 
 /** Text, encoded as UTF-8. */
 export function text(content: string, filename = 'file.txt'): NamedFile {
-  return {
-    data: new TextEncoder().encode(content),
-    filename,
-    contentType: 'text/plain; charset=utf-8',
-  }
+  return remember(
+    {
+      data: new TextEncoder().encode(content),
+      filename,
+      contentType: 'text/plain; charset=utf-8',
+    },
+    { replayable: true },
+    {},
+  )
 }
 
 /** A value, serialized as JSON. */
 export function json(value: unknown, filename = 'file.json'): NamedFile {
-  return {
-    data: new TextEncoder().encode(JSON.stringify(value, null, 2)),
-    filename,
-    contentType: 'application/json',
-  }
+  return remember(
+    {
+      data: new TextEncoder().encode(JSON.stringify(value, null, 2)),
+      filename,
+      contentType: 'application/json',
+    },
+    { replayable: true },
+    {},
+  )
 }
 
 /** A `Blob` or `File`, as the platform produces them. */

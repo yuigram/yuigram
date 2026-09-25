@@ -279,6 +279,30 @@ The 20/50 MB caps are Bot API facts, not Yuigram choices, and the documentation 
 plainly — a developer hitting the ceiling should be told immediately that a local Bot API
 server or an MTProto client is the answer.
 
+### Media caching
+
+`mediaCache()` keeps the identifier Telegram gives each upload and sends it in place of the
+file next time:
+
+```ts
+const cache = mediaCache({ storage: sqliteStore(database, { table: 'media' }) })
+bot.extend(cache)
+```
+
+| | |
+| --- | --- |
+| Covered | `sendPhoto`, `sendVideo`, `sendAnimation`, `sendVideoNote`, `sendAudio`, `sendDocument`, `sendSticker`, `sendVoice` |
+| Named by | the bot, the media kind, and the source: a path as given, a URL, a digest of bytes in memory, or a caller's `cacheKey` |
+| Not cached | an identifier already in the call; a single-use stream without `cacheKey`, which is never read to be named; anything marked `cacheKey: false` |
+| `keyFilesBy: 'content'` | files on disk named by a digest of their bytes, read once before each upload |
+| A bad identifier | a 400 saying the identifier is wrong sent nothing, so the call is made once more with the file and the entry replaced; any other failure is the caller's, and nothing is cached from a failed call |
+| Two sends at once | the second waits for the first's upload and sends its identifier; if that upload fails, it uploads for itself |
+| Handle | `cache.lookup(kind, source)`, `cache.invalidate(kind, source)`, `cache.storage` |
+
+An identifier belongs to one bot and works in every chat that bot writes to, so the chat is not
+part of the name and one cache serves one bot. Like every plugin, it is installed when the bot
+starts or dispatches its first update; a call made directly before either is not cached.
+
 ---
 
 ## 4.1 Payloads, built
