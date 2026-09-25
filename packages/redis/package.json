@@ -52,5 +52,9 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean"
+  },
+  "devDependencies": {
+    "ioredis": "6.0.0",
+    "redis": "6.2.1"
   }
 }

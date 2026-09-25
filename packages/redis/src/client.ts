@@ -36,14 +36,17 @@ export type RedisClient = SendCommandClient | CallClient | RedisSend
 export function sender(client: RedisClient): RedisSend {
   if (typeof client === 'function') return client
 
-  if (typeof (client as Partial<SendCommandClient>).sendCommand === 'function') {
-    const commander = client as SendCommandClient
-    return (args) => commander.sendCommand([...args])
-  }
-
+  // `call` first: ioredis has it, and also has a `sendCommand` of its own that
+  // takes a prepared command object rather than the words of one, so reading
+  // the shape in the other order would send ioredis something it cannot take.
   if (typeof (client as Partial<CallClient>).call === 'function') {
     const commander = client as CallClient
     return ([command, ...args]) => commander.call(command as string, ...args)
+  }
+
+  if (typeof (client as Partial<SendCommandClient>).sendCommand === 'function') {
+    const commander = client as SendCommandClient
+    return (args) => commander.sendCommand([...args])
   }
 
   throw new ConfigError(

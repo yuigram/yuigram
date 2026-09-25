@@ -89,6 +89,20 @@ describe('the key-value contract', () => {
     expect(server.keys).toEqual(['n1:a'])
   })
 
+  it('sends through call when a client has both shapes, as ioredis does', async () => {
+    const server = new FakeRedis()
+    // ioredis's own sendCommand takes a prepared command object, not words.
+    const both = {
+      call: server.ioredis.call,
+      sendCommand: () => {
+        throw new TypeError('command.setReplyContext is not a function')
+      },
+    }
+
+    await redisStore(both).set('a', 1)
+    expect(await redisStore(both).get('a')).toBe(1)
+  })
+
   it('names itself as a persistent Redis store, and refuses an empty namespace', () => {
     const server = new FakeRedis()
 
