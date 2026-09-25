@@ -538,3 +538,258 @@ describe('the rest of what each constructor carries', () => {
     expect(media.isRtmpStream).toBe(true)
   })
 })
+
+describe('the structures a message can carry, read', () => {
+  const text = (value: string) => ({ _: 'textWithEntities' as const, text: value, entities: [] })
+
+  it('joins a poll’s tally to its answers, and says whether it is complete', () => {
+    const poll = {
+      _: 'poll' as const,
+      id: 1n,
+      quiz: true as const,
+      question: text('Capital?'),
+      answers: [
+        { _: 'pollAnswer' as const, text: text('Oslo'), option: Uint8Array.of(0) },
+        {
+          _: 'pollAnswer' as const,
+          text: text('Bergen'),
+          option: Uint8Array.of(1),
+          added_by: { _: 'peerUser' as const, user_id: 7n },
+          date: 5,
+        },
+      ],
+      close_date: 99,
+      hash: 0n,
+    }
+    const full = new MediaView({
+      _: 'messageMediaPoll',
+      poll,
+      results: {
+        _: 'pollResults',
+        results: [
+          { _: 'pollAnswerVoters', option: Uint8Array.of(1), voters: 3 },
+          {
+            _: 'pollAnswerVoters',
+            option: Uint8Array.of(0),
+            voters: 5,
+            chosen: true,
+            correct: true,
+          },
+        ],
+        total_voters: 8,
+        recent_voters: [{ _: 'peerUser', user_id: 9n }],
+        solution: 'It is Oslo',
+      },
+    }).pollDetails
+
+    expect(full).toMatchObject({
+      id: 1n,
+      question: { text: 'Capital?' },
+      isQuiz: true,
+      isClosed: false,
+      closeDate: 99,
+      totalVoters: 8,
+      recentVoters: [{ kind: 'user', id: 9n }],
+      solution: { text: 'It is Oslo', entities: [] },
+      partialResults: false,
+      voted: true,
+    })
+    expect(full?.answers).toMatchObject([
+      { text: { text: 'Oslo' }, voters: 5, chosen: true, correct: true, addedBy: undefined },
+      { text: { text: 'Bergen' }, voters: 3, chosen: false, addedBy: { kind: 'user', id: 7n } },
+    ])
+
+    // Right after a vote Telegram sends only which answers were chosen.
+    const short = new MediaView({
+      _: 'messageMediaPoll',
+      poll,
+      results: { _: 'pollResults', min: true },
+    }).pollDetails
+    expect(short).toMatchObject({ partialResults: true, voted: false, totalVoters: undefined })
+    expect(short?.answers.map((answer) => answer.voters)).toEqual([undefined, undefined])
+  })
+
+  it('joins a checklist’s completions to its tasks', () => {
+    const details = new MediaView({
+      _: 'messageMediaToDo',
+      todo: {
+        _: 'todoList',
+        others_can_complete: true,
+        title: text('Trip'),
+        list: [
+          { _: 'todoItem', id: 1, title: text('Tickets') },
+          { _: 'todoItem', id: 2, title: text('Hotel') },
+        ],
+      },
+      completions: [
+        { _: 'todoCompletion', id: 2, completed_by: { _: 'peerUser', user_id: 4n }, date: 10 },
+      ],
+    }).todoDetails
+
+    expect(details).toMatchObject({
+      title: { text: 'Trip' },
+      othersCanComplete: true,
+      othersCanAppend: false,
+      completed: 1,
+      items: [
+        { id: 1, title: { text: 'Tickets' }, completedBy: undefined, completedAt: undefined },
+        { id: 2, completedBy: { kind: 'user', id: 4n }, completedAt: 10 },
+      ],
+    })
+  })
+
+  it('reads a built link preview, and nothing from one still being built', () => {
+    const built = new MediaView({
+      _: 'messageMediaWebPage',
+      webpage: {
+        _: 'webPage',
+        id: 3n,
+        url: 'https://example.com/a',
+        display_url: 'example.com/a',
+        hash: 0,
+        type: 'video',
+        site_name: 'Example',
+        title: 'A',
+        embed_url: 'https://example.com/embed',
+        embed_width: 640,
+        duration: 30,
+        attributes: [
+          { _: 'webPageAttributeStory', peer: { _: 'peerChannel', channel_id: 6n }, id: 2 },
+        ],
+      },
+    }).webpageDetails
+    const pending = new MediaView({
+      _: 'messageMediaWebPage',
+      webpage: { _: 'webPagePending', id: 3n, date: 1 },
+    })
+
+    expect(built).toMatchObject({
+      url: 'https://example.com/a',
+      displayUrl: 'example.com/a',
+      type: 'video',
+      siteName: 'Example',
+      duration: 30,
+      embed: { url: 'https://example.com/embed', width: 640, height: undefined },
+      hasInstantView: false,
+      story: { peer: { kind: 'channel', id: 6n }, id: 2 },
+    })
+    expect(pending.webpageDetails).toBeUndefined()
+  })
+
+  it('reads what makes a sticker a sticker, a mask or a custom emoji', () => {
+    const set = { _: 'inputStickerSetID' as const, id: 1n, access_hash: 2n }
+    const withMime = (
+      mime: string,
+      attributes: readonly TypeDocumentAttribute[],
+      extra: Record<string, unknown> = {},
+    ) => {
+      const media = documentWith(attributes)
+      return new MediaView({
+        ...media,
+        document: { ...(media.document as object), mime_type: mime, ...extra } as never,
+      })
+    }
+
+    expect(
+      withMime('image/webp', [
+        {
+          _: 'documentAttributeSticker',
+          mask: true,
+          alt: '😀',
+          stickerset: set,
+          mask_coords: { _: 'maskCoords', n: 2, x: 0.5, y: -1, zoom: 1.5 },
+        },
+      ]).stickerDetails,
+    ).toEqual({
+      emoji: '😀',
+      type: 'mask',
+      format: 'static',
+      set,
+      customEmojiId: undefined,
+      isFree: false,
+      takesTextColor: false,
+      isPremium: false,
+      mask: { point: 'mouth', x: 0.5, y: -1, zoom: 1.5 },
+    })
+    expect(
+      withMime('application/x-tgsticker', [
+        {
+          _: 'documentAttributeCustomEmoji',
+          free: true,
+          text_color: true,
+          alt: '⭐',
+          stickerset: set,
+        },
+      ]).stickerDetails,
+    ).toMatchObject({
+      type: 'custom-emoji',
+      format: 'animated',
+      customEmojiId: 10n,
+      isFree: true,
+      takesTextColor: true,
+    })
+    expect(
+      withMime('video/webm', [{ _: 'documentAttributeSticker', alt: '🎉', stickerset: set }], {
+        video_thumbs: [{ _: 'videoSize', type: 'f', w: 1, h: 1, size: 1 }],
+      }).stickerDetails,
+    ).toMatchObject({ type: 'regular', format: 'video', isPremium: true })
+    expect(new MediaView(documentWith([])).stickerDetails).toBeUndefined()
+  })
+
+  it('reads a point, a video’s codec and its preview frame, and a game', () => {
+    expect(
+      new MediaView({
+        _: 'messageMediaGeo',
+        geo: { _: 'geoPoint', lat: 59.9, long: 10.7, access_hash: 1n, accuracy_radius: 20 },
+      }).location,
+    ).toEqual({ latitude: 59.9, longitude: 10.7, accuracyRadius: 20 })
+    expect(
+      new MediaView({ _: 'messageMediaGeo', geo: { _: 'geoPointEmpty' } }).location,
+    ).toBeUndefined()
+
+    const video = new MediaView(
+      documentWith([
+        {
+          _: 'documentAttributeVideo',
+          duration: 3,
+          w: 1,
+          h: 1,
+          nosound: true,
+          video_codec: 'av01',
+          video_start_ts: 1.5,
+          preload_prefix_size: 1024,
+        },
+      ]),
+    )
+    expect([
+      video.videoCodec,
+      video.videoStartTimestamp,
+      video.isSilentVideo,
+      video.preloadPrefixSize,
+    ]).toEqual(['av01', 1.5, true, 1024])
+
+    const photo = { _: 'photoEmpty' as const, id: 1n }
+    expect(
+      new MediaView({
+        _: 'messageMediaGame',
+        game: {
+          _: 'game',
+          id: 1n,
+          access_hash: 2n,
+          short_name: 'snake',
+          title: 'Snake',
+          description: 'Eat',
+          photo,
+        },
+      }).gameDetails,
+    ).toEqual({
+      id: 1n,
+      accessHash: 2n,
+      shortName: 'snake',
+      title: 'Snake',
+      description: 'Eat',
+      photo,
+      animation: undefined,
+    })
+  })
+})

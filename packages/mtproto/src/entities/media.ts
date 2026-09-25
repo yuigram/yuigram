@@ -44,6 +44,20 @@ import type {
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
+import {
+  type GameDetails,
+  type LocationDetails,
+  type PollDetails,
+  readGame,
+  readLocation,
+  readPoll,
+  readSticker,
+  readTodo,
+  readWebPage,
+  type StickerDetails,
+  type TodoDetails,
+  type WebPageDetails,
+} from './media-details.js'
 
 /**
  * What arrived, in one word.
@@ -617,6 +631,66 @@ export class MediaView {
   /** Whether a live stream is being sent in over RTMP rather than from the app. */
   get isRtmpStream(): boolean {
     return this.raw._ === 'messageMediaVideoStream' ? this.raw.rtmp_stream === true : false
+  }
+
+  /**
+   * A poll with its tally joined to its answers: which answer has how many
+   * votes, which this account chose, which is right. See {@link readPoll}.
+   */
+  get pollDetails(): PollDetails | undefined {
+    if (this.raw._ !== 'messageMediaPoll') return undefined
+
+    return readPoll(this.raw.poll, this.raw.results, this.raw.attached_media)
+  }
+
+  /** A checklist with who finished which task. See {@link readTodo}. */
+  get todoDetails(): TodoDetails | undefined {
+    if (this.raw._ !== 'messageMediaToDo') return undefined
+
+    return readTodo(this.raw.todo, this.raw.completions)
+  }
+
+  /** What a link preview shows, once Telegram has built it. See {@link readWebPage}. */
+  get webpageDetails(): WebPageDetails | undefined {
+    return this.raw._ === 'messageMediaWebPage' ? readWebPage(this.raw.webpage) : undefined
+  }
+
+  /** A game's name, text and pictures. */
+  get gameDetails(): GameDetails | undefined {
+    return this.raw._ === 'messageMediaGame' ? readGame(this.raw.game) : undefined
+  }
+
+  /**
+   * What makes a sticker or a custom emoji one: its type, how it is drawn, its
+   * set, and where a mask sits. See {@link readSticker}.
+   */
+  get stickerDetails(): StickerDetails | undefined {
+    return this.kind === 'sticker' ? readSticker(this.document) : undefined
+  }
+
+  /** Where a point, a live location or a venue is, in degrees. */
+  get location(): LocationDetails | undefined {
+    return readLocation(this.geo)
+  }
+
+  /** The codec a video is encoded with, where Telegram says. */
+  get videoCodec(): string | undefined {
+    return attribute(this.document, 'documentAttributeVideo')?.video_codec
+  }
+
+  /** Where a video's own preview frame is, in seconds from its start. */
+  get videoStartTimestamp(): number | undefined {
+    return attribute(this.document, 'documentAttributeVideo')?.video_start_ts
+  }
+
+  /** Whether a video has no sound. */
+  get isSilentVideo(): boolean {
+    return attribute(this.document, 'documentAttributeVideo')?.nosound === true
+  }
+
+  /** How many bytes a player should fetch before it starts, where Telegram says. */
+  get preloadPrefixSize(): number | undefined {
+    return attribute(this.document, 'documentAttributeVideo')?.preload_prefix_size
   }
 
   /**

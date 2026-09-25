@@ -161,6 +161,16 @@ Where the schema asks a question badly, the view asks a better one rather than m
   rather than in the constructor. `MediaView.kind` is that search, done once and named — and the
   order it searches in matters, because a sticker also carries an image size and an animation also
   carries a video attribute.
+- **Structures joined where the schema splits them.** A poll's tally arrives beside its answers,
+  keyed by an opaque option; a checklist's completions beside its tasks, keyed by number.
+  `pollDetails` and `todoDetails` join them — each answer with its voters, whether this account
+  chose it and whether it is right; each task with who finished it and when — and
+  `pollDetails.partialResults` says when Telegram sent only this account's choices, so a missing
+  count reads as unknown rather than zero. `webpageDetails`, `gameDetails`, `stickerDetails`
+  (type, drawing format, set, custom emoji id, mask position, premium effect) and `location`
+  (latitude, longitude, accuracy) read the rest, with `readPoll`, `readTodo`, `readWebPage`,
+  `readGame`, `readSticker` and `readLocation` behind them for a value held without a view. The
+  raw values stay where they were, as `poll`, `todo`, `webpage`, `game` and `geo`.
 - **Seventy constructors, one switch.** A service message's `action` is one of sixty-eight
   `messageAction*` constructors besides the empty one, each spelling its fields the schema's way.
   `readAction` — also `MessageView.serviceAction` and `event.action` on an account's message

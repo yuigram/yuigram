@@ -71,6 +71,22 @@ export {
 } from './entities/chat.js'
 export { type DialogForm, DialogView, readDialog } from './entities/dialog.js'
 export { type MediaKind, MediaView, readMedia } from './entities/media.js'
+export {
+  type GameDetails,
+  type LocationDetails,
+  type PollAnswerDetails,
+  type PollDetails,
+  readGame,
+  readLocation,
+  readPoll,
+  readSticker,
+  readTodo,
+  readWebPage,
+  type StickerDetails,
+  type TodoDetails,
+  type TodoItemDetails,
+  type WebPageDetails,
+} from './entities/media-details.js'
 export { type MemberStanding, MemberView, readMember } from './entities/member.js'
 export {
   type MessageForm,
