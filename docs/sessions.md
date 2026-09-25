@@ -115,12 +115,59 @@ meaningful subject, such as channel posts.
 
 ### Persistence
 
-Sessions load lazily on first access and flush after the handler completes, with dirty
-tracking so an untouched session costs no write. `lazy: false` forces eager loading where a
-middleware needs the data before the handler runs.
+A session is read once per update, before the handlers run, and only for an update the key
+function names someone for; a channel post with no sender never reaches the store. What changed
+is written once, when the handlers settle. An untouched session costs no write.
 
 Concurrent updates for the same key are serialized while the session is held, which prevents
 the classic lost-update race where two rapid messages both read `count: 0`.
+
+**When a write happens.** `commit` decides what a handler that threw or was cancelled leaves
+behind:
+
+| `commit` | Handlers resolved | Handlers threw or were cancelled |
+| --- | --- | --- |
+| `'always'` (default) | written | written — a handler that replied and then failed has told the user something, and the state behind the reply is kept with it |
+| `'success'` | written | not written — the stored value is what it was, as a transaction would leave it |
+
+`sessionHandle.save()` writes now, whatever `commit` says, and a later failure does not undo
+it. It is for state that must survive what happens next: a payment recorded before the
+confirmation is sent. A forced write that the store refuses rejects in the handler that asked
+for it; the write at the end of an update only logs, since the update has already done what it
+did.
+
+**Changing the value.**
+
+| Operation | Effect |
+| --- | --- |
+| `session.x = v`, `session.list.push(v)`, `delete session.x` | tracked at any depth |
+| `sessionHandle.set(v)` | replaces the value |
+| `sessionHandle.merge(patch)` | `Object.assign` over the value: fields in `patch` replace, nested objects included; onto a `null` value, the patch becomes the value |
+| `sessionHandle.clear()` | the value reads as `initial()`; left alone, the key is deleted; changed again, the new value is written instead |
+| `sessionHandle.touch()` | marks dirty, for a change the value cannot report — a `Map` mutated in place |
+
+**Absent, `undefined` and `null`.** Only a key with nothing under it starts from `initial()`,
+and `sessionHandle.isNew` says so; a stored `null` is a value. Inside the value, a stored
+`null` survives every store. A field set to `undefined` survives the in-memory store, but a
+store that serializes to JSON — the file, SQLite and Redis stores — writes it as absent, which
+is what it reads as after a restart. Values must be JSON data for those stores: a `Date` comes
+back as a string, and a `bigint` cannot be written at all.
+
+**Expiry.** `ttl` in the options applies to every write. A write can name its own —
+`set(v, { ttl })`, `merge(patch, { ttl })`, `save({ ttl })` or `expireIn(seconds)` — and `0`
+writes without one. A single field can expire on its own:
+
+```ts
+import { expiring } from 'yuigram'
+
+message.session.pendingCode = expiring('482913', 5 * 60_000)
+```
+
+The field reads as its value until five minutes after it was last assigned and as absent from
+then on; assigning it again restarts the same allowance, and `expiring(value, 0)` makes it
+permanent. The expiry is stored with the field, as `{ "$expiring": { "at", "for" }, "value" }`,
+so it holds across updates and restarts, and an expired field is dropped before any write —
+including the next write of a session that never read it.
 
 ### Conversations
 

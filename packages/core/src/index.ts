@@ -224,11 +224,14 @@ export {
 } from './scheduler/scheduler.js'
 export {
   createSession,
+  expiring,
+  type SessionCommit,
   type SessionFlavor,
   type SessionHandle,
   type SessionHost,
   type SessionKeyFn,
   type SessionOptions,
+  type SessionWriteOptions,
   session,
   userChatKey,
 } from './session/session.js'
