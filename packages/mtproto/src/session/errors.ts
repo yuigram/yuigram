@@ -19,20 +19,27 @@ import type { TlValue } from '../tl/index.js'
  * transports agreeing: `FLOOD_WAIT_30` and `SLOWMODE_WAIT_30` mean the same
  * thing to a caller as a `429` with `retry_after` does.
  */
-const WAIT_ERROR = /^[A-Z]+(?:_[A-Z]+)*_WAIT_(\d+)$/
+const WAIT_ERROR = /^[A-Z0-9]+(?:_[A-Z0-9]+)*_WAIT_(\d+)$/
 
 /**
  * The refusals that name a datacenter instead of a problem.
  *
- * Four errors say the same thing in different words: what was asked for lives
+ * Five errors say the same thing in different words: what was asked for lives
  * somewhere else. The number is the datacenter it lives at, and it is the whole
  * content of the answer — a caller that cannot read it has been told nothing it
  * can act on.
  */
-const MIGRATE_ERROR = /^(PHONE|NETWORK|USER|FILE)_MIGRATE_(\d+)$/
+const MIGRATE_ERROR = /^(PHONE|NETWORK|USER|FILE|STATS)_MIGRATE_(\d+)$/
 
-/** Which of the four redirections a datacenter asked for. */
-export type MigrationKind = 'phone' | 'network' | 'user' | 'file'
+/**
+ * Which of the five redirections a datacenter asked for.
+ *
+ * An account follows `user` and `network` by itself, and a transfer follows
+ * `file`; `phone` belongs to signing in, and `stats` — a channel whose
+ * statistics are kept at another datacenter — reaches only a raw call, which
+ * reads `dcId` and decides.
+ */
+export type MigrationKind = 'phone' | 'network' | 'user' | 'file' | 'stats'
 
 /**
  * The datacenter refused a request because it belongs somewhere else.
@@ -83,7 +90,15 @@ export class RpcError extends TelegramError {
   /** Telegram's name for the failure, exactly as sent. */
   readonly text: string
 
-  /** The number a name like `SLOWMODE_WAIT_30` ends in, where it ends in one. */
+  /**
+   * The number a name carries: `3600` in `PASSWORD_TOO_FRESH_3600`, `2` in
+   * `INTERDC_2_CALL_ERROR`, `5` in `FILE_REFERENCE_5_EXPIRED`.
+   *
+   * The one part of the name, between underscores or at an end, that is all
+   * digits. `undefined` for a name with none, and for a name with more than one,
+   * which cannot say which it means; {@link RpcError.argument} reads a number
+   * written into a name any other way.
+   */
   readonly parameter: number | undefined
 
   constructor(
@@ -96,8 +111,30 @@ export class RpcError extends TelegramError {
     })
     this.code = options.code
     this.text = options.text
-    const trailing = /_(\d+)$/.exec(options.text)
-    this.parameter = trailing === null ? undefined : Number(trailing[1])
+    const numbers = options.text.split('_').filter((part) => /^\d+$/.test(part))
+    this.parameter = numbers.length === 1 ? Number(numbers[0]) : undefined
+  }
+
+  /** Telegram's codes, as its error reference names them. */
+  static readonly SEE_OTHER = 303
+  static readonly BAD_REQUEST = 400
+  static readonly UNAUTHORIZED = 401
+  static readonly FORBIDDEN = 403
+  static readonly NOT_FOUND = 404
+  static readonly NOT_ACCEPTABLE = 406
+  static readonly FLOOD = 420
+  static readonly INTERNAL = 500
+
+  /**
+   * The number where `pattern` has `%d`, if the name fits it.
+   *
+   * For a number the name writes into a word — `5` in
+   * `PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_5MIN` read with
+   * `'PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_%dMIN'` — as well as one of its own.
+   */
+  argument(pattern: string): number | undefined {
+    const found = patternOf(pattern).exec(this.text)
+    return found?.[1] === undefined ? undefined : Number(found[1])
   }
 
   /**
@@ -111,14 +148,19 @@ export class RpcError extends TelegramError {
   }
 }
 
-/** Whether an error name fits a pattern where `%d` stands for a number. */
-function matchesName(text: string, pattern: string): boolean {
-  if (!pattern.includes('%d')) return text === pattern
+/** A name pattern, `%d` standing for one number, as a regular expression that captures it. */
+function patternOf(pattern: string): RegExp {
   const source = pattern
     .split('%d')
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('\\d+')
-  return new RegExp(`^${source}$`).test(text)
+    .join('(\\d+)')
+  return new RegExp(`^${source}$`)
+}
+
+/** Whether an error name fits a pattern where `%d` stands for a number. */
+function matchesName(text: string, pattern: string): boolean {
+  if (!pattern.includes('%d')) return text === pattern
+  return patternOf(pattern).test(text)
 }
 
 /**

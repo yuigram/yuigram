@@ -46,6 +46,37 @@ describe('a refusal, read', () => {
     expect(error.is('SESSION_TOO_FRESH_%d')).toBe(false)
   })
 
+  it('reads a number wherever the name carries it as a part of its own', () => {
+    const inside = rpcErrorToException(refusal(400, 'FILE_REFERENCE_5_EXPIRED')) as RpcError
+    const between = rpcErrorToException(refusal(500, 'INTERDC_2_CALL_ERROR')) as RpcError
+    const leading = rpcErrorToException(refusal(420, '2FA_CONFIRM_WAIT_30'))
+
+    expect(inside.parameter).toBe(5)
+    expect(inside.is('FILE_REFERENCE_%d_EXPIRED')).toBe(true)
+    expect(between.parameter).toBe(2)
+    // A number inside a word is not the name's number: 2FA is a word.
+    expect((leading as FloodError).retryAfter).toBe(30)
+  })
+
+  it('reads no number from a name with two, and one inside a word only by pattern', () => {
+    const two = rpcErrorToException(refusal(400, 'A_1_B_2')) as RpcError
+    const minutes = rpcErrorToException(
+      refusal(406, 'PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_5MIN'),
+    ) as RpcError
+
+    expect(two.parameter).toBeUndefined()
+    expect(two.argument('A_%d_B_2')).toBe(1)
+    expect(minutes.parameter).toBeUndefined()
+    expect(minutes.argument('PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_%dMIN')).toBe(5)
+    expect(minutes.argument('SOMETHING_ELSE_%d')).toBeUndefined()
+  })
+
+  it('names Telegram’s codes', () => {
+    expect([RpcError.SEE_OTHER, RpcError.BAD_REQUEST, RpcError.FLOOD, RpcError.INTERNAL]).toEqual([
+      303, 400, 420, 500,
+    ])
+  })
+
   it('reads a pattern as a name, never as a regular expression', () => {
     const error = rpcErrorToException(refusal(400, 'AXB')) as RpcError
 
@@ -81,6 +112,13 @@ describe('a refusal, read', () => {
       parameter: 4,
     })
     expect(isRpcError(error, 'FILE_MIGRATE_%d')).toBe(true)
+  })
+
+  it('reads a statistics redirection as a migration with its datacenter', () => {
+    const error = rpcErrorToException(refusal(303, 'STATS_MIGRATE_4'), 'stats.getBroadcastStats')
+
+    expect(error).toBeInstanceOf(MigrationError)
+    expect(error).toMatchObject({ kind: 'stats', dcId: 4 })
   })
 
   it('says no for anything that is not a refusal', () => {
