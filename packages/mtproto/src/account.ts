@@ -33,15 +33,20 @@ import type { Guard, KV } from '@yuigram/core'
 import {
   type AfterHook,
   type BeforeHook,
+  type CustomEvent,
+  createCustomEvent,
   createLogger,
   type Dependencies,
   type Dispatchable,
   Dispatcher,
   type ErrorHandler,
+  type EventAddress,
+  type EventDefinition,
   type FilterMeta,
   file,
   type Handler,
   type HostObserver,
+  isEventDefinition,
   Lifecycle,
   LifecycleError,
   type Logger,
@@ -214,7 +219,13 @@ import type { Pools } from './network/pools.js'
 import type { QrOptions } from './network/qr.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { contextFor, type MtprotoContext } from './normalize/context.js'
-import { isUpdateSource, type MtprotoEventKind, UPDATE_CONTAINERS } from './normalize/events.js'
+import {
+  ACCOUNT_KINDS,
+  isUpdateSource,
+  type MtprotoEventKind,
+  SHARED_KINDS,
+  UPDATE_CONTAINERS,
+} from './normalize/events.js'
 import { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize/normalize.js'
 import type { SentMessage } from './normalize/sent.js'
 import type {
@@ -4733,10 +4744,55 @@ export class Account<Ext = unknown> {
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
+  /** Handle an event the application raises with {@link Account.emit}. */
+  on<P>(
+    event: EventDefinition<P>,
+    handler: Handler<CustomEvent<P> & Ext>,
+    options?: OnOptions,
+  ): this
   on(...args: unknown[]): this {
+    const [first, handler, options] = args
+    if (isEventDefinition(first)) {
+      this.#customKind(first)
+      this.#dispatcher.on(first.kind, handler as never, (options ?? {}) as OnOptions)
+      return this
+    }
     register(this.#dispatcher, args, false)
 
     return this
+  }
+
+  /**
+   * Raise an event of the application's own, and run this account's
+   * middleware and handlers for it.
+   *
+   * Dispatched as an update is — plugins installed first, the same middleware
+   * and error handling, and tracked so that `stop()` waits for it — but it
+   * touches none of the account's update state: no sequence moves, and nothing
+   * is acknowledged to a datacenter. `address` names who it concerns, so state
+   * keyed by chat and sender loads for it.
+   */
+  async emit<P>(event: EventDefinition<P>, payload: P, address?: EventAddress): Promise<void> {
+    this.#customKind(event)
+    const work = (async () => {
+      if (this.#plugins.pending > 0) await this.#installPlugins()
+      const context = createCustomEvent(event, payload, { client: this, log: this.#log }, address)
+      await this.#dispatch(context as unknown as MtprotoContext & Ext)
+    })()
+    this.#lifecycle.track(work)
+    await work
+  }
+
+  /** Accept an event kind of the application's, refusing one an account also produces. */
+  #customKind(event: EventDefinition<unknown>): void {
+    if (
+      (SHARED_KINDS as readonly string[]).includes(event.kind) ||
+      (ACCOUNT_KINDS as readonly string[]).includes(event.kind)
+    ) {
+      throw new ValidationError(
+        `'${event.kind}' is a kind of event an account produces from updates; name an application's event something else`,
+      )
+    }
   }
 
   /**

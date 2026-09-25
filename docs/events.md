@@ -462,31 +462,40 @@ In-flight handlers are tracked so `app.stop()` drains rather than severing.
 
 ## 8. Custom events
 
-Applications and plugins can define their own kinds, which then flow through the same
-filters, middleware and routing as Telegram events:
+An application's own events — a payment provider's webhook, a timer, a signal from another
+service — flow through the same plugins, middleware, sessions, routing and error handling as
+Telegram's:
 
 ```ts
-app.defineEvent('payment_confirmed')
+import { defineEvent } from 'yuigram'
 
-app.on('payment_confirmed', (event) => event.reply('Thanks!'))
-app.emit('payment_confirmed', { chat, sender, orderId })
+const paymentConfirmed = defineEvent<{ orderId: string; chatId: number }>('payment_confirmed')
+
+bot.on(paymentConfirmed, async (event) => {
+  await bot.api.sendMessage({ chat_id: event.payload.chatId, text: `Order ${event.payload.orderId} is paid.` })
+})
+
+await bot.emit(paymentConfirmed, { orderId: 'A-17', chatId: 42 }, { chat: { id: 42 }, sender: { id: 42 } })
 ```
 
-The payload map is a type parameter, for the same reasons the context flavours are
-([sessions.md](sessions.md) §Typing): declaration merging is process-global and cannot cross
-the `yuigram` façade.
+The payload type belongs to the definition, so a handler registered for it reads a typed
+`event.payload`, and a definition is an ordinary value to import where it is emitted and where it
+is handled. `account.on` and `account.emit` take the same definitions.
 
-```ts
-interface MyEvents {
-  payment_confirmed: { orderId: string }
-}
+| | An emitted event | An update |
+| --- | --- | --- |
+| `transport` | `'custom'` | `'bot-api'` or `'mtproto'` |
+| identity | none: no update id, nothing acknowledged | Telegram's |
+| polling offset, update sequence | untouched | advanced |
+| `allowed_updates: 'auto'` | never asked for | derived from handlers |
+| plugins, middleware, sessions, error handlers | the same | the same |
+| `stop()` | waits for it | waits for it |
+| who it concerns | the `chat` and `sender` it was emitted with, if any | who sent it |
 
-const app = new App<MyEvents>()
-```
-
-This exists so that a webhook from a payment provider, a cron tick or an internal signal can
-reuse the framework's dispatch machinery instead of living in a parallel universe with its
-own error handling.
+`emit` resolves once the handlers have run; an error in them goes to the client's error handlers
+exactly as an update's would, rather than rejecting the `emit`. A kind that names something
+Telegram sends — `message`, `callback_query` — is refused, since a handler for it would run for
+both.
 
 ---
 

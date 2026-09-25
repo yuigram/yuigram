@@ -24,10 +24,15 @@
 import {
   type AnyFilter,
   ContextExtender,
+  type CustomEvent,
+  createCustomEvent,
   createLogger,
   Dispatcher,
   type ErrorHandler,
+  type EventAddress,
+  type EventDefinition,
   type FilterMeta,
+  isEventDefinition,
   Lifecycle,
   LifecycleError,
   type Logger,
@@ -37,6 +42,7 @@ import {
   type Plugin,
   PluginRegistry,
   type UseOptions,
+  ValidationError,
 } from '@yuigram/core'
 import { type ApiHook, createApi, type RawApi } from './api.js'
 import type { ParsedCommand } from './command.js'
@@ -221,6 +227,8 @@ export class Bot<Ext = unknown> {
   readonly #lifecycle: Lifecycle
   /** Installed by an application that holds this bot. See `surround`. */
   #surrounding: Middleware<AnyEventContext & Ext> | undefined
+  /** Kinds of the application's own events, which are not subscribed to. */
+  readonly #customKinds = new Set<string>()
   readonly #options: BotOptions
 
   #polling: Polling | undefined
@@ -365,9 +373,67 @@ export class Bot<Ext = unknown> {
    */
   on<F extends FilterMeta>(match: F, handler: EventHandler<FilterContext<F> & Ext>): this
 
-  on(match: string | readonly string[] | AnyFilter, handler: EventHandler<never>): this {
+  /**
+   * Register a handler for an event the application raises with
+   * {@link Bot.emit}. The handler receives the payload it was emitted with.
+   */
+  on<P>(event: EventDefinition<P>, handler: EventHandler<CustomEvent<P> & Ext>): this
+
+  on(
+    match: string | readonly string[] | AnyFilter | EventDefinition<unknown>,
+    handler: EventHandler<never>,
+  ): this {
+    if (isEventDefinition(match)) {
+      this.#customKind(match)
+      this.#dispatcher.on(match.kind, handler as never)
+      return this
+    }
     this.#dispatcher.on(match, handler as never)
     return this
+  }
+
+  /**
+   * Raise an event of the application's own, and run this bot's middleware
+   * and handlers for it.
+   *
+   * Dispatched as an update is — plugins installed first, the same
+   * middleware, the same error handling, and tracked so that `stop()` waits
+   * for it — but it is not one: it has no update identifier and moves no
+   * polling offset. `address` names who it concerns, so a session keyed by
+   * chat and sender loads for it. Resolves once the handlers have run; an
+   * error in them goes where a handler's error for an update would.
+   */
+  async emit<P>(event: EventDefinition<P>, payload: P, address?: EventAddress): Promise<void> {
+    this.#customKind(event)
+    const work = this.#emit(event, payload, address)
+    this.#lifecycle.track(work)
+    await work
+  }
+
+  async #emit<P>(event: EventDefinition<P>, payload: P, address?: EventAddress): Promise<void> {
+    if (this.#plugins.pending > 0) await this.#installPlugins()
+
+    const context = this.#extender.apply(
+      createCustomEvent(event, payload, { client: this, log: this.#log }, address) as object,
+    ) as AnyEventContext & Ext
+
+    if (this.#surrounding === undefined) {
+      await this.#dispatcher.dispatch(context)
+      return
+    }
+    await this.#surrounding(context, async () => {
+      await this.#dispatcher.dispatch(context)
+    })
+  }
+
+  /** Accept an event kind of the application's, refusing one Telegram also sends. */
+  #customKind(event: EventDefinition<unknown>): void {
+    if (Object.hasOwn(KIND_SUBSCRIPTIONS, event.kind)) {
+      throw new ValidationError(
+        `'${event.kind}' is a kind of update Telegram sends; name an application's event something else`,
+      )
+    }
+    this.#customKinds.add(event.kind)
   }
 
   /** Register a handler that runs once, then removes itself. */
@@ -813,6 +879,9 @@ export class Bot<Ext = unknown> {
     const fields = new Set<string>()
 
     for (const kind of coverage.kinds) {
+      // Raised by the application, never sent by Telegram: nothing to ask for.
+      if (this.#customKinds.has(kind)) continue
+
       const subscription = KIND_SUBSCRIPTIONS[kind]
 
       if (subscription === undefined) {

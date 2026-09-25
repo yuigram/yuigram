@@ -12,6 +12,7 @@ import {
   conversation,
   createLogger,
   defineAsyncFilter,
+  defineEvent,
   defineFilter,
   defineFlow,
   type LogRecord,
@@ -540,4 +541,42 @@ describe('a rate limit on an account', () => {
       await instance.dispose()
     }
   }, 30_000)
+})
+
+describe('an application’s own events on an account', () => {
+  const reminder = defineEvent<{ text: string }>('reminder_due')
+
+  it('reach the handlers under the account’s middleware, and move none of its update state', async () => {
+    const instance = mockAccount()
+    const trail: string[] = []
+    const before = [...instance.rawStored.keys()].sort()
+
+    try {
+      instance.account.use(async (event, next) => {
+        trail.push(`> ${event.transport}`)
+        await next()
+      })
+      instance.account.on(reminder, (event) => void trail.push(`reminder: ${event.payload.text}`))
+      instance.account.on('message', () => void trail.push('a message handler'))
+
+      await instance.account.emit(
+        reminder,
+        { text: 'stand up' },
+        { sender: { id: 5n, kind: 'user' } },
+      )
+
+      expect(trail).toEqual(['> custom', 'reminder: stand up'])
+      expect([...instance.rawStored.keys()].sort()).toEqual(before)
+    } finally {
+      await instance.dispose()
+    }
+  })
+
+  it('refuse a kind the account produces from updates', () => {
+    const instance = mockAccount()
+
+    expect(() => instance.account.on(defineEvent('message'), () => undefined)).toThrow(
+      /a kind of event an account produces/,
+    )
+  })
 })

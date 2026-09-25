@@ -146,6 +146,14 @@ export {
   YuigramError,
 } from './errors/errors.js'
 export {
+  type CustomEvent,
+  createCustomEvent,
+  defineEvent,
+  type EventAddress,
+  type EventDefinition,
+  isEventDefinition,
+} from './event/custom.js'
+export {
   and,
   type DefineOptions,
   defineAsyncFilter,
