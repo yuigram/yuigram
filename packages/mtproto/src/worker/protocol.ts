@@ -72,6 +72,7 @@ import { ChatView, UserView } from '../entities/peer.js'
 import { StickerSetView } from '../entities/sticker-set.js'
 import { PeerStoriesView, StoryView, StoryViewerView } from '../entities/story.js'
 import { EphemeralMessageView } from '../messaging/ephemeral.js'
+import { MigrationError, type MigrationKind, RpcError } from '../session/dispatcher.js'
 
 /** The protocol this build speaks. Raised whenever a message changes shape. */
 export const PROTOCOL_VERSION = 1
@@ -385,6 +386,20 @@ const REBUILT: Readonly<
   FloodError: (message, fields) =>
     new FloodError(message, {
       retryAfter: typeof fields['retryAfter'] === 'number' ? fields['retryAfter'] : 0,
+      ...(typeof fields['method'] === 'string' ? { method: fields['method'] } : {}),
+    }),
+  RpcError: (message, fields) =>
+    new RpcError(message, {
+      code: typeof fields['code'] === 'number' ? fields['code'] : 0,
+      text: typeof fields['text'] === 'string' ? fields['text'] : '',
+      ...(typeof fields['method'] === 'string' ? { method: fields['method'] } : {}),
+    }),
+  MigrationError: (message, fields) =>
+    new MigrationError(message, {
+      kind: fields['kind'] as MigrationKind,
+      dcId: typeof fields['dcId'] === 'number' ? fields['dcId'] : 0,
+      ...(typeof fields['code'] === 'number' ? { code: fields['code'] } : {}),
+      ...(typeof fields['text'] === 'string' ? { text: fields['text'] } : {}),
       ...(typeof fields['method'] === 'string' ? { method: fields['method'] } : {}),
     }),
 }

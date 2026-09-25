@@ -487,7 +487,100 @@ export type MigrationKind = 'phone' | 'network' | 'user' | 'file'
  * authorization across; both belong to layers that know why the call was being
  * made.
  */
-export class MigrationError extends TelegramError {
+/**
+ * A request Telegram refused, with what it said.
+ *
+ * `text` is Telegram's own name for the failure — `CHANNEL_PRIVATE`,
+ * `PASSWORD_TOO_FRESH_3600` — and `code` the number beside it. A name that ends
+ * in a number carries it as `parameter`, so that number is read once here
+ * rather than parsed again by every caller. The `rpc_error` as it arrived is the
+ * cause.
+ *
+ * ```ts
+ * try {
+ *   await account.sendText(chat, text)
+ * } catch (error) {
+ *   if (error instanceof RpcError && error.is('CHAT_WRITE_FORBIDDEN')) forget(chat)
+ *   else if (error instanceof RpcError && error.is('PASSWORD_TOO_FRESH_%d')) later(error.parameter)
+ *   else throw error
+ * }
+ * ```
+ *
+ * One class rather than one per name: the names are Telegram's vocabulary and
+ * grow with it, and a class per name would be a release per word. Two kinds of
+ * refusal become something more specific: any `*_WAIT_N` becomes `FloodError`,
+ * the type both transports share, keeping its name on its cause; and a
+ * redirection becomes {@link MigrationError}, which is one of these.
+ */
+export class RpcError extends TelegramError {
+  override readonly name: string = 'RpcError'
+
+  /** Telegram's error code: 400, 403, 420 and so on. */
+  readonly code: number
+
+  /** Telegram's name for the failure, exactly as sent. */
+  readonly text: string
+
+  /** The number a name like `SLOWMODE_WAIT_30` ends in, where it ends in one. */
+  readonly parameter: number | undefined
+
+  constructor(
+    message: string,
+    options: ErrorOptions & { method?: string; code: number; text: string },
+  ) {
+    super(message, {
+      ...(options.method === undefined ? {} : { method: options.method }),
+      ...(options.cause === undefined ? {} : { cause: options.cause }),
+    })
+    this.code = options.code
+    this.text = options.text
+    const trailing = /_(\d+)$/.exec(options.text)
+    this.parameter = trailing === null ? undefined : Number(trailing[1])
+  }
+
+  /**
+   * Whether Telegram named this failure `pattern`.
+   *
+   * Exact, or with `%d` standing for the number a name ends in:
+   * `'FILE_MIGRATE_%d'`, `'SLOWMODE_WAIT_%d'`.
+   */
+  is(pattern: string): boolean {
+    return matchesName(this.text, pattern)
+  }
+}
+
+/** Whether an error name fits a pattern where `%d` stands for a number. */
+function matchesName(text: string, pattern: string): boolean {
+  if (!pattern.includes('%d')) return text === pattern
+  const source = pattern
+    .split('%d')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\d+')
+  return new RegExp(`^${source}$`).test(text)
+}
+
+/**
+ * Whether an error is a refusal Telegram named `pattern` — exactly, or with
+ * `%d` for the number a name ends in.
+ *
+ * Reads waits too, which are raised as the shared `FloodError` and keep
+ * Telegram's name on their cause, so `isRpcError(error, 'SLOWMODE_WAIT_%d')` and
+ * `isRpcError(error, 'FLOOD_WAIT_%d')` tell a slow chat from a flood.
+ */
+export function isRpcError(error: unknown, pattern: string): error is TelegramError {
+  if (error instanceof RpcError) return error.is(pattern)
+  const cause = (error as { readonly cause?: unknown } | undefined)?.cause as
+    | { readonly _?: unknown; readonly error_message?: unknown }
+    | undefined
+  return (
+    error instanceof TelegramError &&
+    cause?._ === 'rpc_error' &&
+    typeof cause.error_message === 'string' &&
+    matchesName(cause.error_message, pattern)
+  )
+}
+
+export class MigrationError extends RpcError {
   override readonly name = 'MigrationError'
 
   /** What the datacenter said has moved. */
@@ -498,9 +591,20 @@ export class MigrationError extends TelegramError {
 
   constructor(
     message: string,
-    options: ErrorOptions & { method?: string; kind: MigrationKind; dcId: number },
+    options: ErrorOptions & {
+      method?: string
+      kind: MigrationKind
+      dcId: number
+      code?: number
+      text?: string
+    },
   ) {
-    super(message, options.method === undefined ? {} : { method: options.method })
+    super(message, {
+      ...(options.method === undefined ? {} : { method: options.method }),
+      ...(options.cause === undefined ? {} : { cause: options.cause }),
+      code: options.code ?? 303,
+      text: options.text ?? `${options.kind.toUpperCase()}_MIGRATE_${options.dcId}`,
+    })
     this.kind = options.kind
     this.dcId = options.dcId
   }
@@ -525,6 +629,9 @@ export function rpcErrorToException(value: TlValue, method?: string): TelegramEr
     return new MigrationError(message, {
       kind: (migrate[1] ?? '').toLowerCase() as MigrationKind,
       dcId: Number(migrate[2]),
+      code,
+      text: description,
+      cause: value,
       ...(method === undefined ? {} : { method }),
     })
   }
@@ -533,11 +640,17 @@ export function rpcErrorToException(value: TlValue, method?: string): TelegramEr
   if (flood !== null) {
     return new FloodError(message, {
       retryAfter: Number(flood[1]),
+      cause: value,
       ...(method === undefined ? {} : { method }),
     })
   }
 
-  return new TelegramError(message, method === undefined ? {} : { method })
+  return new RpcError(message, {
+    code,
+    text: description,
+    cause: value,
+    ...(method === undefined ? {} : { method }),
+  })
 }
 
 function readLong(value: TlValue, field: string): bigint {

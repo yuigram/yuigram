@@ -630,6 +630,22 @@ matching only `FLOOD_WAIT` would make the two transports disagree about one cond
 other failure keeps the name Telegram gave it — a caller matching on `CHANNEL_PRIVATE` needs to
 see `CHANNEL_PRIVATE`.
 
+| Telegram says | Raised as | Fields |
+|---|---|---|
+| `*_WAIT_N` — `FLOOD_WAIT_30`, `SLOWMODE_WAIT_30`, … | `FloodError` | `retryAfter` |
+| `PHONE_`, `NETWORK_`, `USER_`, `FILE_MIGRATE_N` | `MigrationError`, an `RpcError` | `kind`, `dcId`, and the fields below |
+| anything else | `RpcError` | `code`, `text` (Telegram's name, as sent), `parameter` (the number a name ends in) |
+
+Every one keeps the `rpc_error` it came from as its `cause` and the method as `method`, and all
+of them cross a worker as the class they were. `error.is('PASSWORD_TOO_FRESH_%d')` matches a
+name, with `%d` for its number; `isRpcError(error, pattern)` does the same for any of the three,
+reading a wait's name from its cause, so a slow chat can be told from a flood.
+
+There is one class rather than a class per name. The names are Telegram's vocabulary, and a new
+one arrives without a release; a class per name would make the newest refusals the ones that
+cannot be caught by type. What is not provided is a catalogue of the names Telegram uses, to
+type `text` as a union.
+
 #### What survives a restart
 
 Very little, and the omissions are the design rather than an unfinished part of it.

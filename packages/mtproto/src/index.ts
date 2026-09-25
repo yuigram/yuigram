@@ -402,6 +402,12 @@ export {
   resendRecoveryEmail,
   setPassword,
 } from './security/index.js'
+export {
+  isRpcError,
+  MigrationError,
+  type MigrationKind,
+  RpcError,
+} from './session/dispatcher.js'
 export type {
   BoundCalls,
   CallDefaults,
