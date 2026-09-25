@@ -476,6 +476,7 @@ export {
   type UploadedFile,
   type UploadRequest,
   type UploadSource,
+  type UserPresence,
   UserView,
   unblock,
   uniqueFileId,

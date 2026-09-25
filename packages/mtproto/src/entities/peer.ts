@@ -24,12 +24,14 @@
  * call belongs on the client.
  */
 
+import type { FormattedText } from '../format/text.js'
 import type {
   TypeChat,
   TypeChatAdminRights,
   TypeChatBannedRights,
   TypeChatPhoto,
   TypeEmojiStatus,
+  TypeMessageEntity,
   TypePeerColor,
   TypeRestrictionReason,
   TypeUser,
@@ -38,6 +40,27 @@ import type {
   TypeUserStatus,
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
+
+/**
+ * When an account was last seen, as far as it lets on.
+ *
+ * `onlineUntil` while online and `lastSeen` once offline, in Unix seconds; the
+ * vague states carry neither. `hiddenByMe` is true where the vagueness is the
+ * price of this account hiding its own last-seen time.
+ */
+export interface UserPresence {
+  readonly state:
+    | 'online'
+    | 'offline'
+    | 'recently'
+    | 'last-week'
+    | 'last-month'
+    | 'long-ago'
+    | 'bot'
+  readonly onlineUntil: number | undefined
+  readonly lastSeen: number | undefined
+  readonly hiddenByMe: boolean
+}
 
 /**
  * A person, read.
@@ -344,6 +367,114 @@ export class UserView {
   }
 
   /**
+   * When the account was last seen, read.
+   *
+   * `status` is six constructors, two of which carry a time and three of which
+   * say only roughly; this names which, gives the times as Unix seconds, and
+   * says whether the vagueness is because this account hides its own last-seen
+   * time — Telegram then hides others' from it in return. A bot has no status
+   * and reads as `'bot'`; an account that says nothing reads as `'long-ago'`,
+   * which is what the empty status means.
+   */
+  get presence(): UserPresence | undefined {
+    if (this.raw._ !== 'user') return undefined
+    if (this.raw.bot === true) {
+      return { state: 'bot', onlineUntil: undefined, lastSeen: undefined, hiddenByMe: false }
+    }
+
+    const status = this.raw.status
+    const vague = (state: UserPresence['state'], byMe: true | undefined): UserPresence => ({
+      state,
+      onlineUntil: undefined,
+      lastSeen: undefined,
+      hiddenByMe: byMe === true,
+    })
+    switch (status?._) {
+      case 'userStatusOnline':
+        return {
+          state: 'online',
+          onlineUntil: status.expires,
+          lastSeen: undefined,
+          hiddenByMe: false,
+        }
+      case 'userStatusOffline':
+        return {
+          state: 'offline',
+          onlineUntil: undefined,
+          lastSeen: status.was_online,
+          hiddenByMe: false,
+        }
+      case 'userStatusRecently':
+        return vague('recently', status.by_me)
+      case 'userStatusLastWeek':
+        return vague('last-week', status.by_me)
+      case 'userStatusLastMonth':
+        return vague('last-month', status.by_me)
+      default:
+        return vague('long-ago', undefined)
+    }
+  }
+
+  /** Whether a bot may manage other bots. */
+  get botManagesBots(): boolean {
+    return this.raw._ === 'user' ? this.raw.bot_can_manage_bots === true : false
+  }
+
+  /** Whether a bot can be talked to in a guest chat. */
+  get botHasGuestChat(): boolean {
+    return this.raw._ === 'user' ? this.raw.bot_guestchat === true : false
+  }
+
+  /** Whether Telegram flags this bot as a guard bot (`bot_guard`). */
+  get botIsGuard(): boolean {
+    return this.raw._ === 'user' ? this.raw.bot_guard === true : false
+  }
+
+  /** The community this account is linked to, where it is. */
+  get linkedCommunityId(): bigint | undefined {
+    return this.raw._ === 'user' ? this.raw.linked_community_id : undefined
+  }
+
+  /**
+   * The datacenter this account's profile photo is kept at, where it has one.
+   *
+   * Where the photo is downloaded from. Telegram does not say which datacenter
+   * an account itself belongs to; this is the nearest thing an answer carries.
+   */
+  get photoDcId(): number | undefined {
+    const photo = this.photo
+    return photo?._ === 'userProfilePhoto' ? photo.dc_id : undefined
+  }
+
+  /**
+   * Text that mentions this account, linked to it, ready to send.
+   *
+   * The display name unless other text is given. Where the answer carried an
+   * access hash the entity names the account completely, so the mention works
+   * for somebody who has never seen it; otherwise it names the id alone, which
+   * Telegram resolves only for people who already know the account.
+   *
+   * ```ts
+   * await account.sendText(chat, user.mention())
+   * ```
+   */
+  mention(text?: string): FormattedText {
+    const label = text ?? this.displayName
+    const hash = this.accessHash
+    const entity: TypeMessageEntity =
+      hash === undefined
+        ? { _: 'messageEntityMentionName', offset: 0, length: label.length, user_id: this.id }
+        : ({
+            _: 'inputMessageEntityMentionName',
+            offset: 0,
+            length: label.length,
+            user_id: { _: 'inputUser', user_id: this.id, access_hash: hash },
+          } as TypeMessageEntity)
+
+    return { text: label, entities: [entity] }
+  }
+
+  /**
    * Whether a cached photo may be kept when this record replaces an older one.
    *
    * Set on a partial user to say its photo is the real one even though the rest
@@ -627,6 +758,17 @@ export class ChatView {
   /** The channel this one carries direct messages for, where it carries any. */
   get linkedMonoforumId(): bigint | undefined {
     return this.raw._ === 'channel' ? this.raw.linked_monoforum_id : undefined
+  }
+
+  /** The community a channel or supergroup is linked to, where it is. */
+  get linkedCommunityId(): bigint | undefined {
+    return this.raw._ === 'channel' ? this.raw.linked_community_id : undefined
+  }
+
+  /** The datacenter the chat's photo is kept at, where it has one. */
+  get photoDcId(): number | undefined {
+    const photo = this.photo
+    return photo?._ === 'chatPhoto' ? photo.dc_id : undefined
   }
 
   /** Whether Telegram has verified it. */

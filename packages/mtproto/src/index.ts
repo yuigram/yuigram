@@ -106,6 +106,7 @@ export {
   readChat,
   readPeers,
   readUser,
+  type UserPresence,
   UserView,
 } from './entities/peer.js'
 export {

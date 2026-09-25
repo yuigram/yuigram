@@ -161,6 +161,12 @@ Where the schema asks a question badly, the view asks a better one rather than m
   rather than in the constructor. `MediaView.kind` is that search, done once and named — and the
   order it searches in matters, because a sticker also carries an image size and an animation also
   carries a video attribute.
+- **Six statuses, one answer.** A user's `status` is six constructors, two carrying a time and
+  three saying only roughly. `presence` names which (`'online'`, `'offline'`, `'recently'`,
+  `'last-week'`, `'last-month'`, `'long-ago'`, or `'bot'`), gives `onlineUntil` or `lastSeen`,
+  and says with `hiddenByMe` when the vagueness is Telegram hiding others' times from an account
+  that hides its own. `mention()` builds text linked to the account — completely, with its access
+  hash, where the answer carried one — ready for `sendText`.
 - **Structures joined where the schema splits them.** A poll's tally arrives beside its answers,
   keyed by an opaque option; a checklist's completions beside its tasks, keyed by number.
   `pollDetails` and `todoDetails` join them — each answer with its voters, whether this account

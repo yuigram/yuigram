@@ -415,3 +415,98 @@ describe('joining a reference to what the answer described', () => {
     expect(people.user({ kind: 'user', id: 5n })).toBe(once)
   })
 })
+
+describe('what a person’s status and profile say, read', () => {
+  const withStatus = (status: User['status']) =>
+    new UserView({ ...PERSON, ...(status === undefined ? {} : { status }) })
+
+  it('reads when an account was last seen, and whether it is hidden in return', () => {
+    expect(withStatus({ _: 'userStatusOnline', expires: 100 }).presence).toEqual({
+      state: 'online',
+      onlineUntil: 100,
+      lastSeen: undefined,
+      hiddenByMe: false,
+    })
+    expect(withStatus({ _: 'userStatusOffline', was_online: 90 }).presence).toMatchObject({
+      state: 'offline',
+      lastSeen: 90,
+    })
+    expect(withStatus({ _: 'userStatusRecently', by_me: true }).presence).toMatchObject({
+      state: 'recently',
+      hiddenByMe: true,
+    })
+    expect(withStatus({ _: 'userStatusLastWeek' }).presence).toMatchObject({
+      state: 'last-week',
+      hiddenByMe: false,
+    })
+    expect(withStatus({ _: 'userStatusLastMonth', by_me: true }).presence?.state).toBe('last-month')
+    expect(withStatus({ _: 'userStatusEmpty' }).presence?.state).toBe('long-ago')
+    expect(withStatus(undefined).presence?.state).toBe('long-ago')
+    expect(new UserView(BOT).presence?.state).toBe('bot')
+    expect(new UserView({ _: 'userEmpty', id: 1n }).presence).toBeUndefined()
+  })
+
+  it('reads the newer bot flags, the linked community and where the photo is kept', () => {
+    const bot = new UserView({
+      ...BOT,
+      bot_can_manage_bots: true,
+      bot_guestchat: true,
+      bot_guard: true,
+      linked_community_id: 77n,
+      photo: { _: 'userProfilePhoto', photo_id: 1n, dc_id: 4 },
+    })
+
+    expect([bot.botManagesBots, bot.botHasGuestChat, bot.botIsGuard]).toEqual([true, true, true])
+    // Each flag read from its own field: one set alone answers for itself only.
+    const only = (flag: 'bot_can_manage_bots' | 'bot_guestchat' | 'bot_guard') => {
+      const view = new UserView({ ...BOT, [flag]: true })
+      return [view.botManagesBots, view.botHasGuestChat, view.botIsGuard]
+    }
+    expect(only('bot_can_manage_bots')).toEqual([true, false, false])
+    expect(only('bot_guestchat')).toEqual([false, true, false])
+    expect(only('bot_guard')).toEqual([false, false, true])
+    expect(bot.linkedCommunityId).toBe(77n)
+    expect(bot.photoDcId).toBe(4)
+    expect(new UserView(PERSON).photoDcId).toBeUndefined()
+    expect([new UserView(PERSON).botManagesBots, new UserView(PERSON).botIsGuard]).toEqual([
+      false,
+      false,
+    ])
+  })
+
+  it('mentions an account by its full reference where it has one, and by id where not', () => {
+    expect(new UserView(PERSON).mention()).toEqual({
+      text: 'Ada Lovelace',
+      entities: [
+        {
+          _: 'inputMessageEntityMentionName',
+          offset: 0,
+          length: 12,
+          user_id: { _: 'inputUser', user_id: 5n, access_hash: 900n },
+        },
+      ],
+    })
+
+    const outline = new UserView({ ...PERSON, access_hash: undefined as never })
+    // Code units, not characters: an emoji is two.
+    expect(outline.mention('Ada 👋')).toEqual({
+      text: 'Ada 👋',
+      entities: [{ _: 'messageEntityMentionName', offset: 0, length: 6, user_id: 5n }],
+    })
+  })
+
+  it('reads a channel’s linked community and where its photo is kept', () => {
+    const channel: Channel = {
+      _: 'channel',
+      id: 3n,
+      title: 'News',
+      photo: { _: 'chatPhoto', photo_id: 2n, dc_id: 5 },
+      date: 1,
+      linked_community_id: 9n,
+    }
+
+    expect(new ChatView(channel).linkedCommunityId).toBe(9n)
+    expect(new ChatView(channel).photoDcId).toBe(5)
+    expect(new ChatView({ ...channel, photo: { _: 'chatPhotoEmpty' } }).photoDcId).toBeUndefined()
+  })
+})

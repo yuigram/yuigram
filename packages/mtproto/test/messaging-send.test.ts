@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { MtprotoApi } from '../src/api.js'
+import { UserView } from '../src/entities/peer.js'
 import { fromHtml } from '../src/format/html.js'
 import type { TypeInputPeer } from '../src/generated/api/types/index.js'
 import {
@@ -147,6 +148,25 @@ describe('saying something', () => {
     expect(client.calls[0]?.params).toMatchObject({
       message: 'bold text',
       entities: [{ _: 'messageEntityBold', offset: 0, length: 4 }],
+    })
+  })
+
+  it('sends a mention a user view built, naming the account completely', async () => {
+    const client = fake()
+    const ada = new UserView({ _: 'user', id: 5n, access_hash: 900n, first_name: 'Ada' })
+
+    await sendText(client, '@someone', ada.mention())
+
+    expect(client.calls[0]?.params).toMatchObject({
+      message: 'Ada',
+      entities: [
+        {
+          _: 'inputMessageEntityMentionName',
+          offset: 0,
+          length: 3,
+          user_id: { _: 'inputUser', user_id: 5n, access_hash: 900n },
+        },
+      ],
     })
   })
 
