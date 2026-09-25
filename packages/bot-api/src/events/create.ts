@@ -115,6 +115,14 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
   const sender = senderOf(payload)
   if (sender !== undefined) context['sender'] = sender
 
+  // A button press carries its chat on the message the button is on, not on
+  // itself. Put where every other context has it, so what is keyed by chat and
+  // sender — a session, a conversation — keys a press the way it keys the
+  // messages around it. Only where the payload has no chat of its own.
+  if (context['chat'] === undefined && normalized.chat !== undefined) {
+    context['chat'] = normalized.chat
+  }
+
   if (carriesMessage) {
     Object.assign(context, messageActions({ api, message: payload as unknown as Message }))
   }

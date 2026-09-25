@@ -47,7 +47,7 @@ import type {
   SendVoiceParams,
   SetMessageReactionParams,
 } from '../generated/methods/index.js'
-import type { Message, ReactionType, Update } from '../generated/types/index.js'
+import type { Chat, Message, ReactionType, Update } from '../generated/types/index.js'
 import type {
   CallbackQueryBoundApi,
   InlineQueryBoundApi,
@@ -326,6 +326,14 @@ export interface CallbackQueryContext
   readonly sender: EventFieldsByKind['callback_query']['sender']
   readonly data: EventFieldsByKind['callback_query']['data']
   readonly message: EventFieldsByKind['callback_query']['message']
+  /**
+   * The chat of the message the button is on, where the query has one.
+   *
+   * Absent for a button on an inline message, which belongs to no chat the bot
+   * can see. Present otherwise, so what is keyed by chat — a session, a
+   * conversation — keys a press the way it keys the messages around it.
+   */
+  readonly chat?: Chat | undefined
 }
 
 /**
