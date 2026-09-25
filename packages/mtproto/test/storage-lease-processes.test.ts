@@ -120,8 +120,8 @@ function processes(backend: Backend) {
   it(
     'lets one process hold an account’s area and refuses a second while it is live',
     async () => {
-      const first = await start(backend, 'main', 'first', 2_000)
-      const second = await start(backend, 'main', 'second', 2_000)
+      const first = await start(backend, 'main', 'first', 5_000)
+      const second = await start(backend, 'main', 'second', 5_000)
 
       expect(await first.ask({ do: 'claim' })).toMatchObject({ ok: true, scope: 'store' })
       const refused = await second.ask({ do: 'claim' })
@@ -129,7 +129,7 @@ function processes(backend: Backend) {
       expect(refused.message).toContain('another process')
 
       // Other accounts in the same store are held apart.
-      const other = await start(backend, 'other', 'third', 2_000)
+      const other = await start(backend, 'other', 'third', 5_000)
       expect(await other.ask({ do: 'claim' })).toMatchObject({ ok: true })
     },
     SLOW,
@@ -161,16 +161,19 @@ function processes(backend: Backend) {
   it(
     'recovers a crashed process’s area once its lease lapses, with no flag',
     async () => {
-      const crashed = await start(backend, 'main', 'crashed', 1_000)
+      // Both running before anything is claimed: starting a process can take
+      // longer than the lease on a loaded machine, and the refusal below has to
+      // be asked while the crashed run's lease is still live.
+      const crashed = await start(backend, 'main', 'crashed', 3_000)
+      const next = await start(backend, 'main', 'next', 3_000)
       await crashed.ask({ do: 'claim' })
       await crashed.ask({ do: 'write', key: 'state', value: 'before the crash' })
       void crashed.ask({ do: 'crash' }).catch(() => undefined)
       await crashed.exited
 
-      const next = await start(backend, 'main', 'next', 1_000)
       expect(await next.ask({ do: 'claim' })).toMatchObject({ ok: false })
 
-      await pause(1_200)
+      await pause(3_200)
       expect(await next.ask({ do: 'claim' })).toMatchObject({ ok: true, scope: 'store' })
       expect(await next.ask({ do: 'read', key: 'state' })).toMatchObject({
         value: 'before the crash',
