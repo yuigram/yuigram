@@ -63,7 +63,10 @@ function deriveKey(secret: string, salt: Buffer): Promise<Buffer> {
     // The asynchronous form deliberately: scrypt is expensive by design, and
     // the synchronous one would stall every other update for the duration.
     scrypt(secret, salt, KEY_SIZE, (error, key) => {
-      if (error !== null) reject(error)
+      // Any error at all, not `null` alone: Node reports success with `null`,
+      // Bun with `undefined`, and treating the second as a failure rejected
+      // every write on Bun with nothing to say why.
+      if (error !== null && error !== undefined) reject(error)
       else resolve(key)
     })
   })
