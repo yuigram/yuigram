@@ -17,7 +17,7 @@
  * is held by the layer that sent it, which is the layer that must be told.
  */
 
-import { type ErrorOptions, FloodError, SessionError, TelegramError } from '@yuigram/core'
+import { SessionError } from '@yuigram/core'
 import type { AuthKey } from '../message/auth-key.js'
 import { decodeEncryptedMessage } from '../message/encrypted.js'
 import { readObject, type TlScope, type TlValue } from '../tl/index.js'
@@ -26,6 +26,14 @@ import { type InboundMessage, inflatePacked, unpackMessages } from './inbound.js
 import { decodeMessageStatuses, type MessageStatus } from './outbound.js'
 import { type FutureSalt, readFutureSalts } from './salts.js'
 import type { Session } from './session.js'
+
+export {
+  isRpcError,
+  MigrationError,
+  type MigrationKind,
+  RpcError,
+  rpcErrorToException,
+} from './errors.js'
 
 /**
  * Messages that are never acknowledged.
@@ -446,211 +454,6 @@ export class SessionDispatcher {
 
     events.push({ kind: 'reset', reason })
   }
-}
-
-/**
- * An error naming how many seconds to wait before trying again.
- *
- * The Bot API decides this by whether a retry delay was supplied at all rather
- * than by which error carried it, and reports slow mode the same way it reports
- * a flood. Matching the shape rather than one name is what keeps the two
- * transports agreeing: `FLOOD_WAIT_30` and `SLOWMODE_WAIT_30` mean the same
- * thing to a caller as a `429` with `retry_after` does.
- */
-const WAIT_ERROR = /^[A-Z]+(?:_[A-Z]+)*_WAIT_(\d+)$/
-
-/**
- * The refusals that name a datacenter instead of a problem.
- *
- * Four errors say the same thing in different words: what was asked for lives
- * somewhere else. The number is the datacenter it lives at, and it is the whole
- * content of the answer — a caller that cannot read it has been told nothing it
- * can act on.
- */
-const MIGRATE_ERROR = /^(PHONE|NETWORK|USER|FILE)_MIGRATE_(\d+)$/
-
-/** Which of the four redirections a datacenter asked for. */
-export type MigrationKind = 'phone' | 'network' | 'user' | 'file'
-
-/**
- * The datacenter refused a request because it belongs somewhere else.
- *
- * Not a failure of the request so much as an address for it. The four kinds
- * differ in what has moved rather than in what the client is told: an account
- * that lives elsewhere, a network that suggests elsewhere, an account that has
- * been moved, a file that is stored elsewhere. Each names the datacenter to use
- * instead, and that number is kept as a number — a redirection a caller has to
- * read out of a message is one it cannot act on without matching text.
- *
- * What to do about it is deliberately not decided here. Following a redirection
- * means reaching another datacenter, and for an account it means carrying the
- * authorization across; both belong to layers that know why the call was being
- * made.
- */
-/**
- * A request Telegram refused, with what it said.
- *
- * `text` is Telegram's own name for the failure — `CHANNEL_PRIVATE`,
- * `PASSWORD_TOO_FRESH_3600` — and `code` the number beside it. A name that ends
- * in a number carries it as `parameter`, so that number is read once here
- * rather than parsed again by every caller. The `rpc_error` as it arrived is the
- * cause.
- *
- * ```ts
- * try {
- *   await account.sendText(chat, text)
- * } catch (error) {
- *   if (error instanceof RpcError && error.is('CHAT_WRITE_FORBIDDEN')) forget(chat)
- *   else if (error instanceof RpcError && error.is('PASSWORD_TOO_FRESH_%d')) later(error.parameter)
- *   else throw error
- * }
- * ```
- *
- * One class rather than one per name: the names are Telegram's vocabulary and
- * grow with it, and a class per name would be a release per word. Two kinds of
- * refusal become something more specific: any `*_WAIT_N` becomes `FloodError`,
- * the type both transports share, keeping its name on its cause; and a
- * redirection becomes {@link MigrationError}, which is one of these.
- */
-export class RpcError extends TelegramError {
-  override readonly name: string = 'RpcError'
-
-  /** Telegram's error code: 400, 403, 420 and so on. */
-  readonly code: number
-
-  /** Telegram's name for the failure, exactly as sent. */
-  readonly text: string
-
-  /** The number a name like `SLOWMODE_WAIT_30` ends in, where it ends in one. */
-  readonly parameter: number | undefined
-
-  constructor(
-    message: string,
-    options: ErrorOptions & { method?: string; code: number; text: string },
-  ) {
-    super(message, {
-      ...(options.method === undefined ? {} : { method: options.method }),
-      ...(options.cause === undefined ? {} : { cause: options.cause }),
-    })
-    this.code = options.code
-    this.text = options.text
-    const trailing = /_(\d+)$/.exec(options.text)
-    this.parameter = trailing === null ? undefined : Number(trailing[1])
-  }
-
-  /**
-   * Whether Telegram named this failure `pattern`.
-   *
-   * Exact, or with `%d` standing for the number a name ends in:
-   * `'FILE_MIGRATE_%d'`, `'SLOWMODE_WAIT_%d'`.
-   */
-  is(pattern: string): boolean {
-    return matchesName(this.text, pattern)
-  }
-}
-
-/** Whether an error name fits a pattern where `%d` stands for a number. */
-function matchesName(text: string, pattern: string): boolean {
-  if (!pattern.includes('%d')) return text === pattern
-  const source = pattern
-    .split('%d')
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('\\d+')
-  return new RegExp(`^${source}$`).test(text)
-}
-
-/**
- * Whether an error is a refusal Telegram named `pattern` — exactly, or with
- * `%d` for the number a name ends in.
- *
- * Reads waits too, which are raised as the shared `FloodError` and keep
- * Telegram's name on their cause, so `isRpcError(error, 'SLOWMODE_WAIT_%d')` and
- * `isRpcError(error, 'FLOOD_WAIT_%d')` tell a slow chat from a flood.
- */
-export function isRpcError(error: unknown, pattern: string): error is TelegramError {
-  if (error instanceof RpcError) return error.is(pattern)
-  const cause = (error as { readonly cause?: unknown } | undefined)?.cause as
-    | { readonly _?: unknown; readonly error_message?: unknown }
-    | undefined
-  return (
-    error instanceof TelegramError &&
-    cause?._ === 'rpc_error' &&
-    typeof cause.error_message === 'string' &&
-    matchesName(cause.error_message, pattern)
-  )
-}
-
-export class MigrationError extends RpcError {
-  override readonly name = 'MigrationError'
-
-  /** What the datacenter said has moved. */
-  readonly kind: MigrationKind
-
-  /** The datacenter to use instead. */
-  readonly dcId: number
-
-  constructor(
-    message: string,
-    options: ErrorOptions & {
-      method?: string
-      kind: MigrationKind
-      dcId: number
-      code?: number
-      text?: string
-    },
-  ) {
-    super(message, {
-      ...(options.method === undefined ? {} : { method: options.method }),
-      ...(options.cause === undefined ? {} : { cause: options.cause }),
-      code: options.code ?? 303,
-      text: options.text ?? `${options.kind.toUpperCase()}_MIGRATE_${options.dcId}`,
-    })
-    this.kind = options.kind
-    this.dcId = options.dcId
-  }
-}
-
-/**
- * The error a failed request should raise.
- *
- * A wait is the one failure both transports report and both callers handle the
- * same way, so it becomes the type they share. Everything else keeps the name
- * Telegram gave it: a caller matching on `CHANNEL_PRIVATE` needs to see
- * `CHANNEL_PRIVATE`.
- */
-export function rpcErrorToException(value: TlValue, method?: string): TelegramError {
-  const code = readInt(value, 'error_code')
-  const text = value['error_message']
-  const description = typeof text === 'string' ? text : ''
-  const message = `${description || 'request failed'} (${code})`
-
-  const migrate = MIGRATE_ERROR.exec(description)
-  if (migrate !== null) {
-    return new MigrationError(message, {
-      kind: (migrate[1] ?? '').toLowerCase() as MigrationKind,
-      dcId: Number(migrate[2]),
-      code,
-      text: description,
-      cause: value,
-      ...(method === undefined ? {} : { method }),
-    })
-  }
-
-  const flood = WAIT_ERROR.exec(description)
-  if (flood !== null) {
-    return new FloodError(message, {
-      retryAfter: Number(flood[1]),
-      cause: value,
-      ...(method === undefined ? {} : { method }),
-    })
-  }
-
-  return new RpcError(message, {
-    code,
-    text: description,
-    cause: value,
-    ...(method === undefined ? {} : { method }),
-  })
 }
 
 function readLong(value: TlValue, field: string): bigint {

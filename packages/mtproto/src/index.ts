@@ -407,7 +407,7 @@ export {
   MigrationError,
   type MigrationKind,
   RpcError,
-} from './session/dispatcher.js'
+} from './session/errors.js'
 export type {
   BoundCalls,
   CallDefaults,

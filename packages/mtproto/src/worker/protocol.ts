@@ -72,7 +72,7 @@ import { ChatView, UserView } from '../entities/peer.js'
 import { StickerSetView } from '../entities/sticker-set.js'
 import { PeerStoriesView, StoryView, StoryViewerView } from '../entities/story.js'
 import { EphemeralMessageView } from '../messaging/ephemeral.js'
-import { MigrationError, type MigrationKind, RpcError } from '../session/dispatcher.js'
+import { MigrationError, type MigrationKind, RpcError } from '../session/errors.js'
 
 /** The protocol this build speaks. Raised whenever a message changes shape. */
 export const PROTOCOL_VERSION = 1

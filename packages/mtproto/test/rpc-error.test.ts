@@ -9,12 +9,7 @@
 
 import { FloodError, TelegramError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
-import {
-  isRpcError,
-  MigrationError,
-  RpcError,
-  rpcErrorToException,
-} from '../src/session/dispatcher.js'
+import { isRpcError, MigrationError, RpcError, rpcErrorToException } from '../src/session/errors.js'
 import { deserializeError, serializeError } from '../src/worker/protocol.js'
 
 const refusal = (code: number, text: string) => ({
