@@ -191,6 +191,7 @@ f.command(name | names | regex, { prefixes, username, ignoreCase })  → event.c
 f.chat(sort | id | ids)     f.sender(sort | id | ids)
 f.outgoing  f.incoming      f.reply  f.forward  f.mentioned  f.silent
 f.media(...kinds)           f.callback(str | regex)      f.inline(str | regex)
+f.action(...kinds)                                       → event.action, narrowed to those kinds
 f.and  f.or  f.not
 ```
 

@@ -161,6 +161,18 @@ Where the schema asks a question badly, the view asks a better one rather than m
   rather than in the constructor. `MediaView.kind` is that search, done once and named — and the
   order it searches in matters, because a sticker also carries an image size and an animation also
   carries a video attribute.
+- **Seventy constructors, one switch.** A service message's `action` is one of sixty-eight
+  `messageAction*` constructors besides the empty one, each spelling its fields the schema's way.
+  `readAction` — also `MessageView.serviceAction` and `event.action` on an account's message
+  events — reads each into a variant of `ServiceAction` with a `kind` named for what happened
+  (`'members-added'`, `'joined-by-link'`, `'payment-received'`, `'gift-received'`), fields in
+  camelCase, every peer a `PeerRef` an account method takes as it is, and a gift's note as
+  `{ text, entities }`. Photos, gifts, themes and invoices' charges are handed on as they
+  arrived, so `account.download(photoFile(action.photo))` works on a changed chat photo as on
+  any photo. A few answers are derived: whether a call was `missed`, whether a group call
+  `ended`. The constructor stays on every variant as `raw`, and one this build has no reading for
+  is `'unsupported'` rather than an error. `f.action('members-added', …)` matches service
+  messages by kind and narrows `event.action` to those variants.
 
 ---
 

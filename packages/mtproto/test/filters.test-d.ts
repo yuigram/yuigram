@@ -8,6 +8,7 @@
 
 import { describe, expectTypeOf, it } from 'vitest'
 import type { Account } from '../src/account.js'
+import type { ServiceAction } from '../src/entities/action.js'
 import { f } from '../src/filters/index.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
 import type { AccountRouter } from '../src/router.js'
@@ -49,6 +50,25 @@ describe('a filter’s proof reaching the handler', () => {
     account.on(f.sender(), (event) => {
       expectTypeOf(event.sender).toEqualTypeOf<PeerRef>()
     })
+  })
+
+  it('narrows a service action to the kinds asked for', () => {
+    account.on('message', f.action('members-added', 'joined-by-link'), (event) => {
+      expectTypeOf(event.action.kind).toEqualTypeOf<'members-added' | 'joined-by-link'>()
+      if (event.action.kind === 'members-added') {
+        expectTypeOf(event.action.users).toEqualTypeOf<readonly PeerRef[]>()
+      } else {
+        expectTypeOf(event.action.inviter).toEqualTypeOf<PeerRef>()
+      }
+    })
+    account.on(f.action(), (event) => {
+      expectTypeOf(event.action).toEqualTypeOf<ServiceAction>()
+    })
+    account.on('message', (event) => {
+      expectTypeOf(event.action).toEqualTypeOf<ServiceAction | undefined>()
+    })
+    // @ts-expect-error — not something a service message says
+    f.action('member-joined')
   })
 
   it('leaves the context as it is for a kind alone, and refuses one nothing produces', () => {

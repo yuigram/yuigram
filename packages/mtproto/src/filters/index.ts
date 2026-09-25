@@ -23,6 +23,7 @@
  */
 
 import { type AnyFilter, and, defineFilter, type Filter, not, or } from '@yuigram/core'
+import type { ServiceAction, ServiceActionKind, ServiceActionOf } from '../entities/action.js'
 import { type MediaKind, readMedia } from '../entities/media.js'
 import type { TypeMessageMedia } from '../generated/api/types/index.js'
 import type { MtprotoContext } from '../normalize/context.js'
@@ -336,6 +337,36 @@ export function media(...kinds: readonly MediaKind[]): Filter<MtprotoContext> {
 }
 
 /**
+ * A service message, or one saying one of these things happened.
+ *
+ * The kinds are the ones `ServiceAction.kind` names, and the handler is given
+ * the action narrowed to them: after `f.action('members-added')`,
+ * `event.action.users` is there to read.
+ *
+ * ```ts
+ * account.on('message', f.action('members-added', 'joined-by-link'), (event) => …)
+ * ```
+ */
+export function action(): Filter<MtprotoContext, { action: ServiceAction }>
+export function action<K extends ServiceActionKind>(
+  ...kinds: readonly [K, ...K[]]
+): Filter<MtprotoContext, { action: ServiceActionOf<K> }>
+export function action(
+  ...kinds: readonly ServiceActionKind[]
+): Filter<MtprotoContext, { action: ServiceAction }> {
+  return defineFilter<MtprotoContext, { action: ServiceAction }>(
+    kinds.length === 0 ? 'action' : `action(${kinds.join(', ')})`,
+    (value) => {
+      const current = contextOf(value).action
+      if (current === undefined) return false
+
+      return kinds.length === 0 || kinds.includes(current.kind)
+    },
+    { kinds: MESSAGE_KINDS },
+  )
+}
+
+/**
  * A pressed button, or one whose data matches.
  *
  * Callback data is bytes over this transport. A match compares it as UTF-8
@@ -468,6 +499,7 @@ export const f = Object.freeze({
   mentioned,
   silent,
   media,
+  action,
   callback,
   callbackData,
   inline,

@@ -55,6 +55,14 @@ export type {
   ParticipantChats,
 } from './communities/communities.js'
 export {
+  type CallEndReason,
+  readAction,
+  type ServiceAction,
+  type ServiceActionKind,
+  type ServiceActionOf,
+  type SharedPeer,
+} from './entities/action.js'
+export {
   ChatEventView,
   ForumTopicView,
   InviteImporterView,

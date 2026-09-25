@@ -22,6 +22,7 @@ import {
 } from '@yuigram/core'
 import { type MtprotoApi, rawApi } from '../api.js'
 import type { PeerView } from '../chats/peers.js'
+import { readAction, type ServiceAction } from '../entities/action.js'
 import type {
   TypeInputBotInlineMessageID,
   TypeInputBotInlineResult,
@@ -70,6 +71,13 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   readonly target: PeerRef | undefined
   /** The message, for the kinds that carry a whole one. */
   readonly message: TypeMessage | undefined
+  /**
+   * What a service message says happened — a member joining, a title changed,
+   * a payment received — read, with a `kind` to switch on. `undefined` for
+   * anything that is not a service message. `f.action(...)` matches on it and
+   * narrows it.
+   */
+  readonly action: ServiceAction | undefined
   /** The messages of an album, in order, for `mtproto:album` alone. */
   readonly album: readonly TypeMessage[] | undefined
   /** The messages a deletion names. */
@@ -248,6 +256,10 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
     sender: normalized.sender,
     target: normalized.target,
     message: normalized.message,
+    action:
+      normalized.message?._ === 'messageService'
+        ? readAction(normalized.message.action)
+        : undefined,
     album: normalized.album,
     messageIds: normalized.messageIds,
     text: normalized.text,

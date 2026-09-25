@@ -54,6 +54,7 @@ import type {
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import { peerRefOf } from '../normalize/normalize.js'
+import { readAction, type ServiceAction } from './action.js'
 import { type MediaView, readMedia } from './media.js'
 
 /**
@@ -163,9 +164,17 @@ export class MessageView {
     return readMedia(this.raw.media)
   }
 
-  /** What happened, for a service message. */
+  /** What happened, for a service message, as Telegram sent it. */
   get action(): TypeMessageAction | undefined {
     return this.raw._ === 'messageService' ? this.raw.action : undefined
+  }
+
+  /**
+   * What happened, for a service message, read: a `kind` to switch on and
+   * fields in the forms the rest of an account speaks. See {@link readAction}.
+   */
+  get serviceAction(): ServiceAction | undefined {
+    return this.raw._ === 'messageService' ? readAction(this.raw.action) : undefined
   }
 
   /** Whether this account sent it. */
