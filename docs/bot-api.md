@@ -279,6 +279,35 @@ The 20/50 MB caps are Bot API facts, not Yuigram choices, and the documentation 
 plainly — a developer hitting the ceiling should be told immediately that a local Bot API
 server or an MTProto client is the answer.
 
+### Lists
+
+Six methods page. Reading them — every item, in order — and showing them to a person a screen at a
+time are two different jobs, with two different helpers.
+
+**Reading.** `bot.profilePhotos(userId)`, `bot.profileAudios(userId)` and `bot.starTransactions()`
+count by position; `bot.userGifts(userId)`, `bot.chatGifts(chatId)` and
+`bot.businessGifts(connectionId)` follow Telegram's cursor, and take the method's own filters. Each
+returns an async sequence that fetches a page only when the loop asks for the next item, with the
+options an account's list walks take:
+
+| Option | Meaning |
+| --- | --- |
+| `limit` | stop after this many items; the last request asks only for what is still needed |
+| `pageSize` | how many to ask for at a time, up to Telegram's 100 |
+| `offset` / `cursor` | start from a position, or from a cursor a previous read ended on |
+| `signal` | stops the walk between requests and cancels the one in flight, as `CancelledError` |
+
+A position list ends on a short or empty page, or at the total Telegram gave. A cursor list ends
+when no next cursor comes back or a page is empty, and a cursor that comes back unchanged is an
+error rather than a loop that never ends. `.collect()` reads the rest into an array carrying
+`total`; `offsetPages` and `cursorPages` build the same for any other paged source.
+
+**Showing.** `pager(name, { pageSize })` gives the ‹ · › row for a page, slices an array into
+pages, and reads a press back. The page and the person the list was shown to travel in the button,
+so nothing is kept between presses, and a press by somebody else — in a group, anyone can press —
+comes back as `refused` for the application to answer. The label between the arrows is matched by
+the pager's filter so its press can be answered too.
+
 ### Media caching
 
 `mediaCache()` keeps the identifier Telegram gives each upload and sends it in place of the

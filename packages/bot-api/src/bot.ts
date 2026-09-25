@@ -51,11 +51,34 @@ import {
   type TextMessageContext,
 } from './events/index.js'
 import { ALL_UPDATE_TYPES, type BotEventKind, KIND_SUBSCRIPTIONS } from './generated/events.js'
+import type {
+  GetBusinessAccountGiftsParams,
+  GetChatGiftsParams,
+  GetUserGiftsParams,
+} from './generated/methods/index.js'
 import { type GeneratedRegistrations, REGISTRATIONS } from './generated/registrations.js'
-import type { Update, User } from './generated/types/index.js'
+import type {
+  Audio,
+  OwnedGift,
+  PhotoSize,
+  StarTransaction,
+  Update,
+  User,
+} from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
 import { normalizeUpdate } from './normalize.js'
+import {
+  businessGifts,
+  chatGifts,
+  type GiftFilters,
+  type PageOptions,
+  type Pages,
+  profileAudios,
+  profilePhotos,
+  starTransactions,
+  userGifts,
+} from './paginate.js'
 import { createPolling, type Polling } from './polling.js'
 import {
   type RegistrationTarget,
@@ -537,6 +560,59 @@ export class Bot<Ext = unknown> {
     await this.#surrounding(context, async () => {
       await this.#dispatcher.dispatch(context)
     })
+  }
+
+  /**
+   * A user's profile photos, newest first, each as the sizes it comes in.
+   *
+   * Read a page at a time as the loop asks: `limit` stops after that many,
+   * `pageSize` is how many to ask for at once, `signal` stops the walk.
+   * `.collect()` reads the rest, with the total Telegram gave.
+   */
+  profilePhotos(
+    userId: number,
+    options?: PageOptions & { readonly offset?: number },
+  ): Pages<readonly PhotoSize[]> {
+    return profilePhotos(this.api, userId, options)
+  }
+
+  /** A user's profile audios, read a page at a time. */
+  profileAudios(
+    userId: number,
+    options?: PageOptions & { readonly offset?: number },
+  ): Pages<Audio> {
+    return profileAudios(this.api, userId, options)
+  }
+
+  /** This bot's star transactions, newest first, read a page at a time. */
+  starTransactions(options?: PageOptions & { readonly offset?: number }): Pages<StarTransaction> {
+    return starTransactions(this.api, options)
+  }
+
+  /** The gifts a user displays, read a page at a time, filtered as `getUserGifts` filters. */
+  userGifts(
+    userId: number,
+    options?: PageOptions & { readonly cursor?: string } & GiftFilters<GetUserGiftsParams>,
+  ): Pages<OwnedGift> {
+    return userGifts(this.api, userId, options)
+  }
+
+  /** The gifts a chat has received, read a page at a time. */
+  chatGifts(
+    chatId: number | string,
+    options?: PageOptions & { readonly cursor?: string } & GiftFilters<GetChatGiftsParams>,
+  ): Pages<OwnedGift> {
+    return chatGifts(this.api, chatId, options)
+  }
+
+  /** The gifts a connected business account has received, read a page at a time. */
+  businessGifts(
+    businessConnectionId: string,
+    options?: PageOptions & {
+      readonly cursor?: string
+    } & GiftFilters<GetBusinessAccountGiftsParams>,
+  ): Pages<OwnedGift> {
+    return businessGifts(this.api, businessConnectionId, options)
   }
 
   /**

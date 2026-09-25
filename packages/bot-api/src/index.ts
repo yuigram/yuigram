@@ -169,6 +169,24 @@ export {
   mediaCache,
 } from './media-cache.js'
 export { type NormalizedUpdate, normalizeUpdate, UNKNOWN_KIND } from './normalize.js'
+export { type Pager, type PagerOptions, type Press, pager, type Shown } from './pager.js'
+export {
+  businessGifts,
+  type Collected,
+  type CursorFetch,
+  chatGifts,
+  cursorPages,
+  type GiftFilters,
+  type OffsetFetch,
+  offsetPages,
+  type Page,
+  type PageOptions,
+  type Pages,
+  profileAudios,
+  profilePhotos,
+  starTransactions,
+  userGifts,
+} from './paginate.js'
 export {
   type AlbumCaption,
   adminRights,
