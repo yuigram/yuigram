@@ -139,8 +139,8 @@ records outgoing calls, and returns scripted responses.
 const { bot, send, calls } = mockBot()
 bot.onCommand('start', (message) => message.reply('hi'))
 
-await send.command('start', { from: { id: 1 } })
-expect(calls.last('sendMessage')).toMatchObject({ text: 'hi' })
+await send.command('/start')
+expect(calls.last('sendMessage')?.params).toMatchObject({ text: 'hi' })
 ```
 
 It drives the **real** dispatch pipeline, so tests exercise actual middleware, filters and
@@ -149,6 +149,47 @@ malformed JSON, network failure mid-request, duplicate `update_id`, and update t
 from the installed schema.
 
 This mock ships publicly as `yuigram/testing`, because users need it to test their own bots.
+
+What an application test needs beyond recording calls is provided without scripting:
+
+- **Common answers.** Sending, forwarding and editing are answered with the message as Telegram
+  would build it; confirmations — answering a button or an inline query, deleting, reacting,
+  pinning, chat actions, join-request decisions, member changes — with `true`. `on` and `once`
+  replace any of them, and anything else fails with a message naming the method.
+- **What a person sees.** `sent` holds the messages the bot sent, and an edit through the harness
+  changes the entry, so a test reads the current text and keyboard.
+- **Pressing a real button.** `send.press(data)` delivers a callback query on the latest sent
+  message with buttons, or a named one, and fails the test if no button on it sends `data`.
+- **What nobody caught.** `errors` collects handler errors that reached no handler, from the
+  bot's logger, so `bot.onError` still takes what it takes.
+- **The other updates a bot receives.** Builders for chosen inline results, reactions,
+  pre-checkout queries, poll answers and join requests, beside the message, callback and inline
+  query ones.
+
+### 3.1a Account harness
+
+`mockAccount()` from `yuigram/testing` (and `@yuigram/mtproto/testing`) does the same for an
+MTProto account: the real account — dispatch, filters, sessions, context operations, peers — over
+a channel that answers from a script instead of a datacenter. No key is exchanged, so a test runs
+in milliseconds and needs no credentials.
+
+```ts
+const { account, send, calls } = mockAccount()
+account.on('message', f.command('ping'), (event) => event.reply('pong'))
+
+await send.message('/ping')
+expect(calls.last('messages.sendMessage')?.query).toMatchObject({ message: 'pong' })
+```
+
+`send.message`, `send.service(action)` and `send.press(data)` deliver updates and write down the
+people and chats they name, as an account does. Sending, editing, deleting, reading, reacting,
+typing and answering a button are answered as Telegram would; `rpcError(code, name)` refuses a
+call through the same conversion a real refusal takes, so a handler sees `RpcError`,
+`FloodError` or `MigrationError` exactly as in production. `calls`, `sent` and `errors` read as
+they do for a bot. Each harness has a storage guard of its own, so harnesses never contend with
+each other for an account name.
+
+The protocol under it is not what this tests; the internal mock server below is.
 
 ### 3.2 Deterministic mock MTProto server
 
