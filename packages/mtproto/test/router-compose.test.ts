@@ -115,7 +115,8 @@ describe('clone', () => {
     const copy = source.clone()
     copy.inject('db' as never, 'second' as never)
 
-    const read = (router: AccountRouter) => (router.deps as unknown as Record<string, unknown>).db
+    const read = (router: AccountRouter) =>
+      (router.deps as unknown as Record<string, unknown>)['db']
 
     expect(read(source)).toBe('first')
     expect(read(copy)).toBe('second')
@@ -177,7 +178,7 @@ describe('extend', () => {
     target.on('message', mark('stopped before it ran'))
     target.extend(other)
 
-    expect((target.deps as unknown as Record<string, unknown>).cache).toBe('from the other')
+    expect((target.deps as unknown as Record<string, unknown>)['cache']).toBe('from the other')
     expect(await run(target, event())).toEqual([])
   })
 
