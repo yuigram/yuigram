@@ -51,6 +51,9 @@
     },
     {
       "path": "18-account-handlers"
+    },
+    {
+      "path": "19-shop"
     }
   ]
 }

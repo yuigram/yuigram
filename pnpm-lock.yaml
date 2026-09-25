@@ -32,6 +32,9 @@ importers:
       '@yuigram/core':
         specifier: workspace:*
         version: link:../packages/core
+      '@yuigram/sqlite':
+        specifier: workspace:*
+        version: link:../packages/sqlite
       yuigram:
         specifier: workspace:*
         version: link:../packages/yuigram
