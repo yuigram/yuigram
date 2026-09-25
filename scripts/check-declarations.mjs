@@ -17,7 +17,14 @@ import { join } from 'node:path'
 const BUDGET = 300 * 1024
 
 /** Packages whose built declarations are published. */
-const ROOTS = ['packages/core/dist', 'packages/bot-api/dist', 'packages/mtproto/dist', 'packages/yuigram/dist']
+const ROOTS = [
+  'packages/core/dist',
+  'packages/bot-api/dist',
+  'packages/mtproto/dist',
+  'packages/yuigram/dist',
+  'packages/sqlite/dist',
+  'packages/redis/dist',
+]
 
 /** Every `.d.ts` under a directory. */
 function declarations(directory) {

@@ -163,10 +163,9 @@ yuigram/
 │   ├── core/          @yuigram/core       transport-agnostic framework
 │   ├── bot-api/       @yuigram/bot-api    Bot API subsystem
 │   ├── mtproto/       @yuigram/mtproto    MTProto subsystem
-│   └── yuigram/       yuigram             the façade
-├── plugins/
-│   ├── storage-redis/   @yuigram/storage-redis
-│   └── storage-sqlite/  @yuigram/storage-sqlite
+│   ├── yuigram/       yuigram             the façade
+│   ├── sqlite/        @yuigram/sqlite     SQLite store and counter, driver supplied
+│   └── redis/         @yuigram/redis      Redis store and counter, client supplied
 ├── schemas/  tools/  examples/  docs/  tests/
 ```
 

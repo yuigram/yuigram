@@ -11,12 +11,16 @@
  * the surface is supposed to produce, by using it.
  */
 
+import { type RedisClient, redisCounter, redisStore } from '@yuigram/redis'
+import { type SqliteDatabase, sqliteCounter, sqliteStore } from '@yuigram/sqlite'
 import {
   type Account,
   type AnyEventContext,
   App,
   Bot,
   encrypted,
+  type KV,
+  limiter,
   type MtprotoApi,
   type MtprotoContext,
   memory,
@@ -141,3 +145,18 @@ export const fromEvent: Promise<TlValue> = mtproto.api.call({ _: 'help.getConfig
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()
+
+// A store over a connection the application opened, typed by what it keeps,
+// and a counter a limiter takes in place of a store.
+declare const database: SqliteDatabase
+export const typedStore: KV<{ readonly count: number }> = sqliteStore<{ readonly count: number }>(
+  database,
+)
+export const sharedLimits = limiter({ counter: sqliteCounter(database) })
+
+// The same through a Redis client of the application's.
+declare const redis: RedisClient
+export const redisSessions: KV<{ readonly count: number }> = redisStore<{ readonly count: number }>(
+  redis,
+)
+export const redisLimits = limiter({ counter: redisCounter(redis) })

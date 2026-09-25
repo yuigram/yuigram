@@ -49,6 +49,22 @@ importers:
       '@yuigram/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@yuigram/sqlite':
+        specifier: workspace:*
+        version: link:../sqlite
+
+  packages/redis:
+    dependencies:
+      '@yuigram/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/sqlite:
+    dependencies:
+      '@yuigram/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/yuigram:
     dependencies:

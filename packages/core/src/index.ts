@@ -185,6 +185,7 @@ export {
   type RateLimitKey,
   type RateLimitMiddlewareRule,
   type RateLimitRule,
+  type WindowCounter,
 } from './limit/rate-limit.js'
 export {
   consoleSink,

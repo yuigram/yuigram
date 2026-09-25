@@ -134,6 +134,11 @@ export const layerBoundaries: Invariant = (workspace): InvariantResult => {
     ['@yuigram/core', ['@yuigram/bot-api', '@yuigram/mtproto', '@yuigram/yuigram', 'yuigram']],
     ['@yuigram/bot-api', ['@yuigram/mtproto', 'yuigram']],
     ['@yuigram/mtproto', ['@yuigram/bot-api', 'yuigram']],
+    // Storage adapters serve both transports through core's contracts, so
+    // either transport importing one, or one importing a transport, would tie
+    // a database to a protocol.
+    ['@yuigram/sqlite', ['@yuigram/bot-api', '@yuigram/mtproto', 'yuigram']],
+    ['@yuigram/redis', ['@yuigram/bot-api', '@yuigram/mtproto', 'yuigram']],
   ])
 
   for (const pkg of workspace.packages) {

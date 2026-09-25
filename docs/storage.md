@@ -44,9 +44,14 @@ and lazy eviction — the framework detects which by feature-probing the driver.
 |---|---|---|---|
 | `memory()` | core | none | Development, tests, ephemeral state |
 | `file(dir)` | core | JSON per key | Small deployments, single process |
-| `sqlite(path)` | `@yuigram/storage-sqlite` | single file | Single-host production |
-| `redis(client)` | `@yuigram/storage-redis` | external | Multi-process, horizontal scale |
-| `sql(client)` | `@yuigram/storage-sql` | external | Existing Postgres/MySQL |
+| `sqliteStore(db)` | `@yuigram/sqlite` | single file | Single-host production, several processes on one file |
+| `redisStore(client)` | `@yuigram/redis` | external | Multi-process, horizontal scale |
+| — | — | external | Existing Postgres/MySQL: an adapter is four methods against the application's own client |
+
+The SQLite and Redis packages take a connection the application opens — `node:sqlite`,
+`better-sqlite3` or `bun:sqlite`; `ioredis` or `redis` — so neither installs a driver, and core
+depends on neither. Each also provides an atomic counter for a limiter shared between processes;
+see [Rate limits across processes](#rate-limits-across-processes).
 
 `memory()` supports an LRU bound so a long-running process cannot leak indefinitely:
 
@@ -81,6 +86,29 @@ A conformance suite for third-party adapters — TTL expiry, concurrent writes, 
 is planned rather than shipped.
 
 ---
+
+### Rate limits across processes
+
+A limiter given a plain store reads a count and writes it back. Within one process it serializes
+hits per key, so the count is exact there; across processes sharing the store, two can read the
+same count between those two steps and both let a hit through. That is the documented limit of a
+plain store, and it fails towards letting a hit or two through, never towards refusing one.
+
+A limiter given a counter instead has the store count each hit in one step of its own:
+
+| Counter | The step | Clock |
+|---|---|---|
+| `sqliteCounter(db)` | one `INSERT … ON CONFLICT DO UPDATE … RETURNING` statement, run under SQLite's write lock | the caller's; processes on one host share it |
+| `redisCounter(client)` | one Lua script: `INCR`, `PEXPIRE` on the first hit, `PTTL` | the Redis server's |
+
+Every hit gets a count of its own however many processes count one key, so the limit holds
+exactly and the time to wait comes from the same step. Refused attempts are counted too. A
+counter's failure — a locked file past its busy timeout, a connection refused — reaches whoever
+asked for the hit as a `StorageError` with the driver's error as its cause; nothing is let
+through by default when the count cannot be taken.
+
+Neither package extends this to account ownership. Two processes can still open one MTProto
+account's area in the same file or Redis database; see below.
 
 ## 3. Composition
 
@@ -200,7 +228,7 @@ This is the concrete reason [sessions.md](sessions.md) §4 rejects a single shar
 |---|---|
 | Development, tests | `memory()` |
 | Single user client | `file('./me.session')` |
-| Many clients, or a large peer cache | `sqlite('./sessions.db')` |
+| Many clients, or a large peer cache | `sqliteStore(await openDatabase('./sessions.db'))` |
 | Distributed | File or SQLite per client, on durable storage |
 
 MTProto sessions do **not** distribute well. A session belongs to exactly one running client;
@@ -411,9 +439,8 @@ Full threat model in [security.md](security.md).
 
 | Phase | Deliverable |
 |---|---|
-| Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, `encrypted()`, the `KV` contract |
-| v0.x | The conformance suite, MTProto file driver |
-| Userland | `redis`, `sqlite`, `sql` — four methods against a client the application already has |
-| Post-1.0 | Official adapters, if the userland ones turn out to disagree with each other |
+| Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, `encrypted()`, the `KV` contract; `@yuigram/sqlite` and `@yuigram/redis`, each a store and an atomic counter over an injected client |
+| v0.x | The conformance suite |
+| Userland | `sql` — four methods against a client the application already has |
 
 Nothing beyond memory and filesystem enters core's dependency tree at any phase.

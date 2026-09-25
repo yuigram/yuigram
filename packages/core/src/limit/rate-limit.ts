@@ -19,12 +19,18 @@
  * sliding window and far cheaper to keep in a store: one small record per key
  * per bucket, which expires with its window.
  *
- * **A shared store shares counts, not atomicity.** Kept in a store two
- * processes read, one person's hits in both are counted together. The store
- * has no compare-and-set, so two processes counting the same key at the same
- * moment can each read the same count; one process serialises its own hits per
- * key, which is where nearly all contention is. The failure is a hit or two
- * let through, never one refused that should not be.
+ * **A shared store shares counts; a counter shares them exactly.** Kept in a
+ * plain store two processes read, one person's hits in both are counted
+ * together. A plain store has no compare-and-set, so two processes counting the
+ * same key at the same moment can each read the same count; one process
+ * serialises its own hits per key, which is where nearly all contention is. The
+ * failure is a hit or two let through, never one refused that should not be.
+ *
+ * A {@link WindowCounter} closes that gap. It counts a hit in one step the
+ * store itself performs — a single statement in a database, a script in Redis —
+ * so any number of processes counting one key each get a count of their own,
+ * and the limit holds exactly. It is what a limiter shared between processes
+ * should be given.
  */
 
 import type { BaseContext } from '../context/types.js'
@@ -71,6 +77,31 @@ export interface RateLimitDecision {
   readonly resetMs: number
 }
 
+/**
+ * A store that counts hits in fixed windows, one indivisible step per hit.
+ *
+ * Given to a limiter in place of a plain store when several processes share
+ * one limit. The step opens a window of `windowMs` when none is open and adds
+ * one to the open one otherwise, and reports the count and the time left from
+ * that same step — never from a separate read that another process could come
+ * between.
+ */
+export interface WindowCounter {
+  /**
+   * Count one hit against a key, and say where the window stands.
+   *
+   * `now` is the caller's clock, for a store with none of its own; a store
+   * that keeps time itself may ignore it.
+   */
+  hit(
+    key: string,
+    windowMs: number,
+    now: number,
+  ): Promise<{ readonly count: number; readonly resetMs: number }>
+  /** Forget a key's window, so its next hit opens a fresh one. */
+  reset(key: string): Promise<void>
+}
+
 /** What an over-limit report is told. */
 export interface RateLimitInfo {
   readonly key: string
@@ -87,6 +118,14 @@ export interface LimiterOptions<C> {
    * Each record expires with its window, so a store with expiry stays small.
    */
   readonly storage?: KV<RateLimitEntry>
+  /**
+   * Where counts are kept, counted atomically by the store itself.
+   *
+   * In place of `storage`, for a limit shared between processes: every hit is
+   * one step the store performs, so the limit holds exactly however many
+   * processes count the same key at once.
+   */
+  readonly counter?: WindowCounter
   /**
    * How a context names who is counted. The sender unless given, so a person
    * is limited wherever they write rather than per chat.
@@ -188,6 +227,12 @@ const defaultSleep = (ms: number, signal?: AbortSignal): Promise<void> =>
  * ```
  */
 export function limiter<C extends BaseContext>(options: LimiterOptions<C> = {}): Limiter<C> {
+  if (options.storage !== undefined && options.counter !== undefined) {
+    throw new ValidationError(
+      'a limiter counts in a store or with a counter, not both: a counter already keeps its counts',
+    )
+  }
+  const counter = options.counter
   // Read at each hit rather than captured, so a clock replaced later is seen.
   const now = options.now ?? (() => Date.now())
   // The default store keeps time by the same clock, so a record expires just
@@ -196,7 +241,7 @@ export function limiter<C extends BaseContext>(options: LimiterOptions<C> = {}):
   // The default store forgets an expired record only when it is read again,
   // and most keys are never read again once their window closes. Walking it
   // now and then drops them, as a store with its own expiry would.
-  const sweeps = options.storage === undefined
+  const sweeps = options.storage === undefined && counter === undefined
   let lastSweep = 0
   const keyOf = options.key ?? (senderOf as RateLimitKey<C>)
   const sleep = options.sleep ?? defaultSleep
@@ -229,6 +274,19 @@ export function limiter<C extends BaseContext>(options: LimiterOptions<C> = {}):
     checkRule(rule)
     const key = String(raw)
     const slot = slotOf(key, rule.bucket)
+
+    if (counter !== undefined) {
+      // One step in the store, so nothing here needs serialising: the store
+      // orders concurrent hits itself, across processes as well as within one.
+      const counted = await counter.hit(slot, rule.windowMs, now())
+
+      return {
+        allowed: counted.count <= rule.limit,
+        key,
+        count: counted.count,
+        resetMs: Math.max(0, counted.resetMs),
+      }
+    }
 
     return await serially(slot, async () => {
       const at = now()
@@ -273,7 +331,9 @@ export function limiter<C extends BaseContext>(options: LimiterOptions<C> = {}):
     },
 
     async reset(raw, bucket) {
-      await storage.delete(slotOf(String(raw), bucket))
+      const slot = slotOf(String(raw), bucket)
+      if (counter !== undefined) await counter.reset(slot)
+      else await storage.delete(slot)
     },
 
     middleware(rule) {

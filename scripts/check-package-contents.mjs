@@ -20,7 +20,7 @@ import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram']
+const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram', 'sqlite', 'redis']
 
 /** Path shapes that must never appear in a published tarball. */
 const FORBIDDEN_PATHS = [

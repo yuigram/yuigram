@@ -229,6 +229,80 @@ describe('the store', () => {
   })
 })
 
+describe('with a counter', () => {
+  /** A counter whose every hit is one step, as a database statement would be. */
+  function fakeCounter() {
+    const windows = new Map<string, { count: number; resetAt: number }>()
+    const calls: Array<[string, number, number]> = []
+    return {
+      calls,
+      windows,
+      async hit(key: string, windowMs: number, now: number) {
+        calls.push([key, windowMs, now])
+        const open = windows.get(key)
+        const next =
+          open === undefined || open.resetAt <= now
+            ? { count: 1, resetAt: now + windowMs }
+            : { count: open.count + 1, resetAt: open.resetAt }
+        windows.set(key, next)
+        return { count: next.count, resetMs: next.resetAt - now }
+      },
+      async reset(key: string) {
+        windows.delete(key)
+      },
+    }
+  }
+
+  it('counts every hit in the counter, by bucket, and decides from what it reports', async () => {
+    const counter = fakeCounter()
+    const time = clock()
+    const limits = limiter<Ctx>({ counter, now: time.now })
+
+    const decisions = []
+    for (let index = 0; index < 3; index += 1) {
+      decisions.push(await limits.hit(7, { limit: 2, windowMs: 5_000, bucket: 'report' }))
+    }
+
+    expect(decisions.map((one) => [one.allowed, one.count, one.resetMs])).toEqual([
+      [true, 1, 5_000],
+      [true, 2, 5_000],
+      [false, 3, 5_000],
+    ])
+    expect(counter.calls.map(([key, windowMs]) => [key, windowMs])).toEqual([
+      ['report:7', 5_000],
+      ['report:7', 5_000],
+      ['report:7', 5_000],
+    ])
+    expect(counter.calls.every(([, , now]) => now === time.now())).toBe(true)
+  })
+
+  it('forgets a key through the counter, and takes no store beside it', async () => {
+    const counter = fakeCounter()
+    const limits = limiter<Ctx>({ counter })
+
+    await limits.hit(7, { limit: 1, windowMs: 60_000 })
+    await limits.reset(7)
+    expect(counter.windows.size).toBe(0)
+
+    expect(() => limiter<Ctx>({ counter, storage: memory<RateLimitEntry>() })).toThrow(
+      ValidationError,
+    )
+  })
+
+  it('passes a counter’s failure to whoever asked for the hit', async () => {
+    const limits = limiter<Ctx>({
+      counter: {
+        hit: async () => {
+          throw new Error('connection refused')
+        },
+        reset: async () => undefined,
+      },
+    })
+
+    await expect(limits.hit(7, { limit: 1, windowMs: 1 })).rejects.toThrow('connection refused')
+  })
+})
+
 describe('reading a key from a context', () => {
   it('counts the sender by default, wherever they write', async () => {
     const limits = limiter<Ctx>({ now: clock().now })

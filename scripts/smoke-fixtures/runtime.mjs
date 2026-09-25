@@ -175,6 +175,27 @@ const response = await bot.webhook()({
 
 check('the webhook handler acknowledges an update', () => response.status === 200)
 
+// The storage adapter, installed on its own, over the runtime's own SQLite.
+const { openDatabase, sqliteCounter, sqliteStore } = await import('@yuigram/sqlite')
+const database = await openDatabase(':memory:')
+const stored = sqliteStore(database)
+await stored.set('k', { kept: true }, { ttl: 60 })
+const kept = await stored.get('k')
+check('the SQLite store keeps a value', () => kept?.kept === true)
+const counted = await sqliteCounter(database).hit('k', 1_000, 0)
+check('the SQLite counter counts a hit', () => counted.count === 1 && counted.resetMs === 1_000)
+database.close()
+
+// The Redis adapter sends commands through whatever client it is given; a
+// function standing in for one shows the installed package's side of that.
+const { redisStore } = await import('@yuigram/redis')
+const sent = []
+await redisStore(async (args) => {
+  sent.push(args)
+  return 'OK'
+}).set('k', 1, { ttl: 2 })
+check('the Redis store sends a write with its expiry', () => sent[0]?.join(' ') === 'SET yuigram:kv:k 1 PX 2000')
+
 for (const [name, result] of checks) {
   process.stdout.write(`  ${result === 'ok' ? 'ok  ' : 'FAIL'}  ${name}\n`)
 }

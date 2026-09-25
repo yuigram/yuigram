@@ -15,6 +15,12 @@
       "path": "packages/yuigram"
     },
     {
+      "path": "packages/sqlite"
+    },
+    {
+      "path": "packages/redis"
+    },
+    {
       "path": "tools/bench"
     },
     {
