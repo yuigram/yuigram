@@ -16,6 +16,8 @@ export {
   type SessionImportOptions,
 } from './account.js'
 export type { MtprotoApi } from './api.js'
+export { type ServerRsaKey, serverRsaKey } from './auth/keys.js'
+export { serverKeysFromPem } from './auth/pem.js'
 export type {
   BotInfo,
   BotInfoTarget,
