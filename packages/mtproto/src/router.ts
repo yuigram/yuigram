@@ -130,6 +130,14 @@ function ofKind(kinds: readonly string[]): AnyFilter {
 /** The dispatcher behind each router, reachable only from this package. */
 const DISPATCHERS = new WeakMap<object, Dispatcher<never>>()
 
+/**
+ * A dispatcher the next router constructed should wrap rather than make.
+ *
+ * How a copy is built around a copied dispatcher without a public constructor
+ * argument that would let anyone wrap one of an account's own.
+ */
+let adopting: Dispatcher<never> | undefined
+
 /** The dispatcher a router registers into, for the account that adds it. */
 export function dispatcherOf<C extends Dispatchable>(router: AccountRouter<never>): Dispatcher<C> {
   const dispatcher = DISPATCHERS.get(router)
@@ -154,10 +162,47 @@ export function dispatcherOf<C extends Dispatchable>(router: AccountRouter<never
  * ```
  */
 export class AccountRouter<Ext = unknown> {
-  readonly #dispatcher = new Dispatcher<MtprotoContext & Ext>()
+  readonly #dispatcher: Dispatcher<MtprotoContext & Ext>
 
   constructor() {
+    this.#dispatcher =
+      (adopting as Dispatcher<MtprotoContext & Ext> | undefined) ??
+      new Dispatcher<MtprotoContext & Ext>()
+    adopting = undefined
     DISPATCHERS.set(this, this.#dispatcher as Dispatcher<never>)
+  }
+
+  /**
+   * A new router with the same registrations, not added anywhere.
+   *
+   * Its middleware, handlers, hooks, catchers and dependencies are this
+   * router's as they stand now; from here on the two are separate, so what is
+   * registered, removed or injected on one is not seen by the other. A
+   * once-handler that has already run here is not in the copy; one that has
+   * not runs once in each. With `children`, the routers inside this one are
+   * copied too; without, the copy has none, since a router belongs to one
+   * parent at a time.
+   */
+  clone(children = false): AccountRouter<Ext> {
+    adopting = this.#dispatcher.clone(children) as Dispatcher<never>
+
+    return new AccountRouter<Ext>()
+  }
+
+  /**
+   * Take in everything another router has, as it stands now.
+   *
+   * A snapshot, unlike {@link AccountRouter.addChild}: the other router's
+   * middleware joins this one's, its handlers are added after this one's own
+   * and share its groups, and copies of its children become children here.
+   * What is registered on it afterwards is not taken in, and it can still be
+   * added somewhere itself.
+   */
+  extend(other: AccountRouter<Ext>): this {
+    if (other === this) throw new ValidationError('a router cannot extend itself')
+    this.#dispatcher.extend(dispatcherOf(other as AccountRouter<never>))
+
+    return this
   }
 
   /** Add middleware around this router's own handlers and children. */

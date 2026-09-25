@@ -360,6 +360,15 @@ own: `account.addChild(router)`, or `account.extend(router)`, which does the sam
 the same registrations an account does, belongs to one parent at a time, and can be taken back out
 with `removeChild`; an update already being dispatched keeps it.
 
+Routers compose the two ways a dispatcher does. `router.clone(children?)` is a new router with the
+same middleware, handlers, hooks, catchers and dependencies as they stand, added nowhere; from then
+on the two are separate, so a feature can be added to two accounts as a router and its copy.
+`router.extend(other)` takes in another router as it stands — its middleware joining this one's,
+its handlers after this one's own and in this one's groups, copies of its children as children —
+and what is registered on `other` later is not taken in. In both, a once-handler that has already
+run is not copied, and one that has not runs once on each side; `off`, `inject` and `removeChild`
+on one side leave the other as it was.
+
 ### Dependencies
 
 `inject(name, value)` makes a value reachable as `deps[name]` from the handlers of a dispatcher
