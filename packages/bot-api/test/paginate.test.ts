@@ -19,7 +19,8 @@ import { mockTransport, ok } from '../src/testing/mock-transport.js'
 const TOKEN = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
 
 /** A list of `size` numbers served by position, recording each request. */
-function byPosition(size: number, total: number | undefined = size) {
+function byPosition(size: number, options: { readonly withTotal?: boolean } = {}) {
+  const total = options.withTotal === false ? undefined : size
   const asked: Array<[number, number]> = []
   const fetch = async (offset: number, limit: number): Promise<Page<number>> => {
     asked.push([offset, limit])
@@ -61,7 +62,7 @@ describe('reading by position', () => {
   })
 
   it('stops on a short page when Telegram gives no total', async () => {
-    const list = byPosition(250, undefined)
+    const list = byPosition(250, { withTotal: false })
     const all = await offsetPages(list.fetch).collect()
 
     expect(all).toHaveLength(250)
