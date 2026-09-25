@@ -1,0 +1,19 @@
+{
+  "name": "@yuigram/live",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Opt-in checks against live Telegram, run by hand with credentials the operator supplies",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "live": "tsx src/cli.ts",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  },
+  "dependencies": {
+    "yuigram": "workspace:*"
+  }
+}

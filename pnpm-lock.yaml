@@ -92,6 +92,12 @@ importers:
 
   tools/invariants: {}
 
+  tools/live:
+    dependencies:
+      yuigram:
+        specifier: workspace:*
+        version: link:../../packages/yuigram
+
   tools/schema:
     devDependencies:
       node-html-parser:
