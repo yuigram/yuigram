@@ -11,6 +11,7 @@ import {
   PluginConflictError,
   PluginCycleError,
   PluginDependencyError,
+  PluginInstallError,
 } from '../src/errors/errors.js'
 import { definePlugin, PluginRegistry, resolveInstallOrder } from '../src/plugin/plugin.js'
 
@@ -219,17 +220,126 @@ describe('PluginRegistry', () => {
     expect(await new PluginRegistry<Target>().install(target())).toEqual([])
   })
 
-  it('propagates an install failure', async () => {
+  it('reports an install failure as the plugin’s, with its own error as the cause', async () => {
     const registry = new PluginRegistry<Target>()
+    const cause = new Error('install failed')
     registry.add(
       definePlugin<string, never, Target>({
         name: 'broken',
         install() {
-          throw new Error('install failed')
+          throw cause
         },
       }),
     )
 
-    await expect(registry.install(target())).rejects.toThrow('install failed')
+    const failure = await registry.install(target()).catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(PluginInstallError)
+    expect(failure).toMatchObject({ plugin: 'broken', cause, cleanup: [] })
+    expect((failure as Error).message).toBe("plugin 'broken' failed to install")
+  })
+})
+
+describe('a round that fails part-way', () => {
+  /** A plugin whose install and dispose are recorded, and whose install may throw. */
+  function tracked(
+    name: string,
+    trail: string[],
+    options: { dependsOn?: readonly string[]; fails?: boolean; disposeFails?: boolean } = {},
+  ) {
+    return definePlugin<string, string, Target>({
+      name,
+      ...(options.dependsOn === undefined ? {} : { dependsOn: options.dependsOn }),
+      install(t) {
+        if (options.fails === true) throw new Error(`${name} cannot start`)
+        t.installed.push(name)
+        trail.push(`install ${name}`)
+        return `${name}-connection`
+      },
+      dispose(value) {
+        trail.push(`dispose ${value}`)
+        if (options.disposeFails === true) throw new Error(`${name} would not close`)
+      },
+    })
+  }
+
+  it('disposes what the round installed, newest first, and records none of it', async () => {
+    const trail: string[] = []
+    const registry = new PluginRegistry<Target>()
+    registry
+      .add(tracked('db', trail))
+      .add(tracked('cache', trail, { dependsOn: ['db'] }))
+      .add(tracked('broken', trail, { dependsOn: ['cache'], fails: true }))
+
+    await expect(registry.install(target())).rejects.toBeInstanceOf(PluginInstallError)
+
+    expect(trail).toEqual([
+      'install db',
+      'install cache',
+      'dispose cache-connection',
+      'dispose db-connection',
+    ])
+    expect(registry.names).toEqual([])
+    expect(registry.get('db')).toBeUndefined()
+  })
+
+  it('tries every disposal and keeps what they threw beside the failure', async () => {
+    const trail: string[] = []
+    const registry = new PluginRegistry<Target>()
+    registry
+      .add(tracked('a', trail, { disposeFails: true }))
+      .add(tracked('b', trail))
+      .add(tracked('c', trail, { fails: true }))
+
+    const failure = (await registry
+      .install(target())
+      .catch((error: unknown) => error)) as InstanceType<typeof PluginInstallError>
+
+    expect(trail).toEqual([
+      'install a',
+      'install b',
+      'dispose b-connection',
+      'dispose a-connection',
+    ])
+    expect(failure.plugin).toBe('c')
+    expect((failure.cause as Error).message).toBe('c cannot start')
+    expect(failure.cleanup.map((error) => (error as Error).message)).toEqual(['a would not close'])
+    expect(failure.message).toMatch(/1 plugin\(s\) installed before it failed to clean up/)
+  })
+
+  it('stays failed: it neither installs again nor takes more plugins', async () => {
+    const trail: string[] = []
+    const registry = new PluginRegistry<Target>()
+    registry.add(tracked('a', trail)).add(tracked('b', trail, { fails: true }))
+
+    const first = await registry.install(target()).catch((error: unknown) => error)
+    const second = await registry.install(target()).catch((error: unknown) => error)
+
+    expect(second).toBe(first)
+    expect(registry.failure).toBe(first)
+    expect(trail.filter((entry) => entry.startsWith('install'))).toEqual(['install a'])
+    expect(() => registry.add(tracked('c', trail))).toThrow(first as Error)
+  })
+
+  it('leaves plugins from an earlier round installed and undisposed', async () => {
+    const trail: string[] = []
+    const registry = new PluginRegistry<Target>()
+    registry.add(tracked('early', trail))
+    await registry.install(target())
+
+    registry.add(tracked('late', trail, { dependsOn: ['early'], fails: true }))
+    await expect(registry.install(target())).rejects.toBeInstanceOf(PluginInstallError)
+
+    expect(trail).toEqual(['install early'])
+    expect(registry.names).toEqual(['early'])
+  })
+
+  it('runs no install at all when the set cannot be ordered', async () => {
+    const trail: string[] = []
+    const registry = new PluginRegistry<Target>()
+    registry.add(tracked('a', trail)).add(tracked('b', trail, { dependsOn: ['missing'] }))
+
+    await expect(registry.install(target())).rejects.toBeInstanceOf(PluginDependencyError)
+    expect(trail).toEqual([])
+    expect(registry.failure).toBeUndefined()
   })
 })

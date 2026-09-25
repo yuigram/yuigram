@@ -8,7 +8,7 @@
  * dispatch is what every transport has in common.
  */
 
-import { createLogger, definePlugin, silentSink } from '@yuigram/core'
+import { createLogger, definePlugin, PluginInstallError, silentSink } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { Bot } from '../src/bot.js'
 import type { Update } from '../src/generated/types/index.js'
@@ -171,5 +171,89 @@ describe('what an installed plugin can do', () => {
     await bot.handleUpdate(update(2))
 
     expect(install).toHaveBeenCalledOnce()
+  })
+})
+
+describe('an install that fails', () => {
+  it('fails the update with the plugin named, disposes what was installed, and stays failed', async () => {
+    const { bot } = testBot()
+    const trail: string[] = []
+    let handled = 0
+
+    bot.extend(
+      definePlugin<'pool', string, Bot>({
+        name: 'pool',
+        install: () => {
+          trail.push('open pool')
+          return 'pool'
+        },
+        dispose: (value) => void trail.push(`close ${value}`),
+      }),
+    )
+    bot.extend(
+      definePlugin<'broken', undefined, Bot>({
+        name: 'broken',
+        dependsOn: ['pool'],
+        install: () => {
+          trail.push('broken')
+          throw new Error('missing configuration')
+        },
+      }),
+    )
+    bot.onMessage(() => {
+      handled += 1
+    })
+
+    const first = await bot.handleUpdate(update(1)).catch((error: unknown) => error)
+    const second = await bot.handleUpdate(update(2)).catch((error: unknown) => error)
+
+    expect(first).toBeInstanceOf(PluginInstallError)
+    expect(first).toMatchObject({ plugin: 'broken' })
+    expect(((first as Error).cause as Error).message).toBe('missing configuration')
+    expect(second).toBe(first)
+    expect(trail).toEqual(['open pool', 'broken', 'close pool'])
+    expect(handled).toBe(0)
+  })
+
+  it('refuses to start polling rather than running with part of its plugins', async () => {
+    const { bot, transport } = testBot()
+    bot.extend(
+      definePlugin<'broken', undefined, Bot>({
+        name: 'broken',
+        install: () => {
+          throw new Error('no')
+        },
+      }),
+    )
+
+    await expect(bot.start()).rejects.toBeInstanceOf(PluginInstallError)
+    expect(transport.count('getUpdates')).toBe(0)
+  })
+
+  it('leaves another bot with the same plugin descriptor unaffected', async () => {
+    const failing = testBot()
+    const working = testBot()
+    const seen: string[] = []
+    // One descriptor, installed on two clients: it fails only on the first.
+    const picky = definePlugin<'picky', undefined, Bot>({
+      name: 'picky',
+      install: (target) => {
+        if (target === failing.bot) throw new Error('not on this one')
+        target.use(async (_event, next) => {
+          seen.push('picky')
+          await next()
+        })
+        return undefined
+      },
+    })
+
+    failing.bot.extend(picky)
+    working.bot.extend(picky)
+    working.bot.onMessage(() => void seen.push('handled'))
+
+    await expect(failing.bot.handleUpdate(update(1))).rejects.toBeInstanceOf(PluginInstallError)
+    await working.bot.handleUpdate(update(1))
+
+    expect(seen).toEqual(['picky', 'handled'])
   })
 })

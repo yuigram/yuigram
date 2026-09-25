@@ -345,8 +345,25 @@ interface Plugin<N extends string, Ext = void> {
   readonly name: N
   readonly dependsOn?: readonly string[]
   install (target: PluginTarget): Ext | Promise<Ext>
+  dispose? (value: Ext, target: PluginTarget): void | Promise<void>
 }
 ```
+
+Plugins are installed before the first update is dispatched, or when polling starts, in
+dependency order. What can go wrong, and when it is found:
+
+| Failure | Error | Found | Left behind |
+|---|---|---|---|
+| Two plugins with one name | `PluginConflictError` | at `extend()` | nothing |
+| A dependency never registered | `PluginDependencyError`, naming both | before any install runs | nothing |
+| A dependency cycle | `PluginCycleError`, with the path | before any install runs | nothing |
+| An install throws | `PluginInstallError`: `plugin`, the thrown error as `cause`, and whatever the rollback's disposals threw as `cleanup` | while installing | the plugins installed before it in that round are disposed, newest first, and not recorded |
+
+After an install failure the client stays failed: every later update, and `start()`, rejects with
+the same error, and no install runs again. Middleware an earlier install registered cannot be
+taken back out of its host, so installing again would register it twice; a client that cannot
+install its plugins is replaced rather than retried. Two clients given one plugin descriptor
+install it separately, and one failing leaves the other as it was.
 
 Extension points, fixed and documented, so plugins never need to reach into internals:
 

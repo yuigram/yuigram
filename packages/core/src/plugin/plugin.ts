@@ -9,10 +9,25 @@
  * Failures are explicit and named. A missing dependency, a duplicate name and
  * a cycle each produce a distinct error identifying the plugins involved,
  * because the alternative — installing in the wrong order and failing later —
- * surfaces as a defect in whichever plugin happened to run first.
+ * surfaces as a defect in whichever plugin happened to run first. All three
+ * are found before any plugin's install runs, so a set that cannot be
+ * installed never half runs.
+ *
+ * An install that throws is the one failure that can only be found by
+ * running. The plugins installed before it in the same round are disposed, in
+ * reverse, so a connection one of them opened is not left open; the failure is
+ * a {@link PluginInstallError} naming the plugin, with its error as the cause;
+ * and the registry stays failed. It does not try again: what the earlier
+ * installs registered on their host cannot be taken back, and installing them
+ * a second time would register it twice.
  */
 
-import { PluginConflictError, PluginCycleError, PluginDependencyError } from '../errors/errors.js'
+import {
+  PluginConflictError,
+  PluginCycleError,
+  PluginDependencyError,
+  PluginInstallError,
+} from '../errors/errors.js'
 
 /**
  * A plugin.
@@ -27,6 +42,15 @@ export interface Plugin<N extends string = string, Ext = void, Target = unknown>
   readonly dependsOn?: readonly string[]
   /** Performs installation and returns the plugin's contribution. */
   install(target: Target): Ext | Promise<Ext>
+  /**
+   * Releases what `install` acquired: a connection, a timer, a subscription.
+   *
+   * Called when a plugin installed after this one fails, with what this
+   * one's install returned, so that a set that did not install leaves nothing
+   * running. Optional: a plugin that only registers middleware has nothing to
+   * release.
+   */
+  dispose?(value: Ext, target: Target): void | Promise<void>
 }
 
 /**
@@ -102,9 +126,16 @@ export interface InstalledPlugin {
 export class PluginRegistry<Target> {
   readonly #pending: Array<Plugin<string, unknown, Target>> = []
   readonly #installed = new Map<string, unknown>()
+  #failure: PluginInstallError | undefined
+
+  /** The install failure this registry is stuck on, if one happened. */
+  get failure(): PluginInstallError | undefined {
+    return this.#failure
+  }
 
   /** Queue a plugin for installation. */
   add(plugin: Plugin<string, unknown, Target>): this {
+    if (this.#failure !== undefined) throw this.#failure
     if (this.#installed.has(plugin.name)) throw new PluginConflictError(plugin.name)
     if (this.#pending.some((queued) => queued.name === plugin.name)) {
       throw new PluginConflictError(plugin.name)
@@ -147,6 +178,7 @@ export class PluginRegistry<Target> {
    * installing in several rounds behaves the same as installing in one.
    */
   async install(target: Target): Promise<readonly InstalledPlugin[]> {
+    if (this.#failure !== undefined) throw this.#failure
     if (this.#pending.length === 0) return []
 
     // Represent already-installed plugins so a new plugin may depend on them.
@@ -154,19 +186,50 @@ export class PluginRegistry<Target> {
       (name) => ({ name, install: () => undefined }),
     )
 
+    // Everything that can be known without running an install is settled
+    // here, before any of them runs.
     const ordered = resolveInstallOrder([...satisfied, ...this.#pending])
     const pendingNames = new Set(this.#pending.map((plugin) => plugin.name))
-    const results: InstalledPlugin[] = []
+    const results: Array<InstalledPlugin & { readonly plugin: Plugin<string, unknown, Target> }> =
+      []
 
     for (const plugin of ordered) {
       if (!pendingNames.has(plugin.name)) continue
 
-      const value = await plugin.install(target)
+      let value: unknown
+      try {
+        value = await plugin.install(target)
+      } catch (error) {
+        const cleanup = await this.#rollBack(results, target)
+        this.#failure = new PluginInstallError(plugin.name, error, cleanup)
+        throw this.#failure
+      }
+      // Recorded at once, so a later install in the same round can read it.
       this.#installed.set(plugin.name, value)
-      results.push({ name: plugin.name, value })
+      results.push({ name: plugin.name, value, plugin })
     }
 
     this.#pending.length = 0
-    return results
+    return results.map(({ name, value }) => ({ name, value }))
+  }
+
+  /** Dispose what a failed round installed, newest first, keeping every error. */
+  async #rollBack(
+    installed: ReadonlyArray<{
+      readonly plugin: Plugin<string, unknown, Target>
+      readonly value: unknown
+    }>,
+    target: Target,
+  ): Promise<unknown[]> {
+    const errors: unknown[] = []
+    for (const { plugin, value } of [...installed].reverse()) {
+      this.#installed.delete(plugin.name)
+      try {
+        await plugin.dispose?.(value, target)
+      } catch (error) {
+        errors.push(error)
+      }
+    }
+    return errors
   }
 }

@@ -173,6 +173,31 @@ export class PluginCycleError extends PluginError {
 }
 
 /**
+ * A plugin's install threw.
+ *
+ * The plugin's own error is the cause. The plugins installed before it in the
+ * same round have been disposed, so nothing they acquired is left open, and
+ * anything their `dispose` threw is kept in `cleanup` rather than hiding the
+ * failure that started it.
+ */
+export class PluginInstallError extends PluginError {
+  override readonly name = 'PluginInstallError'
+  /** The plugin whose install threw. */
+  readonly plugin: string
+  /** What disposing the plugins installed before it threw, in the order they were disposed. */
+  readonly cleanup: readonly unknown[]
+
+  constructor(plugin: string, cause: unknown, cleanup: readonly unknown[] = []) {
+    super(
+      `plugin '${plugin}' failed to install${cleanup.length === 0 ? '' : `, and ${cleanup.length} plugin(s) installed before it failed to clean up`}`,
+      { cause },
+    )
+    this.plugin = plugin
+    this.cleanup = cleanup
+  }
+}
+
+/**
  * Walk the `cause` chain, outermost first.
  *
  * Useful when a wrapped error needs to be inspected for a specific underlying

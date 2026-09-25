@@ -138,6 +138,7 @@ export {
   PluginCycleError,
   PluginDependencyError,
   PluginError,
+  PluginInstallError,
   SessionError,
   StorageError,
   TelegramError,
