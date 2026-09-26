@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Updating messages
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { InlineKeyboardMarkup, InputChecklist, InputMedia, InputRichMessage, LinkPreviewOptions, MessageEntity } from '../types/index.js'
 
@@ -60,7 +60,8 @@ export interface EditMessageTextParams {
 
   /**
    * New rich content of the message; required if text isn't specified. Direct
-   * upload of new files isn't supported when an inline message is edited.
+   * upload of new files and explicit upload of files by a URL isn't supported
+   * when an inline message is edited.
    */
   rich_message?: InputRichMessage | undefined
 
@@ -406,9 +407,10 @@ export interface EditEphemeralMessageTextParams {
   ephemeral_message_id: number
 
   /**
-   * New text of the message, 1-4096 characters after entity parsing
+   * New text of the message, 1-4096 characters after entity parsing; required if
+   * rich_message isn't specified
    */
-  text: string
+  text?: string | undefined
 
   /**
    * Mode for parsing entities in the message text. See formatting options for
@@ -421,6 +423,11 @@ export interface EditEphemeralMessageTextParams {
    * which can be specified instead of parse_mode
    */
   entities?: MessageEntity[] | undefined
+
+  /**
+   * New rich content of the message; required if text isn't specified
+   */
+  rich_message?: InputRichMessage | undefined
 
   /**
    * Link preview generation options for the message
@@ -456,9 +463,7 @@ export interface EditEphemeralMessageMediaParams {
   ephemeral_message_id: number
 
   /**
-   * A JSON-serialized object for the new media content of the message. A new
-   * file can't be uploaded; use a previously uploaded file via its file_id or
-   * specify a URL.
+   * A JSON-serialized object for the new media content of the message
    */
   media: InputMedia
 
@@ -506,6 +511,12 @@ export interface EditEphemeralMessageCaptionParams {
    * can be specified instead of parse_mode
    */
   caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the message media. Supported
+   * only for animation, photo and video messages.
+   */
+  show_caption_above_media?: boolean | undefined
 
   /**
    * A JSON-serialized object for an inline keyboard

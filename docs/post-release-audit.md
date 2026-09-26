@@ -20,13 +20,13 @@ But the surface a user actually touches has two structural defects that make it 
 and one open security alert. Publishing before settling the API means the first breaking change
 lands at `0.2.0`, days after release.
 
-**Verdict on the original mental model.** The instinct — study mature implementations, rebuild
-independently, then combine Bot API and MTProto — was right about *what* to build and wrong about
-*where the difficulty is*. The difficulty is not reproducing functionality. It is deciding what
-the two protocols may share without lying about their differences, and expressing that decision
-in a type system. `unified-model.md` did that analysis correctly. The API then failed to honour
-it: a single `Context` for twenty-six update kinds is precisely the fake abstraction that
-document forbids, applied to events instead of to transports.
+**Where the difficulty actually is.** Studying mature implementations, rebuilding independently
+and then combining Bot API and MTProto is the right *what*. It misplaces the *where*: the
+difficulty is not reproducing functionality. It is deciding what the two protocols may share
+without lying about their differences, and expressing that decision in a type system.
+`unified-model.md` does that analysis correctly. The API then fails to honour it: a single
+`Context` for twenty-six update kinds is precisely the fake abstraction that document forbids,
+applied to events instead of to transports.
 
 **Should the project continue on this foundation?** Yes. The foundation is the layer under the
 API, and it is worth keeping. What needs rewriting is the client surface — perhaps 1,200 lines
@@ -85,7 +85,7 @@ are excluded by `files`. Users installing `yuigram` never receive it.
    *matches* the redaction pattern, or they would pass while redaction was broken. Theirs uses
    a seven-digit id — inside Yuigram's own `\d{6,}` pattern, outside the 8-10 digit window
    scanners match on — and is commented to say so.
-4. Remaining: close the alert as *Used in tests*, which only you can do.
+4. Remaining: close the alert as *Used in tests*, which requires repository admin access.
 5. History is **not** rewritten. Reasoning in §6.
 
 **Breaking change:** no.
@@ -192,8 +192,7 @@ The architecture is in better shape than the API, and most of it should survive.
 **AR1 — The event model contradicts the architecture (MEDIUM, breaking).** The architecture is
 careful never to pretend two transports are the same thing, then the context layer pretends
 twenty-six event kinds are the same thing. The same discipline applied one level up would have
-prevented C2. This is the deepest lesson in the audit: the fake-abstraction rule was applied to
-transports and not to events.
+prevented C2: the fake-abstraction rule was applied to transports and not to events.
 
 **AR2 — `@yuigram/mtproto` is an empty package in the tree (LOW, not breaking).** It exports
 one constant. It is `private` and unpublished, so it costs users nothing, and it does hold the
@@ -241,7 +240,7 @@ mistake rather than an exposure.
 
 ## 6. Repository Problems
 
-### The reset question, answered
+### Whether to reset the repository
 
 **Recommendation: keep the current repository. Do not reset.**
 
@@ -250,7 +249,7 @@ mistake rather than an exposure.
 | | |
 |---|---|
 | History | 51 commits, all conventional, single author (`coupdev`) — verified across every blob |
-| Contributors | Clean: only you. `github-actions[bot]` was removed by rewriting one commit |
+| Contributors | Single author; `github-actions[bot]` was removed by rewriting one commit |
 | Remaining debt | The fabricated token in 7 commits |
 | Work required | Replace fixtures, close the alert, land the API redesign |
 
@@ -271,10 +270,9 @@ it to this repository at a specific commit. Deleting the repository breaks that 
 permanently, and a broken attestation on a security-conscious framework is worse than a closed
 false-positive alert.
 
-**If you want the history perfectly clean anyway**, the middle path is a targeted rewrite of the
-7 affected commits with `git filter-repo`, not a new repository. My recommendation is against
-even that: it would be the second history rewrite in two days, for a string that was never
-secret, and each rewrite invalidates every commit SHA anyone has referenced.
+**A middle path exists**: a targeted rewrite of the 7 affected commits with `git filter-repo`
+rather than a new repository. It is still not worth doing, for a string that was never secret —
+every rewrite invalidates each commit SHA anyone has referenced.
 
 ### Other repository issues
 
@@ -284,7 +282,7 @@ secret, and each rewrite invalidates every commit SHA anyone has referenced.
 | R2 | `docs/` has 23 documents; three are now design-history rather than current guidance | LOW |
 | R3 | Examples 02, 03, 04, 09, 10 absent — honestly marked as pending, but the numbering gaps read as incomplete | LOW |
 
-R1 has a clean fix: apply the change as your own commit and close the PR unmerged.
+R1 has a clean fix: apply the change as a normal commit and close the PR unmerged.
 
 ---
 
@@ -360,14 +358,14 @@ surface renames.
 
 ## 10. Recovery Plan
 
-Staged. Nothing begins until Phase 2's API direction is approved.
+Staged, because Phase 2 sets the surface every later phase is written against.
 
 ### Phase 1 — Security and repository cleanup
 *Small, independent, no API impact. Can start immediately.*
 
 - Replace all token-shaped fixtures with unmistakable placeholders (C1, S2)
 - Close the secret scanning alert as *Used in tests*
-- Apply Dependabot PR #1 as your own commit; close the PR (R1)
+- Apply Dependabot PR #1 as a normal commit; close the PR (R1)
 - Fix `schema-drift.yml` permissions
 - Diagnose why changesets did not push tags (RL2)
 
@@ -420,11 +418,10 @@ to the API. Phase 2 is the decision point, and no implementation should start be
 Yuigram is not a project that needs rescuing. It is a project whose front door was fitted before
 the design was settled, on a house that is otherwise well built.
 
-The original mental model — reproduce the functionality, then combine the two protocols — did
-underestimate the work, but it underestimated it in a specific and recoverable way. The hard
-part was never reproducing features. It was deciding what may be unified without lying, and
-encoding that decision in types. That analysis exists and is correct. The API simply has not
-been brought into line with it yet.
+Planning the work as "reproduce the functionality, then combine the two protocols"
+underestimates it, in a specific and recoverable way. The hard part is not reproducing
+features. It is deciding what may be unified without lying, and encoding that decision in
+types. That analysis exists and is correct. The API has not been brought into line with it yet.
 
 Fixing that is a rewrite of roughly a quarter of the hand-written code, on top of a foundation
 worth keeping.

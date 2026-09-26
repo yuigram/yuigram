@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Inline mode
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { InlineKeyboardMarkup, LinkPreviewOptions, Location, MessageEntity, User, WebAppInfo } from './available-types.js'
 import type { LabeledPrice } from './payments.js'
@@ -1514,7 +1514,8 @@ export interface InputTextMessageContent {
  */
 export interface InputRichMessageContent {
   /**
-   * The message to be sent
+   * The message to be sent. Only previously uploaded files may be used in the
+   * message.
    */
   readonly rich_message: InputRichMessage
 }

@@ -159,6 +159,6 @@ matches as well as selects.
 
 ### Reading order
 
-The reasoning behind each decision is in [api-decisions.md](api-decisions.md), the review that
-prompted them in [api-review.md](api-review.md), and the resulting surface in
+The reasoning behind each decision is in [api-decisions.md](api-decisions.md), the assessment of
+the `0.1.0` surface it answers in [api-review.md](api-review.md), and the resulting surface in
 [api-design.md](api-design.md).
