@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Getting updates
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
 import type { ChosenInlineResult, InlineQuery } from './inline-mode.js'
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './payments.js'
 
@@ -178,6 +178,11 @@ export interface Update {
    * User payment subscription has changed
    */
   readonly subscription?: BotSubscriptionUpdated | undefined
+
+  /**
+   * A user asked the bot to stop the generation of a message
+   */
+  readonly stopped_message_generation?: MessageGenerationStopped | undefined
 }
 
 /**
