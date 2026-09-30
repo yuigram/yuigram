@@ -10,12 +10,14 @@
  *   HTTP                 GET /key      the public key, as PKCS#1 PEM
  *                        POST /deliver push an update down the newest live connection
  *                        GET /closed   how many connections have ended
+ *                        GET /datacenter?name=…  the TCP port of a datacenter for one account
  *                        /bot<t>/getMe a Bot API stand-in; /bot<t>/slow never answers
  * ```
  *
- * A fresh one per runtime: a datacenter remembers the long-lived key its first
- * client bound, and refuses another client's binding, which is a fact about
- * the peer rather than about the client under test.
+ * A fresh set per runtime, and a datacenter per account within it: a mock
+ * datacenter remembers the long-lived key its first client bound, and refuses
+ * another client's binding, which is a fact about the peer rather than about
+ * the client under test.
  */
 
 import { createPublicKey } from 'node:crypto'
@@ -56,59 +58,92 @@ export async function startDatacenter(): Promise<Datacenter> {
     .export({ type: 'pkcs1', format: 'pem' })
     .toString()
 
-  const tcp = createTcp()
-  await new Promise<void>((resolve) => tcp.listen(0, '127.0.0.1', resolve))
-  const tcpPort = (tcp.address() as { port: number }).port
-
-  const datacenter = new MockDatacenter({
-    id: 2,
-    host: '127.0.0.1',
-    port: tcpPort,
-    key,
-    scope: new TlScope('runtime-matrix', [CORE, MTPROTO, API]),
-    serverTime: ORIGIN_SECONDS,
-  })
-
   const live: {
     send(bytes: Uint8Array): void
     push(value: TlValue): Uint8Array | undefined
     open(): boolean
   }[] = []
+  const sockets = new Set<import('node:net').Socket>()
+  const listeners: ReturnType<typeof createTcp>[] = []
   let closed = 0
 
-  const attach = (send: (bytes: Uint8Array) => void, end: () => void, open: () => boolean) => {
-    const before = datacenter.connections.length
-    const stream = datacenter.connect({
+  /** Carry one connection into a datacenter, and its answers back out. */
+  const attach = (
+    place: MockDatacenter,
+    port: number,
+    send: (bytes: Uint8Array) => void,
+    end: () => void,
+    open: () => boolean,
+  ) => {
+    const before = place.connections.length
+    const stream = place.connect({
       host: '127.0.0.1',
-      port: tcpPort,
+      port,
       onData: (bytes) => {
         if (open()) send(bytes)
       },
       onClose: () => end(),
     })
-    const opened = datacenter.connections[before]
+    const opened = place.connections[before]
     if (opened !== undefined) live.push({ send, push: (value) => opened.peer.push(value), open })
     return stream
   }
 
-  const sockets = new Set<import('node:net').Socket>()
-  tcp.on('connection', (socket) => {
-    sockets.add(socket)
-    let open = true
-    const stream = attach(
-      (bytes) => socket.write(bytes),
-      () => socket.end(),
-      () => open,
-    )
-    socket.on('data', (data: Buffer) => stream.write(new Uint8Array(data)))
-    socket.on('close', () => {
-      sockets.delete(socket)
-      open = false
-      closed += 1
-      stream.close()
+  /**
+   * A datacenter of its own, on a port of its own, for one account.
+   *
+   * A mock datacenter remembers the long-lived key the first account bound and
+   * refuses another account's binding, so each account a run brings up is given
+   * one. They share the key, so one PEM serves them all.
+   */
+  const standUp = async (): Promise<{ place: MockDatacenter; port: number }> => {
+    const tcp = createTcp()
+    await new Promise<void>((resolve) => tcp.listen(0, '127.0.0.1', resolve))
+    listeners.push(tcp)
+    const port = (tcp.address() as { port: number }).port
+    const place = new MockDatacenter({
+      id: 2,
+      host: '127.0.0.1',
+      port,
+      key,
+      scope: new TlScope('runtime-matrix', [CORE, MTPROTO, API]),
+      serverTime: ORIGIN_SECONDS,
     })
-    socket.on('error', () => undefined)
-  })
+
+    tcp.on('connection', (socket) => {
+      sockets.add(socket)
+      let open = true
+      const stream = attach(
+        place,
+        port,
+        (bytes) => socket.write(bytes),
+        () => socket.end(),
+        () => open,
+      )
+      socket.on('data', (data: Buffer) => stream.write(new Uint8Array(data)))
+      socket.on('close', () => {
+        sockets.delete(socket)
+        open = false
+        closed += 1
+        stream.close()
+      })
+      socket.on('error', () => undefined)
+    })
+
+    return { place, port }
+  }
+
+  const named = new Map<string, Promise<{ place: MockDatacenter; port: number }>>()
+  const datacenterFor = (name: string) => {
+    let found = named.get(name)
+    if (found === undefined) {
+      found = standUp()
+      named.set(name, found)
+    }
+    return found
+  }
+  const main = await datacenterFor('main')
+  const tcpPort = main.port
 
   /** Push an update down the newest connection that can carry one. */
   const deliver = (): boolean => {
@@ -142,7 +177,14 @@ export async function startDatacenter(): Promise<Datacenter> {
   }
 
   const http = createHttp((request, response) => {
-    const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+    const path = url.pathname
+    if (path === '/datacenter') {
+      void datacenterFor(url.searchParams.get('name') ?? 'main').then(({ port }) =>
+        response.end(String(port)),
+      )
+      return
+    }
     const route = routes[path]
     if (route !== undefined) {
       route(response)
@@ -168,6 +210,8 @@ export async function startDatacenter(): Promise<Datacenter> {
   serveWebSockets(http, {
     '/mtproto': (peer) => {
       const stream = attach(
+        main.place,
+        main.port,
         (bytes) => peer.send(bytes),
         () => peer.close(),
         () => peer.open,
@@ -192,7 +236,7 @@ export async function startDatacenter(): Promise<Datacenter> {
       for (const socket of sockets) socket.destroy()
       await Promise.all([
         new Promise((resolve) => http.close(resolve)),
-        new Promise((resolve) => tcp.close(resolve)),
+        ...listeners.map((tcp) => new Promise((resolve) => tcp.close(resolve))),
       ])
     },
   }

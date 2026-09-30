@@ -77,6 +77,7 @@ function install(): string {
   sh('npm', ['install', '--no-audit', '--no-fund', '--silent'], workspace)
   copyFileSync(join(clients, 'matrix.mjs'), join(workspace, 'matrix.mjs'))
   copyFileSync(join(clients, 'worker.mjs'), join(workspace, 'worker-src.mjs'))
+  copyFileSync(join(clients, 'worker-host.mjs'), join(workspace, 'worker-host.mjs'))
   return workspace
 }
 

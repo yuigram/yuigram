@@ -228,6 +228,82 @@ await check('stopping closes the connection and lets the runtime exit', async ()
   return `stopped; the datacenter saw ${after - before} connection(s) close`
 })
 
+// ---- an application's view: published exports only --------------------------------
+/** A datacenter for one account, so accounts in a run never share a peer. */
+const portFor = async (name) =>
+  Number(await (await fetch(`http://127.0.0.1:${httpPort}/datacenter?name=${name}`)).text())
+
+const bootstrap = (port) => ({
+  thisDc: 2,
+  testMode: true,
+  options: [{ id: 2, host: '127.0.0.1', port, ipv6: false, mediaOnly: false, tcpoOnly: false, cdn: false, static: true, thisPortOnly: true, secret: undefined }],
+})
+
+await check('an account keeps its authorization in a persistent store across a restart', async () => {
+  const pem = await (await fetch(`http://127.0.0.1:${httpPort}/key`)).text()
+  const t0 = Date.now()
+  const settings = {
+    name: 'kept',
+    apiId: 1,
+    apiHash: 'matrix',
+    keys: yuigram.serverKeysFromPem(pem),
+    now: () => 1_700_000_000_000 + (Date.now() - t0),
+    bootstrap: bootstrap(await portFor('kept')),
+  }
+  const place = join(directory, 'account')
+
+  const first = new yuigram.Account({ ...settings, storage: yuigram.file(place) })
+  await first.connect()
+  await first.api.call({ _: 'help.getConfig' })
+  const before = await first.exportSession()
+  await first.stop({ timeout: 1000 })
+
+  // Another run over the same directory: the authorization is read back rather
+  // than negotiated again, so the session it exports is the same one.
+  const second = new yuigram.Account({ ...settings, storage: yuigram.file(place) })
+  await second.connect()
+  await second.api.call({ _: 'help.getConfig' })
+  const after = await second.exportSession()
+  await second.stop({ timeout: 1000 })
+
+  expect(before === after, 'the second run negotiated a different authorization')
+  return 'file() store: stopped, reopened, same authorization, call answered'
+})
+
+await check('an account hosted in a worker thread is driven from the main thread', async () => {
+  const { Worker } = await import('node:worker_threads')
+  const { attachAccount, workerEndpoint } = await import('yuigram/worker')
+  const pem = await (await fetch(`http://127.0.0.1:${httpPort}/key`)).text()
+  const worker = new Worker(new URL('./worker-host.mjs', import.meta.url), {
+    workerData: { pem, tcpPort: await portFor('hosted'), origin: 1_700_000_000_000 },
+  })
+  try {
+    const remote = await attachAccount(workerEndpoint(worker), { account: 'hosted' })
+    await remote.connect()
+    const config = await remote.api.call({ _: 'help.getConfig' })
+    const state = await remote.read('state')
+    await remote.detach()
+    expect(typeof config._ === 'string' && state === 'running', `answered ${config._}, state ${state}`)
+    return `connected in the worker, help.getConfig answered '${config._}', state ${state}`
+  } finally {
+    await worker.terminate()
+  }
+})
+
+await check('server keys come from the published PEM form and fingerprint as Telegram names them', async () => {
+  const pem = await (await fetch(`http://127.0.0.1:${httpPort}/key`)).text()
+  const keys = yuigram.serverKeysFromPem(pem)
+  expect(keys.length === 1 && typeof keys[0].fingerprint === 'bigint', 'no key read')
+  let refused = false
+  try {
+    yuigram.serverKeysFromPem(['-----BEGIN PUBLIC KEY-----', 'not a key', '-----END PUBLIC KEY-----'].join('\n'))
+  } catch {
+    refused = true
+  }
+  expect(refused, 'a malformed key was accepted')
+  return `1 key, fingerprint ${BigInt.asUintN(64, keys[0].fingerprint).toString(16)}; a malformed one refused`
+})
+
 await rm(directory, { recursive: true, force: true })
 const failed = results.filter((one) => !one.ok)
 console.log(`SUMMARY ${runtime}: ${results.length - failed.length}/${results.length} passed`)
