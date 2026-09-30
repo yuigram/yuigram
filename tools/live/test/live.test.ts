@@ -33,6 +33,7 @@ const accountEnv = {
 const environment = (overrides: Partial<LiveEnvironment> = {}): LiveEnvironment => ({
   checks: [],
   allowWrites: false,
+  allowSession: false,
   bot: { token: TOKEN, chat: '-100200' },
   account: undefined,
   secrets: [TOKEN],
@@ -68,6 +69,7 @@ describe('reading the environment', () => {
     expect(readEnvironment({})).toEqual({
       checks: [],
       allowWrites: false,
+      allowSession: false,
       bot: undefined,
       account: undefined,
       secrets: [],
@@ -132,7 +134,8 @@ describe('choosing what runs', () => {
     expect(chosen.run.map((check) => check.id)).toEqual(['bot.identity'])
     expect(Object.fromEntries(chosen.refused)).toEqual({
       'bot.message': 'it writes, and YUIGRAM_LIVE_ALLOW_WRITES is not 1',
-      'account.connect': 'it needs account, which is not configured',
+      'account.connect':
+        "it connects as the account, which binds a temporary key and records this client among the account's sessions, and YUIGRAM_LIVE_ALLOW_SESSION is not 1",
       'no.such': 'no such check',
     })
   })
@@ -152,6 +155,32 @@ describe('choosing what runs', () => {
   it('keeps every write check out of the read tier', () => {
     const writes = CHECKS.filter((check) => /message|saved|draft|update/.test(check.id))
     expect(writes.every((check) => check.tier === 'write')).toBe(true)
+  })
+
+  it('never calls connecting as the account read-only', () => {
+    const usingAccount = CHECKS.filter((check) => check.needs.includes('account'))
+    expect(usingAccount.length).toBeGreaterThan(0)
+    expect(usingAccount.every((check) => check.tier !== 'read')).toBe(true)
+    expect(CHECKS.filter((check) => check.tier === 'read').map((check) => check.id)).toEqual([
+      'bot.identity',
+      'bot.webhook',
+      'bot.commands',
+    ])
+  })
+
+  it('refuses an account check without the session opt-in, writes allowed or not', () => {
+    const account = {} as never
+    for (const allowWrites of [false, true]) {
+      const chosen = select(
+        environment({ checks: ['account.connect', 'account.saved'], allowWrites, account }),
+      )
+      expect(chosen.run).toEqual([])
+      expect(chosen.refused.get('account.connect')).toMatch(/YUIGRAM_LIVE_ALLOW_SESSION/)
+    }
+    const allowed = select(
+      environment({ checks: ['account.connect'], allowSession: true, account }),
+    )
+    expect(allowed.run.map((check) => check.id)).toEqual(['account.connect'])
   })
 })
 
@@ -205,6 +234,7 @@ describe('running', () => {
     const reports = await runChecks(
       environment({
         checks: ['account.connect', 'account.identity', 'account.dialogs'],
+        allowSession: true,
         account: {} as never,
       }),
       { bot: () => expect.unreachable(), account: async () => account },
@@ -229,6 +259,7 @@ describe('running', () => {
       environment({
         checks: ['account.stream', 'account.mention'],
         allowWrites: true,
+        allowSession: true,
         account: {} as never,
       }),
       {

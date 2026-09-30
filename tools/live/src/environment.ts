@@ -14,6 +14,8 @@ import { type ServerRsaKey, type SessionFormat, serverKeysFromPem } from 'yuigra
 export const VARIABLES = {
   YUIGRAM_LIVE_CHECKS: 'Comma-separated check ids to run. Nothing runs without it.',
   YUIGRAM_LIVE_ALLOW_WRITES: 'Set to 1 to allow checks that send, edit or delete anything.',
+  YUIGRAM_LIVE_ALLOW_SESSION:
+    "Set to 1 to allow checks that connect as the account. Connecting binds a temporary key and records this client among the account's active sessions: it is not read-only.",
   YUIGRAM_LIVE_BOT_TOKEN: 'A bot token from @BotFather, for the bot checks.',
   YUIGRAM_LIVE_BOT_CHAT:
     'A chat the bot may write to, for the bot write checks: a test group or your own private chat with the bot.',
@@ -50,6 +52,8 @@ export interface AccountSettings {
 export interface LiveEnvironment {
   readonly checks: readonly string[]
   readonly allowWrites: boolean
+  /** Whether checks may connect as the account, which changes state on Telegram's side. */
+  readonly allowSession: boolean
   readonly bot: BotSettings | undefined
   readonly account: AccountSettings | undefined
   /** Every secret the environment holds, so output can be scrubbed of each. */
@@ -149,6 +153,7 @@ export function readEnvironment(
   return {
     checks,
     allowWrites: present(env, 'YUIGRAM_LIVE_ALLOW_WRITES') === '1',
+    allowSession: present(env, 'YUIGRAM_LIVE_ALLOW_SESSION') === '1',
     bot,
     account,
     secrets,

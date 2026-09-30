@@ -9,9 +9,11 @@
  * See docs/live-verification.md for the variables and the checklist.
  */
 
-import { Account, Bot, createLogger, memory, silentSink } from 'yuigram'
+import { Bot, createLogger, silentSink } from 'yuigram'
+import { accountFromSession } from './account.js'
 import { CHECKS, type LiveAccount, type LiveBot, type StreamFunction } from './checks.js'
 import { EnvironmentError, readEnvironment, VARIABLES } from './environment.js'
+import { LOGIN_VARIABLES } from './login.js'
 import { scrubber } from './redact.js'
 import { runChecks } from './runner.js'
 
@@ -23,7 +25,7 @@ if (process.argv.includes('--list')) {
     process.stdout.write(`${''.padEnd(28)}${check.does}; expects ${check.expects}\n`)
   }
   process.stdout.write('\nvariables:\n')
-  for (const [name, meaning] of Object.entries(VARIABLES))
+  for (const [name, meaning] of Object.entries({ ...VARIABLES, ...LOGIN_VARIABLES }))
     process.stdout.write(`  ${name}\n    ${meaning}\n`)
   process.exit(0)
 }
@@ -59,35 +61,7 @@ const reports = await runChecks(
     account: async () => {
       const settings = environment.account
       if (settings === undefined) throw new Error('no account is configured')
-      const options = [
-        ...(settings.dc === undefined
-          ? []
-          : [
-              {
-                id: settings.dc.id,
-                host: settings.dc.host,
-                port: settings.dc.port,
-                ipv6: settings.dc.host.includes(':'),
-                mediaOnly: false,
-                cdn: false,
-                secret: undefined,
-                tcpoOnly: false,
-                thisPortOnly: false,
-                static: false,
-              },
-            ]),
-      ]
-      return Account.fromString(settings.session, {
-        apiId: settings.apiId,
-        apiHash: settings.apiHash,
-        keys: settings.keys,
-        bootstrap: { thisDc: settings.dc?.id ?? 2, testMode: settings.testMode, options },
-        // Nothing is kept: the session string is re-supplied on every run.
-        storage: memory(),
-        name: 'live',
-        format: settings.format,
-        log,
-      }) as unknown as LiveAccount
+      return accountFromSession(settings, log) as unknown as LiveAccount
     },
     // Loaded only when a check streams, as an application would load it.
     stream: async () => (await import('yuigram/stream')).streamTo as unknown as StreamFunction,

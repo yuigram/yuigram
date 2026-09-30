@@ -54,6 +54,16 @@ export function select(
       refused.set(id, 'it writes, and YUIGRAM_LIVE_ALLOW_WRITES is not 1')
       continue
     }
+    // Any check that uses the account connects as it, which is a change on
+    // Telegram's side of its own, whatever else the check does.
+    if (check.needs.includes('account') && !environment.allowSession) {
+      refused.set(
+        id,
+        'it connects as the account, which binds a temporary key and records this client among ' +
+          "the account's sessions, and YUIGRAM_LIVE_ALLOW_SESSION is not 1",
+      )
+      continue
+    }
     const missing = check.needs.filter(
       (need) =>
         (need === 'bot' && environment.bot === undefined) ||

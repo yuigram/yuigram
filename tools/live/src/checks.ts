@@ -108,7 +108,16 @@ export interface CheckContext {
 /** One check. */
 export interface LiveCheck {
   readonly id: string
-  readonly tier: 'read' | 'write'
+  /**
+   * What running it does to Telegram's state.
+   *
+   * - `read` — asks and changes nothing: the bot checks.
+   * - `session` — connects as the account. No message is touched, but a
+   *   temporary key is bound and this client is recorded among the account's
+   *   active sessions, so it is not read-only.
+   * - `write` — sends, edits or deletes, and undoes what it did.
+   */
+  readonly tier: 'read' | 'session' | 'write'
   readonly needs: readonly ('bot' | 'account' | 'bot chat' | 'account chat')[]
   /** What it does, in a line. */
   readonly does: string
@@ -166,7 +175,7 @@ export const CHECKS: readonly LiveCheck[] = [
   },
   {
     id: 'account.connect',
-    tier: 'read',
+    tier: 'session',
     needs: ['account'],
     does: 'connect with the session, then help.getConfig',
     expects: 'no new authorization key; a configuration naming a datacenter',
@@ -181,7 +190,7 @@ export const CHECKS: readonly LiveCheck[] = [
   },
   {
     id: 'account.identity',
-    tier: 'read',
+    tier: 'session',
     needs: ['account'],
     does: 'the account reads its own user',
     expects: 'a user; whether it is a bot is reported',
@@ -192,7 +201,7 @@ export const CHECKS: readonly LiveCheck[] = [
   },
   {
     id: 'account.dialogs',
-    tier: 'read',
+    tier: 'session',
     needs: ['account'],
     does: 'walk at most one conversation',
     expects: 'no more than one, and no error',
@@ -205,7 +214,7 @@ export const CHECKS: readonly LiveCheck[] = [
   },
   {
     id: 'account.session',
-    tier: 'read',
+    tier: 'session',
     needs: ['account'],
     does: 'export the session in both layouts and read each back',
     expects: 'both carry the same key; only lengths are printed',
