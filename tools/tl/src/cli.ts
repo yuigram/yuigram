@@ -3,20 +3,28 @@
  *
  * ```
  * fetch        download both documents, parse, write .tl and IR snapshots
- * emit         IR -> generated TypeScript, offline
+ * errors       read Telegram's error database, write errors.json
+ * emit         IR and errors.json -> generated TypeScript, offline
  * crosscheck   compare the IR against Telegram's own JSON rendering
  * ```
  *
- * `fetch` is the only command that touches the network, and it is run by a
+ * `fetch`, `errors` and `crosscheck` touch the network, and are run by a
  * person. `emit` reads only what is committed, so a build never depends on
  * Telegram being reachable.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { crosscheck, describeCrosscheck, fetchReferenceJson } from './crosscheck.js'
 import { emitAll } from './emit/index.js'
+import {
+  ERROR_DATABASE,
+  type ErrorSnapshot,
+  emitErrors,
+  readErrorDatabase,
+  serializeErrorSnapshot,
+} from './errors.js'
 import { download, extractLayer, extractSchemaText, layerFromText, SOURCES } from './fetch.js'
 import type { TlSchema } from './ir.js'
 import { parseSchema } from './parse.js'
@@ -100,7 +108,11 @@ async function commandFetch(fromClient: boolean): Promise<void> {
 
 function commandEmit(): void {
   const { mtproto, api, layer } = loadSchemas()
-  const files = emitAll({ mtproto, api, layer })
+  const errors = readErrorSnapshot()
+  const files = [
+    ...emitAll({ mtproto, api, layer }),
+    ...(errors === undefined ? [] : [emitErrors(errors)]),
+  ]
 
   for (const file of files) {
     const target = join(OUTPUT_DIR, file.path)
@@ -109,6 +121,44 @@ function commandEmit(): void {
   }
 
   process.stdout.write(`emitted ${files.length} files from TL layer ${layer}\n`)
+}
+
+/** The committed error snapshot, where one has been fetched. */
+export function readErrorSnapshot(): ErrorSnapshot | undefined {
+  const path = join(SCHEMA_DIR, 'errors.json')
+  return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as ErrorSnapshot) : undefined
+}
+
+/**
+ * Read Telegram's error database and keep what `readErrorDatabase` keeps.
+ *
+ * One document. It is refused as a whole if its shape is not the one this
+ * reads, so nothing is written from a layout that changed underneath.
+ */
+async function commandErrors(): Promise<void> {
+  const { layer } = loadSchemas()
+  const response = await fetch(ERROR_DATABASE, { headers: { accept: 'application/json' } })
+  if (!response.ok) throw new Error(`${ERROR_DATABASE} responded ${response.status}`)
+  const database = readErrorDatabase(await response.text(), ERROR_DATABASE)
+
+  const snapshot: ErrorSnapshot = {
+    provenance: {
+      source: ERROR_DATABASE,
+      retrieved: new Date().toISOString().slice(0, 10),
+      databaseLayer: database.layer,
+      schemaLayer: layer,
+      recorded:
+        'Error codes, names and the methods listed for each. The descriptions are not recorded. ' +
+        'Not exhaustive: Telegram may send a name the database does not list.',
+    },
+    errors: database.errors,
+  }
+
+  writeFileSync(join(SCHEMA_DIR, 'errors.json'), serializeErrorSnapshot(snapshot))
+  process.stdout.write(
+    `read ${Object.keys(database.errors).length} error names from the database at layer ` +
+      `${database.layer}; the schema is at layer ${layer}\n`,
+  )
 }
 
 async function commandCrosscheck(): Promise<void> {
@@ -149,6 +199,7 @@ the API rendering is layer ${publishedLayer} and this repository is pinned to ${
 
 const COMMANDS: Record<string, (flags: readonly string[]) => void | Promise<void>> = {
   fetch: async (flags) => await commandFetch(flags.includes('--from-client')),
+  errors: commandErrors,
   emit: commandEmit,
   crosscheck: commandCrosscheck,
 }

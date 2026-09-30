@@ -645,8 +645,25 @@ where `parameter` cannot. `RpcError.BAD_REQUEST`, `FLOOD` and the rest name Tele
 
 There is one class rather than a class per name. The names are Telegram's vocabulary, and a new
 one arrives without a release; a class per name would make the newest refusals the ones that
-cannot be caught by type. What is not provided is a catalogue of the names Telegram uses, to
-type `text` as a union.
+cannot be caught by type.
+
+The names Telegram documents are types, not values. `schemas/tl/errors.json` records Telegram's
+own error database — `core.telegram.org/api/errors.json`, read by `pnpm --filter
+@yuigram/tl-codegen errors` — reduced to codes, names and the methods listed for each; the
+database's descriptions are not kept. From it the emitter writes two unions and nothing else:
+
+| Type | Holds | Used by |
+| --- | --- | --- |
+| `DocumentedErrorPattern` | each name as the database writes it, `%d` included: `'FLOOD_WAIT_%d'`, `'FILE_PART_%d_MISSING'` | `is`, `argument`, `isRpcError`, as completions |
+| `DocumentedErrorText` | the same names as they arrive: `` `FLOOD_WAIT_${number}` `` | `RpcError.text` |
+
+Both are open: `RpcErrorPattern` and `RpcErrorText` add every other string, because the
+database is not a complete list — it trails the layers, and a method may fail with a name it does
+not mention — and a name nobody listed is still a refusal to handle. `error.is(pattern)` narrows
+`text` to the name matched, through `RpcErrorTextOf`. The module compiles to an empty file and
+no entry point loads it, so the list costs a consumer's editor something and a running program
+nothing. The classification above is by shape and does not consult the list: a new `*_WAIT_N`
+is still a flood and a new redirection still a migration.
 
 #### What survives a restart
 

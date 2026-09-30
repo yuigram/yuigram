@@ -234,15 +234,24 @@ format would be unbuildable offline, non-reproducible, and a supply-chain surfac
 #### How a schema enters the repository
 
 ```
-pnpm --filter @yuigram/tl fetch           download both documents
+pnpm --filter @yuigram/tl-codegen fetch         download both documents
         │
         ├─> schemas/tl/api.<layer>.tl     the raw text, verbatim
         ├─> schemas/tl/mtproto.tl         the raw text, verbatim
         ├─> schemas/tl/api.<layer>.json   the parsed IR
         └─> schemas/tl/mtproto.json       the parsed IR
 
-pnpm --filter @yuigram/tl emit            IR -> generated TypeScript, offline
+pnpm --filter @yuigram/tl-codegen errors        download Telegram's error database
+        │
+        └─> schemas/tl/errors.json        codes, names and methods; descriptions not kept
+
+pnpm --filter @yuigram/tl-codegen emit          IR and errors.json -> generated TypeScript, offline
 ```
+
+The error database is a separate document with a layer of its own, usually a little behind the
+schema's. It is read into types only (`generated/errors.ts`), so a difference between the two
+layers makes a name missing from completion rather than a request refused; `docs/mtproto.md`
+§6.3 describes what the types do.
 
 Both the raw text and the IR are committed. The raw text is what makes a parser change
 reviewable: a diff of the IR alone cannot distinguish "Telegram changed the schema" from "the

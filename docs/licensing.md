@@ -28,6 +28,7 @@ Verified against published package metadata and `LICENSE` files on 2026-08-19.
 | Telethon `errors.csv` | — | MIT | LonamiWebs |
 | Telegram TL schema | layer 223 | *unstated* — see §5 | Telegram |
 | Telegram Bot API documentation | 10.2 | *unstated* — see §5 | Telegram |
+| Telegram error database (`/api/errors.json`) — codes, names and methods only | layer 227 | *unstated* — see §5 | Telegram |
 
 ---
 
@@ -191,6 +192,7 @@ than assuming.
 | **Server RSA public keys** | Public keys — data, not code | Safe. Published in Telegram's own MTProto documentation; take them from there, **not** from Telegram Desktop or Android source. |
 | Telegram client source (Desktop / Android) | **GPL-family** | **Do not read, port, or copy.** Copying would force GPL onto Yuigram. mtcute notes its RSA keys were "manually extracted from Telegram for Android source" — Yuigram will use the published documentation instead, to avoid inheriting that question. |
 | Telethon `errors.csv` | MIT | Safe with attribution, if used for the MTProto error table. |
+| Telegram's error database (`/api/errors.json`) | Error codes and names, and the methods listed for each: facts about the interface | Same reasoning as the Bot API surface. Its `descriptions` are Telegram's prose and are not recorded. |
 
 Two concrete mitigations for the verbatim-description flag:
 

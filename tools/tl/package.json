@@ -10,6 +10,7 @@
   },
   "scripts": {
     "fetch": "tsx src/cli.ts fetch",
+    "errors": "tsx src/cli.ts errors",
     "emit": "tsx src/cli.ts emit",
     "crosscheck": "tsx src/cli.ts crosscheck",
     "build": "tsc --build",

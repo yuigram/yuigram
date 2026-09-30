@@ -130,6 +130,32 @@ describe('a refusal, read', () => {
   })
 })
 
+describe('names the documentation does not list', () => {
+  it('are read, matched and carried exactly as the documented ones are', () => {
+    // The typed names are completions, not a gate: a name Telegram added after
+    // the database was read is an ordinary refusal with its fields.
+    const error = rpcErrorToException(refusal(400, 'SOMETHING_NEW_12_INVALID')) as RpcError
+
+    expect(error).toBeInstanceOf(RpcError)
+    expect(error.text).toBe('SOMETHING_NEW_12_INVALID')
+    expect(error.parameter).toBe(12)
+    expect(error.is('SOMETHING_NEW_%d_INVALID')).toBe(true)
+    expect(error.argument('SOMETHING_NEW_%d_INVALID')).toBe(12)
+    expect(isRpcError(error, 'SOMETHING_NEW_%d_INVALID')).toBe(true)
+  })
+
+  it('still become the shared flood and the migration by shape, listed or not', () => {
+    const wait = rpcErrorToException(refusal(420, 'NEW_KIND_WAIT_9'))
+    const moved = rpcErrorToException(refusal(303, 'FILE_MIGRATE_4'))
+
+    expect(wait).toBeInstanceOf(FloodError)
+    expect((wait as FloodError).retryAfter).toBe(9)
+    expect(isRpcError(wait, 'NEW_KIND_WAIT_%d')).toBe(true)
+    expect(moved).toBeInstanceOf(MigrationError)
+    expect((moved as MigrationError).dcId).toBe(4)
+  })
+})
+
 describe('across a worker', () => {
   it('comes back as the class it was, with every field and the matching', () => {
     const refused = deserializeError(

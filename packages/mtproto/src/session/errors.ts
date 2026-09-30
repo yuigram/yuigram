@@ -8,7 +8,32 @@
  */
 
 import { type ErrorOptions, FloodError, SessionError, TelegramError } from '@yuigram/core'
+import type { DocumentedErrorPattern, DocumentedErrorText } from '../generated/errors.js'
 import type { TlValue } from '../tl/index.js'
+
+/**
+ * A name to match a refusal against: exact, or with `%d` where it carries a
+ * number.
+ *
+ * The names Telegram's method pages list are offered as completions, and any
+ * other string is accepted — the pages are not a complete list, and a name
+ * that is not on them is still a name Telegram sends.
+ */
+export type RpcErrorPattern = DocumentedErrorPattern | (string & Record<never, never>)
+
+/**
+ * What a refusal's `text` can be: a documented name with its number in place,
+ * or any other.
+ */
+export type RpcErrorText = DocumentedErrorText | (string & Record<never, never>)
+
+/**
+ * The text a pattern stands for: `` `FLOOD_WAIT_${number}` `` for
+ * `'FLOOD_WAIT_%d'`, and the name itself for one with no `%d`.
+ */
+export type RpcErrorTextOf<Pattern extends string> = Pattern extends `${infer Head}%d${infer Tail}`
+  ? `${Head}${number}${RpcErrorTextOf<Tail>}`
+  : Pattern
 
 /**
  * An error naming how many seconds to wait before trying again.
@@ -87,8 +112,13 @@ export class RpcError extends TelegramError {
   /** Telegram's error code: 400, 403, 420 and so on. */
   readonly code: number
 
-  /** Telegram's name for the failure, exactly as sent. */
-  readonly text: string
+  /**
+   * Telegram's name for the failure, exactly as sent.
+   *
+   * Typed so that the documented names complete; narrowed by {@link RpcError.is}
+   * to the name matched.
+   */
+  readonly text: RpcErrorText
 
   /**
    * The number a name carries: `3600` in `PASSWORD_TOO_FRESH_3600`, `2` in
@@ -132,7 +162,7 @@ export class RpcError extends TelegramError {
    * `PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_5MIN` read with
    * `'PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_%dMIN'` — as well as one of its own.
    */
-  argument(pattern: string): number | undefined {
+  argument(pattern: RpcErrorPattern): number | undefined {
     const found = patternOf(pattern).exec(this.text)
     return found?.[1] === undefined ? undefined : Number(found[1])
   }
@@ -141,9 +171,12 @@ export class RpcError extends TelegramError {
    * Whether Telegram named this failure `pattern`.
    *
    * Exact, or with `%d` standing for the number a name ends in:
-   * `'FILE_MIGRATE_%d'`, `'SLOWMODE_WAIT_%d'`.
+   * `'FILE_MIGRATE_%d'`, `'SLOWMODE_WAIT_%d'`. Where it did, `text` is known to
+   * be that name from then on.
    */
-  is(pattern: string): boolean {
+  is<const Pattern extends RpcErrorPattern>(
+    pattern: Pattern,
+  ): this is this & { readonly text: RpcErrorTextOf<Pattern> } {
     return matchesName(this.text, pattern)
   }
 }
@@ -171,7 +204,7 @@ function matchesName(text: string, pattern: string): boolean {
  * Telegram's name on their cause, so `isRpcError(error, 'SLOWMODE_WAIT_%d')` and
  * `isRpcError(error, 'FLOOD_WAIT_%d')` tell a slow chat from a flood.
  */
-export function isRpcError(error: unknown, pattern: string): error is TelegramError {
+export function isRpcError(error: unknown, pattern: RpcErrorPattern): error is TelegramError {
   if (error instanceof RpcError) return error.is(pattern)
   const cause = (error as { readonly cause?: unknown } | undefined)?.cause as
     | { readonly _?: unknown; readonly error_message?: unknown }

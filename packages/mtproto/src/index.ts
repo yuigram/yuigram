@@ -196,6 +196,7 @@ export type {
   TopicIcon,
   TopicRef,
 } from './forums/topics.js'
+export type { DocumentedErrorPattern, DocumentedErrorText } from './generated/errors.js'
 export { TL_LAYER } from './generated/schema-info.js'
 export type {
   GiftNote,
@@ -436,6 +437,9 @@ export {
   MigrationError,
   type MigrationKind,
   RpcError,
+  type RpcErrorPattern,
+  type RpcErrorText,
+  type RpcErrorTextOf,
 } from './session/errors.js'
 export type {
   BoundCalls,

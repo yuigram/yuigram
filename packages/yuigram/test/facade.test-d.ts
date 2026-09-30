@@ -27,6 +27,9 @@ import type {
   PeerIdentity,
   PeerRef,
   PhotoThumbnail,
+  RpcError,
+  RpcErrorPattern,
+  RpcErrorText,
   TelegramLink,
   Thumbnail,
   ThumbnailAvailability,
@@ -212,5 +215,14 @@ describe('the thumbnails of a photo or a document', () => {
       .parameter(0)
       .toEqualTypeOf<MediaDownloadOptions | undefined>()
     expectTypeOf<MediaDownloadOptions['thumbnail']>().toEqualTypeOf<string | undefined>()
+  })
+})
+
+describe('the names Telegram documents for a refusal', () => {
+  it('are published as open unions, never as any', () => {
+    expectTypeOf<RpcErrorPattern>().not.toBeAny()
+    expectTypeOf<'FLOOD_WAIT_%d'>().toExtend<RpcErrorPattern>()
+    expectTypeOf<'NOT_IN_ANY_LIST'>().toExtend<RpcErrorPattern>()
+    expectTypeOf<RpcError['text']>().toEqualTypeOf<RpcErrorText>()
   })
 })
