@@ -12,7 +12,13 @@
  * timer are supplied, so every wait below is a fact rather than a delay.
  */
 
-import { CancelledError, NetworkError, TelegramError, ValidationError } from '@yuigram/core'
+import {
+  CancelledError,
+  ConfigError,
+  NetworkError,
+  TelegramError,
+  ValidationError,
+} from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { AuthKey } from '../src/message/auth-key.js'
 import { AUTH_KEY_NOT_FOUND, type Channel, TransportError } from '../src/network/channel.js'
@@ -524,6 +530,30 @@ describe('a channel that ended', () => {
     channels[1]?.emit({ kind: 'reset', reason: 'from the one in use' })
 
     expect(events).toEqual([{ kind: 'reset', reason: 'from the one in use' }])
+  })
+})
+
+describe('a failure no retry can mend', () => {
+  it('refuses everyone waiting at once, arms no retry, and tries once more for the next call', async () => {
+    const { layer, script, timers, opened, failures } = harness()
+    const wrong = new ConfigError('this account holds no server keys')
+    script.push({ fail: wrong }, { fail: wrong })
+
+    const connection = layer.get()
+    const first = connection.ready().catch((error: unknown) => error)
+    const second = connection.ready().catch((error: unknown) => error)
+
+    expect(await first).toBe(wrong)
+    expect(await second).toBe(wrong)
+    expect(timers).toEqual([])
+    expect(failures).toEqual([wrong])
+    expect(connection.state).toBe('idle')
+
+    // The account is still built wrong, so the next call is told the same, from
+    // one fresh attempt rather than from a retry loop it was never told about.
+    expect(await connection.ready().catch((error: unknown) => error)).toBe(wrong)
+    expect(opened).toHaveLength(2)
+    expect(timers).toEqual([])
   })
 })
 

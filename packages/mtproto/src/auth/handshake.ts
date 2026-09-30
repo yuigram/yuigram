@@ -24,7 +24,7 @@
  * switch that is found turned off in production.
  */
 
-import { YuigramError } from '@yuigram/core'
+import { ConfigError, YuigramError } from '@yuigram/core'
 import { modPow } from '../crypto/bigint.js'
 import { bigIntToBytesBE, bytesToBigIntBE, concatBytes, equalBytes } from '../crypto/bytes.js'
 import { factorizePq } from '../crypto/factorize.js'
@@ -228,7 +228,16 @@ export class Handshake {
       offered.some((fingerprint) => fingerprint === held.fingerprint),
     )
     if (key === undefined) {
-      throw new HandshakeError('the server offered no key this client holds')
+      // Configuration rather than circumstance: the keys an account holds are
+      // fixed when it is built, so no later attempt could hold a different one.
+      const named = offered.map((fingerprint) =>
+        BigInt.asUintN(64, BigInt(fingerprint as bigint)).toString(16),
+      )
+      throw new ConfigError(
+        `the datacenter offered server keys ${named.join(', ')} and this account holds none of ` +
+          'them. Give the account the keys Telegram publishes for the network it connects to — ' +
+          '`serverKeysFromPem` reads them — and the test network’s keys for the test network.',
+      )
     }
 
     this.#newNonce = this.#draw(32)

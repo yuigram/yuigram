@@ -33,7 +33,7 @@
  * arrives, and that is not a repeat.
  */
 
-import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
+import { CancelledError, ConfigError, NetworkError, ValidationError } from '@yuigram/core'
 import { randomBytes } from '../crypto/random.js'
 import type { InvokeOptions } from '../session/connection.js'
 import type { SessionEvent } from '../session/dispatcher.js'
@@ -513,6 +513,19 @@ class Logical implements ManagedConnection {
     this.#channel = undefined
     this.#attempt = undefined
     this.#abort = undefined
+
+    // A failure no retry can mend — the account was built wrong — is handed to
+    // everyone waiting instead of being tried again forever while they wait.
+    // The connection goes back to idle, so a later call makes one fresh attempt
+    // and is told the same thing.
+    if (error instanceof ConfigError) {
+      this.#options.onFailure?.(this, error)
+      this.#failures = 0
+      this.#enter('idle')
+      this.#settleAll(error)
+      return
+    }
+
     this.#enter('waiting')
 
     // Only a key that was actually presented can have been refused. An attempt

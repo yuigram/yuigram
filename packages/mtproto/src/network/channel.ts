@@ -26,7 +26,13 @@
  * persistence out of the live machinery.
  */
 
-import { CancelledError, type ErrorOptions, NetworkError, ValidationError } from '@yuigram/core'
+import {
+  CancelledError,
+  ConfigError,
+  type ErrorOptions,
+  NetworkError,
+  ValidationError,
+} from '@yuigram/core'
 import { bindTemporaryKey } from '../auth/bind.js'
 import { Handshake } from '../auth/handshake.js'
 import type { ServerRsaKey } from '../auth/keys.js'
@@ -381,7 +387,12 @@ function negotiate(options: {
   accept: (wiring: Wiring) => void
 }): Promise<KnownAuthorization> {
   if (options.keys.length === 0) {
-    throw new ValidationError('a channel with no authorization needs server keys to obtain one')
+    // The account was built without keys, which no retry can supply.
+    throw new ConfigError(
+      'this account holds no server keys, and a first key exchange needs one to verify the ' +
+        'datacenter by. Pass `keys` when building it — `serverKeysFromPem` reads the ones ' +
+        'Telegram publishes.',
+    )
   }
 
   const handshake = new Handshake({

@@ -12,7 +12,7 @@
  * than waits.
  */
 
-import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
+import { CancelledError, ConfigError, NetworkError, ValidationError } from '@yuigram/core'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { serverRsaKey } from '../src/auth/keys.js'
 import { authKeyId } from '../src/crypto/kdf.js'
@@ -208,7 +208,7 @@ describe('opening a channel', () => {
   it('refuses to open with neither an authorization nor keys to obtain one', async () => {
     const { opened } = await channel({ keys: [] })
 
-    await expect(opened).rejects.toBeInstanceOf(ValidationError)
+    await expect(opened).rejects.toBeInstanceOf(ConfigError)
   })
 
   it('leaves nothing open when the stream cannot be opened', async () => {

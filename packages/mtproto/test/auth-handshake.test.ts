@@ -14,6 +14,7 @@
  */
 
 import { createHash } from 'node:crypto'
+import { ConfigError } from '@yuigram/core'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Handshake, HandshakeError } from '../src/auth/handshake.js'
 import { rsaKeyFingerprint, serverRsaKey } from '../src/auth/keys.js'
@@ -294,8 +295,12 @@ describe('the exchange refuses', () => {
     expect(reject(['malformed-res-pq']).message).toMatch(/expected 'resPQ', received 'pong'/)
   })
 
-  it('a key fingerprint this client does not hold', () => {
-    expect(reject(['unknown-fingerprint']).message).toMatch(/no key this client holds/)
+  it('a key fingerprint this client does not hold, as a matter of how it was built', () => {
+    // Configuration rather than circumstance: no later attempt holds other keys.
+    const refused = reject(['unknown-fingerprint'])
+    expect(refused).toBeInstanceOf(ConfigError)
+    expect(refused.message).toMatch(/holds none of them/)
+    expect(refused.message).toMatch(/serverKeysFromPem/)
   })
 
   it('an encrypted answer whose hash does not cover it', () => {
