@@ -367,7 +367,13 @@ runs with `--allow-all`. These were run on Windows x64.
 The run found one defect, fixed: `encrypted()` rejected every write on Bun (footnote ⁸ above).
 
 Closing any of these means running against that runtime in continuous integration, which is the
-honest way to turn an "expected" into a "run".
+honest way to turn an "expected" into a "run". The `Runtimes` job in `.github/workflows/ci.yml`
+does that on Linux with the versions in the table: Bun and Deno from their setup actions at those
+exact versions, Miniflare installed into a directory of its own outside the workspace, and the
+matrix run with `--strict`, so a runtime that cannot be found fails the job instead of being
+reported as not run. The runner stops each datacenter, runtime and worker it started when the run
+passes, fails or is interrupted. The table above records the local Windows run; a CI result is
+recorded here only once the job has run.
 
 
 ---

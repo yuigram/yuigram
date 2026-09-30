@@ -105,6 +105,91 @@ jobs:
       - name: Smoke test the published packages
         run: pnpm smoke
 
+  runtimes:
+    name: Runtimes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # Exact versions: `docs/runtimes.md` names the ones the claims were made
+      # against, and a runtime moving under the job would change the claim.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.9.6'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # workerd through Miniflare is a large download and not a dependency of
+      # this repository. It goes into a directory of its own, outside the
+      # workspace, so nothing it brings reaches the packages being tested.
+      - name: Install workerd for the edge check
+        run: npm install --prefix "$RUNNER_TEMP/miniflare" --no-audit --no-fund miniflare@4.20260730.0
+
+      # Builds, packs and installs the packages as an application would, then
+      # runs the same checks on each runtime against a local stand-in
+      # datacenter. `--strict` makes a runtime that could not be found a
+      # failure rather than a line saying it was not run. The runner stops the
+      # datacenters, runtimes and worker it started on success, failure and
+      # interruption. Nothing here reaches Telegram or a hosting provider.
+      - name: Node, Bun, Deno and workerd
+        env:
+          YUIGRAM_MINIFLARE: ${{ runner.temp }}/miniflare
+        run: pnpm --filter @yuigram/runtime-matrix run matrix --strict
+
+  redis:
+    name: Real Redis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A service container is started before the steps and removed after them
+    # whatever the outcome, cancellation included.
+    services:
+      redis:
+        image: redis:8.10.2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # The suites that are skipped without a server: the store and counter
+      # through both client libraries, several processes contending on one
+      # bucket, and account leases across processes. The client libraries are
+      # development dependencies of the adapter, never runtime ones.
+      - name: Store, counter and leases against the server
+        env:
+          YUIGRAM_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+        run: pnpm exec vitest run packages/redis/test/redis-live.test.ts packages/mtproto/test/storage-lease-processes.test.ts
+
   provenance:
     name: Independence
     runs-on: ubuntu-latest

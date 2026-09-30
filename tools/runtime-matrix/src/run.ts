@@ -13,13 +13,19 @@
  * ```sh
  * pnpm --filter @yuigram/runtime-matrix run matrix              # every runtime found
  * pnpm --filter @yuigram/runtime-matrix run matrix node deno    # these only
+ * pnpm --filter @yuigram/runtime-matrix run matrix --strict     # a runtime not found fails
  * ```
  *
  * Bun and Deno are taken from `YUIGRAM_BUN` and `YUIGRAM_DENO`, or from `PATH`.
  * The edge worker runs in workerd through Miniflare, taken from the directory
  * `YUIGRAM_MINIFLARE` names (one containing `node_modules/miniflare`): it is a
  * large download, so it is not a dependency of this repository. A runtime that
- * cannot be found is reported as not run, never as passed.
+ * cannot be found is reported as not run, never as passed; with `--strict`, as
+ * CI runs it, that fails the run too.
+ *
+ * Whatever this starts — a datacenter per runtime, the runtime's own process,
+ * the worker, the installed workspace — is stopped and removed on the way out,
+ * whether the run passed, failed or was interrupted.
  */
 
 import { execFileSync, spawn } from 'node:child_process'
@@ -108,12 +114,25 @@ function locate(runtime: string): { command: string; args: string[] } | string {
   return `unknown runtime '${runtime}'`
 }
 
+/**
+ * What is running now and has to be stopped if the run is interrupted.
+ *
+ * Only what this process started: the runtime it spawned, and the datacenter
+ * and worker it holds. Nothing is found and stopped by name.
+ */
+const running = {
+  child: undefined as ReturnType<typeof spawn> | undefined,
+  closers: new Set<() => Promise<void>>(),
+}
+
 /** Run the client under one runtime, against a datacenter of its own. */
 async function runClient(runtime: string, workspace: string): Promise<Outcome> {
   const found = locate(runtime)
   if (typeof found === 'string') return { runtime, status: 'not run', lines: [found] }
 
   const datacenter = await startDatacenter()
+  const closeDatacenter = () => datacenter.close()
+  running.closers.add(closeDatacenter)
   try {
     const output = await new Promise<string>((resolve) => {
       let text = ''
@@ -126,6 +145,7 @@ async function runClient(runtime: string, workspace: string): Promise<Outcome> {
           shell: process.platform === 'win32' && runtime !== 'node',
         },
       )
+      running.child = child
       const timer = setTimeout(() => child.kill(), 120_000)
       child.stdout.on('data', (chunk: Buffer) => {
         text += chunk.toString()
@@ -135,6 +155,7 @@ async function runClient(runtime: string, workspace: string): Promise<Outcome> {
       })
       child.on('close', (code) => {
         clearTimeout(timer)
+        running.child = undefined
         resolve(`${text}\nexit ${code}`)
       })
     })
@@ -150,6 +171,7 @@ async function runClient(runtime: string, workspace: string): Promise<Outcome> {
       lines: passed ? lines : output.split('\n'),
     }
   } finally {
+    running.closers.delete(closeDatacenter)
     await datacenter.close()
   }
 }
@@ -192,6 +214,11 @@ async function runEdge(workspace: string): Promise<Outcome> {
     modulesRoot: workspace,
     compatibilityDate: '2026-07-01',
   })
+  const closeEdge = async () => {
+    await worker.dispose()
+    await datacenter.close()
+  }
+  running.closers.add(closeEdge)
   try {
     const response = await worker.dispatchFetch(`http://localhost/run?http=${datacenter.httpPort}`)
     const results = (await response.json()) as { name: string; ok: boolean; detail: string }[]
@@ -200,15 +227,29 @@ async function runEdge(workspace: string): Promise<Outcome> {
     const failed = reached.length > 0 || results.some((one) => !one.ok)
     return { runtime: 'workerd', status: failed ? 'failed' : 'passed', lines }
   } finally {
-    await worker.dispose()
-    await datacenter.close()
+    running.closers.delete(closeEdge)
+    await closeEdge()
   }
 }
 
-const asked = process.argv.slice(2)
+const strict = process.argv.includes('--strict')
+const asked = process.argv.slice(2).filter((argument) => argument !== '--strict')
 const runtimes = asked.length > 0 ? asked : ['node', 'bun', 'deno', 'workerd']
 const workspace = install()
 const outcomes: Outcome[] = []
+
+// An interrupted run — a cancelled CI job, a terminal's Ctrl-C — stops what it
+// started before it goes, rather than leaving a runtime or a listener behind.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    running.child?.kill()
+    void Promise.allSettled([...running.closers].map((close) => close())).finally(() => {
+      rmSync(workspace, { recursive: true, force: true })
+      process.exit(signal === 'SIGINT' ? 130 : 143)
+    })
+  })
+}
+
 try {
   for (const runtime of runtimes) {
     outcomes.push(
@@ -223,4 +264,7 @@ for (const outcome of outcomes) {
   process.stdout.write(`\n== ${outcome.runtime}: ${outcome.status}\n`)
   for (const line of outcome.lines) process.stdout.write(`   ${line}\n`)
 }
-process.exit(outcomes.some((outcome) => outcome.status === 'failed') ? 1 : 0)
+const failed = outcomes.some(
+  (outcome) => outcome.status === 'failed' || (strict && outcome.status === 'not run'),
+)
+process.exit(failed ? 1 : 0)

@@ -307,6 +307,35 @@ the external review is for, and it is why it is a release gate rather than an op
 The blocking set must stay under about fifteen minutes. A slow required suite gets bypassed,
 and a bypassed suite is worse than no suite because it produces false confidence.
 
+### 7.1 Against real runtimes and a real Redis
+
+Two jobs in `.github/workflows/ci.yml` run what the ordinary suite cannot:
+
+| Job | What it runs | What it starts, and how it ends |
+| --- | --- | --- |
+| `Runtimes` | `tools/runtime-matrix --strict`: the packed packages on Node, Bun 1.4.2, Deno 2.9.6 and workerd (Miniflare 4.20260730.0), against a local stand-in datacenter | A datacenter per runtime, the runtime's process and the worker, all stopped by the runner on success, failure or interruption |
+| `Real Redis` | `redis-live.test.ts` and `storage-lease-processes.test.ts` with `YUIGRAM_TEST_REDIS_URL` set | A `redis:8.10.2` service container, removed by the runner whatever the outcome |
+
+Neither reaches Telegram or a hosting provider. The same runs, locally:
+
+```sh
+# Real Redis: any server this suite may write to. Keys go under a namespace of
+# their own and are removed afterwards; database 15 keeps them apart from others.
+docker run --rm -d --name yuigram-redis -p 6379:6379 redis:8.10.2
+pnpm build
+YUIGRAM_TEST_REDIS_URL=redis://127.0.0.1:6379/15 pnpm exec vitest run \
+  packages/redis/test/redis-live.test.ts packages/mtproto/test/storage-lease-processes.test.ts
+docker stop yuigram-redis
+
+# Runtimes: point at the runtimes and a directory with Miniflare installed.
+YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… \
+  pnpm --filter @yuigram/runtime-matrix run matrix --strict
+```
+
+Without `YUIGRAM_TEST_REDIS_URL` both Redis suites skip every case and say so, which is why the
+ordinary `Test` step passes without a server and why this job exists. The Redis client libraries
+are development dependencies of `@yuigram/redis`, never runtime ones.
+
 ---
 
 ## 8. Coverage policy
