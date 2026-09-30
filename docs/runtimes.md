@@ -334,7 +334,8 @@ and base64 on four live paths; and the five-second prime validation above.
 
 `tools/runtime-matrix` builds and packs the packages, installs the archives into a temporary
 directory the way an application would, and runs one set of checks under each runtime against a
-fresh mock datacenter hosted by the tool — the test suite's own peer, doing the real exchange:
+fresh mock datacenter hosted by the tool for each account the run brings up — the test suite's own
+peer, doing the real exchange:
 
 ```sh
 YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… pnpm --filter @yuigram/runtime-matrix run matrix
@@ -352,6 +353,9 @@ YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… pnpm --filter @yuigram/ru
 | `@yuigram/sqlite`: values, expiry, a fenced lease | ✓ | ✓ | ✓ | not offered |
 | Key from PEM, key exchange, encrypted call, pushed update dispatched | TCP | TCP | TCP | WebSocket |
 | Stop closes the connection | ✓ | ✓ | ✓ | ✓ from the worker's side |
+| An account stopped and reopened over one `file()` store keeps its authorization | ✓ | ✓ | ✓ | not offered |
+| An account hosted in a `worker_threads` worker, driven through `yuigram/worker` | ✓ | ✓ | ✓ | not run |
+| Server keys read from PEM; a malformed PEM refused | ✓ | ✓ | ✓ | through the exchange above |
 
 Bun and Deno are taken from `YUIGRAM_BUN` and `YUIGRAM_DENO` or `PATH`; Miniflare, a large download,
 from the directory `YUIGRAM_MINIFLARE` names rather than from this repository's dependencies. A
