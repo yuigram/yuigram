@@ -289,6 +289,64 @@ describe('a reference the datacenter has refused', () => {
     expect(asked.at(-1)?.['_']).toBe('messages.getMessages')
   })
 
+  it('keeps the thumbnail it was asked for when the reference is put right', async () => {
+    // The selector and the reference travel in the same location. Refreshing
+    // one must not lose the other, or the retry fetches the whole document
+    // where a preview was asked for.
+    const withThumbs = (reference: Uint8Array): TlValue => {
+      const message = messageWith(reference)
+      const media = message['media'] as TlValue
+
+      return {
+        ...message,
+        media: {
+          ...media,
+          document: {
+            ...(media['document'] as TlValue),
+            thumbs: [{ _: 'photoSize', type: 'm', w: 320, h: 180, size: 1_500 }],
+          },
+        },
+      }
+    }
+    const { actions, captured } = context(() => ({
+      _: 'messages.messages',
+      messages: [withThumbs(SECOND)],
+      chats: [],
+      users: [],
+    }))
+    const arrived: TlValue = {
+      _: 'updateNewMessage',
+      message: withThumbs(FIRST),
+      pts: 1,
+      pts_count: 1,
+    }
+
+    await updateActions(normalizeUpdate(arrived), actions).download({ thumbnail: 'm' })
+
+    expect(captured.request).toEqual({
+      dcId: 4,
+      size: 1_500,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: FILE,
+        access_hash: 5n,
+        file_reference: FIRST,
+        thumb_size: 'm',
+      },
+    })
+
+    const references = captured.references as ManagedLocation
+    await references.refresh(FIRST)
+
+    expect(references.current()).toEqual({
+      _: 'inputDocumentFileLocation',
+      id: FILE,
+      access_hash: 5n,
+      file_reference: SECOND,
+      thumb_size: 'm',
+    })
+  })
+
   it('does not take a photo reference for the document it is fetching', async () => {
     // Documents and photos are numbered separately, so one of each can carry
     // the same identifier. Matching on the number alone would hand the

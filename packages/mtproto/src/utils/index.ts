@@ -23,5 +23,12 @@ export {
   richTextToFormatted,
   walkPageBlocks,
 } from './pages.js'
-export { inflatePath, type OutlineOptions, outlineSvg, strippedToJpeg } from './thumbnails.js'
+export {
+  type EmbeddedThumbnail,
+  embeddedThumbnail,
+  inflatePath,
+  type OutlineOptions,
+  outlineSvg,
+  strippedToJpeg,
+} from './thumbnails.js'
 export { decodeWaveform, encodeWaveform } from './waveform.js'

@@ -8,6 +8,7 @@
  */
 
 import { describe, expectTypeOf, it } from 'vitest'
+import { type EmbeddedThumbnail, embeddedThumbnail } from '../src/account-utils.js'
 import type {
   Account,
   AccountContext,
@@ -17,15 +18,28 @@ import type {
   AppClient,
   BaseContext,
   Bot,
+  DownloadRequest,
+  MediaDownloadOptions,
   Middleware,
   MtprotoContext,
   MtprotoEventKind,
   NormalizedUpdate,
   PeerIdentity,
   PeerRef,
+  PhotoThumbnail,
   TelegramLink,
+  Thumbnail,
+  ThumbnailAvailability,
 } from '../src/index.js'
-import { App } from '../src/index.js'
+import {
+  App,
+  type documentFile,
+  fileIdOfThumbnail,
+  type photoFile,
+  thumbnail,
+  thumbnailFile,
+  thumbnails,
+} from '../src/index.js'
 
 describe('the MTProto types a consumer writes against', () => {
   it('describes what an account is built from', () => {
@@ -163,5 +177,40 @@ describe('identifiers and links, which belong to neither transport', () => {
   it('publishes the link description as a real union', () => {
     expectTypeOf<TelegramLink>().not.toBeAny()
     expectTypeOf<TelegramLink['kind']>().toExtend<string>()
+  })
+})
+
+describe('the thumbnails of a photo or a document', () => {
+  it('takes either, and answers what choosing between renderings needs', () => {
+    // The photo `photoFile` takes, or the document `documentFile` takes.
+    expectTypeOf(thumbnails)
+      .parameter(0)
+      .toEqualTypeOf<Parameters<typeof photoFile>[0] | Parameters<typeof documentFile>[0]>()
+    expectTypeOf(thumbnails).returns.toEqualTypeOf<Thumbnail[]>()
+    expectTypeOf(thumbnail).returns.toEqualTypeOf<Thumbnail | undefined>()
+    expectTypeOf(thumbnailFile).returns.toEqualTypeOf<DownloadRequest>()
+    expectTypeOf(fileIdOfThumbnail).returns.toEqualTypeOf<string>()
+  })
+
+  it('says of each how it is had, as a closed union', () => {
+    // A widened `string` would let a caller compare against a value that is
+    // never produced, and the branch would silently never run.
+    expectTypeOf<Thumbnail['availability']>().toEqualTypeOf<ThumbnailAvailability>()
+    expectTypeOf<ThumbnailAvailability>().toEqualTypeOf<
+      'download' | 'embedded' | 'unsupported' | 'unavailable'
+    >()
+    expectTypeOf<PhotoThumbnail>().toEqualTypeOf<Thumbnail>()
+  })
+
+  it('reads an embedded one from the utilities entry point', () => {
+    expectTypeOf(embeddedThumbnail).parameter(0).toEqualTypeOf<Thumbnail>()
+    expectTypeOf(embeddedThumbnail).returns.toEqualTypeOf<EmbeddedThumbnail>()
+  })
+
+  it('lets an event fetch one of its renderings', () => {
+    expectTypeOf<MtprotoContext['download']>()
+      .parameter(0)
+      .toEqualTypeOf<MediaDownloadOptions | undefined>()
+    expectTypeOf<MediaDownloadOptions['thumbnail']>().toEqualTypeOf<string | undefined>()
   })
 })

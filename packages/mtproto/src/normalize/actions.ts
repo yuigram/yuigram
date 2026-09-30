@@ -17,7 +17,7 @@ import { PeerError, ValidationError } from '@yuigram/core'
 import { rawApi } from '../api.js'
 import type { PeerView } from '../chats/peers.js'
 import type { DownloadRequest } from '../files/download.js'
-import { documentFile, photoFile } from '../files/media.js'
+import { documentFile, photoFile, thumbnailFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'
 import type {
   TypeInputBotInlineMessageID,
@@ -86,6 +86,18 @@ export interface ActionContext {
   lookup(peer: PeerRef): Promise<PeerView>
 }
 
+/** Which file of an event's media to fetch. */
+export interface MediaDownloadOptions {
+  /**
+   * One thumbnail, by Telegram's name for its size, rather than the file.
+   *
+   * The same names `thumbnails` lists. A size the media does not offer, or one
+   * that arrived with the message rather than being fetched, is refused by
+   * name, as `thumbnailFile` refuses it.
+   */
+  readonly thumbnail?: string
+}
+
 /** The operations an update can be acted on with, bound to one update. */
 export interface UpdateActions {
   reply(body: MessageBody, options?: SendOptions): Promise<SentMessage>
@@ -94,7 +106,7 @@ export interface UpdateActions {
   react(emoji: string): Promise<TlValue>
   edit(body: MessageBody, options?: EditOptions): Promise<TlValue>
   delete(): Promise<TlValue>
-  download(): Promise<Uint8Array>
+  download(options?: MediaDownloadOptions): Promise<Uint8Array>
   forward(to: string | PeerRef, options?: ForwardOptions): Promise<void>
   copy(to: string | PeerRef, options?: CopyOptions): Promise<SentMessage>
   pin(options?: { readonly silent?: boolean; readonly bothSides?: boolean }): Promise<void>
@@ -137,10 +149,14 @@ async function peerOf(update: NormalizedUpdate, context: ActionContext): Promise
  *
  * A document is one file. A photo is the same picture at several sizes and the
  * largest that has to be fetched is taken, which is the answer this project
- * already gives the same question on the other transport. Anything else — a
- * poll, a contact, a location — carries no file at all.
+ * already gives the same question on the other transport. A thumbnail named is
+ * fetched instead, from the same document or photo and with its reference.
+ * Anything else — a poll, a contact, a location — carries no file at all.
  */
-function fileOf(update: NormalizedUpdate): {
+function fileOf(
+  update: NormalizedUpdate,
+  thumbnail: string | undefined,
+): {
   request: DownloadRequest
   id: bigint
   kind: MediaKind
@@ -151,11 +167,18 @@ function fileOf(update: NormalizedUpdate): {
   }
 
   if (media._ === 'messageMediaDocument' && media.document?._ === 'document') {
-    return { request: documentFile(media.document), id: media.document.id, kind: 'document' }
+    const document = media.document
+    const request =
+      thumbnail === undefined ? documentFile(document) : thumbnailFile(document, thumbnail)
+
+    return { request, id: document.id, kind: 'document' }
   }
 
   if (media._ === 'messageMediaPhoto' && media.photo?._ === 'photo') {
-    return { request: photoFile(media.photo), id: media.photo.id, kind: 'photo' }
+    const photo = media.photo
+    const request = thumbnail === undefined ? photoFile(photo) : thumbnailFile(photo, thumbnail)
+
+    return { request, id: photo.id, kind: 'photo' }
   }
 
   throw new ValidationError(`a '${media._}' carries no file this can fetch`)
@@ -423,8 +446,8 @@ export function updateActions(update: NormalizedUpdate, context: ActionContext):
       })
     },
 
-    async download(): Promise<Uint8Array> {
-      const { request, id, kind } = fileOf(update)
+    async download(options: MediaDownloadOptions = {}): Promise<Uint8Array> {
+      const { request, id, kind } = fileOf(update, options.thumbnail)
 
       return await context.fetch(request, managed(update, context, request, id, kind))
     },

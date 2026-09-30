@@ -48,13 +48,16 @@
 import { ValidationError, YuigramError } from '@yuigram/core'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type {
+  TypeDocument,
   TypeInputDocument,
   TypeInputFileLocation,
   TypeInputMedia,
   TypeInputPeer,
   TypeInputPhoto,
   TypeInputWebFileLocation,
+  TypePhoto,
 } from '../generated/api/types/index.js'
+import { thumbnailFile } from './media.js'
 
 /** An identifier that could not be read, or a value that cannot be written. */
 export class FileIdError extends YuigramError {
@@ -1178,6 +1181,44 @@ function fetchableSize(
   )
 
   return fetchable.at(-1)?.type
+}
+
+/**
+ * The identifier for one thumbnail of a photo or a document.
+ *
+ * ```ts
+ * const text = fileIdOfThumbnail(media.document, 'm')
+ * const same = uniqueFileId(readFileId(text))
+ * ```
+ *
+ * Written the way other clients write one: a photo's size as the photo with
+ * that size's letter, and a document's as a thumbnail of the document — which
+ * reads back, through {@link locationOf}, to the location `thumbnailFile` builds.
+ * Only a fetched size can be named. One that arrived with the message has no
+ * location for an identifier to record, and is refused as `thumbnailFile`
+ * refuses it, as is a size the media does not offer.
+ */
+export function fileIdOfThumbnail(media: TypePhoto | TypeDocument, type: string): string {
+  if (media._ !== 'photo' && media._ !== 'document') {
+    throw new FileIdError(
+      `an empty ${media._ === 'photoEmpty' ? 'photo' : 'document'} names no file`,
+    )
+  }
+
+  const request = thumbnailFile(media, type)
+  const kind: FileKind = media._ === 'photo' ? 'photo' : 'thumbnail'
+
+  return writeFileId({
+    dc: request.dcId,
+    kind,
+    reference: media.file_reference,
+    where: {
+      at: 'photo',
+      id: media.id,
+      accessHash: media.access_hash,
+      source: { of: 'thumbnail', kind, size: type },
+    },
+  })
 }
 
 /**

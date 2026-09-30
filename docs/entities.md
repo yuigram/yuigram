@@ -364,8 +364,24 @@ with no second lookup and no per-answer index to carry around.
 
 A photo or document can also be named by the opaque string Bot API clients use for files, through
 `fileIdOfPhoto` and `fileIdOfDocument`, and one such string turned back into a download with
-`fileFor` — see [mtproto.md](mtproto.md) §11. A particular thumbnail size is chosen with
-`thumbnail(photo, size)` and fetched with `thumbnailFile`.
+`fileFor` — see [mtproto.md](mtproto.md) §11.
+
+**Thumbnails.** `thumbnails(media)` lists every rendering a photo or a document offers — a photo's
+sizes and animated versions, a document's `thumbs` and `video_thumbs` — and says of each how it is
+had:
+
+| `availability` | Constructors | How |
+| --- | --- | --- |
+| `download` | `photoSize`, `photoSizeProgressive`, `videoSize` | `thumbnailFile(media, type)` into `download`, or `event.download({ thumbnail: type })` |
+| `embedded` | `photoStrippedSize`, `photoCachedSize`, `photoPathSize` | `embeddedThumbnail(size)` from the utilities entry point, with no request |
+| `unsupported` | `videoSizeEmojiMarkup`, `videoSizeStickerMarkup` | none: an emoji or sticker to animate, which a client draws itself |
+| `unavailable` | `photoSizeEmpty` | none: listed with no content |
+
+A document's thumbnail is addressed by the document — identifier, hash, reference, datacenter —
+with the size's name added, so it goes stale when the document's reference does. From an event,
+`download({ thumbnail })` asks for the message again once and retries, as it does for the whole
+file; `account.download(thumbnailFile(...))` holds no message and hands the refusal back.
+`fileIdOfThumbnail(media, type)` writes the string other clients use for one.
 
 **Links.** A message's `t.me` address needs the conversation's username, which the message does
 not carry. It belongs on the client or the context — whichever holds the peer — not on a view

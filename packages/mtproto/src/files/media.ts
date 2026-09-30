@@ -36,6 +36,7 @@ import type {
   TypeInputMedia,
   TypePhoto,
   TypePhotoSize,
+  TypeVideoSize,
 } from '../generated/api/types/index.js'
 import type { DownloadRequest } from './download.js'
 import { inferMimeType } from './types.js'
@@ -65,8 +66,8 @@ export function documentFile(document: TypeDocument): DownloadRequest {
     throw new ValidationError('an empty document names no file to fetch')
   }
 
-  // A document is one file, so the thumbnail selector names none of them. A
-  // document's own thumbnails are photo sizes and share the choice photos have.
+  // A document is one file, so the thumbnail selector names none of them. Its
+  // thumbnails are fetched with `thumbnailFile`, which names one.
   return {
     dcId: document.dc_id,
     size: Number(document.size),
@@ -341,14 +342,39 @@ export function uploadedDocument(
 }
 
 /**
- * One size of a photo, reduced to what choosing between them needs.
+ * Whether a thumbnail can be had, and how.
+ *
+ * The schema has nine constructors for a thumbnail between a photo's sizes and
+ * a document's, and they fall into four answers:
+ *
+ * | Availability  | Constructors                                            |
+ * | ------------- | ------------------------------------------------------- |
+ * | `download`    | `photoSize`, `photoSizeProgressive`, `videoSize`        |
+ * | `embedded`    | `photoStrippedSize`, `photoCachedSize`, `photoPathSize` |
+ * | `unsupported` | `videoSizeEmojiMarkup`, `videoSizeStickerMarkup`        |
+ * | `unavailable` | `photoSizeEmpty`                                        |
+ *
+ * A `download` size is held on a datacenter and fetched with
+ * {@link thumbnailFile}. An `embedded` one arrived inside the message and is
+ * read with `embeddedThumbnail` from `@yuigram/mtproto/utils`, with no request.
+ * An `unsupported` one is a recipe rather than a file — an emoji or a sticker to
+ * animate over a background — which a client draws itself. An `unavailable`
+ * one is listed with no content at all.
+ */
+export type ThumbnailAvailability = 'download' | 'embedded' | 'unsupported' | 'unavailable'
+
+/**
+ * One rendering of a photo or a document, reduced to what choosing between them
+ * needs.
  *
  * `type` is Telegram's own single-letter name for the size — `s`, `m`, `x`,
- * `y`, `w` for the fetchable ones, `i` and `a`–`c` for the ones that arrive
- * with the message. It is what a caller names when it wants a particular size
- * rather than the largest, and what the download location carries.
+ * `y`, `w` for the fetched ones, `i` and `a`–`c` for the ones that arrive with
+ * the message, `u` and `v` for the moving ones. It is what a caller names when
+ * it wants a particular size rather than the largest, and what the download
+ * location carries. The two composition constructors carry no name; theirs is
+ * the empty string.
  */
-export interface PhotoThumbnail {
+export interface Thumbnail {
   /** Telegram's name for this size. */
   readonly type: string
   /** Pixels across, where the size states them. */
@@ -362,45 +388,54 @@ export interface PhotoThumbnail {
    * so there is no cost to state.
    */
   readonly bytes: number | undefined
+  /** Whether it is fetched, arrived with the message, or neither. */
+  readonly availability: ThumbnailAvailability
   /**
-   * Whether this size has to be asked for.
+   * Whether this size has to be asked for: `availability` is `download`.
    *
    * False for the ones that came with the message — a stripped preview, a
-   * cached blob, a vector outline. Those carry their own content and name no
-   * file, so {@link thumbnailFile} refuses them rather than building a location
-   * a datacenter would reject.
+   * cached blob, a vector outline — and for the ones that name no file at all.
+   * {@link thumbnailFile} refuses those rather than building a location a
+   * datacenter would reject.
    */
   readonly fetchable: boolean
+  /** Whether it is a moving rendering: a video size rather than a picture. */
+  readonly video: boolean
   /** The size as the schema describes it, for a field this does not name. */
-  readonly raw: TypePhotoSize
+  readonly raw: TypePhotoSize | TypeVideoSize
 }
 
+/** The name this had while only photos were described. */
+export type PhotoThumbnail = Thumbnail
+
 /**
- * Every size a photo offers, largest first among the ones worth fetching.
+ * Every rendering a photo or a document offers, largest first among the ones
+ * worth fetching.
  *
  * ```ts
  * const sizes = thumbnails(photo)
  * const small = sizes.find((size) => size.type === 's')
+ *
+ * const preview = thumbnails(document).find((size) => size.availability === 'download')
  * ```
  *
- * Ordered so that the first fetchable entry is the one {@link photoFile} would
- * have chosen, and the ones that arrived with the message come last — a caller
- * scanning for something to download finds it without filtering first.
+ * Pictures come before moving renderings, so a photo's first fetchable entry is
+ * the one {@link photoFile} would have chosen. The ones that arrived with the
+ * message come after everything fetched — a caller scanning for something to
+ * download finds it without filtering first.
+ *
+ * A document's are its thumbnails, never the document itself: that is one file,
+ * fetched with {@link documentFile}.
  */
-export function thumbnails(photo: TypePhoto): PhotoThumbnail[] {
-  if (photo._ !== 'photo') return []
+export function thumbnails(media: TypePhoto | TypeDocument): Thumbnail[] {
+  if (media._ === 'photo') return ordered(media.sizes, media.video_sizes, undefined)
+  if (media._ === 'document') return ordered(media.thumbs, media.video_thumbs, media.attributes)
 
-  const described = photo.sizes.map((size) => describe(size))
-
-  return described.sort((left, right) => {
-    if (left.fetchable !== right.fetchable) return left.fetchable ? -1 : 1
-
-    return weigh(right) - weigh(left)
-  })
+  return []
 }
 
 /**
- * One named size of a photo, or nothing where it offers none.
+ * One named size of a photo or a document, or nothing where it offers none.
  *
  * ```ts
  * const preview = thumbnail(photo, 's')
@@ -410,75 +445,185 @@ export function thumbnails(photo: TypePhoto): PhotoThumbnail[] {
  * — so this answers nothing rather than throwing, and a caller that needs some
  * size falls back to {@link photoFile}, which takes the largest there is.
  */
-export function thumbnail(photo: TypePhoto, type: string): PhotoThumbnail | undefined {
-  return thumbnails(photo).find((size) => size.type === type)
+export function thumbnail(media: TypePhoto | TypeDocument, type: string): Thumbnail | undefined {
+  return thumbnails(media).find((size) => size.type === type)
 }
 
 /**
- * Fetch one named size rather than the largest.
+ * Fetch one named size rather than the largest, or a document's thumbnail
+ * rather than the document.
  *
  * ```ts
  * const bytes = await account.download(thumbnailFile(photo, 's'))
+ * const preview = await account.download(thumbnailFile(document, 'm'))
  * ```
  *
- * The location is the same one {@link photoFile} builds, with the size's own
- * name in it — that field is what a datacenter reads to decide which rendering
- * to serve, so naming a size is the whole difference between the two.
+ * The location is the one {@link photoFile} or {@link documentFile} builds, with
+ * the size's own name in it — that field is what a datacenter reads to decide
+ * which rendering to serve, so naming a size is the whole difference. The
+ * identifier, the hash, the reference and the datacenter are the photo's or the
+ * document's own: a thumbnail has none of its own.
  *
- * Refuses a size that arrived with the message. Those carry their content
- * inside the message and name no file: asking for one would be asking a
- * datacenter for something it was never given.
+ * Refuses, by name, a size that is not there, one that arrived with the message,
+ * and one that names no file at all. The reference is copied as it arrived, and
+ * one that has expired is refused by the datacenter exactly as it is for the
+ * whole file; `event.download({ thumbnail })` is the form that asks for the
+ * message again when that happens.
  */
-export function thumbnailFile(photo: TypePhoto, type: string): DownloadRequest {
-  if (photo._ !== 'photo') {
+export function thumbnailFile(media: TypePhoto | TypeDocument, type: string): DownloadRequest {
+  if (media._ === 'photoEmpty') {
     throw new ValidationError('an empty photo names no file to fetch')
   }
+  if (media._ === 'documentEmpty') {
+    throw new ValidationError('an empty document names no file to fetch')
+  }
 
-  const size = thumbnail(photo, type)
+  const what = `${media._} ${media.id}`
+  const size = thumbnail(media, type)
   if (size === undefined) {
-    const offered = thumbnails(photo)
-      .map((one) => one.type)
+    const offered = thumbnails(media)
+      .map((one) => (one.type === '' ? `(${one.raw._})` : one.type))
       .join(', ')
 
     throw new ValidationError(
-      `photo ${photo.id} has no size '${type}'; it offers ${offered === '' ? 'none' : offered}`,
+      `${what} has no size '${type}'; it offers ${offered === '' ? 'none' : offered}`,
     )
   }
 
-  if (!size.fetchable) {
-    throw new ValidationError(
-      `the '${type}' size of photo ${photo.id} arrived with the message and names no file to fetch`,
-    )
+  refuseUnfetchable(size, what)
+
+  const named = {
+    id: media.id,
+    access_hash: media.access_hash,
+    file_reference: media.file_reference,
+    thumb_size: size.type,
   }
 
   return {
-    dcId: photo.dc_id,
+    dcId: media.dc_id,
     ...(size.bytes === undefined ? {} : { size: size.bytes }),
-    location: {
-      _: 'inputPhotoFileLocation',
-      id: photo.id,
-      access_hash: photo.access_hash,
-      file_reference: photo.file_reference,
-      thumb_size: size.type,
-    },
+    location:
+      media._ === 'photo'
+        ? { _: 'inputPhotoFileLocation', ...named }
+        : { _: 'inputDocumentFileLocation', ...named },
   }
 }
 
-/** Read one size into the shape a caller chooses between. */
-function describe(size: TypePhotoSize): PhotoThumbnail {
-  const usable = fetchable(size)
-  const measured = size as { w?: number; h?: number }
+/** Say why a size that is not fetched cannot be, and what to do instead. */
+function refuseUnfetchable(size: Thumbnail, what: string): void {
+  switch (size.availability) {
+    case 'download':
+      return
+
+    case 'embedded':
+      throw new ValidationError(
+        `the '${size.type}' size of ${what} arrived with the message and names no file to fetch; ` +
+          '`embeddedThumbnail` from @yuigram/mtproto/utils reads it',
+      )
+
+    case 'unsupported':
+      throw new ValidationError(
+        `the ${size.raw._} of ${what} is an animation to draw from a sticker, not a file to fetch`,
+      )
+
+    default:
+      throw new ValidationError(`the '${size.type}' size of ${what} is listed with no content`)
+  }
+}
+
+/**
+ * Describe and order a photo's or a document's renderings.
+ *
+ * Fetched before everything else, pictures before moving ones, and within each
+ * the largest first.
+ */
+function ordered(
+  pictures: readonly TypePhotoSize[] | undefined,
+  moving: readonly TypeVideoSize[] | undefined,
+  attributes: readonly TypeDocumentAttribute[] | undefined,
+): Thumbnail[] {
+  const described = [
+    ...(pictures ?? []).map((size) => describe(size, attributes)),
+    ...(moving ?? []).map((size) => describeVideo(size)),
+  ]
+
+  return described.sort((left, right) => {
+    if (left.fetchable !== right.fetchable) return left.fetchable ? -1 : 1
+    if (left.video !== right.video) return left.video ? 1 : -1
+
+    return weigh(right) - weigh(left)
+  })
+}
+
+/** Read one picture size into the shape a caller chooses between. */
+function describe(
+  size: TypePhotoSize,
+  attributes: readonly TypeDocumentAttribute[] | undefined,
+): Thumbnail {
+  const common = { type: size.type, bytes: fetchable(size)?.bytes, video: false, raw: size }
+
+  switch (size._) {
+    case 'photoSize':
+    case 'photoSizeProgressive':
+      return { ...common, width: size.w, height: size.h, ...available('download') }
+
+    case 'photoCachedSize':
+      return { ...common, width: size.w, height: size.h, ...available('embedded') }
+
+    case 'photoPathSize': {
+      // An outline is drawn on the canvas the sticker itself states, and on the
+      // 512 by 512 one Telegram lays outlines out on where it states none.
+      const canvas = attributes?.find((one) => one._ === 'documentAttributeImageSize')
+
+      return {
+        ...common,
+        width: canvas?.w ?? OUTLINE_CANVAS,
+        height: canvas?.h ?? OUTLINE_CANVAS,
+        ...available('embedded'),
+      }
+    }
+
+    case 'photoStrippedSize':
+      return { ...common, width: undefined, height: undefined, ...available('embedded') }
+
+    default:
+      return { ...common, width: undefined, height: undefined, ...available('unavailable') }
+  }
+}
+
+/** Read one moving rendering into the same shape. */
+function describeVideo(size: TypeVideoSize): Thumbnail {
+  if (size._ === 'videoSize') {
+    return {
+      type: size.type,
+      width: size.w,
+      height: size.h,
+      bytes: size.size,
+      video: true,
+      raw: size,
+      ...available('download'),
+    }
+  }
 
   return {
-    type: (size as { type?: string }).type ?? '',
-    width: measured.w,
-    height: measured.h,
-    bytes: usable?.bytes,
-    fetchable: usable !== undefined,
+    type: '',
+    width: undefined,
+    height: undefined,
+    bytes: undefined,
+    video: true,
     raw: size,
+    ...available('unsupported'),
   }
 }
+
+/** The canvas a path thumbnail is drawn on where nothing says otherwise. */
+const OUTLINE_CANVAS = 512
+
+const available = (availability: ThumbnailAvailability) => ({
+  availability,
+  fetchable: availability === 'download',
+})
 
 /** How a size ranks against another of the same kind. */
-const weigh = (size: PhotoThumbnail) =>
+const weigh = (size: Thumbnail) =>
   size.bytes !== undefined && size.bytes > 0 ? size.bytes : (size.width ?? 0) * (size.height ?? 0)

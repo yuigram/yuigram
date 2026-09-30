@@ -17,7 +17,7 @@ import {
   mediaOf,
   writeFileId,
 } from '../src/files/identifier.js'
-import { uploadedDocument } from '../src/files/media.js'
+import { thumbnail, uploadedDocument } from '../src/files/media.js'
 import {
   detectMimeType,
   fileNameOf,
@@ -31,6 +31,7 @@ import type { TypePage, TypePageBlock, TypeRichText } from '../src/generated/api
 import { peerOfInput, toInputChannel, toInputUser } from '../src/network/peers.js'
 import { normalizePhone } from '../src/phone.js'
 import {
+  embeddedThumbnail,
   formattedToRichText,
   inflatePath,
   outlineSvg,
@@ -116,6 +117,70 @@ describe('inline previews', () => {
     expect(svg).toContain('<path fill="#123456" d="M5,7z"/>')
     expect(() => outlineSvg('M5z', { fill: 'red" onload="x' })).toThrow(ValidationError)
     expect(() => outlineSvg('M5z"/><script>')).toThrow(ValidationError)
+  })
+})
+
+/** The opening of a WebP image: a RIFF container naming its format. */
+const WEBP_HEAD = new Uint8Array([
+  ...new TextEncoder().encode('RIFF'),
+  0,
+  0,
+  0,
+  0,
+  ...new TextEncoder().encode('WEBP'),
+])
+
+describe('reading a thumbnail the message carried', () => {
+  const document = {
+    _: 'document' as const,
+    id: 9n,
+    access_hash: 1n,
+    file_reference: Uint8Array.of(1),
+    date: 1_700_000_000,
+    mime_type: 'application/x-tgsticker',
+    size: 10_000n,
+    dc_id: 2,
+    attributes: [{ _: 'documentAttributeImageSize' as const, w: 256, h: 128 }],
+    thumbs: [
+      { _: 'photoStrippedSize' as const, type: 'i', bytes: Uint8Array.of(1, 40, 30, 0xaa) },
+      { _: 'photoPathSize' as const, type: 'j', bytes: Uint8Array.of(5, 128 + 7, 192 + 11, 10) },
+      { _: 'photoCachedSize' as const, type: 'a', w: 8, h: 8, bytes: WEBP_HEAD },
+      { _: 'photoSize' as const, type: 'm', w: 320, h: 320, size: 9_000 },
+      { _: 'photoSizeEmpty' as const, type: 'x' },
+    ],
+  }
+  const size = (type: string) => {
+    const found = thumbnail(document, type)
+    if (found === undefined) throw new Error(`no size ${type}`)
+    return found
+  }
+
+  it('expands a stripped preview into the JPEG it was stripped from', () => {
+    const read = embeddedThumbnail(size('i'))
+
+    expect(read.mimeType).toBe('image/jpeg')
+    expect(read.bytes).toEqual(strippedToJpeg(Uint8Array.of(1, 40, 30, 0xaa)))
+  })
+
+  it('draws an outline on the canvas the document states', () => {
+    const read = embeddedThumbnail(size('j'), { fill: '#000' })
+    const svg = new TextDecoder().decode(read.bytes)
+
+    expect(read.mimeType).toBe('image/svg+xml')
+    expect(svg).toContain('viewBox="0 0 256 128"')
+    expect(svg).toContain('<path fill="#000" d="M5,7L10z"/>')
+  })
+
+  it('answers a cached copy as it arrived, typed by its own signature', () => {
+    const read = embeddedThumbnail(size('a'))
+
+    expect(read.bytes).toBe(WEBP_HEAD)
+    expect(read.mimeType).toBe('image/webp')
+  })
+
+  it('refuses a size that is fetched, and one with nothing in it', () => {
+    expect(() => embeddedThumbnail(size('m'))).toThrow(/fetched rather than carried/)
+    expect(() => embeddedThumbnail(size('x'))).toThrow(/photoSizeEmpty carries no content/)
   })
 })
 

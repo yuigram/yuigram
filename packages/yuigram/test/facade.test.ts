@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import * as accountUtils from '../src/account-utils.js'
 import * as yuigram from '../src/index.js'
 import * as testing from '../src/testing.js'
 import * as webhook from '../src/webhook.js'
@@ -106,6 +107,43 @@ describe('the entry point', () => {
     expect(typeof yuigram.nextDialogs).toBe('function')
     expect(typeof yuigram.inputPeerFromMessage).toBe('function')
     expect(typeof yuigram.inputChannel).toBe('function')
+  })
+
+  it('offers the renderings of a photo or a document, and reads the embedded ones apart', () => {
+    expect(typeof yuigram.thumbnails).toBe('function')
+    expect(typeof yuigram.thumbnail).toBe('function')
+    expect(typeof yuigram.thumbnailFile).toBe('function')
+    expect(typeof yuigram.fileIdOfThumbnail).toBe('function')
+    // Decoding a carried preview is kept off the main entry point.
+    expect('embeddedThumbnail' in yuigram).toBe(false)
+    expect(typeof accountUtils.embeddedThumbnail).toBe('function')
+
+    const document = {
+      _: 'document' as const,
+      id: 7n,
+      access_hash: 1n,
+      file_reference: Uint8Array.of(3),
+      date: 0,
+      mime_type: 'video/mp4',
+      size: 10n,
+      dc_id: 2,
+      attributes: [],
+      thumbs: [
+        { _: 'photoStrippedSize' as const, type: 'i', bytes: Uint8Array.of(1, 8, 8) },
+        { _: 'photoSize' as const, type: 'm', w: 320, h: 180, size: 900 },
+      ],
+    }
+
+    expect(yuigram.thumbnails(document).map((one) => one.availability)).toEqual([
+      'download',
+      'embedded',
+    ])
+    expect(yuigram.thumbnailFile(document, 'm').location).toMatchObject({
+      _: 'inputDocumentFileLocation',
+      thumb_size: 'm',
+    })
+    const preview = yuigram.thumbnail(document, 'i')
+    expect(preview && accountUtils.embeddedThumbnail(preview).mimeType).toBe('image/jpeg')
   })
 
   it('offers the reader that turns a message into questions it can answer', () => {

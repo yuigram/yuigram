@@ -10,6 +10,8 @@
  */
 
 import { ValidationError } from '@yuigram/core'
+import type { Thumbnail } from '../files/media.js'
+import { detectMimeType } from '../files/types.js'
 
 /*
  * The parts a stripped thumbnail leaves out.
@@ -251,4 +253,63 @@ export function outlineSvg(path: string, options: OutlineOptions = {}): string {
     `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">` +
     `<path fill="${fill}" d="${path}"/></svg>`
   )
+}
+
+/** The content of a thumbnail that arrived with the message. */
+export interface EmbeddedThumbnail {
+  /** What the bytes are, as a file served with them would say. */
+  readonly mimeType: string
+  /** The image, complete: something a browser or an image library reads. */
+  readonly bytes: Uint8Array
+}
+
+/**
+ * Read a thumbnail that arrived inside the message, with no request.
+ *
+ * ```ts
+ * const preview = thumbnails(document).find((size) => size.availability === 'embedded')
+ * if (preview !== undefined) {
+ *   const { mimeType, bytes } = embeddedThumbnail(preview)
+ * }
+ * ```
+ *
+ * A stripped preview is expanded back into a JPEG. A cached copy is already an
+ * image and is answered as it arrived, typed by its own signature. A vector
+ * outline becomes an SVG document on the canvas the thumbnail states, filled as
+ * `fill` says.
+ *
+ * Refuses, by name, a size that has to be fetched — `thumbnailFile` names the
+ * location for that — and one that holds no content to read.
+ */
+export function embeddedThumbnail(
+  size: Thumbnail,
+  options: Pick<OutlineOptions, 'fill'> = {},
+): EmbeddedThumbnail {
+  const raw = size.raw
+
+  switch (raw._) {
+    case 'photoStrippedSize':
+      return { mimeType: 'image/jpeg', bytes: strippedToJpeg(raw.bytes) }
+
+    case 'photoCachedSize':
+      return { mimeType: detectMimeType(raw.bytes) ?? 'image/jpeg', bytes: raw.bytes }
+
+    case 'photoPathSize': {
+      const svg = outlineSvg(inflatePath(raw.bytes), {
+        ...options,
+        ...(size.width === undefined ? {} : { width: size.width }),
+        ...(size.height === undefined ? {} : { height: size.height }),
+      })
+
+      return { mimeType: 'image/svg+xml', bytes: new TextEncoder().encode(svg) }
+    }
+
+    default:
+      throw new ValidationError(
+        size.availability === 'download'
+          ? `the '${size.type}' size is fetched rather than carried in the message; ` +
+              '`thumbnailFile` names where from'
+          : `a ${raw._} carries no content to read`,
+      )
+  }
 }

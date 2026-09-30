@@ -27,6 +27,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FileIdError,
   type FileIdentity,
+  fileIdOfThumbnail,
   locationOf,
   looksLikeFileId,
   readFileId,
@@ -463,5 +464,86 @@ describe('what an identifier does not promise', () => {
 
   it('reads an identifier written without one as having none', () => {
     expect(readFileId(FIXTURES.documentNoReference.fileId).reference).toBeUndefined()
+  })
+})
+
+/**
+ * Naming one thumbnail of a photo or a document.
+ *
+ * The expected strings were written by an independent implementation of the
+ * format from the same fields, so agreement here is agreement with other
+ * clients rather than with this code's own reading of itself.
+ */
+describe('the identifier of a thumbnail', () => {
+  const reference = Uint8Array.of(1, 2, 3, 4, 5)
+  const document = {
+    _: 'document' as const,
+    id: 1_234_567_890_123n,
+    access_hash: -987_654_321_098n,
+    file_reference: reference,
+    date: 1_700_000_000,
+    mime_type: 'video/mp4',
+    size: 1_000_000n,
+    dc_id: 2,
+    attributes: [],
+    thumbs: [
+      { _: 'photoStrippedSize' as const, type: 'i', bytes: Uint8Array.of(1, 8, 8) },
+      { _: 'photoSize' as const, type: 'm', w: 320, h: 180, size: 9_000 },
+    ],
+    video_thumbs: [{ _: 'videoSize' as const, type: 'v', w: 320, h: 180, size: 40_000 }],
+  }
+  const photo = {
+    _: 'photo' as const,
+    id: 55_555n,
+    access_hash: -7n,
+    file_reference: reference,
+    date: 1_700_000_000,
+    dc_id: 1,
+    sizes: [
+      { _: 'photoSize' as const, type: 's', w: 90, h: 90, size: 900 },
+      { _: 'photoSize' as const, type: 'x', w: 800, h: 800, size: 60_000 },
+    ],
+  }
+
+  it('writes a document thumbnail as other clients do', () => {
+    const text = fileIdOfThumbnail(document, 'm')
+
+    expect(text).toBe('AAMCAgADBQECAwQFAALLBPtxHwEAAjYMNwsa____AQAHbQADOgQ')
+    expect(uniqueFileId(readFileId(text))).toBe('AQADywT7cR8BAAJy')
+  })
+
+  it('writes a moving document thumbnail the same way', () => {
+    const text = fileIdOfThumbnail({ ...document, dc_id: 4 }, 'v')
+
+    expect(text).toBe('AAMCBAADBQECAwQFAALLBPtxHwEAAjYMNwsa____AQAHdgADOgQ')
+    expect(uniqueFileId(readFileId(text))).toBe('AQADywT7cR8BAAJ7')
+  })
+
+  it('writes a photo size as the photo, with that size named', () => {
+    const text = fileIdOfThumbnail(photo, 's')
+
+    expect(text).toBe('AgACAgEAAwUBAgMEBQACA9kABvn_________AQADAgADcwADOgQ')
+    expect(uniqueFileId(readFileId(text))).toBe('AQADA9kABng')
+  })
+
+  it('reads back to the location the thumbnail is fetched from', () => {
+    const identity = readFileId(fileIdOfThumbnail(document, 'm'))
+
+    expect(identity.dc).toBe(2)
+    expect(identity.kind).toBe('thumbnail')
+    expect(locationOf(identity)).toEqual({
+      _: 'inputDocumentFileLocation',
+      id: 1_234_567_890_123n,
+      access_hash: -987_654_321_098n,
+      file_reference: reference,
+      thumb_size: 'm',
+    })
+  })
+
+  it('refuses a size carried in the message, one not offered, and an empty media', () => {
+    expect(() => fileIdOfThumbnail(document, 'i')).toThrow(/arrived with the message/)
+    expect(() => fileIdOfThumbnail(document, 'w')).toThrow(/has no size 'w'/)
+    expect(() => fileIdOfThumbnail({ _: 'documentEmpty', id: 1n }, 'm')).toThrow(FileIdError)
+    expect(() => fileIdOfThumbnail({ _: 'photoEmpty', id: 1n }, 's')).toThrow(/empty photo/)
   })
 })

@@ -483,3 +483,191 @@ describe('choosing a size of a photo', () => {
     expect(() => thumbnailFile({ _: 'photoEmpty', id: 1n }, 's')).toThrow(/empty photo/)
   })
 })
+
+/**
+ * A document's own thumbnails.
+ *
+ * A document is one file, and beside it travel renderings of it: pictures in
+ * `thumbs`, moving ones in `video_thumbs`. They are addressed by the document —
+ * its identifier, hash, reference and datacenter — with the size's name added,
+ * so everything the document names has to survive into the location, and the
+ * size has to be one a datacenter holds rather than one the message carried.
+ */
+describe('the thumbnails of a document', () => {
+  /** A sticker-like document offering every kind of rendering there is. */
+  const document: Document = {
+    ...DOCUMENT,
+    id: 0x7777n,
+    access_hash: -0x1111n,
+    dc_id: 5,
+    mime_type: 'video/webm',
+    attributes: [{ _: 'documentAttributeImageSize', w: 400, h: 300 }],
+    thumbs: [
+      { _: 'photoStrippedSize', type: 'i', bytes: Uint8Array.of(1, 40, 40, 0) },
+      { _: 'photoPathSize', type: 'j', bytes: Uint8Array.of(0xc0, 0x05, 0x86) },
+      { _: 'photoSize', type: 's', w: 90, h: 90, size: 900 },
+      { _: 'photoCachedSize', type: 'a', w: 20, h: 20, bytes: Uint8Array.of(0xff, 0xd8, 0xff) },
+      { _: 'photoSizeProgressive', type: 'm', w: 320, h: 320, sizes: [1_000, 4_000, 9_000] },
+      { _: 'photoSizeEmpty', type: 'x' },
+    ],
+    video_thumbs: [
+      { _: 'videoSize', type: 'v', w: 100, h: 100, size: 20_000, video_start_ts: 1.5 },
+      {
+        _: 'videoSizeEmojiMarkup',
+        emoji_id: 5n,
+        background_colors: [0xffffff],
+      },
+    ],
+  }
+
+  it('says of each whether it is fetched, carried, drawn, or empty', () => {
+    const listed = thumbnails(document).map((one) => [one.type, one.availability, one.video])
+
+    expect(listed).toEqual([
+      ['m', 'download', false],
+      ['s', 'download', false],
+      ['v', 'download', true],
+      ['j', 'embedded', false],
+      ['a', 'embedded', false],
+      ['i', 'embedded', false],
+      ['x', 'unavailable', false],
+      ['', 'unsupported', true],
+    ])
+    expect(thumbnails(document).map((one) => one.fetchable)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ])
+  })
+
+  it('measures each by what it states, and an outline by the canvas the document states', () => {
+    expect(thumbnail(document, 'm')).toMatchObject({ width: 320, height: 320, bytes: 9_000 })
+    expect(thumbnail(document, 'v')).toMatchObject({ width: 100, height: 100, bytes: 20_000 })
+    expect(thumbnail(document, 'a')).toMatchObject({ width: 20, height: 20, bytes: undefined })
+    expect(thumbnail(document, 'j')).toMatchObject({ width: 400, height: 300 })
+    expect(thumbnail(document, 'i')).toMatchObject({ width: undefined, height: undefined })
+
+    // With nothing stated, the outline is drawn where Telegram draws them.
+    expect(thumbnail({ ...document, attributes: [] }, 'j')).toMatchObject({
+      width: 512,
+      height: 512,
+    })
+  })
+
+  it('keeps the raw constructor, so a field this does not name is still there', () => {
+    const moving = thumbnail(document, 'v')?.raw
+
+    expect(moving?._).toBe('videoSize')
+    expect((moving as { video_start_ts?: number }).video_start_ts).toBe(1.5)
+  })
+
+  it('addresses a picture thumbnail by the document and the size', () => {
+    expect(thumbnailFile(document, 's')).toEqual({
+      dcId: 5,
+      size: 900,
+      location: {
+        _: 'inputDocumentFileLocation',
+        id: 0x7777n,
+        access_hash: -0x1111n,
+        file_reference: REFERENCE,
+        thumb_size: 's',
+      },
+    })
+  })
+
+  it('addresses a moving thumbnail the same way, sized by its whole length', () => {
+    expect(thumbnailFile(document, 'v')).toMatchObject({
+      dcId: 5,
+      size: 20_000,
+      location: { _: 'inputDocumentFileLocation', id: 0x7777n, thumb_size: 'v' },
+    })
+    // A progressive picture is as long as its last stage.
+    expect(thumbnailFile(document, 'm').size).toBe(9_000)
+  })
+
+  it('carries the reference the document arrived with, unchanged', () => {
+    expect(thumbnailFile(document, 's').location['file_reference']).toBe(REFERENCE)
+  })
+
+  it('refuses a carried thumbnail, and says where it is read instead', () => {
+    for (const type of ['i', 'j', 'a']) {
+      expect(() => thumbnailFile(document, type)).toThrow(/arrived with the message/)
+      expect(() => thumbnailFile(document, type)).toThrow(/embeddedThumbnail/)
+    }
+  })
+
+  it('refuses an empty size and a composition by what they are', () => {
+    expect(() => thumbnailFile(document, 'x')).toThrow(/listed with no content/)
+    expect(() => thumbnailFile(document, '')).toThrow(
+      /videoSizeEmojiMarkup of document 30583 is an animation to draw/,
+    )
+  })
+
+  it('says which sizes there are when asked for one there is not', () => {
+    expect(() => thumbnailFile(document, 'w')).toThrow(ValidationError)
+    expect(() => thumbnailFile(document, 'w')).toThrow(
+      "document 30583 has no size 'w'; it offers m, s, v, j, a, i, x, (videoSizeEmojiMarkup)",
+    )
+    expect(() => thumbnailFile(DOCUMENT, 's')).toThrow(/offers none/)
+  })
+
+  it('lists nothing for a document with no thumbnails, or for an empty one', () => {
+    expect(thumbnails(DOCUMENT)).toEqual([])
+    expect(thumbnails({ _: 'documentEmpty', id: 1n })).toEqual([])
+    expect(() => thumbnailFile({ _: 'documentEmpty', id: 1n }, 's')).toThrow(/empty document/)
+  })
+
+  it('leaves the document itself to documentFile, which names no size', () => {
+    // The whole file and its renderings share every field but the size, so the
+    // two requests differ only there.
+    const whole = documentFile(document).location
+    const small = thumbnailFile(document, 's').location
+
+    expect(whole['thumb_size']).toBe('')
+    expect({ ...small, thumb_size: '' }).toEqual(whole)
+  })
+})
+
+describe('the moving renderings of a photo', () => {
+  /** A profile photo with an animated version beside its pictures. */
+  const animated: Photo = {
+    ...PHOTO,
+    sizes: [
+      { _: 'photoSize', type: 'a', w: 160, h: 160, size: 8_000 },
+      { _: 'photoSize', type: 'c', w: 640, h: 640, size: 60_000 },
+    ],
+    video_sizes: [
+      { _: 'videoSize', type: 'u', w: 640, h: 640, size: 300_000 },
+      {
+        _: 'videoSizeStickerMarkup',
+        stickerset: { _: 'inputStickerSetEmpty' },
+        sticker_id: 3n,
+        background_colors: [],
+      },
+    ],
+  }
+
+  it('lists them after the pictures, so the first is still the one photoFile takes', () => {
+    const [first] = thumbnails(animated)
+
+    expect(thumbnails(animated).map((one) => one.type)).toEqual(['c', 'a', 'u', ''])
+    expect(first?.type).toBe((photoFile(animated).location as { thumb_size?: string }).thumb_size)
+  })
+
+  it('fetches one through the photo, naming its size', () => {
+    expect(thumbnailFile(animated, 'u')).toMatchObject({
+      dcId: PHOTO.dc_id,
+      size: 300_000,
+      location: { _: 'inputPhotoFileLocation', id: PHOTO.id, thumb_size: 'u' },
+    })
+  })
+
+  it('refuses the composition, which names a sticker rather than a file', () => {
+    expect(() => thumbnailFile(animated, '')).toThrow(/videoSizeStickerMarkup/)
+  })
+})

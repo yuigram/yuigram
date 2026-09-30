@@ -140,6 +140,7 @@ export {
   fileFor,
   fileIdOfDocument,
   fileIdOfPhoto,
+  fileIdOfThumbnail,
   inputDocumentOf,
   inputPhotoOf,
   locationOf,
@@ -157,6 +158,8 @@ export {
   type PhotoThumbnail,
   photoFile,
   photoMedia,
+  type Thumbnail,
+  type ThumbnailAvailability,
   thumbnail,
   thumbnailFile,
   thumbnails,
@@ -284,6 +287,7 @@ export {
 } from './network/peers.js'
 export type { QrOptions, QrSteps } from './network/qr.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
+export type { MediaDownloadOptions } from './normalize/actions.js'
 export {
   type ContextOptions,
   contextFor,

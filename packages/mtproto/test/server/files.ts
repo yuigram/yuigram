@@ -48,6 +48,13 @@ export interface StoredFile {
   readonly size: number
   /** Where the reference for it came from, so a stale one can be refreshed. */
   readonly origin: FileOrigin
+  /**
+   * The renderings held beside it, by size name, and how long each is.
+   *
+   * Absent for a file that declares none, which is served whatever size a
+   * location names — so a case about something else need not describe them.
+   */
+  readonly thumbnails?: Readonly<Record<string, number>>
 }
 
 /**
@@ -83,6 +90,21 @@ export interface FileFaults {
 }
 
 export class FileServerError extends Error {}
+
+/**
+ * Content this server would serve for one rendering of a file.
+ *
+ * Distinct from the file's own content and from every other rendering's, so a
+ * case that fetched the wrong one sees different bytes rather than the same.
+ */
+export function thumbnailContentOf(
+  fileId: bigint,
+  type: string,
+  offset: number,
+  length: number,
+): Uint8Array {
+  return contentOf(fileId ^ (BigInt(type.charCodeAt(0)) << 8n), offset, length)
+}
 
 /** Content this server would serve for a file, at any offset. */
 export function contentOf(fileId: bigint, offset: number, length: number): Uint8Array {
@@ -141,13 +163,20 @@ export class FileServer {
   /** Put a file where it can be downloaded, and say where its reference came from. */
   add(
     fileId: bigint,
-    options: { size: number; dcId?: number; origin?: FileOrigin; reference?: string },
+    options: {
+      size: number
+      dcId?: number
+      origin?: FileOrigin
+      reference?: string
+      thumbnails?: Readonly<Record<string, number>>
+    },
   ): { fileId: bigint; reference: Uint8Array } {
     const key = fileId.toString()
     this.#files.set(key, {
       dcId: options.dcId ?? this.dcId,
       size: options.size,
       origin: options.origin ?? { kind: 'message', peerId: 1n, id: 1 },
+      ...(options.thumbnails === undefined ? {} : { thumbnails: options.thumbnails }),
     })
 
     const reference = options.reference ?? `ref-${key}-1`
@@ -286,6 +315,22 @@ export class FileServer {
     const limit = readInt(query, 'limit')
     if (offset < 0 || offset % 1024 !== 0) throw new TelegramError('OFFSET_INVALID (400)')
     if (limit <= 0) throw new TelegramError('LIMIT_INVALID (400)')
+
+    const size = (location as TlValue)['thumb_size']
+    if (file.thumbnails !== undefined && typeof size === 'string' && size !== '') {
+      const length = file.thumbnails[size]
+      if (length === undefined) throw new TelegramError('LOCATION_INVALID (400)')
+
+      return {
+        _: 'upload.file',
+        type: { _: 'storage.filePartial' },
+        mtime: 0,
+        bytes:
+          offset >= length
+            ? new Uint8Array(0)
+            : thumbnailContentOf(fileId, size, offset, Math.min(limit, length - offset)),
+      }
+    }
 
     if (this.faults.viaCdn === true && query['cdn_supported'] === true) {
       return this.#redirect(fileId, file)

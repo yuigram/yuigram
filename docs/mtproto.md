@@ -2150,12 +2150,12 @@ download location — so an account speaking MTProto can read one, write one, an
 with every client that uses them.
 
 Yuigram reads and writes them: `readFileId`, `writeFileId`, `locationOf` and `fileFor`, plus
-`fileIdOfPhoto` and `fileIdOfDocument` for a value this account already has in hand. To send the
-file again, `inputDocumentOf`, `inputPhotoOf` and `mediaOf` build the input forms from an
-identifier — its identifier and access hash exactly as written, 64 bits each, and its reference
-as it was, which is subject to everything below. A profile picture, a sticker set's picture and a
-document's thumbnail are named through what owns them rather than as media, and the kinds only a
-secret chat or Passport uses are refused.
+`fileIdOfPhoto`, `fileIdOfDocument` and `fileIdOfThumbnail` for a value this account already
+has in hand. To send the file again, `inputDocumentOf`, `inputPhotoOf` and `mediaOf` build the
+input forms from an identifier — its identifier and access hash exactly as written, 64 bits
+each, and its reference as it was, which is subject to everything below. A profile picture, a
+sticker set's picture and a document's thumbnail are named through what owns them rather than as
+media, and the kinds only a secret chat or Passport uses are refused.
 
 **There are two identifiers and they are not the same thing.**
 
@@ -2224,6 +2224,7 @@ synchronous, on an entry point of its own:
 | `decodeWaveform`, `encodeWaveform` | A voice note's waveform: five-bit samples packed from the lowest bit up. Encoding refuses a sample outside 0–31 rather than masking it |
 | `strippedToJpeg` | A stripped thumbnail as a JPEG. The shared header is built from the JPEG standard's example tables (quality 20, 4:2:0), not carried as bytes |
 | `inflatePath`, `outlineSvg` | A sticker outline's packed path, and an SVG document around it |
+| `embeddedThumbnail` | A thumbnail that arrived with the message, as a complete image: a stripped one expanded, a cached one as it came, an outline drawn on the canvas the document states. A fetched size is refused with where to fetch it |
 | `richTextToFormatted`, `formattedToRichText` | An Instant View page's rich text to and from text with ranges. A page's own marks — subscript, superscript, highlighting, anchors — keep their text only |
 | `walkPageBlocks`, `pageMedia` | A page's blocks in reading order, and the photo or document a block names among those the page carries |
 | `readInlineMessageId`, `writeInlineMessageId` | The string form of an inline message's identifier |

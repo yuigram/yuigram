@@ -26,12 +26,13 @@
 
 import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
+import { thumbnailFile } from '../src/files/media.js'
 import { POOL_LIMITS } from '../src/network/pools.js'
 import type { MtprotoContext } from '../src/normalize/context.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
 import type { TlValue } from '../src/tl/index.js'
 import type { MockDatacenter } from './server/datacenter.js'
-import { contentOf, FileServer } from './server/files.js'
+import { contentOf, FileServer, thumbnailContentOf } from './server/files.js'
 import { createServerKey } from './server/keys.js'
 import type { Fault } from './server/server.js'
 import { type MockAccount, mockAccount, NOW_SECONDS } from './support/mock-account.js'
@@ -3355,6 +3356,123 @@ describe('a document an event carried', () => {
     })
 
     expect((outcome as Error).message).toMatch(/carries no file this can fetch/)
+    await instance.dispose()
+  })
+})
+
+/**
+ * A thumbnail of a document an event carried, fetched over the wire.
+ *
+ * The datacenter here serves each rendering as its own bytes and refuses a size
+ * it does not hold, so a request that lost the selector, or named the wrong
+ * document, fetches something visibly different rather than the same bytes.
+ * Putting a refused reference right is driven at its seam instead, in
+ * `actions-refresh.test.ts`, for the reason given there.
+ */
+describe('a thumbnail of a document an event carried', () => {
+  const FILE = 0x0d0c_0003n
+  const THUMB = 1_500
+
+  const documentWith = (reference: Uint8Array) => ({
+    _: 'document' as const,
+    id: FILE,
+    access_hash: 5n,
+    file_reference: reference,
+    date: 1_700_000_000,
+    mime_type: 'video/mp4',
+    size: 900_000n,
+    dc_id: 2,
+    attributes: [],
+    thumbs: [
+      { _: 'photoStrippedSize' as const, type: 'i', bytes: Uint8Array.of(1, 8, 8) },
+      { _: 'photoSize' as const, type: 'm', w: 320, h: 180, size: THUMB },
+    ],
+  })
+
+  const messageWith = (reference: Uint8Array): TlValue => ({
+    _: 'message',
+    id: 80,
+    peer_id: { _: 'peerUser', user_id: 5n },
+    from_id: { _: 'peerUser', user_id: 5n },
+    message: 'a clip',
+    date: 1_700_000_000,
+    media: { _: 'messageMediaDocument', document: documentWith(reference) },
+  })
+
+  const update = (reference: Uint8Array): TlValue => ({
+    _: 'updateNewMessage',
+    message: messageWith(reference),
+    pts: 1,
+    pts_count: 1,
+  })
+
+  function serving() {
+    const files = new FileServer(2)
+    const stored = files.add(FILE, { size: 900_000, dcId: 2, thumbnails: { m: THUMB } })
+    const instance = harness({
+      api: (query) => (query._.startsWith('upload.') ? files.invoke(query) : undefined),
+    })
+
+    return { instance, files, stored }
+  }
+
+  async function connected(instance: ReturnType<typeof serving>['instance']) {
+    await instance.account.connect()
+    await instance.account.peers.save({
+      kind: 'user',
+      id: 5n,
+      accessHash: 9n,
+      min: false,
+      usernames: [],
+    })
+  }
+
+  /** The size every fetch of this file named, in order. */
+  const sizesAsked = (files: FileServer) =>
+    files.asked
+      .filter((query) => query._ === 'upload.getFile')
+      .map((query) => (query['location'] as TlValue)['thumb_size'])
+
+  it('fetches the rendering named rather than the document', async () => {
+    const { instance, files, stored } = serving()
+    await connected(instance)
+
+    let bytes: Uint8Array | undefined
+    instance.account.on('message', async (event) => {
+      bytes = await event.download({ thumbnail: 'm' })
+    })
+    await instance.account.deliver(update(stored.reference))
+
+    expect(bytes).toEqual(thumbnailContentOf(FILE, 'm', 0, THUMB))
+    expect(sizesAsked(files)).toEqual(['m'])
+    await instance.dispose()
+  })
+
+  it('surfaces an expired reference to a caller holding only the location', async () => {
+    // Nothing here holds the message, so nothing can ask for it again: the
+    // refusal is the caller's to act on, carried as the datacenter gave it.
+    const { instance, files, stored } = serving()
+    await connected(instance)
+    files.expire(FILE)
+
+    await expect(
+      instance.account.download(thumbnailFile(documentWith(stored.reference), 'm')),
+    ).rejects.toThrow(/FILE_REFERENCE_EXPIRED/)
+    await instance.dispose()
+  })
+
+  it('refuses a size carried in the message before asking anything', async () => {
+    const { instance, files, stored } = serving()
+    await connected(instance)
+
+    let outcome: unknown
+    instance.account.on('message', async (event) => {
+      outcome = await event.download({ thumbnail: 'i' }).catch((error: unknown) => error)
+    })
+    await instance.account.deliver(update(stored.reference))
+
+    expect((outcome as Error).message).toMatch(/arrived with the message/)
+    expect(sizesAsked(files)).toEqual([])
     await instance.dispose()
   })
 })

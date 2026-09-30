@@ -42,7 +42,7 @@ import type {
 } from '../messaging/send.js'
 import { inputPeer } from '../network/peers.js'
 import type { TlValue } from '../tl/index.js'
-import { type ActionContext, updateActions } from './actions.js'
+import { type ActionContext, type MediaDownloadOptions, updateActions } from './actions.js'
 import type { MtprotoEventKind } from './events.js'
 import { type NormalizedUpdate, normalizeUpdate, type PeerRef } from './normalize.js'
 import type { SentMessage } from './sent.js'
@@ -164,8 +164,15 @@ export interface MtprotoContext extends BaseContext, ContextActions {
    * the largest of the ones that have to be fetched is taken — the answer this
    * project already gives the same question on the other transport. Media that
    * carries no file at all is refused by name.
+   *
+   * ```ts
+   * const preview = await event.download({ thumbnail: 'm' })
+   * ```
+   *
+   * Naming a thumbnail fetches that rendering of the document or photo
+   * instead, and a refused reference is put right the same way.
    */
-  download(): Promise<Uint8Array>
+  download(options?: MediaDownloadOptions): Promise<Uint8Array>
   /** Forward the message this event carries, showing where it came from. */
   forward(to: string | PeerRef, options?: ForwardOptions): Promise<void>
   /** Send the message this event carries again, as this account's own. */
