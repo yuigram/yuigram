@@ -328,7 +328,13 @@ import {
   walkStoryViewers,
 } from './paging/walk.js'
 import type { BoostChance, BusinessIntro, LinkMessage, WorkHours } from './premium/premium.js'
-import { type AccountFilterContext, AccountRouter, dispatcherOf, register } from './router.js'
+import {
+  type AccountFilterContext,
+  AccountRouter,
+  type AccountRunnable,
+  dispatcherOf,
+  register,
+} from './router.js'
 import type { NewPassword, PasswordStatus, Securing } from './security/index.js'
 import {
   cancelRecoveryEmail,
@@ -4787,14 +4793,14 @@ export class Account<Ext = unknown> {
    * registering it, for the reason `Bot.on` gives.
    */
   on<F extends FilterMeta>(
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
   /** Handle events of a kind that a filter also matches. */
   on<K extends MtprotoEventKind, F extends FilterMeta>(
     kind: K | readonly K[],
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
@@ -4860,13 +4866,13 @@ export class Account<Ext = unknown> {
     options?: OnOptions,
   ): this
   once<F extends FilterMeta>(
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
   once<K extends MtprotoEventKind, F extends FilterMeta>(
     kind: K | readonly K[],
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this

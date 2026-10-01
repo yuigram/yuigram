@@ -8,6 +8,7 @@
  */
 
 import { describe, expectTypeOf, it } from 'vitest'
+import { f as accountFilters } from '../src/account-filters.js'
 import { type EmbeddedThumbnail, embeddedThumbnail } from '../src/account-utils.js'
 import type {
   Account,
@@ -35,12 +36,17 @@ import type {
   TelegramLink,
   Thumbnail,
   ThumbnailAvailability,
+  UnifiedContext,
 } from '../src/index.js'
 import {
+  AccountRouter,
   App,
+  and,
   Bot as BotClass,
+  defineFilter,
   type documentFile,
   downloadToFile,
+  f,
   fileIdOfThumbnail,
   memory,
   type photoFile,
@@ -286,5 +292,38 @@ describe('a session keyed by the application', () => {
       key: (event) => event.message.chat.id,
       initial: () => ({ count: 0 }),
     })
+  })
+})
+
+describe('a filter registered on an account', () => {
+  const account = null as unknown as Account
+
+  it('accepts the account filters, and passes on what they prove', () => {
+    account.on(accountFilters.text(), (event) => {
+      expectTypeOf(event.text).toEqualTypeOf<string>()
+    })
+    account.on('message', accountFilters.chat('user'), (event) => {
+      expectTypeOf(event.transport).toEqualTypeOf<'mtproto'>()
+    })
+  })
+
+  it('accepts a filter written for what every transport shares', () => {
+    const anyText = defineFilter<UnifiedContext>(
+      'anyText',
+      (event) => typeof event === 'object' && event !== null && 'text' in event,
+    )
+    account.on(anyText, () => {})
+    account.once(and(accountFilters.incoming, anyText), () => {})
+  })
+
+  it('refuses a filter written for the Bot API, which would never match', () => {
+    // It reads `chat.type`, which an account's peers do not have. Accepted, it
+    // compiled, matched nothing, and said nothing.
+    // @ts-expect-error the Bot API's `f` reads the events of another transport
+    account.on(f.chat.private, () => {})
+    // @ts-expect-error composed, it is still the Bot API's
+    account.on('message', and(f.chat.private, f.text(/./)), () => {})
+    // @ts-expect-error a router holds the same registrations
+    new AccountRouter().on(f.media.photo, () => {})
   })
 })

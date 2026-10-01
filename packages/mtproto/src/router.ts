@@ -51,6 +51,29 @@ export type AccountFilterContext<F> =
       : Modify<MtprotoContext, Mod>
     : MtprotoContext
 
+/** What a filter for another transport's events is told where it is registered. */
+interface ForeignTransportFilter {
+  readonly 'this filter reads the events of another transport; filter an account with the account filters': never
+}
+
+/**
+ * Whether an account can run a filter.
+ *
+ * It can run one written for its events, for a narrower view of them, or for
+ * what every transport shares. One written for another transport's events —
+ * the Bot API's `f` — reads fields an account's events do not carry, so it
+ * would compile, never match and say nothing. Neither type extending the other
+ * is what tells that case apart, and it is refused where it is registered.
+ */
+export type AccountRunnable<F> =
+  F extends AnyFilter<infer Base, infer _Mod>
+    ? Base extends MtprotoContext
+      ? unknown
+      : MtprotoContext extends Base
+        ? unknown
+        : ForeignTransportFilter
+    : unknown
+
 /** Every kind an account's events can have. */
 const KNOWN_KINDS: ReadonlySet<string> = new Set<string>([...SHARED_KINDS, ...ACCOUNT_KINDS])
 
@@ -220,14 +243,14 @@ export class AccountRouter<Ext = unknown> {
   ): this
   /** Handle what a filter matches; the handler's context is what the filter proves. */
   on<F extends FilterMeta>(
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
   /** Handle events of a kind that a filter also matches. */
   on<K extends MtprotoEventKind, F extends FilterMeta>(
     kind: K | readonly K[],
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
@@ -244,13 +267,13 @@ export class AccountRouter<Ext = unknown> {
     options?: OnOptions,
   ): this
   once<F extends FilterMeta>(
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
   once<K extends MtprotoEventKind, F extends FilterMeta>(
     kind: K | readonly K[],
-    filter: F,
+    filter: F & AccountRunnable<F>,
     handler: Handler<AccountFilterContext<F> & Ext>,
     options?: OnOptions,
   ): this
