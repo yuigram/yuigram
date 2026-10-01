@@ -210,7 +210,7 @@ describe('gating middleware on a filter', () => {
   it('runs the middleware on a match and passes everything else along', async () => {
     const seen: string[] = []
     const gated = when(f.kind.in('message'), async (context, next) => {
-      seen.push(`ran on ${(context as { kind: string }).kind}`)
+      seen.push(`ran on ${context.kind}`)
       await next()
     })
 

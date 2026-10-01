@@ -90,17 +90,6 @@ export async function run<C>(middlewares: ReadonlyArray<Middleware<C>>, context:
 }
 
 /**
- * Gate middleware on a predicate: run it on a match, skip to `next()` otherwise.
- *
- * Skipping rather than blocking is what makes a gated middleware safe to place
- * anywhere in a chain — a non-match must not stop the updates behind it.
- */
-export function when<C>(
-  predicate: (context: C) => boolean | Promise<boolean>,
-  middleware: Middleware<C>,
-): Middleware<C>
-
-/**
  * Gate middleware on a filter, which narrows the context it sees.
  *
  * ```ts
@@ -113,11 +102,26 @@ export function when<C>(
  * What a filter adds over a bare predicate is the narrowing: the middleware is
  * written against what matching proved, rather than against the widest context
  * the chain carries.
+ *
+ * Declared before the predicate form on purpose. A filter is itself callable,
+ * so with the predicate form first it matched that one, with the context
+ * inferred as `unknown`, and the narrowing never reached the middleware.
  */
 export function when<Base, Mod>(
   matching: AnyFilter<Base, Mod>,
   middleware: Middleware<Base & Mod>,
 ): Middleware<unknown>
+
+/**
+ * Gate middleware on a predicate: run it on a match, skip to `next()` otherwise.
+ *
+ * Skipping rather than blocking is what makes a gated middleware safe to place
+ * anywhere in a chain — a non-match must not stop the updates behind it.
+ */
+export function when<C>(
+  predicate: (context: C) => boolean | Promise<boolean>,
+  middleware: Middleware<C>,
+): Middleware<C>
 export function when<C>(
   predicate: (context: C) => boolean | Promise<boolean>,
   middleware: Middleware<C>,

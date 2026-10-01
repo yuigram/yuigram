@@ -55,6 +55,7 @@ import {
   thumbnail,
   thumbnailFile,
   thumbnails,
+  when,
 } from '../src/index.js'
 
 describe('the MTProto types a consumer writes against', () => {
@@ -325,5 +326,29 @@ describe('a filter registered on an account', () => {
     account.on('message', and(f.chat.private, f.text(/./)), () => {})
     // @ts-expect-error a router holds the same registrations
     new AccountRouter().on(f.media.photo, () => {})
+  })
+})
+
+describe('middleware gated on a filter', () => {
+  it('is written against what the filter proved', () => {
+    const bot = BotClass.fromToken('123:abc')
+    bot.use(
+      when(f.chat.private, async (message, next) => {
+        expectTypeOf(message.chat.id).toEqualTypeOf<number>()
+        expectTypeOf(message.transport).toEqualTypeOf<'bot-api'>()
+        await next()
+      }),
+    )
+  })
+
+  it('still takes a bare predicate, typed as it says', () => {
+    const gate = when(
+      (event: { readonly kind: string }) => event.kind === 'message',
+      async (event, next) => {
+        expectTypeOf(event.kind).toEqualTypeOf<string>()
+        await next()
+      },
+    )
+    expectTypeOf(gate).not.toBeAny()
   })
 })
