@@ -189,6 +189,19 @@ function readAuthorization(value: TlValue, dcId: number): SignInState {
 export async function sendCode(
   options: SignInOptions & { readonly phone: string },
 ): Promise<SignInState> {
+  return (await requestCode(options)).state
+}
+
+/**
+ * {@link sendCode}, keeping how Telegram said the code would arrive.
+ *
+ * Only {@link startTest} reads the delivery: it is where the length of a test
+ * number's code comes from. The ordinary flow has nothing to do with it — the
+ * person types what arrived.
+ */
+async function requestCode(
+  options: SignInOptions & { readonly phone: string },
+): Promise<{ readonly state: SignInState; readonly delivery?: unknown }> {
   const { value, dcId } = await followingRedirections(options, () => ({
     _: 'auth.sendCode',
     phone_number: normalizePhone(options.phone),
@@ -203,7 +216,7 @@ export async function sendCode(
       throw new SessionError("'auth.sentCodeSuccess.authorization' must be an object")
     }
 
-    return readAuthorization(authorization as TlValue, dcId)
+    return { state: readAuthorization(authorization as TlValue, dcId) }
   }
 
   if (value._ !== 'auth.sentCode') {
@@ -213,10 +226,13 @@ export async function sendCode(
   const timeout = value['timeout']
 
   return {
-    kind: 'code-sent',
-    dcId,
-    phoneCodeHash: readText(value, 'phone_code_hash'),
-    ...(typeof timeout === 'number' ? { timeout } : {}),
+    state: {
+      kind: 'code-sent',
+      dcId,
+      phoneCodeHash: readText(value, 'phone_code_hash'),
+      ...(typeof timeout === 'number' ? { timeout } : {}),
+    },
+    delivery: value['type'],
   }
 }
 
@@ -351,10 +367,20 @@ export async function signInAsBot(
  * The datacenters Telegram runs for testing, and the numbers reserved for them.
  *
  * A test number is `99966XYYYY`, where X is the datacenter and YYYY is
- * anything; the confirmation code is X five times over. There are three test
- * datacenters, so X is 1, 2 or 3 and nothing else.
+ * anything; the confirmation code is X repeated, five times by Telegram's
+ * documentation (https://core.telegram.org/api/auth#test-accounts). There are
+ * three test datacenters, so X is 1, 2 or 3 and nothing else.
  */
 const TEST_DCS = [1, 2, 3] as const
+
+/** The length Telegram's documentation gives a test number's code. */
+const TEST_CODE_LENGTH = 5
+
+/**
+ * The longest code length believed from an answer. Login codes are a handful
+ * of digits; a larger figure is a malformed answer, not a code to build.
+ */
+const MAX_CODE_LENGTH = 16
 
 /** A test number for a datacenter, with the random part drawn by the caller. */
 export function testPhone(dcId: number, random: (length: number) => Uint8Array): string {
@@ -371,9 +397,42 @@ export function testPhone(dcId: number, random: (length: number) => Uint8Array):
   return `99966${dcId}${digits}`
 }
 
-/** The confirmation code a test number always receives. */
-export function testCode(dcId: number): string {
-  return String(dcId).repeat(5)
+/**
+ * The confirmation code a test number receives: its datacenter's digit,
+ * repeated as many times as the code is long.
+ */
+export function testCode(dcId: number, length: number = TEST_CODE_LENGTH): string {
+  return String(dcId).repeat(length)
+}
+
+/**
+ * How long a test number's code is, from what Telegram said when it sent it.
+ *
+ * The length the answer states is the length Telegram will check, so it wins
+ * over the documented five. A delivery that states none — a flash call, a word
+ * or a phrase — has no digit count to read, and the documented five stands. A
+ * stated length that no code could have is refused before a sign-in attempt is
+ * spent on it.
+ */
+function testCodeLength(delivery: unknown): number {
+  if (typeof delivery !== 'object' || delivery === null) {
+    throw new SessionError("'auth.sentCode.type' must be an object")
+  }
+  if (!('length' in delivery)) return TEST_CODE_LENGTH
+
+  const { length } = delivery
+  if (
+    typeof length !== 'number' ||
+    !Number.isInteger(length) ||
+    length < 1 ||
+    length > MAX_CODE_LENGTH
+  ) {
+    throw new SessionError(
+      `Telegram stated a code length of ${String(length)}; a code is 1 to ${MAX_CODE_LENGTH} digits`,
+    )
+  }
+
+  return length
 }
 
 /**
@@ -408,7 +467,7 @@ export async function startTest(
     throw new ValidationError(`'${phone}' is not a reserved test number`)
   }
 
-  const sent = await sendCode({ ...options, phone })
+  const { state: sent, delivery } = await requestCode({ ...options, phone })
   if (sent.kind !== 'code-sent') return sent
 
   return await signIn({
@@ -416,7 +475,7 @@ export async function startTest(
     dcId: sent.dcId,
     phone,
     phoneCodeHash: sent.phoneCodeHash,
-    code: testCode(Number(named[1])),
+    code: testCode(Number(named[1]), testCodeLength(delivery)),
   })
 }
 

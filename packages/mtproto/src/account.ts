@@ -2454,7 +2454,9 @@ export class Account<Ext = unknown> {
    * The ordinary flow with a number whose confirmation code is known in
    * advance, which is what makes the sign-in paths testable without a real
    * number and its daily limit. Only reaches a test datacenter, because the
-   * number names which one.
+   * number names which one. The code is the datacenter's digit, repeated to
+   * the length Telegram states when it sends it, or five times where it
+   * states none; no other sign-in builds a code.
    *
    * Test accounts are public: Telegram wipes them periodically and anybody can
    * sign in to one, so nothing private belongs in a conversation held with one.

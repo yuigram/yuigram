@@ -14,7 +14,7 @@ import type { DownloadOptions } from '../src/files/download.js'
 import { downloadAsNodeStream, downloadAsStream } from '../src/files/streams.js'
 import { loginUrl, type QrSteps, signInQr } from '../src/network/qr.js'
 import type { LoginTokenState, SignInState } from '../src/network/signin.js'
-import { startTest, testCode, testPhone } from '../src/network/signin.js'
+import { sendCode, startTest, testCode, testPhone } from '../src/network/signin.js'
 import type { TlValue } from '../src/tl/index.js'
 
 /* -------------------------------------------------------------------------- */
@@ -446,6 +446,7 @@ describe('a reserved test number', () => {
   it('has a confirmation code of its datacenter, five times over', () => {
     expect(testCode(2)).toBe('22222')
     expect(testCode(3)).toBe('33333')
+    expect(testCode(2, 6)).toBe('222222')
   })
 
   it('signs in through the ordinary steps, with the code it already knows', async () => {
@@ -501,6 +502,97 @@ describe('a reserved test number', () => {
 
     // The number decides, not the argument beside it.
     expect(asked[1]).toMatchObject({ phone_code: '33333' })
+  })
+
+  /** A test datacenter that answers the code request with `answer`, recording every request. */
+  function answering(answer: TlValue) {
+    const asked: TlValue[] = []
+    const reach = () => ({
+      invoke: (query: TlValue) => {
+        asked.push(query)
+
+        return Promise.resolve(
+          query._ === 'auth.sendCode'
+            ? answer
+            : ({ _: 'auth.authorization', user: { _: 'user', id: 9n } } as TlValue),
+        )
+      },
+    })
+
+    return { asked, reach }
+  }
+
+  const sentCode = (type: unknown) =>
+    ({ _: 'auth.sentCode', phone_code_hash: 'hash', type }) as TlValue
+
+  it.each([
+    ['in the app, six digits', { _: 'auth.sentCodeTypeApp', length: 6 }, '222222'],
+    ['by SMS, five digits', { _: 'auth.sentCodeTypeSms', length: 5 }, '22222'],
+    ['by a call, four digits', { _: 'auth.sentCodeTypeCall', length: 4 }, '2222'],
+    [
+      'by a flash call, with no length stated',
+      { _: 'auth.sentCodeTypeFlashCall', pattern: '*' },
+      '22222',
+    ],
+    ['as a word, with no length stated', { _: 'auth.sentCodeTypeSmsWord' }, '22222'],
+  ])('builds the code to the length Telegram states for a code sent %s', async (_, type, code) => {
+    const { asked, reach } = answering(sentCode(type))
+
+    await startTest({ reach, dcId: 2, apiId: 1, apiHash: 'x', phone: '9996621111' })
+
+    // The stated length is the one Telegram checks; the documented five is
+    // used only where the answer states none.
+    expect(asked[1]).toMatchObject({ _: 'auth.signIn', phone_code: code })
+  })
+
+  it.each([
+    ['zero', 0],
+    ['a negative length', -1],
+    ['a fraction', 2.5],
+    ['more digits than any code has', 17],
+    ['a length large enough to exhaust memory', 2 ** 31],
+    ['a length that is not a number', '5'],
+    ['no number at all', Number.NaN],
+  ])('spends no attempt on %s as the stated length', async (_, length) => {
+    const { asked, reach } = answering(sentCode({ _: 'auth.sentCodeTypeApp', length }))
+
+    await expect(
+      startTest({ reach, dcId: 2, apiId: 1, apiHash: 'x', phone: '9996621111' }),
+    ).rejects.toThrow(SessionError)
+    expect(asked.map((query) => query._)).toEqual(['auth.sendCode'])
+  })
+
+  it('spends no attempt when the answer does not say how the code was sent', async () => {
+    const { asked, reach } = answering({ _: 'auth.sentCode', phone_code_hash: 'hash' } as TlValue)
+
+    await expect(
+      startTest({ reach, dcId: 2, apiId: 1, apiHash: 'x', phone: '9996621111' }),
+    ).rejects.toThrow(/auth\.sentCode\.type/)
+    expect(asked).toHaveLength(1)
+  })
+
+  it('spends no attempt when Telegram answers with something other than a sent code', async () => {
+    const { asked, reach } = answering({ _: 'auth.sentCodePaymentRequired' } as TlValue)
+
+    await expect(
+      startTest({ reach, dcId: 2, apiId: 1, apiHash: 'x', phone: '9996621111' }),
+    ).rejects.toThrow(/expected a sent code/)
+    expect(asked).toHaveLength(1)
+  })
+
+  it('leaves the ordinary flow without a code: a person types what arrived', async () => {
+    const { reach } = answering(sentCode({ _: 'auth.sentCodeTypeApp', length: 6 }))
+
+    const state = await sendCode({
+      reach,
+      dcId: 2,
+      apiId: 1,
+      apiHash: 'x',
+      phone: '+44 7700 900123',
+    })
+
+    // Nothing is derived from the delivery outside a test number's sign-in.
+    expect(state).toEqual({ kind: 'code-sent', dcId: 2, phoneCodeHash: 'hash' })
   })
 
   it('refuses a number that is not a reserved one', async () => {

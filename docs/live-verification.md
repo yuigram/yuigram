@@ -54,6 +54,12 @@ is `X` repeated five times, and the account may have to be registered on first u
 official client signed in to the test environment, since `login` does not register numbers. The
 group and the bot's membership in it are set up the same way, from that client.
 
+`login` asks for that code at the terminal like any other. Only `account.startTest()` builds one,
+and only for a reserved number: `X` repeated to the length Telegram states when it sends the code,
+or five times where the answer states no length. A stated length outside 1–16 is refused before a
+sign-in attempt is spent. That rule is checked against recorded answers only; that the test
+datacenters state five, and accept the code built from it, needs a run against them.
+
 The session string, the token and the api hash are secrets; the phone number is treated as one.
 Keep them in a file outside the repository, readable only by its owner, and load it into the
 shell that runs the steps — never in shell history, a ticket or a message, and never pasted into
