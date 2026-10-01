@@ -23,13 +23,7 @@
 
 import type { RawApi } from '../api.js'
 import { ConfigError, ValidationError } from '../core.js'
-import {
-  type DownloadDeps,
-  type DownloadTarget,
-  download,
-  downloadStream,
-  downloadToFile,
-} from '../download.js'
+import { collect, type DownloadDeps, type DownloadTarget, fetchFileStream } from '../download.js'
 import type { CallbackQuery, Message, ReactionType } from '../generated/types/index.js'
 import type {
   AnswerOptions,
@@ -184,16 +178,14 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
   return {
     // Async, so a message with no file or a context with no client is a
     // rejection like any other failure of the call, not a throw at the call site.
-    async download(path?: string): Promise<never> {
+    async download(): Promise<Uint8Array> {
       const { files, target } = toFetch()
-      if (path === undefined) return (await download(files, target)) as never
-      await downloadToFile(files, path, target)
-      return undefined as never
+      return await collect(await fetchFileStream(files, target))
     },
 
     async downloadStream(): Promise<ReadableStream<Uint8Array>> {
       const { files, target } = toFetch()
-      return await downloadStream(files, target)
+      return await fetchFileStream(files, target)
     },
 
     reply(first: string | SendContent, second: ReplyOptions = {}): Promise<Message> {

@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { ConfigError, ValidationError } from '@yuigram/core'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Bot } from '../src/bot.js'
+import { download, downloadToFile } from '../src/download.js'
 import { attachmentOf } from '../src/events/actions.js'
 import type { Message, Update } from '../src/generated/types/index.js'
 import type { HttpClient } from '../src/http/client.js'
@@ -79,15 +80,16 @@ describe('a bot downloading', () => {
     expect(fetched).toEqual(['memory:files/big'])
   })
 
-  it('writes to a path as the bytes arrive, when given one', async () => {
+  it('hands its transport to the function that writes to a path', async () => {
     const { client } = filesTransport({ doc: Uint8Array.of(4, 5, 6) })
     const bot = new Bot(TOKEN, { client })
     const directory = await mkdtemp(join(tmpdir(), 'yuigram-bot-download-'))
     made.push(directory)
     const path = join(directory, 'out.bin')
 
-    expect(await bot.download('doc', path)).toBeUndefined()
+    await downloadToFile(bot.files, path, 'doc')
     expect(new Uint8Array(await readFile(path))).toEqual(Uint8Array.of(4, 5, 6))
+    expect(bot.files.client).toBe(client)
   })
 
   it('streams, and names the URL only when asked', async () => {
@@ -100,7 +102,7 @@ describe('a bot downloading', () => {
     expect(await bot.getFileUrl('doc')).toBe('memory:files/doc')
   })
 
-  it('reads a local Bot API server’s path from disk', async () => {
+  it('reads a local Bot API server’s path from disk through the functions, and says so itself', async () => {
     // A local server answers getFile with an absolute path on its own disk.
     const directory = await mkdtemp(join(tmpdir(), 'yuigram-bot-local-'))
     made.push(directory)
@@ -114,7 +116,12 @@ describe('a bot downloading', () => {
     }
     const bot = new Bot(TOKEN, { client, local: true })
 
-    expect(await bot.download('x')).toEqual(Uint8Array.of(8, 8))
+    expect(bot.files.local).toBe(true)
+    expect(await download(bot.files, 'x')).toEqual(Uint8Array.of(8, 8))
+    // The method is the transport's only, so a bot bundled without a
+    // filesystem carries none; it names where the disk forms are.
+    await expect(bot.download('x')).rejects.toThrow(ConfigError)
+    await expect(bot.download('x')).rejects.toThrow(/download\(bot\.files, target\)/)
   })
 
   it('builds its transport for the test environment when told to', async () => {

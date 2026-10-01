@@ -18,6 +18,7 @@ import type {
   AppClient,
   BaseContext,
   Bot,
+  DownloadDeps,
   DownloadRequest,
   MediaDownloadOptions,
   MessageContext,
@@ -38,6 +39,7 @@ import type {
 import {
   App,
   type documentFile,
+  downloadToFile,
   fileIdOfThumbnail,
   type photoFile,
   thumbnail,
@@ -229,10 +231,13 @@ describe('the names Telegram documents for a refusal', () => {
 })
 
 describe('downloading a file', () => {
-  it('is a method of the bot, with the bytes or a path', () => {
+  it('is a method of the bot over its transport, and a function for the disk', () => {
     const bot = null as unknown as Bot
     expectTypeOf(bot.download('file-id')).toEqualTypeOf<Promise<Uint8Array>>()
-    expectTypeOf(bot.download('file-id', './out.bin')).toEqualTypeOf<Promise<void>>()
+    expectTypeOf(bot.files).toEqualTypeOf<DownloadDeps>()
+    expectTypeOf(downloadToFile(bot.files, './out.bin', 'file-id')).toEqualTypeOf<Promise<void>>()
+    // @ts-expect-error writing to a path needs a filesystem, which a bot does not carry
+    void bot.download('file-id', './out.bin')
     expectTypeOf(bot.downloadStream('file-id')).toEqualTypeOf<Promise<ReadableStream<Uint8Array>>>()
     expectTypeOf(bot.getFileUrl('file-id')).toEqualTypeOf<Promise<string>>()
     // @ts-expect-error a number names no file
@@ -242,7 +247,6 @@ describe('downloading a file', () => {
   it('is an action of a message, for the file it carries', () => {
     const ctx = null as unknown as MessageContext
     expectTypeOf(ctx.download()).toEqualTypeOf<Promise<Uint8Array>>()
-    expectTypeOf(ctx.download('./out.bin')).toEqualTypeOf<Promise<void>>()
     expectTypeOf(ctx.downloadStream()).toEqualTypeOf<Promise<ReadableStream<Uint8Array>>>()
   })
 })

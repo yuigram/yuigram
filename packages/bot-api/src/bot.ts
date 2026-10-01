@@ -48,12 +48,11 @@ import {
 } from './core.js'
 import type { MethodDefaults } from './defaults.js'
 import {
+  collect,
   type DownloadDeps,
   type DownloadTarget,
-  download as downloadFile,
-  downloadToFile,
+  fetchFileStream,
   getFileUrl as fileUrlOf,
-  downloadStream as streamOf,
 } from './download.js'
 import {
   type AnyEventContext,
@@ -712,33 +711,40 @@ export class Bot<Ext = unknown> {
    * Fetch a file this bot can name, through this bot's own transport.
    *
    * ```ts
-   * const bytes = await bot.download(message.photo)          // the largest size
-   * await bot.download(message.document, './report.pdf')     // straight to disk
+   * const bytes = await bot.download(message.photo)   // the largest size
    * ```
    *
    * The target is anything that carries a `file_id` — a bare identifier, a
    * `Document`, a `File` from `getFile` (which saves a round trip), or a photo's
-   * size list, of which the largest is taken. With a path, the bytes go to disk
-   * as they arrive rather than into memory, which is what a large file from a
-   * local Bot API server needs; a runtime without a filesystem refuses that
-   * form.
+   * size list, of which the largest is taken.
    *
-   * The free functions `download`, `downloadStream`, `downloadToFile` and
-   * `getFileUrl` are the same operations with the transport passed by hand, for
-   * code that has no client.
+   * Over the transport only. Writing to a path, and reading a local Bot API
+   * server's files — paths on its disk — need a filesystem, which a bot bundled
+   * for a worker or a page does not have; the functions take them, given
+   * {@link Bot.files}:
+   *
+   * ```ts
+   * await downloadToFile(bot.files, './report.pdf', message.document)
+   * ```
    */
-  download(target: DownloadTarget): Promise<Uint8Array>
-  download(target: DownloadTarget, path: string): Promise<void>
-  async download(target: DownloadTarget, path?: string): Promise<unknown> {
-    if (path === undefined) return await downloadFile(this.#files, target)
-
-    await downloadToFile(this.#files, path, target)
-    return undefined
+  async download(target: DownloadTarget): Promise<Uint8Array> {
+    return await collect(await this.downloadStream(target))
   }
 
   /** Open a file as a stream of bytes, without holding all of it at once. */
   async downloadStream(target: DownloadTarget): Promise<ReadableStream<Uint8Array>> {
-    return await streamOf(this.#files, target)
+    return await fetchFileStream(this.#files, target)
+  }
+
+  /**
+   * What the download functions need from this bot: its API and the transport
+   * it was built with, including whether that is a local Bot API server.
+   *
+   * For `download`, `downloadStream`, `downloadToFile` and `getFileUrl`, so a
+   * download goes where this bot's calls go without rebuilding the transport.
+   */
+  get files(): DownloadDeps {
+    return this.#files
   }
 
   /**

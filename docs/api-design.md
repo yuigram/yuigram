@@ -614,8 +614,8 @@ await message.reply({ document: media.buffer(bytes, 'report.pdf') })
 await message.reply({ photo:    media.id(existingFileId) })     // Bot API reuse
 
 const bytes = await bot.download(message.message.photo)       // the largest size
-await bot.download(message.message.document, './out.pdf')     // to disk as it arrives
 const stream = await bot.downloadStream(fileId)
+await downloadToFile(bot.files, './out.pdf', message.message.document)   // to disk
 
 bot.onMessage(async (message) => {
   const carried = await message.download()                    // the file this message carries
@@ -627,15 +627,20 @@ and the type reflects that — `media.id()` is not accepted by an `Account` clie
 `file_id` is a Bot API construct that does not convert without a round trip.
 
 Downloading is free functions — `download`, `downloadStream`, `downloadToFile`, `getFileUrl` —
-taking the transport explicitly, and the same four on the bot as `download(target)`,
-`download(target, path)`, `downloadStream` and `getFileUrl`. The functions are the primitive,
-which has to work without a client at all; the methods use the transport the bot was built
-with — a client it was given, a local Bot API server's paths on disk — which an application
-could not otherwise recover from the bot. A message context's `download()` and
-`downloadStream()` fetch the file that message carries through the client it arrived on: a
-document, video, audio, voice note, video note or animation as it is, a photo at its largest,
-a sticker only when nothing else is there, and a refusal for a message with no file. Neither
-form takes a cancellation signal; a download is one request for one file.
+taking the transport explicitly, and three methods on the bot — `download(target)`,
+`downloadStream(target)`, `getFileUrl(target)` — that use the transport the bot was built with,
+which an application could not otherwise recover from the bot. A message context's `download()`
+and `downloadStream()` fetch the file that message carries through the client it arrived on: a
+document, video, audio, voice note, video note or animation as it is, a photo at its largest, a
+sticker only when nothing else is there, and a refusal for a message with no file.
+
+The methods work over the transport only. Writing to a path, and reading a local Bot API
+server's files — which are paths on its disk — need a filesystem, and a bot is bundled for
+workers and pages where there is none: a method that could reach one would put a Node built-in
+into every bot's bundle, which `docs/runtimes.md` §3 rules out and a test holds. So those two
+are the functions' alone, given the bot's transport as `bot.files`; a local-server bot's
+`download` says so rather than failing somewhere less clear. Neither form takes a cancellation
+signal; a download is one request for one file.
 
 A resolved download URL **contains the bot token**, because Telegram's file endpoint requires
 it. `getFileUrl` returns a credential, and it is documented as one — do not log it, and do

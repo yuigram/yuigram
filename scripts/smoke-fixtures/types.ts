@@ -18,6 +18,7 @@ import {
   type AnyEventContext,
   App,
   Bot,
+  downloadToFile,
   encrypted,
   type KV,
   limiter,
@@ -161,6 +162,6 @@ export const redisSessions: KV<{ readonly count: number }> = redisStore<{ readon
 )
 export const redisLimits = limiter({ counter: redisCounter(redis) })
 
-// The download methods resolve with their overloads from the installed declarations.
+// A download through the bot, and to disk through the function given the bot's transport.
 export const downloaded: Promise<Uint8Array> = bot.download('file-id')
-export const written: Promise<void> = bot.download('file-id', './out.bin')
+export const written: Promise<void> = downloadToFile(bot.files, './out.bin', 'file-id')

@@ -279,9 +279,11 @@ The 20/50 MB caps are Bot API facts, not Yuigram choices, and the documentation 
 plainly — a developer hitting the ceiling should be told immediately that a local Bot API
 server or an MTProto client is the answer.
 
-`bot.download(target)` fetches through the bot's own transport, so a local server's paths on
-disk are read rather than fetched; `bot.download(target, path)` writes to disk as the bytes
-arrive. A message context's `download()` fetches the file that message carries.
+`bot.download(target)` and `bot.downloadStream(target)` fetch through the bot's own transport,
+and a message context's `download()` fetches the file that message carries. To disk, and from a
+local server, whose files are paths on its disk, the functions take the bot's transport:
+`downloadToFile(bot.files, path, target)`, `download(bot.files, target)`. The methods stay off
+the filesystem so a bot's bundle needs nothing but `fetch`.
 
 ### Test environment
 
