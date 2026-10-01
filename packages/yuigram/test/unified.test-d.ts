@@ -10,6 +10,7 @@ import { describe, expectTypeOf, it } from 'vitest'
 import type {
   Account,
   AnyEventContext,
+  BaseContext,
   Bot,
   ContextActions,
   MessageContext,
@@ -73,6 +74,24 @@ describe('an application written against it', () => {
       await event.react('👍')
       expectTypeOf(event.text).toEqualTypeOf<string | undefined>()
       expectTypeOf(event.client.name).toEqualTypeOf<string>()
+    })
+  })
+
+  it('describes every client by default, so application middleware can log', () => {
+    // No type argument. Every event either subsystem produces carries the
+    // base context, so that is what a container assumes when told nothing —
+    // enough to log and route without naming the union.
+    const app = new App()
+    app.add(bot)
+    app.add(user)
+    app.use(async (event, next) => {
+      expectTypeOf(event).toEqualTypeOf<BaseContext>()
+      event.log.info('handled', { client: event.client.name, kind: event.kind })
+      await next()
+    })
+    app.onError(({ client, error }) => {
+      expectTypeOf(client.name).toEqualTypeOf<string>()
+      expectTypeOf(error).toBeUnknown()
     })
   })
 

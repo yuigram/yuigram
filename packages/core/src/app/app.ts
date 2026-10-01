@@ -39,7 +39,7 @@
  * that cannot reach Telegram is no reason for an unrelated account to stop.
  */
 
-import type { UnifiedContext } from '../context/types.js'
+import type { BaseContext, UnifiedContext } from '../context/types.js'
 import { type Dispatchable, Dispatcher, type Handler } from '../dispatch/dispatcher.js'
 import { YuigramError } from '../errors/errors.js'
 import type { AnyFilter } from '../filter/types.js'
@@ -109,8 +109,15 @@ const areaOf = (name: string): string => `${PER_CLIENT}${encodeURIComponent(name
  * Registration order is kept, because starting and stopping visit clients in
  * the order they were added and a container that reordered them would make a
  * dependency between two clients impossible to express by adding them in order.
+ *
+ * `C` describes what the clients dispatch. It defaults to {@link BaseContext},
+ * which every event of both subsystems carries — the kind, the transport, the
+ * client it arrived on, a logger and the raw payload — so application-wide
+ * middleware can log and route without naming a type. Name the union of the
+ * clients' contexts to read transport-specific fields after narrowing on
+ * `transport`.
  */
-export class App<C extends Dispatchable = Dispatchable> {
+export class App<C extends Dispatchable = BaseContext> {
   readonly name: string
 
   readonly #clients: Array<AppClient<C>> = []
