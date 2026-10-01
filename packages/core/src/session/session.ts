@@ -33,7 +33,7 @@
  */
 
 import type { BaseContext } from '../context/types.js'
-import { type AddressedPeer, addressPart } from '../conversation/identity.js'
+import { type Addressed, type AddressedPeer, addressPart } from '../conversation/identity.js'
 import { ValidationError } from '../errors/errors.js'
 import type { Middleware, MiddlewareHost } from '../middleware/compose.js'
 import type { Plugin } from '../plugin/plugin.js'
@@ -67,8 +67,13 @@ export interface SessionFlavor<V> {
   readonly sessionHandle: SessionHandle<V>
 }
 
-/** Derives the storage key for an update, or `undefined` to skip loading. */
-export type SessionKeyFn<C> = (context: C) => string | number | undefined
+/**
+ * Derives the storage key for an update, or `undefined` to skip loading.
+ *
+ * A `bigint` is accepted because an account's peer identifiers are 64-bit; it
+ * is written out in full, never through a `number` that would round it.
+ */
+export type SessionKeyFn<C> = (context: C) => string | number | bigint | undefined
 
 /**
  * When the changes a handler made are written.
@@ -89,9 +94,10 @@ export interface SessionOptions<C, V> {
   /**
    * Derives the key.
    *
-   * The default is per-user-per-chat, because a user's state in a group is
-   * rarely the state they want in a direct message, and the reverse mistake
-   * leaks one conversation's context into another.
+   * Required, so the scope is visible where the session is installed. The
+   * usual choice is {@link userChatKey}, per user per chat, because a user's
+   * state in a group is rarely the state they want in a direct message, and
+   * the reverse mistake leaks one conversation's context into another.
    */
   readonly key: SessionKeyFn<C>
   /** Produces the value for a key with nothing stored. */
@@ -730,6 +736,13 @@ export type SessionHost = MiddlewareHost
  * )
  * ```
  *
+ * A key of your own reads the chat and the sender an update carries, where it
+ * carries them, so a different scope needs no context type named:
+ *
+ * ```ts
+ * session<Cart>({ storage, key: (event) => event.sender?.id, initial })   // per user, across chats
+ * ```
+ *
  * `createSession` still exists and is what this calls. Use it directly when the
  * context type needs stating — writing middleware generic over the client, or
  * installing two sessions under different properties. For the ordinary case,
@@ -737,7 +750,7 @@ export type SessionHost = MiddlewareHost
  * second type argument only ever produced a mismatch to debug.
  */
 export function session<V>(
-  options: SessionOptions<BaseContext & SessionFlavor<V>, V>,
+  options: SessionOptions<BaseContext & Pick<Addressed, 'chat' | 'sender'> & SessionFlavor<V>, V>,
 ): Plugin<string, undefined, SessionHost> {
   const middleware = createSession(options) as Middleware<never>
 

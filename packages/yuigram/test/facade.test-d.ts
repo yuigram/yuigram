@@ -38,10 +38,14 @@ import type {
 } from '../src/index.js'
 import {
   App,
+  Bot as BotClass,
   type documentFile,
   downloadToFile,
   fileIdOfThumbnail,
+  memory,
   type photoFile,
+  type SessionFlavor,
+  session,
   thumbnail,
   thumbnailFile,
   thumbnails,
@@ -248,5 +252,39 @@ describe('downloading a file', () => {
     const ctx = null as unknown as MessageContext
     expectTypeOf(ctx.download()).toEqualTypeOf<Promise<Uint8Array>>()
     expectTypeOf(ctx.downloadStream()).toEqualTypeOf<Promise<ReadableStream<Uint8Array>>>()
+  })
+})
+
+describe('a session keyed by the application', () => {
+  interface Cart {
+    count: number
+  }
+
+  it('reads the chat and the sender without a context type named', () => {
+    // The usual scopes are one expression each. Before the key could read
+    // either, these compiled only through `createSession` and a stated context.
+    const perUser = session<Cart>({
+      storage: memory(),
+      key: (event) => event.sender?.id,
+      initial: () => ({ count: 0 }),
+    })
+    const perChat = session<Cart>({
+      storage: memory(),
+      key: (event) => event.chat?.id,
+      initial: () => ({ count: 0 }),
+    })
+
+    BotClass.fromToken<SessionFlavor<Cart>>('123:abc').extend(perUser)
+    BotClass.fromToken<SessionFlavor<Cart>>('123:abc').extend(perChat)
+    expectTypeOf(perUser).not.toBeAny()
+  })
+
+  it('still refuses a key that reads something no update carries', () => {
+    session<Cart>({
+      storage: memory(),
+      // @ts-expect-error a session key sees the chat and the sender, not the whole update
+      key: (event) => event.message.chat.id,
+      initial: () => ({ count: 0 }),
+    })
   })
 })

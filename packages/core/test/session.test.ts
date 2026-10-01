@@ -206,6 +206,29 @@ describe('loading', () => {
     expect(await storage.get('1')).toEqual({ count: 1 })
     expect(await storage.get('2')).toEqual({ count: 2 })
   })
+
+  it('keeps every digit of a 64-bit key', async () => {
+    // An account's peer identifiers are 64-bit. A key that passed through a
+    // number would round, and two users would share one session.
+    const storage = memory<Data>()
+    const mw = createSession<Ctx & { peer: bigint }, Data>({
+      storage,
+      key: (c) => c.peer,
+      initial: () => ({ count: 0 }),
+    })
+
+    await run(
+      [
+        mw,
+        (c) => {
+          c.session = { count: 7 }
+        },
+      ],
+      { ...ctx(1), peer: 9_007_199_254_740_993n },
+    )
+
+    expect(await storage.get('9007199254740993')).toEqual({ count: 7 })
+  })
 })
 
 describe('dirty tracking', () => {

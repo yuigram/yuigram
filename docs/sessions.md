@@ -103,12 +103,16 @@ The key function decides scope, and getting it wrong is the most common session 
 ```ts
 key: (e) => e.sender?.id                              // per user, across all chats
 key: (e) => e.chat?.id                                // per chat, shared by members
-key: (e) => `${e.chat?.id}:${e.sender?.id}`           // per user per chat  ← usual default
-key: (e) => `${e.chat?.id}:${e.message?.message_thread_id}`  // per forum topic
+key: userChatKey                                      // per user per chat  ← the usual choice
 ```
 
-The default is per-user-per-chat, because a user's state in a group is rarely the state they
-want in a DM, and the reverse mistake leaks one conversation's context into another.
+A key given to `session()` sees the chat and the sender an update carries, which is what these
+scopes need; a key that reads further into an update — a forum topic, say — is written against a
+stated context with `createSession`. Per-user-per-chat is the usual choice, because a user's
+state in a group is rarely the state they want in a DM, and the reverse mistake leaks one
+conversation's context into another. The key is still required, so the choice is visible where
+the session is installed, and it may be a `bigint`: an account's identifiers are 64-bit, and a
+key is written out in full rather than through a `number` that would round it.
 
 Returning `undefined` skips session loading entirely — correct for updates with no
 meaningful subject, such as channel posts.
