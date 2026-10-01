@@ -119,6 +119,22 @@ describe('requests', () => {
     expect(firstUrl(impl)).toBe(`http://localhost:8081/bot${TOKEN}/getMe`)
   })
 
+  it('addresses the test environment after the token, for calls and files', async () => {
+    const impl = stubFetch({ ok: true, result: {} })
+    const client = fetchClient({ token: TOKEN, fetch: impl, testMode: true })
+
+    await client.call({ method: 'getMe', params: {} })
+
+    expect(firstUrl(impl)).toBe(`https://api.telegram.org/bot${TOKEN}/test/getMe`)
+    expect(client.fileUrl?.('docs/a.bin')).toBe(
+      `https://api.telegram.org/file/bot${TOKEN}/test/docs/a.bin`,
+    )
+    // Production is the default, with no segment at all.
+    expect(fetchClient({ token: TOKEN }).fileUrl?.('docs/a.bin')).toBe(
+      `https://api.telegram.org/file/bot${TOKEN}/docs/a.bin`,
+    )
+  })
+
   it('sends extra headers', async () => {
     const impl = stubFetch({ ok: true, result: {} })
     const client = fetchClient({ token: TOKEN, fetch: impl, headers: { 'x-trace': 'abc' } })

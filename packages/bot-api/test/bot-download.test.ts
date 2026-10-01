@@ -117,6 +117,16 @@ describe('a bot downloading', () => {
     expect(await bot.download('x')).toEqual(Uint8Array.of(8, 8))
   })
 
+  it('builds its transport for the test environment when told to', async () => {
+    const shaped = '0:TEST_TOKEN_NOT_A_REAL_CREDENTIAL_000000'
+    const bot = new Bot(shaped, { testMode: true })
+
+    // A known path needs no call, so this is the transport the bot built.
+    expect(await bot.getFileUrl({ file_id: 'x', file_path: 'docs/a.bin' })).toBe(
+      `https://api.telegram.org/file/bot${shaped}/test/docs/a.bin`,
+    )
+  })
+
   it('carries the transport’s refusal rather than a URL with the token in it', async () => {
     const { client } = filesTransport({})
     const bot = new Bot(TOKEN, { client: { ...client, fileUrl: (p) => `bot${TOKEN}/${p}` } })

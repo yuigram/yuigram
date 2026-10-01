@@ -273,11 +273,23 @@ configured rather than meaning "everything".
 | Download | 20 MB | `getFile` -> URL -> stream |
 | Upload | 50 MB | multipart, streaming |
 | Reuse | — | `file_id`, no transfer |
-| Local server | unlimited | `useLocal` lifts both limits |
+| Local server | unlimited | `baseUrl` with `local: true` lifts both limits |
 
 The 20/50 MB caps are Bot API facts, not Yuigram choices, and the documentation must say so
 plainly — a developer hitting the ceiling should be told immediately that a local Bot API
 server or an MTProto client is the answer.
+
+`bot.download(target)` fetches through the bot's own transport, so a local server's paths on
+disk are read rather than fetched; `bot.download(target, path)` writes to disk as the bytes
+arrive. A message context's `download()` fetches the file that message carries.
+
+### Test environment
+
+Telegram runs a separate test environment with its own accounts, chats and bots.
+`Bot.fromToken(token, { testMode: true })` sends calls to `/bot<token>/test/<method>` and fetches
+files from `/file/bot<token>/test/<path>`, with a token from the test environment's @BotFather —
+the same switch an account's `testMode` is. A bot and an account meant to meet in a chat have to
+be in the same environment.
 
 ### Lists
 

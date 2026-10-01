@@ -120,6 +120,12 @@ export interface BotOptions {
   readonly baseUrl?: string
   /** Whether `baseUrl` points at a local Bot API server. */
   readonly local?: boolean
+  /**
+   * Talk to Telegram's test environment rather than production, with a token
+   * from the test environment's BotFather. The same switch as an account's
+   * `testMode`. Ignored when `client` is given, which decides for itself.
+   */
+  readonly testMode?: boolean
   /** Name used in logs. */
   readonly name?: string
   /** Logger. Defaults to a console logger at `info`. */
@@ -302,6 +308,7 @@ export class Bot<Ext = unknown> {
         token,
         ...(options.baseUrl === undefined ? {} : { baseUrl: options.baseUrl }),
         ...(options.local === undefined ? {} : { local: options.local }),
+        ...(options.testMode === undefined ? {} : { testMode: options.testMode }),
       })
 
     this.api = createApi({
