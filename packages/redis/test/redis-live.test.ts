@@ -19,6 +19,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { HIT_SCRIPT, type RedisClient, redisCounter, redisStore } from '../src/index.js'
 
 const url = process.env['YUIGRAM_TEST_REDIS_URL']
+/** The database the application chose: the one the URL names, or 0 where it names none. */
+const chosenDatabase = url === undefined ? 0 : Number(new URL(url).pathname.slice(1) || '0')
 const namespace = `yuigram-test:${process.pid}:${Date.now()}:`
 
 interface Connected {
@@ -377,7 +379,7 @@ describe.skipIf(url === undefined)('against a real server', () => {
             'CLIENT',
             'INFO',
           ]))
-      expect(String(database)).toMatch(/ db=0 /)
+      expect(String(database)).toContain(` db=${chosenDatabase} `)
     }),
   )
 })
