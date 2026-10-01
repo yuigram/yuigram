@@ -6,14 +6,14 @@
  * it can do are the things you can do, and so are the consequences.
  *
  * ```sh
- * API_ID=12345 API_HASH=abc… pnpm tsx examples/03-basic-userbot/index.ts
+ * API_ID=12345 API_HASH=abc… SERVER_KEYS=./telegram-keys.pem pnpm tsx examples/03-basic-userbot/index.ts
  * ```
  *
  * The first run signs in and prints a `SESSION` string. Set it for later runs
  * and they start signed in:
  *
  * ```sh
- * API_ID=12345 API_HASH=abc… SESSION=… pnpm tsx examples/03-basic-userbot/index.ts
+ * API_ID=12345 API_HASH=abc… SERVER_KEYS=./telegram-keys.pem SESSION=… pnpm tsx examples/03-basic-userbot/index.ts
  * ```
  *
  * `SESSION` is a string an account was exported from. **It is a logged-in
@@ -24,21 +24,34 @@
  * Get `API_ID` and `API_HASH` from https://my.telegram.org. They belong to the
  * application rather than to the account, so they never go in the session.
  *
+ * `SERVER_KEYS` names a file holding Telegram's server public keys as PEM, as
+ * Telegram's MTProto documentation publishes them. They are public rather than
+ * secret, and an account refuses a datacenter whose key is not among them.
+ *
  * Send yourself `ping`, `read` or `contacts` from another device to exercise
  * the handlers below. A file with the caption `echo` is fetched and sent
  * straight back, without being uploaded again.
  */
 
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
-import { Account, documentMedia, memory, sentMessage } from 'yuigram'
+import {
+  Account,
+  bootstrapAt,
+  documentMedia,
+  memory,
+  sentMessage,
+  serverKeysFromPem,
+} from 'yuigram'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
 const session = process.env['SESSION']
+const serverKeys = process.env['SERVER_KEYS']
 
-if (!Number.isInteger(apiId) || apiHash === undefined) {
-  throw new Error('Set API_ID and API_HASH. See the comment at the top of this file.')
+if (!Number.isInteger(apiId) || apiHash === undefined || serverKeys === undefined) {
+  throw new Error('Set API_ID, API_HASH and SERVER_KEYS. See the comment at the top of this file.')
 }
 
 /** Ask the person running this for something only they can supply. */
@@ -60,24 +73,7 @@ async function ask(question: string): Promise<string> {
  * Telegram and to follow it if it says this account lives at another
  * datacenter.
  */
-const bootstrap = {
-  thisDc: 2,
-  testMode: false,
-  options: [
-    {
-      id: 2,
-      host: '149.154.167.50',
-      port: 443,
-      ipv6: false,
-      mediaOnly: false,
-      cdn: false,
-      secret: undefined,
-      tcpoOnly: false,
-      thisPortOnly: false,
-      static: false,
-    },
-  ],
-}
+const bootstrap = bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 })
 
 /**
  * An account carried in a string.
@@ -91,9 +87,8 @@ const bootstrap = {
 const options = {
   apiId,
   apiHash,
-  // Telegram's server keys go here. They are published rather than secret, and
-  // an account refuses a key exchange whose fingerprint is not among them.
-  keys: [],
+  // Checked by fingerprint when a datacenter answers a first key exchange.
+  keys: serverKeysFromPem(readFileSync(serverKeys, 'utf8')),
   bootstrap,
   storage: memory(),
   name: 'me',

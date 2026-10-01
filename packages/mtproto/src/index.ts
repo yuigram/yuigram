@@ -277,6 +277,8 @@ export {
   sendText,
   setTyping,
 } from './messaging/send.js'
+export { type BootstrapAddress, bootstrapAt } from './network/address.js'
+export type { DcAddress, DcConfiguration } from './network/dc.js'
 export {
   inputChannel,
   inputPeer,

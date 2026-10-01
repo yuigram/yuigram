@@ -17,15 +17,7 @@
 
 import { ValidationError } from '@yuigram/core'
 import type { TlValue } from '../tl/index.js'
-
-/** Ports are 16-bit. */
-const MAX_PORT = 65_535
-
-/** Dotted-quad, each octet within range. */
-const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-
-/** The characters an address literal may contain once it claims to be IPv6. */
-const IPV6_CHARS = /^[0-9a-fA-F:.]+$/
+import { checkHost, MAX_PORT } from './address.js'
 
 /** What a connection is being opened for. */
 export type DcPurpose =
@@ -315,31 +307,6 @@ function serves(option: DcAddress, purpose: DcPurpose): boolean {
   if (option.cdn) return false
 
   return purpose === 'media' || !option.mediaOnly
-}
-
-/**
- * Refuse an address literal that does not match the family it claims.
- *
- * The flag decides how the transport opens a socket, so an IPv4 literal behind
- * the IPv6 flag is not a cosmetic mismatch: it produces a connection attempt
- * against an address that was never published.
- */
-function checkHost(host: string, ipv6: boolean): void {
-  if (host.length === 0) {
-    throw new ValidationError('a datacenter address is empty')
-  }
-
-  if (ipv6) {
-    if (!host.includes(':') || !IPV6_CHARS.test(host)) {
-      throw new ValidationError(`'${host}' is not an IPv6 literal`)
-    }
-    return
-  }
-
-  const octets = IPV4.exec(host)
-  if (octets === null || octets.slice(1).some((octet) => Number(octet) > 255)) {
-    throw new ValidationError(`'${host}' is not an IPv4 literal`)
-  }
 }
 
 /** An optional `true` flag, absent when unset. */

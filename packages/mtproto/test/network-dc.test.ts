@@ -10,6 +10,7 @@
 
 import { ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
+import { bootstrapAt } from '../src/network/address.js'
 import {
   type DcAddress,
   type DcConfiguration,
@@ -451,5 +452,46 @@ describe('the test network', () => {
     expect(test.testMode).toBe(true)
     expect(production.select({ id: 2 })?.id).toBe(test.select({ id: 2 })?.id)
     expect(production.select({ id: 2 })?.host).not.toBe(test.select({ id: 2 })?.host)
+  })
+})
+
+describe('the address an application starts from', () => {
+  it('is the one datacenter named, on production unless told otherwise', () => {
+    const bootstrap = bootstrapAt({ dc: 2, host: '192.0.2.50', port: 443 })
+
+    expect(bootstrap.thisDc).toBe(2)
+    expect(bootstrap.testMode).toBe(false)
+    expect(new DcDirectory(bootstrap).select({ id: 2 })).toMatchObject({
+      id: 2,
+      host: '192.0.2.50',
+      port: 443,
+      ipv6: false,
+      mediaOnly: false,
+      cdn: false,
+    })
+  })
+
+  it('says which network it belongs to', () => {
+    expect(bootstrapAt({ dc: 1, host: '192.0.2.10', port: 443, testMode: true }).testMode).toBe(
+      true,
+    )
+  })
+
+  it('reads an IPv6 literal as one', () => {
+    const bootstrap = bootstrapAt({ dc: 2, host: '2001:db8::a', port: 443 })
+
+    expect(bootstrap.options[0]?.ipv6).toBe(true)
+  })
+
+  it('refuses what would only fail at the first connection', () => {
+    // Reported where the address was written, rather than as a datacenter that
+    // cannot be reached once the account is already running.
+    expect(() => bootstrapAt({ dc: 2, host: 'venus.web.telegram.org', port: 443 })).toThrow(
+      ValidationError,
+    )
+    expect(() => bootstrapAt({ dc: 2, host: '192.0.2.50', port: 0 })).toThrow(ValidationError)
+    expect(() => bootstrapAt({ dc: 2, host: '192.0.2.50', port: 70_000 })).toThrow(ValidationError)
+    expect(() => bootstrapAt({ dc: 0, host: '192.0.2.50', port: 443 })).toThrow(ValidationError)
+    expect(() => bootstrapAt({ dc: 2.5, host: '192.0.2.50', port: 443 })).toThrow(ValidationError)
   })
 })

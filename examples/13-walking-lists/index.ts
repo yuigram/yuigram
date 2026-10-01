@@ -31,7 +31,7 @@
  * refusal comes from Telegram rather than from here.
  */
 
-import { Account, documentFile, type MessageView, memory } from 'yuigram'
+import { Account, bootstrapAt, documentFile, type MessageView, memory } from 'yuigram'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
@@ -51,24 +51,7 @@ const me = Account.fromString(session, {
   apiHash,
   // Telegram's server keys go here; they are published rather than secret.
   keys: [],
-  bootstrap: {
-    thisDc: 2,
-    testMode: false,
-    options: [
-      {
-        id: 2,
-        host: '149.154.167.50',
-        port: 443,
-        ipv6: false,
-        mediaOnly: false,
-        cdn: false,
-        secret: undefined,
-        tcpoOnly: false,
-        thisPortOnly: false,
-        static: false,
-      },
-    ],
-  },
+  bootstrap: bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 }),
   // What an account needs while it runs. The session is what is re-supplied on
   // every start here, so nothing has to survive the process — and the name is
   // what would keep this account's keys apart from another's if the store were

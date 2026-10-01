@@ -19,6 +19,7 @@ import {
   type AnyEventContext,
   App,
   Bot,
+  bootstrapAt,
   type MtprotoContext,
   memory,
   type UnifiedContext,
@@ -36,24 +37,7 @@ if (session === undefined) {
   throw new Error('Set SESSION to a string exported from an account.')
 }
 
-const bootstrap = {
-  thisDc: 2,
-  testMode: false,
-  options: [
-    {
-      id: 2,
-      host: '149.154.167.50',
-      port: 443,
-      ipv6: false,
-      mediaOnly: false,
-      cdn: false,
-      secret: undefined,
-      tcpoOnly: false,
-      thisPortOnly: false,
-      static: false,
-    },
-  ],
-}
+const bootstrap = bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 })
 
 /**
  * The container both clients live in.

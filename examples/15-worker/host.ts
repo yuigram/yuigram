@@ -11,31 +11,14 @@
  */
 
 import { parentPort } from 'node:worker_threads'
-import { Account, ConfigError, memory } from 'yuigram'
+import { Account, bootstrapAt, ConfigError, memory } from 'yuigram'
 import { serveAccounts } from 'yuigram/worker'
 
 const apiId = Number(process.env['API_ID'])
 const apiHash = process.env['API_HASH']
 const session = process.env['SESSION']
 
-const bootstrap = {
-  thisDc: 2,
-  testMode: false,
-  options: [
-    {
-      id: 2,
-      host: '149.154.167.50',
-      port: 443,
-      ipv6: false,
-      mediaOnly: false,
-      cdn: false,
-      secret: undefined,
-      tcpoOnly: false,
-      thisPortOnly: false,
-      static: false,
-    },
-  ],
-}
+const bootstrap = bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 })
 
 serveAccounts(
   {

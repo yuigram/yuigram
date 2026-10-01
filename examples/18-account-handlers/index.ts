@@ -20,7 +20,7 @@
  * What each handler does is in `handlers.ts`.
  */
 
-import { Account, type ConversationFlavour, type FlowRecord, file } from 'yuigram'
+import { Account, bootstrapAt, type ConversationFlavour, type FlowRecord, file } from 'yuigram'
 import { install } from './handlers.js'
 
 const apiId = Number(process.env['API_ID'])
@@ -32,24 +32,7 @@ if (!Number.isInteger(apiId) || apiHash === undefined || session === undefined) 
 }
 
 /** Where Telegram is first reached; example 03 says more about both of these. */
-const bootstrap = {
-  thisDc: 2,
-  testMode: false,
-  options: [
-    {
-      id: 2,
-      host: '149.154.167.50',
-      port: 443,
-      ipv6: false,
-      mediaOnly: false,
-      cdn: false,
-      secret: undefined,
-      tcpoOnly: false,
-      thisPortOnly: false,
-      static: false,
-    },
-  ],
-}
+const bootstrap = bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 })
 
 const account = Account.fromString<ConversationFlavour>(session, {
   apiId,
