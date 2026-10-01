@@ -787,6 +787,88 @@ describe('a store that offers no way to take a name', () => {
     expect(lease.held).toBe(true)
     expect(raw.get(`${areaFor('alice')}claim`)).toEqual({ name: 'alice', holder: run('one') })
   })
+
+  /**
+   * What the claim record does not do, pinned so the documentation cannot
+   * drift into promising it.
+   *
+   * Two processes are two guards: neither registry knows the other exists. Over
+   * a persistent store with no lease, the claim is a value read and then
+   * written, and nothing makes those two steps one.
+   */
+  describe('between two processes', () => {
+    const persistentOver = (raw: Map<string, unknown>) => {
+      const waiting: Array<() => void> = []
+      let holding = false
+      const base = memoryOver(raw)
+
+      return {
+        hold() {
+          holding = true
+        },
+        releaseAll() {
+          holding = false
+          for (const resume of waiting.splice(0)) resume()
+        },
+        store: {
+          ...base,
+          async get(key: string) {
+            if (holding) await new Promise<void>((resolve) => waiting.push(resolve))
+
+            return raw.get(key)
+          },
+          info: { driver: 'file', persistent: true },
+        },
+      }
+    }
+
+    it('lets both start when each reads the claim before either writes it', async () => {
+      const raw = new Map<string, unknown>()
+      const gate = persistentOver(raw)
+
+      gate.hold()
+      const first = claimArea(gate.store, { name: 'alice', holder: run('one'), guard: aProcess() })
+      const second = claimArea(gate.store, { name: 'alice', holder: run('two'), guard: aProcess() })
+      const outcomes = Promise.allSettled([first, second])
+      await settle()
+      gate.releaseAll()
+
+      const settled = await outcomes
+      expect(settled.map((one) => one.status)).toEqual(['fulfilled', 'fulfilled'])
+      for (const one of settled) {
+        if (one.status === 'fulfilled') expect(one.value.scope).toBe('process')
+      }
+      // Whichever wrote last is what the record says; the other run is still
+      // writing regardless. This is the case a leasing store exists for.
+      const claim = raw.get(`${areaFor('alice')}claim`) as { holder: string }
+      expect([run('one'), run('two')]).toContain(claim.holder)
+    })
+
+    it('does not stop the run a takeover in another process superseded', async () => {
+      const raw = new Map<string, unknown>()
+      const { store } = persistentOver(raw)
+
+      const earlier = await claimArea(store, {
+        name: 'alice',
+        holder: run('one'),
+        guard: aProcess(),
+      })
+      const later = await claimArea(store, {
+        name: 'alice',
+        holder: run('two'),
+        takeOver: true,
+        guard: aProcess(),
+      })
+
+      // `takeOverStorage` asserted the earlier run had ended. It had not, and
+      // nothing reaches into its process to say so: its guard still holds, and
+      // its writes still land.
+      expect(earlier.held).toBe(true)
+      await earlier.storage.set('auth:2', 'written by the earlier run')
+      expect(raw.get(`${areaFor('alice')}auth:2`)).toBe('written by the earlier run')
+      expect(later.held).toBe(true)
+    })
+  })
 })
 
 /**
