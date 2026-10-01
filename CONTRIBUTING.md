@@ -18,8 +18,8 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` runs lint, typecheck, invariants and tests. It is what CI runs, so a green local
-`verify` means a green pull request.
+`pnpm verify` runs lint, typecheck, invariants, tests and the declaration budget. CI runs more
+than that, and each of the rest can be run locally:
 
 | Command | What it does |
 |---|---|
@@ -30,8 +30,37 @@ pnpm verify
 | `pnpm lint:fix` | Apply safe fixes |
 | `pnpm typecheck` | Full type check |
 | `pnpm invariants` | Architecture invariant checks |
+| `pnpm smoke` | Pack the published packages, install them into a scratch project, and use them |
+| `pnpm bench` | Startup, bundle and dispatch budgets |
+| `pnpm --filter @yuigram/schema regenerate:offline` | Re-emit the Bot API surface from the committed schema; the diff must be empty |
+| `pnpm --filter @yuigram/tl-codegen emit` | The same for the TL surface |
 
 Node 22 or newer is required.
+
+Two checks need software the repository does not install:
+
+- **The runtime matrix** runs the packed packages on Node, Bun, Deno and workerd against a local
+  stand-in datacenter. Point it at the runtimes, and at a directory with `miniflare` installed:
+
+  ```bash
+  YUIGRAM_BUN=/path/to/bun YUIGRAM_DENO=/path/to/deno YUIGRAM_MINIFLARE=/path/to/dir pnpm --filter @yuigram/runtime-matrix run matrix --strict
+  ```
+
+  `--strict` makes a runtime that cannot be found a failure rather than a skipped line. The
+  versions CI uses are pinned in `.github/workflows/ci.yml`.
+
+- **The Redis suites** are skipped without a server. With one running:
+
+  ```bash
+  pnpm build
+  YUIGRAM_TEST_REDIS_URL=redis://127.0.0.1:6379/15 pnpm exec vitest run packages/redis/test/redis-live.test.ts packages/mtproto/test/storage-lease-processes.test.ts
+  ```
+
+  The suites write under a namespace of their own for each run and clear it afterwards; CI
+  points them at database 15 to keep them apart from anything else.
+
+Nothing in either reaches Telegram. Checks against Telegram itself are opt-in and documented in
+[docs/live-verification.md](docs/live-verification.md).
 
 ## The rules that are not negotiable
 

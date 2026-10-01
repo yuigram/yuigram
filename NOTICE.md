@@ -28,8 +28,10 @@ The protocol implementations are written from Telegram's published documentation
 Method names, type shapes and protocol algorithms are interface facts. Where documentation
 prose is reproduced in generated JSDoc, the generated entry carries a link to its source page.
 
-Telegram's server RSA public keys are taken from the published MTProto documentation. They are
-deliberately **not** extracted from Telegram's own client applications, which are GPL-licensed.
+Yuigram ships none of Telegram's server RSA public keys: an application supplies them, and the
+documentation directs it to Telegram's published MTProto documentation. They are deliberately
+**not** taken from Telegram's own client applications, which are GPL-licensed. The keys in the
+test suites are generated for the tests.
 
 ## Acknowledgements
 

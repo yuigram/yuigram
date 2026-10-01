@@ -10,7 +10,12 @@ an example that stops compiling fails the build rather than quietly rotting.
 BOT_TOKEN=123456:ABC-DEF pnpm tsx examples/01-basic-bot/index.ts
 ```
 
-Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anything else.
+Get a token from [@BotFather](https://t.me/BotFather). The bot examples need nothing else.
+
+The account examples need the application's `API_ID` and `API_HASH` from
+[my.telegram.org](https://my.telegram.org), and a `SESSION` string that example 03 prints on its
+first run; example 03 also reads Telegram's server public keys from the PEM file `SERVER_KEYS`
+names. A session string is a signed-in account — keep it out of shell history and repositories.
 
 ## Available now
 
@@ -33,6 +38,7 @@ Get a token from [@BotFather](https://t.me/BotFather). Nothing here needs anythi
 | 16 | [durable flows](16-durable-flows) | A conversation as one function that resumes after a restart, with a rehearsal across two processes |
 | 17 | [streaming](17-streaming) | An answer shown as a draft while it is written, a rich stream, and the stop button, with an offline rehearsal |
 | 18 | [account handlers](18-account-handlers) | An account's filters, handler groups, a router, a dependency and a form that survives a restart, checked against a stand-in datacenter |
+| 19 | [shop](19-shop) | Sessions, a media cache and rate limits in one SQLite file, paged catalogues, typed buttons, method defaults and an application event, with an offline rehearsal |
 
 ## The gap at 11
 

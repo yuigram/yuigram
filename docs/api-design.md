@@ -434,8 +434,10 @@ update arrived from already filled in, so a method that addresses that conversat
 without naming it. `transport` is a literal union, so the branch narrows the context to the one
 the check proved. Nothing outside the branch offers a member that only one transport has.
 
-An MTProto context carries the curated actions whose peer and message the update already
-supplied — `reply`, `react`, `edit` and `delete`:
+An MTProto context carries curated actions over the peer and message the update supplied —
+`reply`, `send`, `replyMedia`, `react`, `edit`, `delete`, `pin`, `unpin` and `download` — and,
+on the kinds that carry one, the answer to it: `answerCallback`, `answerInline`,
+`answerShipping`, `answerPrecheckout` and `decideJoin`:
 
 ```ts
 await event.edit('corrected')
@@ -451,8 +453,8 @@ conversation: a channel keeps its messages under the channel rather than in the 
 numbering, so the ordinary method would name a message somewhere else entirely. The channel
 method offers no other meaning, and the Bot API's `delete` has none either, so the curated
 action has no options. Removing a message from this account's own view alone is a different
-operation and lives where the rarer half of a pair belongs —
-`account.api.messages.deleteMessages`.
+operation, and is asked for by name on the client:
+`account.deleteMessages(peer, ids, { revoke: false })`.
 
 `download` fetches the file the event's message carried — a document, or a photo at the largest
 size that has to be fetched — and is where an expired file reference is put right: the reference
@@ -461,10 +463,11 @@ by asking for the message again rather than by handing the caller a protocol det
 size that is follows the same rule the Bot API's download already applies to a size list; the
 media section of [mtproto.md](mtproto.md) §11 gives the reasoning.
 
-`forward` is deliberately not among them. It names a destination the update did not carry, and
-a destination has to be resolved before it can be addressed — which §6 above puts on the client
-rather than on the context. As a client method it would carry no more than
-`account.api.messages.forwardMessages` already does, so it is absent rather than duplicated.
+`forward(to)` and `copy(to)` take the one thing the update did not carry: where the message goes.
+The destination is `@username` or a `PeerRef`, and it is resolved through the account that
+received the update, because resolving a peer needs an access hash and the account owns them —
+the context supplies the source, the client still does the resolving. `forward` shows where the
+message came from; `copy` sends it again as the account's own.
 
 ---
 

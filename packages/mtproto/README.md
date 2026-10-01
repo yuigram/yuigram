@@ -8,7 +8,9 @@ implementation — cryptography, the TL codec, transport framing, the authorizat
 the session layer, the datacenter pool, peer resolution, file transfer and the updates manager.
 
 > **You probably want [`yuigram`](https://www.npmjs.com/package/yuigram).** It is the package
-> applications install, and it re-exports everything here.
+> applications install, and it re-exports what an application uses from here — the account
+> filters, utilities, worker, stream and testing entry points as `yuigram/account-filters`,
+> `yuigram/account-utils`, `yuigram/worker`, `yuigram/stream` and `yuigram/testing`.
 
 > **Using a user account through MTProto can get that account banned permanently.** Telegram
 > states that accounts used for flooding, spamming or faking counters will be banned, and the
