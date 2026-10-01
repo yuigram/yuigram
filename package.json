@@ -36,11 +36,11 @@
     "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.9",
-    "@changesets/cli": "^3.0.1",
-    "@types/node": "^26.2.0",
-    "tsx": "^4.23.12",
+    "@biomejs/biome": "^2.5.14",
+    "@changesets/cli": "^3.0.3",
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.2"
   }
 }
