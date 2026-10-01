@@ -43,6 +43,7 @@ import {
   IntermediateFraming,
   PaddedIntermediateFraming,
 } from '../../src/transport/framing.js'
+import { writeServerValue } from './answers.js'
 import { type Binding, openBinding } from './bind.js'
 import { keyId, open as openMessage, seal } from './encrypted.js'
 import {
@@ -418,7 +419,7 @@ export class MockServer {
    */
   seal(value: TlValue, options: { msgId?: bigint; seqNo?: number } = {}): Uint8Array {
     const { key, sessionId, salt } = this.#established()
-    const body = writeObject(value, this.#scope)
+    const body = writeServerValue(value, this.#scope)
 
     // Announcing a new salt is also adopting it: a client told to use one will,
     // and a peer that then refused it would be refusing its own instruction.
@@ -518,7 +519,7 @@ export class MockServer {
 
     const parts: Uint8Array[] = []
     for (const entry of entries) {
-      const body = writeObject(entry.value, this.#scope)
+      const body = writeServerValue(entry.value, this.#scope)
       const header = new Uint8Array(16)
       const view = new DataView(header.buffer)
 
@@ -552,7 +553,7 @@ export class MockServer {
 
   /** Compress a value the way the server compresses a large result. */
   sealCompressed(value: TlValue, options: { msgId?: bigint } = {}): Uint8Array {
-    const packed = gzipSync(writeObject(value, this.#scope))
+    const packed = gzipSync(writeServerValue(value, this.#scope))
 
     const writer = new TlWriter(this.#scope)
     writer.uint(0x3072_cfa1)
@@ -820,7 +821,7 @@ export class MockServer {
       return this.sealContainer(answers.map((value) => ({ value })))
     }
 
-    const body = writeObject(answer, this.#scope)
+    const body = writeServerValue(answer, this.#scope)
 
     if (this.#faulty('malformed-encrypted-message')) {
       // Long enough to look like a message, structured like nothing.

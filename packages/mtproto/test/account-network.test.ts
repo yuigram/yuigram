@@ -31,10 +31,10 @@ import { POOL_LIMITS } from '../src/network/pools.js'
 import type { MtprotoContext } from '../src/normalize/context.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
 import type { TlValue } from '../src/tl/index.js'
+import { packedApiAnswer } from './server/answers.js'
 import type { MockDatacenter } from './server/datacenter.js'
 import { contentOf, FileServer, thumbnailContentOf } from './server/files.js'
 import { createServerKey } from './server/keys.js'
-import { packedApiAnswer } from './server/packed.js'
 import type { Fault } from './server/server.js'
 import { type MockAccount, mockAccount, NOW_SECONDS } from './support/mock-account.js'
 
@@ -3215,7 +3215,7 @@ describe('a document an event carried', () => {
   })
 
   /** An account whose datacenter serves the file and answers message refetches. */
-  function serving(options: { refetch?: () => Uint8Array } = {}) {
+  function serving(options: { refetch?: () => Uint8Array; packed?: boolean } = {}) {
     const files = new FileServer(2)
     const stored = files.add(FILE, { size: SIZE, dcId: 2 })
     const asked: string[] = []
@@ -3231,15 +3231,15 @@ describe('a document an event carried', () => {
           asked.push(query._)
           const reference = options.refetch?.()
 
-          // Packed, because the answer carries a chat `message` — a name the
-          // service schema declares too — and Telegram packs answers anyway.
-          return packedApiAnswer({
+          const answer: TlValue = {
             _: 'messages.messages',
             messages: reference === undefined ? [] : [messageWith(reference)],
             topics: [],
             chats: [],
             users: [],
-          })
+          }
+          // Telegram may send it either way; both are cases of their own.
+          return options.packed === true ? packedApiAnswer(answer) : answer
         }
 
         return undefined
@@ -3270,39 +3270,46 @@ describe('a document an event carried', () => {
     await instance.dispose()
   })
 
-  it('asks for the message again when the reference has expired, over the wire', async () => {
-    // The datacenter refuses the first range for its reference, answers the
-    // refetch with the message carrying a fresh one, and serves the file to it.
-    let files: FileServer | undefined
-    const {
-      instance,
-      files: server,
-      stored,
-      asked,
-    } = serving({
-      refetch: () => (files as FileServer).refresh(FILE),
-    })
-    files = server
-    await instance.account.connect()
-    await instance.account.peers.save({
-      kind: 'user',
-      id: 5n,
-      accessHash: 9n,
-      min: false,
-      usernames: [],
-    })
-    server.expire(FILE)
+  it.each([
+    ['as it is', false],
+    ['compressed', true],
+  ])(
+    'asks for the message again when the reference has expired, the answer sent %s',
+    async (_, packed) => {
+      // The datacenter refuses the first range for its reference, answers the
+      // refetch with the message carrying a fresh one, and serves the file to it.
+      let files: FileServer | undefined
+      const {
+        instance,
+        files: server,
+        stored,
+        asked,
+      } = serving({
+        refetch: () => (files as FileServer).refresh(FILE),
+        packed,
+      })
+      files = server
+      await instance.account.connect()
+      await instance.account.peers.save({
+        kind: 'user',
+        id: 5n,
+        accessHash: 9n,
+        min: false,
+        usernames: [],
+      })
+      server.expire(FILE)
 
-    let outcome: unknown
-    instance.account.on('message', async (event) => {
-      outcome = await event.download().catch((error: unknown) => error)
-    })
-    await instance.account.deliver(update(stored.reference))
+      let outcome: unknown
+      instance.account.on('message', async (event) => {
+        outcome = await event.download().catch((error: unknown) => error)
+      })
+      await instance.account.deliver(update(stored.reference))
 
-    expect(outcome).toEqual(contentOf(FILE, 0, SIZE))
-    expect(asked.filter((name) => name === 'messages.getMessages')).toHaveLength(1)
-    await instance.dispose()
-  })
+      expect(outcome).toEqual(contentOf(FILE, 0, SIZE))
+      expect(asked.filter((name) => name === 'messages.getMessages')).toHaveLength(1)
+      await instance.dispose()
+    },
+  )
 
   it('reports a message that no longer carries the file, over the wire', async () => {
     const { instance, files, stored } = serving({ refetch: () => undefined as never })
@@ -3426,7 +3433,8 @@ describe('a document an event carried', () => {
  * The datacenter here serves each rendering as its own bytes and refuses a size
  * it does not hold, so a request that lost the selector, or named the wrong
  * document, fetches something visibly different rather than the same bytes.
- * A refetched message is answered packed, as `server/packed.ts` explains.
+ * A refetched message is answered both as it is and compressed, which
+ * `server/answers.ts` explains.
  */
 describe('a thumbnail of a document an event carried', () => {
   const FILE = 0x0d0c_0003n
@@ -3465,7 +3473,7 @@ describe('a thumbnail of a document an event carried', () => {
     pts_count: 1,
   })
 
-  function serving() {
+  function serving(packed = false) {
     const files = new FileServer(2)
     const stored = files.add(FILE, { size: 900_000, dcId: 2, thumbnails: { m: THUMB } })
     const asked: string[] = []
@@ -3475,13 +3483,14 @@ describe('a thumbnail of a document an event carried', () => {
         if (query._ !== 'messages.getMessages') return undefined
 
         asked.push(query._)
-        return packedApiAnswer({
+        const answer: TlValue = {
           _: 'messages.messages',
           messages: [messageWith(files.refresh(FILE))],
           topics: [],
           chats: [],
           users: [],
-        })
+        }
+        return packed ? packedApiAnswer(answer) : answer
       },
     })
 
@@ -3520,24 +3529,30 @@ describe('a thumbnail of a document an event carried', () => {
     await instance.dispose()
   })
 
-  it('asks for the message again when the reference has expired, and keeps the size', async () => {
-    const { instance, files, stored, asked } = serving()
-    await connected(instance)
-    files.expire(FILE)
+  it.each([
+    ['as it is', false],
+    ['compressed', true],
+  ])(
+    'asks for the message again when the reference has expired, and keeps the size, the answer sent %s',
+    async (_, packed) => {
+      const { instance, files, stored, asked } = serving(packed)
+      await connected(instance)
+      files.expire(FILE)
 
-    let bytes: unknown
-    instance.account.on('message', async (event) => {
-      bytes = await event.download({ thumbnail: 'm' }).catch((error: unknown) => error)
-    })
-    await instance.account.deliver(update(stored.reference))
+      let bytes: unknown
+      instance.account.on('message', async (event) => {
+        bytes = await event.download({ thumbnail: 'm' }).catch((error: unknown) => error)
+      })
+      await instance.account.deliver(update(stored.reference))
 
-    expect(asked).toEqual(['messages.getMessages'])
-    expect(bytes).toEqual(thumbnailContentOf(FILE, 'm', 0, THUMB))
-    // Refused once with the old reference, then fetched with the new one — and
-    // both times for the same rendering.
-    expect(sizesAsked(files)).toEqual(['m', 'm'])
-    await instance.dispose()
-  })
+      expect(asked).toEqual(['messages.getMessages'])
+      expect(bytes).toEqual(thumbnailContentOf(FILE, 'm', 0, THUMB))
+      // Refused once with the old reference, then fetched with the new one — and
+      // both times for the same rendering.
+      expect(sizesAsked(files)).toEqual(['m', 'm'])
+      await instance.dispose()
+    },
+  )
 
   it('surfaces an expired reference to a caller holding only the location', async () => {
     // Nothing here holds the message, so nothing can ask for it again: the
