@@ -105,6 +105,21 @@ YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_CHECKS=account.connect,account.identit
 YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.message,account.saved,account.draft,account.mention,account.stream,bot-account.update YUIGRAM_LIVE_BOT_TOKEN=… YUIGRAM_LIVE_BOT_CHAT=… YUIGRAM_LIVE_ACCOUNT_CHAT=… YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live live
 ```
 
+**Files.** Each moves one fixed 4,000-byte file up and back down, compares every byte, and
+deletes the message it made. Named on their own so a transfer failure is not read as anything
+else.
+
+```bash
+YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.file YUIGRAM_LIVE_BOT_TOKEN=… YUIGRAM_LIVE_BOT_CHAT=… pnpm --filter @yuigram/live live
+```
+
+```bash
+YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=account.file YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live live
+```
+
+Expected: `PASSED`, then `uploaded 4000 bytes, downloaded 4000, identical`. A difference is
+reported as the first byte that differs, and the check fails; the message is deleted either way.
+
 **Sign out.** Ends the authorization `login` created.
 
 ```bash
@@ -138,6 +153,16 @@ newest first — whether the check passed, failed or threw. A failed undo fails 
 | `account.draft` | Saved Messages | keep a draft, clear it | both accepted | nothing |
 | `account.mention` | the account chat | send a message mentioning the account's own username, read it back | it reads back as sent | nothing |
 | `account.stream` | Saved Messages | stream text as drafts, then abort before the end | drafts shown; the result says aborted | nothing: anything it sent is deleted |
+| `bot.file` | the bot chat | send a fixed 4,000-byte file as a document, download it by its `file_id` through the public `download` function, compare | `uploaded 4000 bytes, downloaded 4000, identical` | nothing: the message is deleted |
+| `account.file` | Saved Messages | upload the same file, send it as a document, download it from the sent message, compare | `uploaded 4000 bytes, downloaded 4000, identical` | nothing: the message is deleted |
+
+The file is made by the harness — a fixed byte pattern named `yuigram-live-check.bin` — so
+nothing from the operator's machine is uploaded. Deleting the message is the cleanup and is not
+excused if it fails: a failed deletion fails the check and is reported after the failure that
+came first, which stays the first thing reported. The checks have been exercised offline against
+stand-ins (`tools/live/test/live.test.ts`: refusal without the opt-ins, the round trip, a byte
+mismatch, a deletion that fails after a mismatch, a send that names no message); they are
+prepared, not verified, until a run is recorded below.
 | `bot-account.update` | the bot chat | the bot writes; the account, a member there, must hear it | a message event with the text within 20 seconds | nothing |
 
 ## 6. Redaction and cleanup
@@ -147,11 +172,16 @@ token, the api hash, the session, the phone number — and anything shaped like 
 user and chat identifiers are shortened to their last three digits. `login` prints the session's
 length and path, never the session. An error from Telegram is printed scrubbed.
 
+Cleanup on Telegram's side is best-effort. Every undo runs whatever the check did, but an undo
+is itself a request, and one refused or lost leaves the thing it was undoing in place; the report
+says so, and the steps below are how it is found.
+
 Afterwards:
 
 - run `logout`, which ends the authorization `login` created, then delete the session file;
 - check the account's active sessions in an official client for anything left, and end it there;
-- check the bot chat, the account chat and Saved Messages by hand for anything left behind;
+- check the bot chat, the account chat and Saved Messages by hand for anything left behind —
+  including `yuigram-live-check.bin` documents, should a deletion have failed;
 - delete the login code message in the account's service chat, if the account is kept.
 
 ## 7. What still needs a person

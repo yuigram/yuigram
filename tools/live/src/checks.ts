@@ -11,7 +11,15 @@
  * an `Account` satisfy, so the runner can be exercised without a network.
  */
 
-import { readSession } from 'yuigram'
+import {
+  documentFile,
+  type InputFile,
+  media,
+  readSession,
+  type UploadedFile,
+  type UploadSource,
+  uploadedDocument,
+} from 'yuigram'
 import { shortId } from './redact.js'
 
 /* -------------------------------------------------------------------------- */
@@ -38,7 +46,22 @@ export interface LiveBot {
       text: string
     }): Promise<unknown>
     deleteMessage(params: { chat_id: number | string; message_id: number }): Promise<unknown>
+    sendDocument(params: {
+      chat_id: number | string
+      document: InputFile
+      caption?: string
+    }): Promise<{
+      readonly message_id: number
+      readonly document?: { readonly file_id: string } | undefined
+    }>
   }
+  /**
+   * Fetch a file by what names it.
+   *
+   * The public `download` function with the bot's own transport: a `Bot`
+   * carries no download method, and the function is what an application calls.
+   */
+  download(target: { readonly file_id: string }): Promise<Uint8Array>
 }
 
 /** The part of an account the checks use. */
@@ -71,6 +94,13 @@ export interface LiveAccount {
     options?: { readonly limit?: number },
   ): AsyncIterable<{ readonly id: number; readonly text?: string | undefined }>
   on(kind: 'message', handler: (event: { readonly text?: string | undefined }) => unknown): unknown
+  upload(request: { readonly source: UploadSource; readonly name?: string }): Promise<UploadedFile>
+  sendMedia(
+    peer: { readonly kind: 'user'; readonly id: bigint } | string,
+    media: ReturnType<typeof uploadedDocument>,
+    body?: string,
+  ): Promise<{ readonly id: number | undefined; readonly message?: unknown }>
+  download(request: ReturnType<typeof documentFile>): Promise<Uint8Array>
   /** The username the account answers to, from what it has written down. */
   username?(): Promise<string | undefined>
 }
@@ -127,6 +157,64 @@ export interface LiveCheck {
 }
 
 const MARK = 'yuigram live check'
+
+/** What the file checks send: a name that says what it is. */
+export const FILE_NAME = 'yuigram-live-check.bin'
+
+/**
+ * What the file checks send: four kilobytes of a fixed pattern.
+ *
+ * Made rather than read, so nothing on the operator's machine is uploaded, and
+ * the same every run, so a difference is the transfer's and not the input's.
+ * Small enough to be one part each way.
+ */
+export function fileBytes(): Uint8Array {
+  const bytes = new Uint8Array(4_000)
+  for (let index = 0; index < bytes.length; index += 1) bytes[index] = (index * 31 + 7) & 0xff
+  return bytes
+}
+
+/** Where two byte strings first differ, or `undefined` where they are the same bytes. */
+export function firstDifference(expected: Uint8Array, actual: Uint8Array): number | undefined {
+  const shorter = Math.min(expected.length, actual.length)
+  for (let index = 0; index < shorter; index += 1) {
+    if (expected[index] !== actual[index]) return index
+  }
+  return expected.length === actual.length ? undefined : shorter
+}
+
+/** Report a round trip, and fail the check unless the bytes came back as they went. */
+function compareRoundTrip(context: CheckContext, sent: Uint8Array, received: Uint8Array): void {
+  const at = firstDifference(sent, received)
+  context.observe(
+    `uploaded ${sent.length} bytes, downloaded ${received.length}, ` +
+      (at === undefined ? 'identical' : `first difference at byte ${at}`),
+  )
+  context.expect(at === undefined, 'the downloaded bytes are the uploaded bytes')
+}
+
+/** Bytes in memory, as the source an upload reads. */
+function memorySource(bytes: Uint8Array): UploadSource {
+  return {
+    size: bytes.length,
+    read: async (offset, length) => bytes.subarray(offset, offset + length),
+  }
+}
+
+/** The document a sent message carries, if it carries one. */
+function documentOf(message: unknown): Parameters<typeof documentFile>[0] | undefined {
+  const sent = message as
+    | {
+        readonly _?: string
+        readonly media?: { readonly _?: string; readonly document?: { readonly _?: string } }
+      }
+    | undefined
+  if (sent?._ !== 'message' || sent.media?._ !== 'messageMediaDocument') return undefined
+  const document = sent.media.document
+  return document?._ === 'document'
+    ? (document as unknown as Parameters<typeof documentFile>[0])
+    : undefined
+}
 
 /* -------------------------------------------------------------------------- */
 /* The checks                                                                 */
@@ -351,6 +439,64 @@ export const CHECKS: readonly LiveCheck[] = [
       for await (const message of account.history(chat, { limit: 1 })) newest = message
       context.observe(`sent ${id !== undefined}, read back ${newest?.text === text}`)
       context.expect(newest?.text === text, 'the mention reads back as it was sent')
+    },
+  },
+  {
+    id: 'bot.file',
+    tier: 'write',
+    needs: ['bot', 'bot chat'],
+    does: 'send a fixed 4,000-byte file to the bot chat as a document, download it by its file_id, compare, delete the message',
+    expects: 'the same bytes back; the message deleted',
+    async run(context) {
+      const bot = context.bot()
+      const chat = context.botChat as string
+      const bytes = fileBytes()
+      const sent = await bot.api.sendDocument({
+        chat_id: chat,
+        document: media.buffer(bytes, FILE_NAME),
+        caption: `${MARK}: file`,
+      })
+      // Registered before anything else can fail, and not excused if it fails:
+      // the message is the one thing this check leaves behind.
+      context.cleanup(() => bot.api.deleteMessage({ chat_id: chat, message_id: sent.message_id }))
+      context.observe(`sent message ${sent.message_id}`)
+
+      const fileId = sent.document?.file_id
+      context.expect(fileId !== undefined, 'the sent message carries a document')
+      compareRoundTrip(context, bytes, await bot.download({ file_id: fileId as string }))
+    },
+  },
+  {
+    id: 'account.file',
+    tier: 'write',
+    needs: ['account'],
+    does: 'upload a fixed 4,000-byte file to Saved Messages as a document, download it from the sent message, compare, delete the message',
+    expects: 'the same bytes back; the message deleted',
+    async run(context) {
+      const account = await context.account()
+      const me = await account.me()
+      const self = { kind: 'user' as const, id: me.id }
+      const bytes = fileBytes()
+      const uploaded = await account.upload({ source: memorySource(bytes), name: FILE_NAME })
+      const sent = await account.sendMedia(
+        self,
+        uploadedDocument(uploaded, { name: FILE_NAME, mimeType: 'application/octet-stream' }),
+        `${MARK}: file`,
+      )
+      const id = sent.id
+      if (id !== undefined) {
+        context.cleanup(() => account.deleteMessages(self, [id], { revoke: true }))
+      }
+      context.observe(`sent ${id !== undefined}`)
+      context.expect(id !== undefined, 'the send names the message it made, so it can be deleted')
+
+      const document = documentOf(sent.message)
+      context.expect(document !== undefined, 'the sent message carries the document')
+      compareRoundTrip(
+        context,
+        bytes,
+        await account.download(documentFile(document as Parameters<typeof documentFile>[0])),
+      )
     },
   },
   {
