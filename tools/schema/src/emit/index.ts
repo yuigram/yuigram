@@ -19,6 +19,7 @@ import { emitFieldLists } from './field-lists.js'
 import { emitFormattable } from './formattable.js'
 import { emitMethods } from './methods.js'
 import { emitRegistrations } from './registrations.js'
+import { emitSchemaInfo } from './schema-info.js'
 import type { EmittedFile } from './types.js'
 import { emitTypeNames, emitTypes } from './types.js'
 
@@ -35,6 +36,7 @@ export function emitAll(schema: BotApiSchema): EmittedFile[] {
     emitFieldLists(schema),
     emitFormattable(schema),
     emitDefaults(schema),
+    emitSchemaInfo(schema),
   ]
 }
 

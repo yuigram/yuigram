@@ -7,6 +7,7 @@
  * unexported from its own entry point without a single test noticing.
  */
 
+import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import * as accountUtils from '../src/account-utils.js'
 import * as yuigram from '../src/index.js'
@@ -368,6 +369,19 @@ describe('the schema version', () => {
     // A user hitting a method newer than this build needs to know which
     // version they are talking to before reaching for `call()`.
     expect(yuigram.schemaInfo.botApi).toMatch(/^\d+\.\d+$/)
+  })
+
+  it('names the release the surface was regenerated from, not an earlier one', () => {
+    // The version was once written here by hand and went on reporting 10.2
+    // after the surface moved to 10.3. The newest committed snapshot is what
+    // the generated sources are emitted from, so the two must agree.
+    const snapshots = readdirSync(new URL('../../../schemas/bot-api/', import.meta.url))
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => name.replace(/\.json$/, ''))
+      .sort()
+
+    expect(yuigram.schemaInfo.botApi).toBe(snapshots.at(-1))
+    expect(yuigram.BOT_API_VERSION).toBe(yuigram.schemaInfo.botApi)
   })
 
   it('names the TL layer the MTProto surface was generated from', () => {

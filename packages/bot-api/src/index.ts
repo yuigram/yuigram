@@ -129,6 +129,7 @@ export type {
 export { SERVICE_EVENTS, UPDATE_EVENTS } from './generated/events.js'
 export type * from './generated/methods/index.js'
 export { type GeneratedRegistrations, REGISTRATIONS } from './generated/registrations.js'
+export { BOT_API_VERSION } from './generated/schema-info.js'
 export type * from './generated/types/index.js'
 export type { BotApiTypeName } from './generated/types/names.js'
 export { type FloodWaitOptions, retryOnFloodWait, withDefaults } from './hooks.js'

@@ -665,9 +665,14 @@ the schema the release was built against, exposed at runtime and documented per 
 
 ```ts
 import { schemaInfo } from 'yuigram'
-schemaInfo.botApi   // '10.2'
+schemaInfo.botApi   // '10.3'
 schemaInfo.tlLayer  // 229
 ```
+
+Both are emitted with the surface rather than written beside it: `BOT_API_VERSION` comes out of
+the Bot API generator and `TL_LAYER` out of the TL one, each read off the schema the surface was
+emitted from. A version kept by hand is updated by remembering to, and the regeneration that
+moves the surface is exactly the change that does not touch it.
 
 A schema bump that adds surface is a minor release. A schema bump that removes or changes
 existing surface is a major release, because it breaks compilation for someone.

@@ -55,9 +55,18 @@
  * Nothing exported here is a placeholder.
  */
 
+// The MTProto subsystem is requested first, and the order is load-bearing. A
+// bundler such as esbuild wraps its shared modules for the parts it loads
+// lazily, and the core those modules initialize has to be in place before the
+// Bot API's modules extend its errors. Bundled the other way round, a program
+// throws on load — `tools/bench` portability catches it.
 import { TL_LAYER } from '@yuigram/mtproto'
 
 export * from '@yuigram/bot-api'
+
+// After the line above, so it adds nothing to the order modules load in.
+import { BOT_API_VERSION } from '@yuigram/bot-api'
+
 /**
  * The scheduler this façade exposes is the Bot API one.
  *
@@ -540,7 +549,7 @@ export {
  */
 export const schemaInfo = {
   /** Telegram Bot API version the generated surface was emitted from. */
-  botApi: '10.2',
+  botApi: BOT_API_VERSION,
   /** Telegram TL schema layer the generated MTProto surface was emitted from. */
   tlLayer: TL_LAYER,
 } as const
