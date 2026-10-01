@@ -343,7 +343,7 @@ YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… pnpm --filter @yuigram/ru
 
 | Check | Node 22.20 | Bun 1.4.2 | Deno 2.9.6 | workerd (Miniflare 4.20260730.0) |
 | --- | --- | --- | --- | --- |
-| Every published entry point resolves and imports | 26 entries | 26 entries | 26 entries | bundled: 269 modules, no Node built-in |
+| Every published entry point resolves and imports | 26 entries | 26 entries | 26 entries | bundled: 271 modules, no Node built-in |
 | AES-256, AES-CTR, SHA-1, SHA-256, MD5, PBKDF2 against published vectors | `node:crypto` | `node:crypto` | `node:crypto` | `portable` |
 | A Bot API call over the runtime's `fetch` | ✓ | ✓ | ✓ | ✓ |
 | A Fetch-shaped webhook reading a two-chunk stream | ✓ | ✓ | ✓ | ✓ |
@@ -362,7 +362,8 @@ from the directory `YUIGRAM_MINIFLARE` names rather than from this repository's 
 runtime that cannot be found is reported as not run. The worker is bundled with esbuild for the
 browser platform under the `worker` and `browser` conditions, with compatibility date 2026-07-01,
 and reaches the WebSocket connector by path, because the connector is not a public export. Deno
-runs with `--allow-all`. These were run on Windows x64.
+runs with `--allow-all`. These were run on Windows x64, most recently with `--strict` at the revision
+that added the per-package core module (the bundle's two extra modules), every runtime found.
 
 The run found one defect, fixed: `encrypted()` rejected every write on Bun (footnote ⁸ above).
 

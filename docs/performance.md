@@ -93,8 +93,30 @@ does, and it does not drift.
 
 ### 2.2 Where this budget currently stands
 
-**At the line, and the line moves with the machine.** Nine runs of the
-benchmark's own procedure on the same tree, in the order they were taken:
+**Over it.** The eager graph has grown to 129 modules, about 1.3 MB of which some
+44% is documentation comments, and the gate's own procedure measures **110 ms**
+(seven samples, 103–117 ms) on the tree with the per-package core module. Before
+that change an isolated build measured about 129 ms in the same session, so the
+change is real and the gap that remains is about 10 ms.
+
+What the remaining time is, from a profile of that tree: framework code about
+3 ms; compiling the modules' source about 29 ms; and Node's per-module work —
+finding each module's package scope (~19 ms), checking the file (~17 ms), real
+paths and opens (~22 ms). Three further candidates were priced on isolated
+builds and not taken:
+
+| Candidate | Priced | Why not taken |
+| --- | --- | --- |
+| A `package.json` in each `dist/` so the scope search stops there | −15 ms | It would shadow the `browser` maps and `sideEffects` that bundlers read from the nearest manifest, and the optional entry points' imports of their own package by name |
+| Comments removed from the emitted JavaScript | −5 ms | The compiler's `removeComments` removes the declarations' documentation as well; keeping it needs a second, JavaScript-only build per package |
+| The two smallest redundant modules | ~1 ms | Below what the comparison can tell from noise |
+
+The gate therefore fails, and stays failing rather than being widened. The
+history below is how it got here.
+
+**Earlier: at the line, and the line moved with the machine.** Nine runs of the
+benchmark's own procedure on the same tree, in the order they were taken, when
+the graph was about a hundred modules:
 
 ```
 97.2  100  98.7  101  96.5  99.3  106  116  118   ms
