@@ -549,6 +549,42 @@ export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
 }
 
 /**
+ * A published package reaches its own modules by path, never by its own name.
+ *
+ * Each package ships a manifest in `dist/` that says the files are ES modules,
+ * carries the `browser` map and `sideEffects`, and names no package
+ * (`scripts/write-dist-manifests.mjs`): it is what lets Node stop looking for
+ * a module's package one directory up. An import of a package's own name —
+ * in code, or in a type import that ends up in a declaration file — would be
+ * resolved against that manifest first and fall back to whatever `node_modules`
+ * happens to hold, which depends on how the package was installed. Tests are
+ * not shipped and are not held.
+ */
+export const noSelfImport: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    if (!pkg.dir.startsWith('packages/')) continue
+
+    for (const source of pkg.sources) {
+      if (isTestFile(source.path)) continue
+      for (const ref of source.imports) {
+        if (ref.specifier !== pkg.name && !ref.specifier.startsWith(`${pkg.name}/`)) continue
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `${pkg.name} imports itself by name ('${ref.specifier}'); import the module by its path`,
+          rationale:
+            'The manifest in dist/ names no package, so a self-import is resolved through node_modules — present in some installations and not others.',
+        })
+      }
+    }
+  }
+
+  return { name: 'no-self-import', violations }
+}
+
+/**
  * How the main entry points reach the core.
  *
  * Node resolves an import by package name separately for each module that
@@ -710,6 +746,7 @@ export const workspaceInvariants: readonly Invariant[] = [
   moduleBoundaries,
   eagerSurfaces,
   coreRoute,
+  noSelfImport,
 ]
 
 /** Run every workspace invariant and collect the results. */
