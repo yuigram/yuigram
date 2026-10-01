@@ -31,7 +31,7 @@ than that, and each of the rest can be run locally:
 | `pnpm typecheck` | Full type check |
 | `pnpm invariants` | Architecture invariant checks |
 | `pnpm smoke` | Pack the published packages, install them into a scratch project, and use them |
-| `pnpm check:docs` | Type-check the TypeScript samples in the READMEs, the API design and the Russian guides against the built packages |
+| `pnpm check:docs` | Type-check the TypeScript samples in the READMEs, the API design and the Russian guides against the built packages (CI runs it in `Verify`) |
 | `pnpm bench` | Startup, bundle and dispatch budgets |
 | `pnpm --filter @yuigram/schema regenerate:offline` | Re-emit the Bot API surface from the committed schema; the diff must be empty |
 | `pnpm --filter @yuigram/tl-codegen emit` | The same for the TL surface |

@@ -66,6 +66,12 @@ jobs:
       - name: Declaration size budget
         run: node scripts/check-declarations.mjs
 
+      # A sample that names an API the package does not have is a bug a reader
+      # finds first. Checked against the packages built above, so the script
+      # runs directly rather than through `pnpm check:docs`, which builds again.
+      - name: Documentation samples type-check
+        run: node scripts/check-doc-examples.mjs
+
       # Generated sources are committed, so a hand edit or a stale regeneration
       # must fail here rather than reaching a release. Re-emitting from the
       # committed schemas needs no network.

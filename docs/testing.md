@@ -362,8 +362,8 @@ and it is the most common kind of documentation bug. Two things hold it today.
   the Russian guides against the built packages, one program per page, strict. Names a fragment
   takes from an earlier block — `bot`, `message`, a document an account read — are declared in
   `scripts/doc-examples/`, typed with the package's own exports: no `any`, no casts, nothing the
-  package does not export. It is a command to run when a page or the API changes, not yet a CI
-  step, and it does not cover the design records in `docs/` beyond the API design.
+  package does not export. CI runs it in the `Verify` job against the packages that job has
+  already built; it does not cover the design records in `docs/` beyond the API design.
 
 What it shows is that every sample names APIs that exist, with arguments and results of the
 right types. It runs nothing: a sample that signs in, connects, sends or downloads is compiled,
