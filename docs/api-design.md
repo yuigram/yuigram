@@ -1034,7 +1034,7 @@ cosmetic:
 | **Consistent argument order** | Target, then content, then options — everywhere. |
 | **Predictable naming** | Everything that subscribes is `on…`; `use` / `extend` / `stop` mean one thing each. A model that has seen `onMessage` guesses `onCommand` correctly. |
 | **The credential is in the name** | `Bot.fromToken` versus `Account.fromSession` — a model picks the constructor from what it has, rather than assembling an options object it has to get right. |
-| **One package, few entry points** | Ordinary code imports from `'yuigram'`. The optional entry points each name what they hold — `yuigram/testing`, `yuigram/webhook`, `yuigram/worker`, `yuigram/markup`, `yuigram/stream`, `yuigram/rich`, `yuigram/account-filters`, `yuigram/account-utils` — so a program loads only what it uses. |
+| **One package, few entry points** | Ordinary code imports from `'yuigram'`. The optional entry points each name what they hold — `yuigram/testing`, `yuigram/webhook`, `yuigram/worker`, `yuigram/markup`, `yuigram/stream`, `yuigram/rich`, `yuigram/web-app`, `yuigram/account-filters`, `yuigram/account-utils` — so a program loads only what it uses. |
 | **Narrowing over casting** | Filters and registration narrow; `as` is never required in normal use. |
 | **Discriminated escape** | `event.transport` is a literal union, so a model can branch on it correctly. |
 

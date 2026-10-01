@@ -149,6 +149,7 @@ A handler on the application sees both clients; one on a client sees only its ow
 | `yuigram/markup` | Formatted text: builders, HTML and Markdown readers and writers |
 | `yuigram/rich` | Rich messages built from blocks or read from rich Markdown and HTML |
 | `yuigram/stream` | An answer shown as a draft while it is written, over a bot or an account |
+| `yuigram/web-app` | Mini App launch data: read, and checked with the bot token or Telegram's signature |
 | `yuigram/account-filters` | Filters for an account's events |
 | `yuigram/account-utils` | Waveforms, thumbnails, Instant View and inline message identifiers |
 | `@yuigram/sqlite` | SQLite storage and a shared counter, through the runtime's own driver |

@@ -54,6 +54,11 @@
       "types": "./dist/rich/index.d.ts",
       "import": "./dist/rich/index.js",
       "default": "./dist/rich/index.js"
+    },
+    "./web-app": {
+      "types": "./dist/web-app/index.d.ts",
+      "import": "./dist/web-app/index.js",
+      "default": "./dist/web-app/index.js"
     }
   },
   "browser": {

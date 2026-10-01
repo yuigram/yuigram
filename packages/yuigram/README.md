@@ -155,6 +155,7 @@ export default { fetch: webWebhook(handler) }
 | `yuigram/markup` | Formatted text, its readers and writers |
 | `yuigram/rich` | Rich messages |
 | `yuigram/stream` | An answer streamed as a draft while it is written |
+| `yuigram/web-app` | Mini App launch data, read and checked |
 | `yuigram/account-filters` | Filters for an account's events |
 | `yuigram/account-utils` | Utilities for an account's data that need no account |
 

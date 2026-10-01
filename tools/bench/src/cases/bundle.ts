@@ -288,9 +288,28 @@ const browserReachesNoBuiltins: Benchmark = {
   run: async () => await builtinsIn('bundle/browser-builtins', BROWSER_PROGRAM),
 }
 
+/**
+ * A page that checks Mini App launch data where it runs: the third-party check,
+ * which needs no token. The entry point is written against the Web Crypto API
+ * alone, so it has no substitute to fall back on — a built-in here is a bug.
+ */
+const WEB_APP_PROGRAM = `
+import { verifyInitDataSignature } from './web-app.js'
+
+export default (initData) => verifyInitDataSignature(initData, { botId: 1, maxAge: 3600 })
+`
+
+const webAppReachesNoBuiltins: Benchmark = {
+  name: 'bundle/web-app-builtins',
+  budget: 0,
+  source: SOURCE,
+  run: async () => await builtinsIn('bundle/web-app-builtins', WEB_APP_PROGRAM),
+}
+
 export const BUNDLE: readonly Benchmark[] = [
   botOnly,
   botExcludesMtproto,
   full,
   browserReachesNoBuiltins,
+  webAppReachesNoBuiltins,
 ]

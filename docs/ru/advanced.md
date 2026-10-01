@@ -84,6 +84,37 @@ bot.onMessage(async (message) => {
 Как и когда уходят черновики и сообщения — [formatting.md](../formatting.md) §3; пример —
 [17-streaming](../../examples/17-streaming).
 
+## Данные запуска Mini App
+
+Mini App получает `Telegram.WebApp.initData` — кто её открыл, откуда и когда — вместе с
+доказательством от Telegram. `yuigram/web-app` отделяет чтение от проверки: `readInitData`
+только читает и ничего не доказывает, а проверенные данные возвращают две функции, по двум
+способам, которые публикует Telegram:
+
+```ts
+import { InitDataKey, verifyInitData, verifyInitDataSignature } from 'yuigram/web-app'
+
+// Сервер бота: hash проверяется ключом из токена. Ключ выводится один раз.
+const key = await InitDataKey.fromToken(process.env.BOT_TOKEN!)
+
+export async function launchUser(initData: string) {
+  const data = await verifyInitData(initData, { key, maxAge: 3600 })
+  return data.user
+}
+
+// Третья сторона: подпись Telegram проверяется по id бота, токен не нужен.
+export async function launchUserElsewhere(initData: string) {
+  return (await verifyInitDataSignature(initData, { botId: 123456789, maxAge: 3600 })).user
+}
+```
+
+`maxAge` обязателен: верная подпись не мешает отправить тот же текст ещё раз, и срок — это окно,
+в котором это возможно (`Infinity` принимает любой возраст — только осознанно). Успешная
+проверка говорит лишь, что Telegram выдал эти данные этому боту для этого пользователя в
+`auth_date`; что пользователю разрешено, решает приложение. Отказ — `InitDataError` с причиной в
+`error.problem`: `'malformed'`, `'mismatch'`, `'unsigned'`, `'expired'`, `'future'` или
+`'unsupported'`. Токен бота остаётся на сервере. Подробности — [bot-api.md](../bot-api.md) §4.
+
 ## Ошибки и повторы
 
 Все ошибки фреймворка наследуют `YuigramError`. Основные ветви:

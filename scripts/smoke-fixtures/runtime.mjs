@@ -24,6 +24,7 @@ import {
   writeLink,
 } from 'yuigram'
 import { mockBot } from 'yuigram/testing'
+import { InitDataError, readInitData, verifyInitData, verifyInitDataSignature } from 'yuigram/web-app'
 import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const checks = []
@@ -255,6 +256,23 @@ check('a proxy link is read, and a start parameter past 64 characters refused', 
   }
   return proxy?.kind === 'proxy' && proxy.port === 443 && refused
 })
+
+// Mini App launch data: a vector computed outside the repository, under a placeholder token.
+const launch =
+  'auth_date=1700000000&query_id=AAH-second_vector&user=%7B%22id%22%3A2222222222%2C%22first_name%22%3A%22Grace%20Brewster%22%2C%22is_premium%22%3Atrue%7D&hash=e58bd23de3144a2f335326d90f673314212b5fd69bef9b771670af746442e042'
+const placeholder = '123456789:AAExample_token-for_test-vectors_only'
+const verified = await verifyInitData(launch, { token: placeholder, maxAge: 60, now: 1_700_000_030 })
+check('launch data is read, and its hash checked with the token', () =>
+  readInitData(launch).user?.first_name === 'Grace Brewster' && verified.user?.id === 2222222222,
+)
+const problems = await Promise.all([
+  verifyInitData(launch.replace('Grace', 'Grade'), { token: placeholder, maxAge: Infinity }),
+  verifyInitData(launch, { token: placeholder, maxAge: 60, now: 1_700_000_061 }),
+  verifyInitDataSignature(launch, { botId: 123456789, maxAge: Infinity }),
+].map((pending) => pending.then(() => 'accepted', (error) => (error instanceof InitDataError ? error.problem : 'other'))))
+check('altered, old and unsigned launch data are each refused for what they are', () =>
+  problems.join(' ') === 'mismatch expired unsigned',
+)
 
 for (const [name, result] of checks) {
   process.stdout.write(`  ${result === 'ok' ? 'ok  ' : 'FAIL'}  ${name}\n`)

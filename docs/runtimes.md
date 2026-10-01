@@ -149,7 +149,9 @@ would put a branch on a path that runs for every message.
 
 **It is checked rather than asserted.** The `bundle/browser-builtins` benchmark bundles a program
 with an account in it for a browser and counts the Node built-ins in the graph. The budget is
-zero, and the build fails naming any that come back.
+zero, and the build fails naming any that come back. `bundle/web-app-builtins` does the same for
+a page that checks Mini App launch data, whose entry point has no substitute to fall back on: it
+uses the Web Crypto API alone.
 
 ### 4.2 Why the contract is synchronous
 

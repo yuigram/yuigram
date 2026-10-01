@@ -149,6 +149,7 @@ await app.start()
 | `yuigram/markup` | Форматированный текст: построители, чтение и запись HTML и Markdown |
 | `yuigram/rich` | Богатые сообщения из блоков или из богатого Markdown и HTML |
 | `yuigram/stream` | Ответ, который показывается черновиком по мере написания, — для бота и для аккаунта |
+| `yuigram/web-app` | Данные запуска Mini App: чтение и проверка — токеном бота или подписью Telegram |
 | `yuigram/account-filters` | Фильтры для событий аккаунта |
 | `yuigram/account-utils` | Голосовые волны, миниатюры, Instant View и идентификаторы inline-сообщений |
 | `@yuigram/sqlite` | Хранилище и общий счётчик на SQLite, через драйвер самой среды выполнения |

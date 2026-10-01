@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import * as accountUtils from '../src/account-utils.js'
 import * as yuigram from '../src/index.js'
 import * as testing from '../src/testing.js'
+import * as webApp from '../src/web-app.js'
 import * as webhook from '../src/webhook.js'
 
 describe('the entry point', () => {
@@ -441,6 +442,26 @@ describe('the subpaths', () => {
   it('keeps the adapters out of the main entry point', () => {
     // A bot that polls should not carry the webhook adapters.
     expect('nodeWebhook' in yuigram).toBe(false)
+  })
+
+  it('exposes Mini App launch data, reading apart from checking', async () => {
+    expect(typeof webApp.readInitData).toBe('function')
+    expect(typeof webApp.verifyInitData).toBe('function')
+    expect(typeof webApp.verifyInitDataSignature).toBe('function')
+    expect(typeof webApp.InitDataKey.fromToken).toBe('function')
+
+    const error = await webApp
+      .verifyInitData('auth_date=1&hash=00', { token: '1:x', maxAge: 60 })
+      .catch((thrown: unknown) => thrown)
+    expect(error).toBeInstanceOf(webApp.InitDataError)
+    expect(error).toBeInstanceOf(yuigram.ValidationError)
+    expect((error as InstanceType<typeof webApp.InitDataError>).problem).toBe('malformed')
+  })
+
+  it('keeps launch data out of the main entry point', () => {
+    // Most bots never open a Mini App, and a page that checks launch data
+    // needs nothing else from the framework.
+    expect('verifyInitData' in yuigram).toBe(false)
   })
 })
 

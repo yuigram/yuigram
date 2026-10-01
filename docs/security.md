@@ -260,10 +260,19 @@ and callback data.
 | **Callback-data spoofing** | Callback data is attacker-controlled — documented as such. Authorization decisions must use `query.sender.id`, never the callback payload. Signed callback data is offered as a plugin. |
 | **Webhook forgery** | `secret_token` validated on every request, compared in constant time. Requests without it are rejected, not merely logged. |
 | **Webhook body size** | Bounded before parsing. |
+| **Mini App launch data** | `Telegram.WebApp.initData` is whatever the page sends. `yuigram/web-app` reads it apart from checking it: only `verifyInitData` (the bot's `hash`) or `verifyInitDataSignature` (Telegram's `signature`) returns data that was checked. A pair with no `=`, a field named twice, an escape that is not UTF-8 or a line feed anywhere is refused, since each would let two texts check alike. Errors never repeat the data or the token. |
 
 The callback-data point is worth stating explicitly in user documentation, because the mistake
 — trusting `callback_data` to identify who may perform an action — is common and produces a
 straightforward privilege escalation.
+
+Launch data has the same limit in a different place. A valid proof says Telegram issued the text
+to this bot's Mini App, for the user it names, at `auth_date`; it does not say who is presenting
+it, or that it is presented for the first time. Anyone holding the text can send it again until
+it is too old, so the age limit is a required option and kept short, and a server that must not
+act twice on one launch remembers what it has accepted. What the user may do is still the
+application's decision. The bot token that checks `hash` stays on the server; a page, or a third
+party, checks `signature` with the bot's id alone.
 
 ---
 

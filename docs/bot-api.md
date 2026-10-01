@@ -346,6 +346,63 @@ An identifier belongs to one bot and works in every chat that bot writes to, so 
 part of the name and one cache serves one bot. Like every plugin, it is installed when the bot
 starts or dispatches its first update; a call made directly before either is not cached.
 
+### Mini App launch data
+
+A Mini App receives `Telegram.WebApp.initData` — who opened it, from where, and when — with
+Telegram's proof attached, and sends it to a server that must decide whether to believe it.
+`yuigram/web-app` keeps reading apart from believing, and follows the two checks Telegram
+publishes:
+
+```ts
+import { InitDataError, InitDataKey, verifyInitData } from 'yuigram/web-app'
+
+// On the bot's server, once: an HMAC of the token under the constant key `WebAppData`.
+const key = await InitDataKey.fromToken(process.env.BOT_TOKEN ?? '')
+
+async function launchUser(initData: string) {
+  try {
+    const data = await verifyInitData(initData, { key, maxAge: 3600 })
+    return data.user
+  } catch (error) {
+    if (error instanceof InitDataError) return undefined // error.problem says why
+    throw error
+  }
+}
+```
+
+```ts
+import { verifyInitDataSignature } from 'yuigram/web-app'
+
+// A third party, or the page itself: Telegram's Ed25519 key and the bot's id, no token.
+const data = await verifyInitDataSignature(initData, { botId: 123456789, maxAge: 3600 })
+```
+
+| | `readInitData` | `verifyInitData` | `verifyInitDataSignature` |
+| --- | --- | --- | --- |
+| Proves | nothing | the HMAC-SHA-256 in `hash`, under a key derived from the token | Telegram's Ed25519 `signature`, with the published key |
+| Data-check-string | — | every field but `hash`, `signature` included, sorted, `name=value` per line | `<botId>:WebAppData`, then every field but `hash` and `signature`, the same way |
+| Needs | — | the bot token, on a server | the bot's id; `publicKey: 'test'` for the test environment |
+| Age | not checked | `maxAge` required, in seconds; `Infinity` accepts any age, deliberately | the same |
+
+Reading follows the query-string form exactly — `+` is a space, an escape is UTF-8 — and
+refuses anything that could be read two ways: a pair with no `=`, a field named twice, a field
+name Telegram does not write, or a line feed, which would let two different texts produce one
+data-check-string. `hash` and `auth_date` are required. Empty text gets its own message: a Mini
+App opened from a keyboard button or in inline mode receives none. Fields keep Telegram's names
+(`auth_date`, `start_param`); `user`, `receiver` and `chat` are parsed from their JSON.
+
+The proof is checked before the age, so `'expired'` means genuine but old, and `'mismatch'`
+means altered or issued for another bot. `auth_date` may be ahead of the clock by `clockSkew`
+seconds, 60 by default. Launch data from before Telegram signed it has no `signature`: the
+third-party check calls it `'unsigned'` rather than forged, and the bot's own check still works.
+A runtime whose Web Crypto API cannot do the check — no `crypto.subtle` outside a secure context,
+or no Ed25519 — is `'unsupported'`, never a mismatch.
+
+A successful check is not a session. Anyone holding the text can present it again until
+`maxAge` passes, and what the user may do is the application's decision; see
+[security.md](security.md) §7. The entry point runs on the Web Crypto API alone and imports
+nothing from Node, and a program that never imports it does not load it.
+
 ---
 
 ## 4.1 Payloads, built
@@ -479,7 +536,7 @@ What is not there yet, and what to do meanwhile:
 ### v1.0
 
 - Ephemeral messages, communities (Bot API 10.2 features that need design, not just types)
-- Payments and Mini App helpers
+- Payments, and Mini App helpers beyond checking launch data (which ships in `yuigram/web-app`)
 - Passport
 
 ### Post-1.0

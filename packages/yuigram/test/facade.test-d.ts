@@ -57,6 +57,14 @@ import {
   thumbnails,
   when,
 } from '../src/index.js'
+import {
+  type InitData,
+  type InitDataKey,
+  type InitDataProblem,
+  type VerifyInitDataOptions,
+  type VerifyInitDataSignatureOptions,
+  verifyInitData,
+} from '../src/web-app.js'
 
 describe('the MTProto types a consumer writes against', () => {
   it('describes what an account is built from', () => {
@@ -178,6 +186,26 @@ describe('the name both subsystems wanted', () => {
     // would leave behind.
     expectTypeOf<NormalizedUpdate>().not.toBeAny()
     expectTypeOf<NormalizedUpdate['updateId']>().toEqualTypeOf<number>()
+  })
+})
+
+describe('Mini App launch data', () => {
+  it('requires an age policy, and one proof or the other', () => {
+    expectTypeOf(verifyInitData).returns.toEqualTypeOf<Promise<InitData>>()
+    expectTypeOf<{ token: string; maxAge: number }>().toExtend<VerifyInitDataOptions>()
+    expectTypeOf<{ key: InitDataKey; maxAge: number }>().toExtend<VerifyInitDataOptions>()
+    // A check with no age limit is a decision, not an omission.
+    expectTypeOf<{ token: string }>().not.toExtend<VerifyInitDataOptions>()
+    expectTypeOf<{
+      token: string
+      key: InitDataKey
+      maxAge: number
+    }>().not.toExtend<VerifyInitDataOptions>()
+    expectTypeOf<{ botId: number }>().not.toExtend<VerifyInitDataSignatureOptions>()
+    expectTypeOf<InitData['auth_date']>().toEqualTypeOf<number>()
+    expectTypeOf<InitDataProblem>().toEqualTypeOf<
+      'malformed' | 'mismatch' | 'unsigned' | 'expired' | 'future' | 'unsupported'
+    >()
   })
 })
 

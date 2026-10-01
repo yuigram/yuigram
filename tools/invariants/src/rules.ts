@@ -395,6 +395,7 @@ const OPTIONAL_ENTRIES: readonly string[] = [
   '@yuigram/bot-api/markup',
   '@yuigram/bot-api/rich',
   '@yuigram/bot-api/stream',
+  '@yuigram/bot-api/web-app',
   '@yuigram/mtproto/stream',
   '@yuigram/mtproto/worker',
   '@yuigram/mtproto/filters',
@@ -403,7 +404,7 @@ const OPTIONAL_ENTRIES: readonly string[] = [
 ]
 
 const OPTIONAL_RATIONALE =
-  'Formatting, rich messages, streaming, account filters, utilities and testing, and the worker are entry points of their own, loaded by the programs that ask for them. A static edge from a main entry point puts them into the startup of every program that imports it.'
+  'Formatting, rich messages, streaming, Mini App launch data, account filters, utilities and testing, and the worker are entry points of their own, loaded by the programs that ask for them. A static edge from a main entry point puts them into the startup of every program that imports it.'
 
 export const EAGER_SURFACES: readonly EagerSurface[] = [
   {
@@ -428,6 +429,7 @@ export const EAGER_SURFACES: readonly EagerSurface[] = [
       'packages/bot-api/src/markup/',
       'packages/bot-api/src/rich/',
       'packages/bot-api/src/stream/',
+      'packages/bot-api/src/web-app/',
     ],
     forbidden: OPTIONAL_ENTRIES,
     rationale: OPTIONAL_RATIONALE,

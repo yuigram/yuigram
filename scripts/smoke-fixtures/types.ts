@@ -32,6 +32,7 @@ import {
   userChatKey,
 } from 'yuigram'
 import { mockBot } from 'yuigram/testing'
+import { type InitData, InitDataKey, verifyInitData } from 'yuigram/web-app'
 import { nodeWebhook } from 'yuigram/webhook'
 
 interface Cart {
@@ -146,6 +147,12 @@ export const fromEvent: Promise<TlValue> = mtproto.api.call({ _: 'help.getConfig
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()
+
+// Launch data is checked with a key derived once, under an age limit the caller states.
+declare const initData: string
+export const launched: Promise<InitData> = InitDataKey.fromToken('1:x').then((key) =>
+  verifyInitData(initData, { key, maxAge: 3600 }),
+)
 
 // A store over a connection the application opened, typed by what it keeps,
 // and a counter a limiter takes in place of a store.

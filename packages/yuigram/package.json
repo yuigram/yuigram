@@ -60,6 +60,11 @@
       "import": "./dist/rich.js",
       "default": "./dist/rich.js"
     },
+    "./web-app": {
+      "types": "./dist/web-app.d.ts",
+      "import": "./dist/web-app.js",
+      "default": "./dist/web-app.js"
+    },
     "./account-filters": {
       "types": "./dist/account-filters.d.ts",
       "import": "./dist/account-filters.js",
