@@ -531,7 +531,6 @@ describe('reading links', () => {
 
   it('reads nothing into a Telegram link of a kind it does not describe', () => {
     for (const link of [
-      't.me/proxy?server=example.com&port=443&secret=00',
       't.me/addtheme/Night',
       't.me/setlanguage/en',
       't.me/$invoice',
@@ -659,9 +658,77 @@ describe('writing links', () => {
       { kind: 'game', bot: 'games_bot', name: 'snake' },
       'https://t.me/games_bot?game=snake',
     ],
+    [
+      'an MTProxy server',
+      {
+        kind: 'proxy',
+        server: '192.0.2.10',
+        port: 443,
+        secret: 'dd0123456789abcdef0123456789abcdef',
+      },
+      'https://t.me/proxy?server=192.0.2.10&port=443&secret=dd0123456789abcdef0123456789abcdef',
+    ],
+    [
+      'a SOCKS5 proxy',
+      { kind: 'socks', server: 'proxy.example.com', port: 1080 },
+      'https://t.me/socks?server=proxy.example.com&port=1080',
+    ],
+    [
+      'a SOCKS5 proxy with a username and password',
+      { kind: 'socks', server: 'proxy.example.com', port: 1080, user: 'a b', pass: 'p&q=r' },
+      'https://t.me/socks?server=proxy.example.com&port=1080&user=a%20b&pass=p%26q%3Dr',
+    ],
+    ['a temporary profile', { kind: 'contact', token: 'AbC_d-9' }, 'https://t.me/contact/AbC_d-9'],
   ])('writes %s in its published form, and reads it back', (_, link, written) => {
     expect(writeLink(link)).toBe(written)
     expect(readLink(written)).toEqual(link)
+  })
+
+  it.each<[string, string, TelegramLink]>([
+    [
+      'an MTProxy server',
+      'tg://proxy?server=192.0.2.10&port=8443&secret=ee00',
+      { kind: 'proxy', server: '192.0.2.10', port: 8443, secret: 'ee00' },
+    ],
+    [
+      'a base64url secret',
+      't.me/proxy?server=example.com&port=443&secret=7gAB_-c',
+      { kind: 'proxy', server: 'example.com', port: 443, secret: '7gAB_-c' },
+    ],
+    [
+      'a SOCKS5 proxy',
+      'tg://socks?server=example.com&port=1080&user=me&pass=pw',
+      { kind: 'socks', server: 'example.com', port: 1080, user: 'me', pass: 'pw' },
+    ],
+    [
+      'a SOCKS5 proxy whose credentials are empty',
+      't.me/socks?server=example.com&port=1080&user=&pass=',
+      { kind: 'socks', server: 'example.com', port: 1080 },
+    ],
+    ['a temporary profile', 'tg://contact?token=AbC_d-9', { kind: 'contact', token: 'AbC_d-9' }],
+  ])('reads %s in the form Telegram publishes', (_, written, link) => {
+    expect(readLink(written)).toEqual(link)
+  })
+
+  it('reads nothing into a proxy or profile link missing what the syntax requires', () => {
+    for (const link of [
+      't.me/proxy?server=example.com&port=443',
+      't.me/proxy?port=443&secret=00',
+      't.me/proxy?server=example.com&secret=00',
+      't.me/proxy?server=example.com&port=0&secret=00',
+      't.me/proxy?server=example.com&port=65536&secret=00',
+      't.me/proxy?server=example.com&port=0443&secret=00',
+      't.me/proxy?server=example.com&port=443&secret=0%200',
+      't.me/proxy?server=a%20b&port=443&secret=00',
+      't.me/proxy/extra?server=example.com&port=443&secret=00',
+      'tg://socks?server=example.com',
+      'tg://socks?port=1080',
+      't.me/contact',
+      't.me/contact/a.b',
+      'tg://contact',
+    ]) {
+      expect(readLink(link), link).toBeUndefined()
+    }
   })
 
   it('keeps text that looks like query syntax exactly, through a round trip', () => {
@@ -743,6 +810,27 @@ describe('writing links', () => {
       { kind: 'attach', bot: 'shop_bot', choose: ['planets' as never] },
       /attachment target/,
     ],
+    [
+      'a proxy server with a space in it',
+      { kind: 'proxy', server: 'a b', port: 443, secret: '00' },
+      /proxy server/,
+    ],
+    [
+      'a proxy port out of range',
+      { kind: 'proxy', server: 'example.com', port: 70_000, secret: '00' },
+      /1 to 65535/,
+    ],
+    [
+      'an MTProxy secret in other characters',
+      { kind: 'proxy', server: 'example.com', port: 443, secret: '00 11' },
+      /hex or base64/,
+    ],
+    [
+      'an empty SOCKS5 password',
+      { kind: 'socks', server: 'example.com', port: 1080, pass: '' },
+      /empty proxy/,
+    ],
+    ['a contact token in other characters', { kind: 'contact', token: 'a.b' }, /contact token/],
   ])('refuses %s', (_, link, message) => {
     expect(() => writeLink(link)).toThrow(LinkError)
     expect(() => writeLink(link)).toThrow(message)

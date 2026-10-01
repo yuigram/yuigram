@@ -392,6 +392,30 @@ export type TelegramLink =
       readonly payload?: string
     }
   | { readonly kind: 'game'; readonly bot: string; readonly name: string }
+  /**
+   * An MTProxy server to connect through. The secret is what lets a client use the proxy, so a
+   * link carrying one is a credential for it: share it as deliberately as the proxy itself.
+   */
+  | {
+      readonly kind: 'proxy'
+      readonly server: string
+      readonly port: number
+      /** Hex or base64 text, as the proxy's operator publishes it. */
+      readonly secret: string
+    }
+  /**
+   * A SOCKS5 proxy to connect through. A link carrying `pass` carries the password in clear:
+   * treat it as the secret it contains.
+   */
+  | {
+      readonly kind: 'socks'
+      readonly server: string
+      readonly port: number
+      readonly user?: string
+      readonly pass?: string
+    }
+  /** A temporary profile link, whose token `contacts.importContactToken` turns into a user. */
+  | { readonly kind: 'contact'; readonly token: string }
 
 /** A link description that breaks Telegram's rules, so no link can be written for it. */
 export class LinkError extends ValidationError {}
@@ -400,6 +424,9 @@ const BASE64URL = /^[A-Za-z0-9_-]*$/
 const MAX_MESSAGE_ID = 2_147_483_647
 const MAX_STORY_ID = 1_999_999_999
 const MAX_MEDIA_TIMESTAMP = 10_000_000
+const MAX_PORT = 65_535
+/** The characters an MTProxy secret is written in: hex, base64 or base64url. */
+const PROXY_SECRET = /^[A-Za-z0-9_\-+/=]+$/
 /** The prefix that makes a start parameter an affiliate program referral instead. */
 const REFERRAL_PREFIX = '_tgr_'
 
@@ -420,6 +447,22 @@ function validShortName(value: string): boolean {
 
 function validPhone(value: string): boolean {
   return /^\d{1,32}$/.test(value)
+}
+
+/**
+ * A proxy server as a link names it: an IP address or a host, without space or anything that
+ * would end the value early in a URL.
+ */
+function validServer(value: string): boolean {
+  return value.length > 0 && value.length <= 253 && !/[\s/?#@&]/.test(value)
+}
+
+/** A port in canonical decimal, 1 to 65535. */
+function portOf(text: string | undefined): number | undefined {
+  if (text === undefined || !/^[1-9]\d{0,4}$/.test(text)) return undefined
+  const value = Number(text)
+
+  return value <= MAX_PORT ? value : undefined
 }
 
 /** A positive 32-bit identifier in canonical decimal. */
@@ -491,6 +534,14 @@ function ensurePayload(value: string | undefined, limit?: number): void {
   ensure(
     value.length > 0 && BASE64URL.test(value) && (limit === undefined || value.length <= limit),
     `a start parameter is ${limit === undefined ? '' : `1 to ${limit} `}characters of A-Z, a-z, 0-9, _ and -`,
+  )
+}
+
+function ensureProxy(server: string, port: number): void {
+  ensure(validServer(server), `${JSON.stringify(server)} is not a proxy server address or host`)
+  ensure(
+    Number.isInteger(port) && port > 0 && port <= MAX_PORT,
+    'a proxy port is a whole number from 1 to 65535',
   )
 }
 
@@ -627,6 +678,32 @@ export function writeLink(link: TelegramLink): string {
         ? `${base}boost/${chatPath(link.chat)}`
         : `${base}boost${query(['c', chatPath(link.chat).slice('c/'.length)])}`
 
+    case 'proxy':
+      ensureProxy(link.server, link.port)
+      ensure(PROXY_SECRET.test(link.secret), 'an MTProxy secret is hex or base64 text')
+
+      return `${base}proxy${query(
+        ['server', encodeURIComponent(link.server)],
+        ['port', String(link.port)],
+        ['secret', encodeURIComponent(link.secret)],
+      )}`
+
+    case 'socks':
+      ensureProxy(link.server, link.port)
+      ensure(link.user !== '' && link.pass !== '', 'leave out an empty proxy username or password')
+
+      return `${base}socks${query(
+        ['server', encodeURIComponent(link.server)],
+        ['port', String(link.port)],
+        link.user !== undefined && ['user', encodeURIComponent(link.user)],
+        link.pass !== undefined && ['pass', encodeURIComponent(link.pass)],
+      )}`
+
+    case 'contact':
+      ensureToken(link.token, 'a contact token')
+
+      return `${base}contact/${link.token}`
+
     default:
       return writeBotLink(link)
   }
@@ -745,7 +822,6 @@ const OTHER_FEATURES: ReadonlySet<string> = new Set([
   'bg',
   'call',
   'confirmphone',
-  'contact',
   'giftcode',
   'invoice',
   'iv',
@@ -753,9 +829,7 @@ const OTHER_FEATURES: ReadonlySet<string> = new Set([
   'm',
   'newbot',
   'nft',
-  'proxy',
   'setlanguage',
-  'socks',
 ])
 
 /** `<name>.t.me` subdomains that are Telegram features rather than usernames. */
@@ -853,7 +927,7 @@ function given(params: URLSearchParams, name: string): string | undefined {
  * Accepts `t.me`, `telegram.me` and `telegram.dog` links with or without a
  * scheme, `<username>.t.me`, and the `tg:` forms of the same kinds. Answers
  * `undefined` for anything that is not a Telegram link of a kind read here —
- * including Telegram links of other kinds, such as proxies or themes, which are
+ * including Telegram links of other kinds, such as themes or invoices, which are
  * left unread rather than mistaken for a username.
  */
 export function readLink(input: string): TelegramLink | undefined {
@@ -918,6 +992,12 @@ function readPath(path: readonly string[], params: URLSearchParams): Reading {
       return second === 'url' || (first === 'share' && second === undefined)
         ? readShare(params)
         : null
+    case 'proxy':
+      return second === undefined ? readProxy(params) : null
+    case 'socks':
+      return second === undefined ? readSocks(params) : null
+    case 'contact':
+      return contact(second) ?? null
     default:
   }
 
@@ -938,6 +1018,45 @@ function named(feature: 'addlist' | 'addstickers' | 'addemoji', name: string): T
     default:
       return { kind: 'emoji-set', name }
   }
+}
+
+/** `proxy?server=…&port=…&secret=…`: all three are required. */
+function readProxy(params: URLSearchParams): Reading {
+  const server = textOf(params, 'server')
+  const port = portOf(given(params, 'port'))
+  const secret = given(params, 'secret')
+
+  return server !== undefined &&
+    validServer(server) &&
+    port !== undefined &&
+    secret !== undefined &&
+    PROXY_SECRET.test(secret)
+    ? { kind: 'proxy', server, port, secret }
+    : null
+}
+
+/** `socks?server=…&port=…`, with a username and password where the link has them. */
+function readSocks(params: URLSearchParams): Reading {
+  const server = textOf(params, 'server')
+  const port = portOf(given(params, 'port'))
+  if (server === undefined || !validServer(server) || port === undefined) return null
+
+  const user = textOf(params, 'user')
+  const pass = textOf(params, 'pass')
+
+  return {
+    kind: 'socks',
+    server,
+    port,
+    ...(user === undefined ? {} : { user }),
+    ...(pass === undefined ? {} : { pass }),
+  }
+}
+
+function contact(token: string | undefined): TelegramLink | undefined {
+  return token !== undefined && token !== '' && BASE64URL.test(token)
+    ? { kind: 'contact', token }
+    : undefined
 }
 
 function invite(hash: string | undefined): TelegramLink | undefined {
@@ -1352,6 +1471,12 @@ function readTg(text: string): Reading {
       return readShare(params)
     case 'boost':
       return readTgBoost(params)
+    case 'proxy':
+      return readProxy(params)
+    case 'socks':
+      return readSocks(params)
+    case 'contact':
+      return contact(given(params, 'token')) ?? null
     default:
       return null
   }

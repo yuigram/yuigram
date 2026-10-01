@@ -206,6 +206,38 @@ describe('the entry point', () => {
     expect(yuigram.toMarkdown(body)).toBe('*bold* text')
   })
 
+  it('offers the links a bot hands out, and the proxy and profile links an account reads', () => {
+    expect(
+      yuigram.writeLink({
+        kind: 'group-bot',
+        bot: 'shop_bot',
+        payload: 'invite',
+        admin: ['pin_messages'],
+      }),
+    ).toBe('https://t.me/shop_bot?startgroup=invite&admin=pin_messages')
+    expect(yuigram.readLink('tg://resolve?domain=shop_bot&startapp=page_42&mode=compact')).toEqual({
+      kind: 'mini-app',
+      bot: 'shop_bot',
+      payload: 'page_42',
+      mode: 'compact',
+    })
+    expect(yuigram.readLink('https://t.me/proxy?server=192.0.2.10&port=443&secret=ee00')).toEqual({
+      kind: 'proxy',
+      server: '192.0.2.10',
+      port: 443,
+      secret: 'ee00',
+    })
+    expect(yuigram.readLink('tg://socks?server=192.0.2.10&port=1080')).toEqual({
+      kind: 'socks',
+      server: '192.0.2.10',
+      port: 1080,
+    })
+    expect(yuigram.readLink('t.me/contact/AbC_d-9')).toEqual({ kind: 'contact', token: 'AbC_d-9' })
+    expect(() =>
+      yuigram.writeLink({ kind: 'bot-start', bot: 'shop_bot', payload: 'x'.repeat(65) }),
+    ).toThrow(yuigram.LinkError)
+  })
+
   it('offers the walk over a list that arrives one page at a time', () => {
     expect(typeof yuigram.walkDialogs).toBe('function')
     expect(typeof yuigram.walkHistory).toBe('function')

@@ -16,10 +16,12 @@ import {
   inline,
   media,
   memory,
+  readLink,
   Router,
   schemaInfo,
   StorageError,
   throttle,
+  writeLink,
 } from 'yuigram'
 import { mockBot } from 'yuigram/testing'
 import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
@@ -231,6 +233,28 @@ await redisStore(async (args) => {
   return 'OK'
 }).set('k', 1, { ttl: 2 })
 check('the Redis store sends a write with its expiry', () => sent[0]?.join(' ') === 'SET yuigram:kv:k 1 PX 2000')
+
+// Links: the bot links a bot hands out, and the proxy and profile links an account reads.
+check('a bot link is written in its published form', () =>
+  writeLink({ kind: 'channel-bot', bot: 'shop_bot', admin: ['post_messages', 'edit_messages'] }) ===
+    'https://t.me/shop_bot?startchannel&admin=post_messages+edit_messages' &&
+  writeLink({ kind: 'mini-app', bot: 'shop_bot', payload: 'page_42', mode: 'fullscreen' }) ===
+    'https://t.me/shop_bot?startapp=page_42&mode=fullscreen',
+)
+check('a bot link is read back from any of its hosts', () => {
+  const link = readLink('telegram.dog/shop_bot?startgroup=invite&admin=post_messages')
+  return link?.kind === 'group-bot' && link.payload === 'invite' && link.admin?.[0] === 'post_messages'
+})
+check('a proxy link is read, and a start parameter past 64 characters refused', () => {
+  const proxy = readLink('tg://proxy?server=192.0.2.10&port=443&secret=ee00')
+  let refused = false
+  try {
+    writeLink({ kind: 'bot-start', bot: 'shop_bot', payload: 'a'.repeat(65) })
+  } catch {
+    refused = true
+  }
+  return proxy?.kind === 'proxy' && proxy.port === 443 && refused
+})
 
 for (const [name, result] of checks) {
   process.stdout.write(`  ${result === 'ok' ? 'ok  ' : 'FAIL'}  ${name}\n`)

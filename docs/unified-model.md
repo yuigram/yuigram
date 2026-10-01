@@ -188,12 +188,13 @@ because it exists only on the device holding its key; reading that range as chan
 a different conversation. Every valid identifier fits a JavaScript number exactly, so a number
 that is not a safe integer is refused rather than rounded, and text must be canonical decimal.
 
-**Links follow Telegram's published syntax, and where it is silent, its apps.** Eighteen kinds
+**Links follow Telegram's published syntax, and where it is silent, its apps.** Twenty-one kinds
 are described: usernames and phone numbers with a message draft, invitations, chat folders,
 messages with their thread, comment, album item, media timestamp, checklist task and poll
 option, shares, video chats and live streams, sticker and emoji sets, stories, boosts, bot starts,
 adding a bot to a group or channel with administrator rights, main and named mini apps,
-attachment menus in the current chat, a chosen one or a named one, and games — in their `t.me`,
+attachment menus in the current chat, a chosen one or a named one, games, MTProxy and SOCKS5
+proxies, and temporary profile links — in their `t.me`,
 `telegram.me`, `telegram.dog`, `<username>.t.me` and `tg:` forms. Where a link carries several
 arguments, the first that forms a link decides; where a value is malformed, that argument is
 passed over rather than failing the link, as Telegram's apps do. A draft that is not valid UTF-8 is
@@ -203,8 +204,11 @@ Administrator rights are described as the link lists them — known names, once 
 link's order. Which of them apply to a group or a channel, and the implied right to manage the
 chat, are decided by whoever applies them, not by reading the link.
 
-A Telegram link of a kind not described here — a proxy, a theme, a gift, a live story, an
-affiliate referral — reads as `undefined` rather than being mistaken for a username. Writing
+A Telegram link of a kind not described here — a theme, a gift, a live story, an affiliate
+referral — reads as `undefined` rather than being mistaken for a username. A proxy link needs
+every part its syntax requires — server, a port from 1 to 65535 and, for MTProxy, the secret —
+or it reads as nothing. An MTProxy secret, or a SOCKS5 password, is what lets a client use the
+proxy, so a link carrying one is a credential and is shared as deliberately as the proxy. Writing
 always produces an `https://t.me/` link in the published form, and refuses a description a
 client would read as something else: a start parameter past 64 characters or with characters
 outside base64url, a right that does not exist, a channel link with no rights, an invite hash of

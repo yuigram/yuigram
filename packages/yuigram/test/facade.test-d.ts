@@ -194,6 +194,10 @@ describe('identifiers and links, which belong to neither transport', () => {
   it('publishes the link description as a real union', () => {
     expectTypeOf<TelegramLink>().not.toBeAny()
     expectTypeOf<TelegramLink['kind']>().toExtend<string>()
+    expectTypeOf<'proxy' | 'socks' | 'contact' | 'mini-app'>().toExtend<TelegramLink['kind']>()
+    expectTypeOf<Extract<TelegramLink, { kind: 'socks' }>['pass']>().toEqualTypeOf<
+      string | undefined
+    >()
   })
 })
 
