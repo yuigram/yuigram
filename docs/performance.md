@@ -93,26 +93,38 @@ does, and it does not drift.
 
 ### 2.2 Where this budget currently stands
 
-**Over it.** The eager graph has grown to 129 modules, about 1.3 MB of which some
-44% is documentation comments, and the gate's own procedure measures **110 ms**
-(seven samples, 103–117 ms) on the tree with the per-package core module. Before
-that change an isolated build measured about 129 ms in the same session, so the
-change is real and the gap that remains is about 10 ms.
+**Just under it, with little room.** Six runs of the gate's own procedure on one tree, one
+after another on a quiet machine, gave medians of 98.6, 99.2, 96.5, 96.1, 99.1 and 96.8 ms —
+every one within the budget, none by more than four milliseconds — and individual samples from
+90 to 109 ms. That is the honest reading: met, on that machine, by a margin the machine's own
+load can take away, as the earlier history below shows it doing.
 
-What the remaining time is, from a profile of that tree: framework code about
-3 ms; compiling the modules' source about 29 ms; and Node's per-module work —
-finding each module's package scope (~19 ms), checking the file (~17 ms), real
-paths and opens (~22 ms). Three further candidates were priced on isolated
-builds and not taken:
+Two changes brought it there from 129 ms, each measured against an isolated build of the tree
+before it, in twelve alternating rounds of seven samples:
 
-| Candidate | Priced | Why not taken |
+| Change | Paired median | Pairs faster | Eager modules |
+| --- | --- | --- | --- |
+| The Bot API and MTProto main entries take `@yuigram/core` from a local module instead of resolving it by name in each of 54 modules | −16.1 ms | 6 of 6 | 127 → 129 |
+| A `package.json` in each package's `dist/` (below), so Node's search for a module's package ends one directory up | −13.0 ms | 6 of 6 | unchanged |
+
+The profile says why these and not the code: framework code runs for about 3 ms of the import.
+The rest is Node loading modules — compiling their source, and for each one, finding its
+package scope, checking the file, following real paths. The dist manifest carries the package's
+`browser` substitutions and `sideEffects` rewritten relative to `dist/`, because bundlers read
+the nearest manifest too; it names no package and exports nothing, and no package imports itself
+by name (an invariant), so resolution by name is untouched. esbuild, webpack and Rollup take
+every browser substitution and keep MTProto out of a bot-only bundle with it as without it.
+
+Not taken:
+
+| Candidate | Priced | Why not |
 | --- | --- | --- |
-| A `package.json` in each `dist/` so the scope search stops there | −15 ms | It would shadow the `browser` maps and `sideEffects` that bundlers read from the nearest manifest, and the optional entry points' imports of their own package by name |
-| Comments removed from the emitted JavaScript | −5 ms | The compiler's `removeComments` removes the declarations' documentation as well; keeping it needs a second, JavaScript-only build per package |
-| The two smallest redundant modules | ~1 ms | Below what the comparison can tell from noise |
+| Comments removed from the emitted JavaScript | about −5 ms | The compiler's `removeComments` removes the declarations' documentation as well; keeping it needs a second, JavaScript-only build per package |
+| The two smallest redundant modules | about −1 ms | Below what the comparison can tell from noise |
 
-The gate therefore fails, and stays failing rather than being widened. The
-history below is how it got here.
+What is left, if the margin has to grow, is fewer modules or fewer bytes to compile: a bundled
+build of each entry point, or a second emit without comments. Both are build pipelines rather
+than changes to the code, and neither is made here.
 
 **Earlier: at the line, and the line moved with the machine.** Nine runs of the
 benchmark's own procedure on the same tree, in the order they were taken, when
