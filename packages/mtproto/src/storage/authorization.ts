@@ -31,7 +31,7 @@
  * that does that on every start is one that looks like an intruder.
  */
 
-import { type KV, YuigramError } from '@yuigram/core'
+import { type KV, YuigramError } from '../core.js'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 
 /** Auth keys are 2048 bits. */

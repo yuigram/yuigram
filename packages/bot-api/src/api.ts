@@ -9,8 +9,8 @@
  * a Telegram release never leaves a user unable to reach a new method.
  */
 
-import { type Hook, YuigramError } from '@yuigram/core'
 import type { CallOptions } from './api-options.js'
+import { type Hook, YuigramError } from './core.js'
 import { type MethodDefaults, prepareDefaults, withDefaults } from './defaults.js'
 import { toError, toNetworkError } from './errors.js'
 import type { ApiMethods } from './generated/api.js'

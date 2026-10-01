@@ -34,7 +34,7 @@ import {
   type RateLimitEntry,
   type RateLimitInfo,
   type RateLimitKey,
-} from '@yuigram/core'
+} from './core.js'
 
 export type { RateLimitInfo, RateLimitKey } from '@yuigram/core'
 

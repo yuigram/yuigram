@@ -25,7 +25,7 @@
  * a browser tab from drawing for several seconds.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 
 /**
  * The one precondition both backends owe their callers.

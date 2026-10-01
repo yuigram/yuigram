@@ -42,6 +42,7 @@
  * does not stop the rest.
  */
 
+import type { EventHandler } from './bot.js'
 import {
   type AnyFilter,
   Dispatcher,
@@ -52,8 +53,7 @@ import {
   type MiddlewareHost,
   type Plugin,
   type UseOptions,
-} from '@yuigram/core'
-import type { EventHandler } from './bot.js'
+} from './core.js'
 import type {
   AnyEventContext,
   CallbackQueryContext,

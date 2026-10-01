@@ -13,15 +13,15 @@
  * surprise.
  */
 
+import { type MtprotoApi, rawApi } from '../api.js'
+import type { PeerView } from '../chats/peers.js'
 import {
   type BaseContext,
   type ContextActions,
   LifecycleError,
   type Logger,
   PeerError,
-} from '@yuigram/core'
-import { type MtprotoApi, rawApi } from '../api.js'
-import type { PeerView } from '../chats/peers.js'
+} from '../core.js'
 import { readAction, type ServiceAction } from '../entities/action.js'
 import type {
   TypeInputBotInlineMessageID,

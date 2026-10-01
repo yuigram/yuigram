@@ -26,8 +26,8 @@
  * refused call rather than a wrong answer.
  */
 
-import { PeerError, ValidationError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
+import { PeerError, ValidationError } from '../core.js'
 import { MessageView } from '../entities/message.js'
 import type { FormattedText } from '../format/text.js'
 import type {

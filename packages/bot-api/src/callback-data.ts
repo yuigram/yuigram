@@ -29,7 +29,7 @@
  * not answer that question either.
  */
 
-import { ValidationError, YuigramError } from '@yuigram/core'
+import { ValidationError, YuigramError } from './core.js'
 import type { InlineKeyboardButton } from './generated/types/index.js'
 
 /** The most `callback_data` Telegram carries, in bytes of UTF-8. */

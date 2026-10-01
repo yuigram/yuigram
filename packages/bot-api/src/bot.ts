@@ -21,6 +21,8 @@
  * works through the `yuigram` façade rather than only the internal package.
  */
 
+import { type ApiHook, createApi, type RawApi } from './api.js'
+import type { ParsedCommand } from './command.js'
 import {
   type AnyFilter,
   ContextExtender,
@@ -43,9 +45,7 @@ import {
   PluginRegistry,
   type UseOptions,
   ValidationError,
-} from '@yuigram/core'
-import { type ApiHook, createApi, type RawApi } from './api.js'
-import type { ParsedCommand } from './command.js'
+} from './core.js'
 import type { MethodDefaults } from './defaults.js'
 import {
   type AnyEventContext,

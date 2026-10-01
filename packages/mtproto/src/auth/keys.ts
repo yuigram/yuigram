@@ -12,7 +12,7 @@
  * without a release.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import { bigIntToBytesBE } from '../crypto/bytes.js'
 import { sha1 } from '../crypto/hash.js'
 import type { RsaPublicKey } from '../crypto/rsa.js'

@@ -13,9 +13,9 @@
  * request, not a second owner of the network or of the peer table.
  */
 
-import { PeerError, ValidationError } from '@yuigram/core'
 import { rawApi } from '../api.js'
 import type { PeerView } from '../chats/peers.js'
+import { PeerError, ValidationError } from '../core.js'
 import type { DownloadRequest } from '../files/download.js'
 import { documentFile, photoFile, thumbnailFile } from '../files/media.js'
 import type { ManagedLocation } from '../files/references.js'

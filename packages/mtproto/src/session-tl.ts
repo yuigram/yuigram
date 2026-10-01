@@ -29,7 +29,7 @@
  * as that something.
  */
 
-import { SessionError } from '@yuigram/core'
+import { SessionError } from './core.js'
 
 /** The layout this reads and writes. */
 const VERSION = 3

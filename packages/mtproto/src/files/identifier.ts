@@ -45,7 +45,7 @@
  * re-obtain. Anything else is refused by name rather than guessed at.
  */
 
-import { ValidationError, YuigramError } from '@yuigram/core'
+import { ValidationError, YuigramError } from '../core.js'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type {
   TypeDocument,

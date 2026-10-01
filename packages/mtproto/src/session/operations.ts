@@ -19,8 +19,8 @@
  * that already exists.
  */
 
-import { ValidationError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
+import { ValidationError } from '../core.js'
 import type { TypeInputPeer } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { TlValue } from '../tl/index.js'

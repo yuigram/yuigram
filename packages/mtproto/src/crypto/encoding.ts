@@ -17,7 +17,7 @@
  * string of bytes and a string of characters happening to coincide.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 
 /** Bytes as lowercase hexadecimal. */
 export function toHex(bytes: Uint8Array): string {

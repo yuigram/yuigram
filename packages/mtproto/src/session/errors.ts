@@ -7,7 +7,7 @@
  * to a datacenter.
  */
 
-import { type ErrorOptions, FloodError, SessionError, TelegramError } from '@yuigram/core'
+import { type ErrorOptions, FloodError, SessionError, TelegramError } from '../core.js'
 import type { DocumentedErrorPattern, DocumentedErrorText } from '../generated/errors.js'
 import type { TlValue } from '../tl/index.js'
 

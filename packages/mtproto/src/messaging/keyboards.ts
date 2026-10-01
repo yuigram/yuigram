@@ -13,7 +13,7 @@
  * ```
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import type { TypeKeyboardInlineButton, TypeReplyMarkup } from '../generated/api/types/index.js'
 
 /** The most a button's data may carry, in bytes: Telegram's limit. */

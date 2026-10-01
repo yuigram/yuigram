@@ -24,7 +24,7 @@
  * damaged would silently skip everything between.
  */
 
-import { type KV, YuigramError } from '@yuigram/core'
+import { type KV, YuigramError } from '../core.js'
 import type { UpdateStateSnapshot } from '../updates/state.js'
 
 /** Where the position is kept. */

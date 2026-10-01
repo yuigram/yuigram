@@ -33,7 +33,7 @@
  * the string, would be worse than none.
  */
 
-import { SessionError } from '@yuigram/core'
+import { SessionError } from './core.js'
 import { fromBase64, toBase64 } from './crypto/encoding.js'
 import { readTlSession, type SessionAddress, writeTlSession } from './session-tl.js'
 

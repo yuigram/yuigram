@@ -30,8 +30,8 @@
  * total, rather than slicing an array.
  */
 
-import { ValidationError } from '@yuigram/core'
 import { type CallbackData, defineCallbackData } from './callback-data.js'
+import { ValidationError } from './core.js'
 import { InlineKeyboard } from './keyboards.js'
 
 /** One screen of a list, and where it sits. */

@@ -24,7 +24,7 @@
  * hands back something that will be refused later for no visible reason.
  */
 
-import { PeerError } from '@yuigram/core'
+import { PeerError } from '../core.js'
 import type {
   TypeInputChannel,
   TypeInputPeer,

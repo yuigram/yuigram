@@ -36,8 +36,8 @@
  * the thundering herd, arriving as "one user's message is always last".
  */
 
-import { type Logger, YuigramError } from '@yuigram/core'
 import type { ApiHook } from './api.js'
+import { type Logger, YuigramError } from './core.js'
 
 /** Telegram's published global ceiling, in requests per second. */
 export const DEFAULT_GLOBAL_PER_SECOND = 30

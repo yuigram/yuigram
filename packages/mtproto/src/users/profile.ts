@@ -28,8 +28,8 @@
  * makes every one of these testable without a connection.
  */
 
-import { PeerError, ValidationError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
+import { PeerError, ValidationError } from '../core.js'
 import { ChatView, UserView } from '../entities/peer.js'
 import type { UploadedFile } from '../files/upload.js'
 import type {

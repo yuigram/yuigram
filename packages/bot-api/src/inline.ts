@@ -26,7 +26,7 @@
  * to derive that from.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from './core.js'
 import type {
   InlineQueryResultArticle,
   InlineQueryResultAudio,

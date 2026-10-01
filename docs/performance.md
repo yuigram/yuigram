@@ -52,6 +52,15 @@ Decisions that protect this:
   dependency-injection container or a test without side effects.
 - **Subpath exports.** Webhook adapters, testing helpers and storage drivers are not in the
   main entry point, so importing `yuigram` does not parse express glue.
+- **One resolution of the core per package.** Measured, the import is not dominated by the
+  framework's own code — that runs for about 3 ms — but by Node loading modules: compiling
+  them, and resolving each specifier. An import by package name is resolved separately for
+  every module that writes it, and the fifty-odd modules the Bot API and MTProto main entries
+  load each named `@yuigram/core`. They now take its values from a local `src/core.ts` that
+  re-exports it, which cut the import by about 16 ms in a paired comparison of isolated builds.
+  The `core-route` invariant keeps a name import from coming back into that graph; `import
+  type`, lazily loaded modules and the core's other entry points are untouched, because none
+  of them costs anything at startup.
 
 ### 2.1 What the gate actually measures
 

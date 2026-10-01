@@ -30,40 +30,6 @@
  */
 
 import type { Guard, KV } from '@yuigram/core'
-import {
-  type AfterHook,
-  type BeforeHook,
-  type CustomEvent,
-  createCustomEvent,
-  createLogger,
-  type Dependencies,
-  type Dispatchable,
-  Dispatcher,
-  type ErrorHandler,
-  type EventAddress,
-  type EventDefinition,
-  type FilterMeta,
-  file,
-  type Handler,
-  type HostObserver,
-  isEventDefinition,
-  Lifecycle,
-  LifecycleError,
-  type Logger,
-  type Middleware,
-  type MiddlewareHost,
-  NetworkError,
-  namespaced,
-  type OnOptions,
-  PeerError,
-  type Plugin,
-  PluginRegistry,
-  SessionError,
-  type StopOptions,
-  TelegramError,
-  type UseOptions,
-  ValidationError,
-} from '@yuigram/core'
 import { type MtprotoApi, rawApi } from './api.js'
 import type { ServerRsaKey } from './auth/keys.js'
 import type {
@@ -98,6 +64,40 @@ import type {
   NewCommunity,
   ParticipantChats,
 } from './communities/communities.js'
+import {
+  type AfterHook,
+  type BeforeHook,
+  type CustomEvent,
+  createCustomEvent,
+  createLogger,
+  type Dependencies,
+  type Dispatchable,
+  Dispatcher,
+  type ErrorHandler,
+  type EventAddress,
+  type EventDefinition,
+  type FilterMeta,
+  file,
+  type Handler,
+  type HostObserver,
+  isEventDefinition,
+  Lifecycle,
+  LifecycleError,
+  type Logger,
+  type Middleware,
+  type MiddlewareHost,
+  NetworkError,
+  namespaced,
+  type OnOptions,
+  PeerError,
+  type Plugin,
+  PluginRegistry,
+  SessionError,
+  type StopOptions,
+  TelegramError,
+  type UseOptions,
+  ValidationError,
+} from './core.js'
 import { toHex } from './crypto/encoding.js'
 import { randomBytes } from './crypto/random.js'
 import type {

@@ -51,8 +51,8 @@
  * fails, the second uploads for itself.
  */
 
-import { ConfigError, type KV, memory, type Plugin } from '@yuigram/core'
 import type { ApiCall, ApiHook } from './api.js'
+import { ConfigError, type KV, memory, type Plugin } from './core.js'
 import { BotApiError } from './errors.js'
 import { type MediaOrigin, originOf } from './media.js'
 

@@ -549,6 +549,84 @@ export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
 }
 
 /**
+ * How the main entry points reach the core.
+ *
+ * Node resolves an import by package name separately for each module that
+ * writes it, and that walk — `node_modules`, export map, real path — was about a
+ * tenth of a cold `import 'yuigram'` when fifty-odd modules each did it
+ * (`docs/performance.md` §2). So in each package below, the modules its main
+ * entry point loads take the core's values from one local module that
+ * re-exports it, and only that module names the package.
+ *
+ * What it does not cover is deliberate. `import type` is erased and resolves
+ * nothing at run time. A module loaded later — by `import()`, or by an optional
+ * entry point — is not paid for at startup, and the core's other entry points
+ * are separate packages as far as resolution goes.
+ */
+interface CoreRoute {
+  /** The main entry point whose static closure is held. */
+  readonly entry: string
+  /** The one module allowed to import the core by name. */
+  readonly link: string
+}
+
+export const CORE_ROUTES: readonly CoreRoute[] = [
+  { entry: 'packages/bot-api/src/index.ts', link: 'packages/bot-api/src/core.ts' },
+  { entry: 'packages/mtproto/src/index.ts', link: 'packages/mtproto/src/core.ts' },
+]
+
+/** The modules loading `entry` loads, following static relative imports only. */
+function staticClosure(
+  entry: SourceFile,
+  sources: ReadonlyMap<string, SourceFile>,
+): readonly SourceFile[] {
+  const seen = new Map<string, SourceFile>([[entry.path, entry]])
+  const pending: SourceFile[] = [entry]
+
+  for (let source = pending.pop(); source !== undefined; source = pending.pop()) {
+    for (const ref of source.imports) {
+      if (ref.kind !== 'static') continue
+      const target = resolveRelative(source.path, ref.specifier)
+      const next = target === null ? null : sourceAt(target, sources)
+      if (next === null || seen.has(next.path)) continue
+      seen.set(next.path, next)
+      pending.push(next)
+    }
+  }
+
+  return [...seen.values()]
+}
+
+export const coreRoute: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+  const sources = new Map<string, SourceFile>()
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) sources.set(source.path, source)
+  }
+
+  for (const route of CORE_ROUTES) {
+    const entry = sources.get(route.entry)
+    if (entry === undefined) continue
+
+    for (const source of staticClosure(entry, sources)) {
+      if (source.path === route.link) continue
+      for (const ref of source.imports) {
+        if (ref.kind !== 'static' || ref.specifier !== '@yuigram/core') continue
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `'@yuigram/core' is imported by name in a module ${route.entry} loads; import it from ${route.link} instead, or with \`import type\` for types`,
+          rationale:
+            'Each import by package name is resolved separately at startup, and the main entry points load enough of them to cost a tenth of the import budget. One local module resolves the core once for all of them.',
+        })
+      }
+    }
+  }
+
+  return { name: 'core-route', violations }
+}
+
+/**
  * What a template must refuse to commit.
  *
  * `docs/security.md` §3 lists "never in git" as a control that is on by
@@ -631,6 +709,7 @@ export const workspaceInvariants: readonly Invariant[] = [
   declaredImports,
   moduleBoundaries,
   eagerSurfaces,
+  coreRoute,
 ]
 
 /** Run every workspace invariant and collect the results. */

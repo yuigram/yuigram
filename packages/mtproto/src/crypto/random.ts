@@ -7,7 +7,7 @@
  * property that can be checked by reading one file.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import { backend } from './backend.js'
 import { bytesToBigIntBE } from './bytes.js'
 

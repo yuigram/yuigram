@@ -22,7 +22,7 @@ import {
   defineAsyncFilter,
   defineFilter,
   type Filter,
-} from '@yuigram/core'
+} from './core.js'
 import type { AnyEventContext, EventContext } from './events/index.js'
 
 /**

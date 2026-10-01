@@ -11,7 +11,7 @@
  * is a failure only the person who typed it can see.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from './core.js'
 
 /**
  * The digits of a phone number.

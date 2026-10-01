@@ -7,7 +7,7 @@
  * third-party code in the path a credential travels.
  */
 
-import { ConfigError } from '@yuigram/core'
+import { ConfigError } from '../core.js'
 import type { ApiRequest, ApiResponse, ApiResult, HttpClient } from './client.js'
 import { encodeRequest } from './multipart.js'
 

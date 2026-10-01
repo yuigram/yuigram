@@ -6,8 +6,8 @@
  * first one and writing it correctly is fiddlier than it looks.
  */
 
-import { FloodError, type Logger } from '@yuigram/core'
 import type { ApiHook } from './api.js'
+import { FloodError, type Logger } from './core.js'
 
 /** Options for {@link retryOnFloodWait}. */
 export interface FloodWaitOptions {

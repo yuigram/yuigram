@@ -18,7 +18,7 @@
  * written in.
  */
 
-import { MarkupParseError, ValidationError } from '@yuigram/core'
+import { MarkupParseError, ValidationError } from '../core.js'
 import type { TypeMessageEntity } from '../generated/api/types/index.js'
 import { toTlEntities } from './neutral.js'
 

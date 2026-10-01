@@ -32,7 +32,7 @@ import {
   type OnOptions,
   type UseOptions,
   ValidationError,
-} from '@yuigram/core'
+} from './core.js'
 import type { MtprotoContext } from './normalize/context.js'
 import { ACCOUNT_KINDS, type MtprotoEventKind, SHARED_KINDS } from './normalize/events.js'
 

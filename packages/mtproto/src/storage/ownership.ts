@@ -110,7 +110,7 @@ import {
   StorageOwnershipError,
   type StoreLease,
   ValidationError,
-} from '@yuigram/core'
+} from '../core.js'
 
 export { StorageOwnershipError }
 

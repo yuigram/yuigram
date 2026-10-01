@@ -34,7 +34,7 @@
  * the caller's back.
  */
 
-import { PeerError } from '@yuigram/core'
+import { PeerError } from './core.js'
 import type { ApiMethods } from './generated/api/methods.js'
 import type { TypeInputPeer } from './generated/api/types/index.js'
 import type { TlValue } from './tl/index.js'

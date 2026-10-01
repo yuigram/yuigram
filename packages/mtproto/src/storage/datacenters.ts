@@ -17,7 +17,7 @@
  * discard addresses that were working.
  */
 
-import { type KV, YuigramError } from '@yuigram/core'
+import { type KV, YuigramError } from '../core.js'
 import { fromBase64, toBase64 } from '../crypto/encoding.js'
 import type { DcAddress, DcConfiguration } from '../network/dc.js'
 

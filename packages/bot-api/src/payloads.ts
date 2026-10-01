@@ -29,7 +29,7 @@
  * wrong thing: an album past its limit, a Stars invoice priced in two lines.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from './core.js'
 import type {
   BotCommand,
   BotCommandScopeAllChatAdministrators,

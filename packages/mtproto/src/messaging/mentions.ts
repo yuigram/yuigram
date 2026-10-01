@@ -14,7 +14,7 @@
  * one is the worse failure.
  */
 
-import { PeerError } from '@yuigram/core'
+import { PeerError } from '../core.js'
 import { inputPeer, userFor } from '../network/peers.js'
 import type { PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'

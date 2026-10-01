@@ -21,8 +21,8 @@
  * quoted message id survives while `quote` and the rest stay overridable.
  */
 
-import { ValidationError } from '@yuigram/core'
 import type { RawApi } from '../api.js'
+import { ValidationError } from '../core.js'
 import type { CallbackQuery, Message, ReactionType } from '../generated/types/index.js'
 import type {
   AnswerOptions,

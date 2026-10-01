@@ -29,7 +29,7 @@
  * site, where a bare one is ambiguous.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from './core.js'
 import { readFileChunks } from './files-node.js'
 import { markSingleUse, type NamedFile } from './input-file.js'
 

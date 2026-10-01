@@ -18,7 +18,7 @@
  * fingerprints Telegram publishes beside them.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import { fromBase64 } from '../crypto/encoding.js'
 import { type ServerRsaKey, serverRsaKey } from './keys.js'
 

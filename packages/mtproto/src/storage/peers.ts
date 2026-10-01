@@ -23,7 +23,7 @@
  * old one may then belong to somebody else.
  */
 
-import { type KV, YuigramError } from '@yuigram/core'
+import { type KV, YuigramError } from '../core.js'
 
 /** What kind of peer a record describes. */
 export type PeerKind = 'user' | 'chat' | 'channel'

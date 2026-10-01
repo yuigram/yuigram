@@ -10,7 +10,7 @@
  * and its shape is a framework choice that should be reviewed like any other.
  */
 
-import { YuigramError } from '@yuigram/core'
+import { YuigramError } from './core.js'
 
 /** A file being uploaded, in any form Yuigram can stream. */
 export type InputFile =

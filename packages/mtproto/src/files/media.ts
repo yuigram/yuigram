@@ -29,7 +29,7 @@
  * out of a receive.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import type {
   TypeDocument,
   TypeDocumentAttribute,

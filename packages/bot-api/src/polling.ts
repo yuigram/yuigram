@@ -13,8 +13,8 @@
  */
 
 import type { Logger } from '@yuigram/core'
-import { FloodError } from '@yuigram/core'
 import type { RawApi } from './api.js'
+import { FloodError } from './core.js'
 import { BotApiError } from './errors.js'
 import type { Update } from './generated/types/index.js'
 import { createScheduler } from './scheduler.js'

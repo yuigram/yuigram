@@ -13,8 +13,8 @@
  * aggregator.
  */
 
-import { ConfigError, NetworkError, ValidationError } from '@yuigram/core'
 import type { RawApi } from './api.js'
+import { ConfigError, NetworkError, ValidationError } from './core.js'
 import { readFileStream, writeFileStream } from './files-node.js'
 import type { File, PhotoSize } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'

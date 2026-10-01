@@ -12,7 +12,7 @@
  * exponentiation.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import { backend } from './backend.js'
 import { assertLength } from './backend-types.js'
 

@@ -33,9 +33,9 @@
  * the caller, which is another thing a generator leaves where it was.
  */
 
-import { ValidationError } from '@yuigram/core'
 import type { MtprotoApi } from '../api.js'
 import type { Folder } from '../chats/folders.js'
+import { ValidationError } from '../core.js'
 import type {
   ChatEventView,
   ForumTopicView,

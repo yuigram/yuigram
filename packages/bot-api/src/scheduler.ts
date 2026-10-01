@@ -6,7 +6,7 @@
  * belongs to.
  */
 
-import { createScheduler as build, type Scheduler, type SchedulerOptions } from '@yuigram/core'
+import { createScheduler as build, type Scheduler, type SchedulerOptions } from './core.js'
 import type { Update } from './generated/types/index.js'
 
 export type { DrainOptions, Scheduler } from '@yuigram/core'

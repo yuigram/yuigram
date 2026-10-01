@@ -29,8 +29,8 @@
  * {@link pager}'s.
  */
 
-import { CancelledError, ValidationError } from '@yuigram/core'
 import type { RawApi } from './api.js'
+import { CancelledError, ValidationError } from './core.js'
 import type {
   GetBusinessAccountGiftsParams,
   GetChatGiftsParams,
