@@ -69,7 +69,8 @@ export function select(
         (need === 'bot' && environment.bot === undefined) ||
         (need === 'account' && environment.account === undefined) ||
         (need === 'bot chat' && environment.bot?.chat === undefined) ||
-        (need === 'account chat' && environment.account?.chat === undefined),
+        (need === 'account chat' && environment.account?.chat === undefined) ||
+        (need === 'reader' && environment.account?.reader === undefined),
     )
     if (missing.length > 0) {
       refused.set(id, `it needs ${missing.join(' and ')}, which is not configured`)
@@ -120,6 +121,7 @@ export async function runChecks(
         },
         botChat: environment.bot?.chat,
         accountChat: environment.account?.chat,
+        reader: environment.account?.reader,
         observe: (line) => void observations.push(scrub(line)),
         cleanup: (step) => void undo.push(step),
         expect: (condition, what) => {

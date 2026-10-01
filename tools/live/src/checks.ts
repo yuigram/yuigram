@@ -55,12 +55,7 @@ export interface LiveBot {
       readonly document?: { readonly file_id: string } | undefined
     }>
   }
-  /**
-   * Fetch a file by what names it.
-   *
-   * The public `download` function with the bot's own transport: a `Bot`
-   * carries no download method, and the function is what an application calls.
-   */
+  /** Fetch a file by what names it, through the bot's own transport. */
   download(target: { readonly file_id: string }): Promise<Uint8Array>
 }
 
@@ -110,11 +105,17 @@ export type StreamFunction = (
   account: LiveAccount,
   peer: { readonly kind: 'user'; readonly id: bigint } | string,
   source: AsyncIterable<string>,
-  options: { readonly signal?: AbortSignal },
+  options: {
+    readonly signal?: AbortSignal
+    /** Let the reader stop it from their client. */
+    readonly canStop?: boolean
+  },
 ) => Promise<{
   readonly messages: ReadonlyArray<{ readonly id: number | undefined }>
   readonly drafts: number
   readonly aborted: boolean
+  /** Whether the reader stopped it. */
+  readonly stopped?: boolean
 }>
 
 /** What a running check can reach and report. */
@@ -125,6 +126,8 @@ export interface CheckContext {
   readonly botChat: string | undefined
   /** The chat the account may write to besides its Saved Messages. */
   readonly accountChat: string | undefined
+  /** A second account a person operates, for the check only a reader can finish. */
+  readonly reader: string | undefined
   /** Record what was seen. Passed through the scrubber before it is printed. */
   observe(line: string): void
   /** Register the undoing of something just done; run in reverse, whatever happens. */
@@ -148,7 +151,7 @@ export interface LiveCheck {
    * - `write` — sends, edits or deletes, and undoes what it did.
    */
   readonly tier: 'read' | 'session' | 'write'
-  readonly needs: readonly ('bot' | 'account' | 'bot chat' | 'account chat')[]
+  readonly needs: readonly ('bot' | 'account' | 'bot chat' | 'account chat' | 'reader')[]
   /** What it does, in a line. */
   readonly does: string
   /** What a pass looks like. */
@@ -445,7 +448,7 @@ export const CHECKS: readonly LiveCheck[] = [
     id: 'bot.file',
     tier: 'write',
     needs: ['bot', 'bot chat'],
-    does: 'send a fixed 4,000-byte file to the bot chat as a document, download it by its file_id, compare, delete the message',
+    does: 'send a fixed 4,000-byte file to the bot chat as a document, download it with bot.download, compare, delete the message',
     expects: 'the same bytes back; the message deleted',
     async run(context) {
       const bot = context.bot()
@@ -530,6 +533,38 @@ export const CHECKS: readonly LiveCheck[] = [
         `drafts ${result.drafts}, aborted ${result.aborted}, messages ${result.messages.length}`,
       )
       context.expect(result.aborted, 'the stream reports that it was stopped')
+    },
+  },
+  {
+    id: 'account.stream-stop',
+    tier: 'write',
+    needs: ['account', 'reader'],
+    does: 'stream slowly into a private chat with the reader, who taps stop in their client within 60 seconds',
+    expects: 'the stream reports that the reader stopped it; anything it sent is deleted',
+    async run(context) {
+      const account = await context.account()
+      const reader = context.reader as string
+      const stream = await context.stream()
+      const source = (async function* () {
+        // Two seconds a piece for up to a minute: long enough for a person to
+        // see the draft and tap stop, short enough that a run nobody watches ends.
+        for (let piece = 1; piece <= 30; piece += 1) {
+          yield `${MARK}: stop me ${piece} `
+          await new Promise((resolve) => setTimeout(resolve, 2_000))
+        }
+      })()
+
+      context.observe('streaming; the reader has 60 seconds to tap stop')
+      const result = await stream(account, reader, source, { canStop: true })
+      for (const message of result.messages) {
+        const id = message.id
+        if (id !== undefined)
+          context.cleanup(() => account.deleteMessages(reader, [id], { revoke: true }))
+      }
+      context.observe(
+        `drafts ${result.drafts}, stopped ${result.stopped === true}, messages ${result.messages.length}`,
+      )
+      context.expect(result.stopped === true, 'the reader stopped the stream')
     },
   },
 ]

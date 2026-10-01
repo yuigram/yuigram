@@ -43,7 +43,7 @@ const environment = (overrides: Partial<LiveEnvironment> = {}): LiveEnvironment 
   checks: [],
   allowWrites: false,
   allowSession: false,
-  bot: { token: TOKEN, chat: '-100200' },
+  bot: { token: TOKEN, chat: '-100200', testMode: false },
   account: undefined,
   secrets: [TOKEN],
   ...overrides,
@@ -144,6 +144,17 @@ describe('reading the environment', () => {
     expect([...read.secrets].sort()).toEqual([TOKEN, 'a-secret-api-hash', SESSION].sort())
   })
 
+  it('puts the bot on the test environment with the account, never one without the other', () => {
+    const test = readEnvironment(
+      { ...accountEnv, YUIGRAM_LIVE_BOT_TOKEN: TOKEN, YUIGRAM_LIVE_TEST_NETWORK: '1' },
+      () => PEM,
+    )
+    const production = readEnvironment({ ...accountEnv, YUIGRAM_LIVE_BOT_TOKEN: TOKEN }, () => PEM)
+
+    expect([test.bot?.testMode, test.account?.testMode]).toEqual([true, true])
+    expect([production.bot?.testMode, production.account?.testMode]).toEqual([false, false])
+  })
+
   it('refuses a layout it does not know and keys that are not keys', () => {
     expect(() =>
       readEnvironment({ ...accountEnv, YUIGRAM_LIVE_SESSION_FORMAT: 'other' }, () => PEM),
@@ -174,7 +185,7 @@ describe('choosing what runs', () => {
       environment({
         checks: ['bot.message'],
         allowWrites: true,
-        bot: { token: TOKEN, chat: undefined },
+        bot: { token: TOKEN, chat: undefined, testMode: false },
       }),
     )
 
@@ -411,7 +422,8 @@ describe('moving a file both ways', () => {
         'upload' | 'sendMedia' | 'download' | 'deleteMessages'
       > = account
       const botCalls: Pick<LiveBot['api'], 'sendDocument' | 'deleteMessage'> = bot.api
-      return [accountCalls, botCalls]
+      const botDownload: Pick<LiveBot, 'download'> = bot
+      return [accountCalls, botCalls, botDownload]
     }
 
     expect(typeof shapes).toBe('function')
@@ -584,6 +596,69 @@ describe('moving a file both ways', () => {
       'uploaded 4000 bytes, downloaded 4000, first difference at byte 0',
     )
     expect(trail).toContain('delete 501')
+  })
+})
+
+describe('a stream the reader stops', () => {
+  const deleting = (deleted: number[][]) =>
+    ({
+      connect: async () => undefined,
+      stop: async () => undefined,
+      deleteMessages: async (_peer: unknown, ids: readonly number[]) => void deleted.push([...ids]),
+    }) as unknown as LiveAccount
+  const environmentWith = (reader: string | undefined) =>
+    environment({
+      checks: ['account.stream-stop'],
+      allowWrites: true,
+      allowSession: true,
+      account: { reader } as never,
+    })
+
+  it('is refused without a reader to stop it', () => {
+    expect(select(environmentWith(undefined)).refused.get('account.stream-stop')).toMatch(
+      /needs reader/,
+    )
+  })
+
+  it('passes when the reader stopped it, letting them stop it, and deletes what it sent', async () => {
+    const deleted: number[][] = []
+    let allowed: boolean | undefined
+    const reports = await runChecks(
+      environmentWith('@reader'),
+      {
+        bot: () => expect.unreachable(),
+        account: async () => deleting(deleted),
+        // The source is not drained: a person's minute is not spent in a test.
+        stream: async () => async (_account, peer, _source, options) => {
+          allowed = options.canStop
+          expect(peer).toBe('@reader')
+          return { messages: [{ id: 5 }], drafts: 3, aborted: false, stopped: true }
+        },
+      },
+      scrubber([]),
+    )
+
+    expect(reports[0]?.status).toBe('passed')
+    expect(allowed).toBe(true)
+    expect(reports[0]?.observations).toContain('drafts 3, stopped true, messages 1')
+    expect(deleted).toEqual([[5]])
+  })
+
+  it('fails when nobody stopped it, and still deletes what it sent', async () => {
+    const deleted: number[][] = []
+    const reports = await runChecks(
+      environmentWith('@reader'),
+      {
+        bot: () => expect.unreachable(),
+        account: async () => deleting(deleted),
+        stream: async () => async () => ({ messages: [{ id: 6 }], drafts: 30, aborted: false }),
+      },
+      scrubber([]),
+    )
+
+    expect(reports[0]?.status).toBe('failed')
+    expect(reports[0]?.observations).toContain('expected: the reader stopped the stream')
+    expect(deleted).toEqual([[6]])
   })
 })
 

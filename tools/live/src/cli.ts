@@ -9,7 +9,7 @@
  * See docs/live-verification.md for the variables and the checklist.
  */
 
-import { Bot, createLogger, download, fetchClient, silentSink } from 'yuigram'
+import { Bot, createLogger, silentSink } from 'yuigram'
 import { accountFromSession } from './account.js'
 import { CHECKS, type LiveAccount, type LiveBot, type StreamFunction } from './checks.js'
 import { EnvironmentError, readEnvironment, VARIABLES } from './environment.js'
@@ -56,15 +56,10 @@ const reports = await runChecks(
     bot: () => {
       const settings = environment.bot
       if (settings === undefined) throw new Error('no bot is configured')
-      const bot = Bot.fromToken(settings.token, { log })
-      // A bot has no download method; the public function takes the transport,
-      // which is made from the same token and never printed.
-      const client = fetchClient({ token: settings.token })
-      return {
-        api: bot.api,
-        download: (target: { readonly file_id: string }) =>
-          download({ api: bot.api, client }, target),
-      } as unknown as LiveBot
+      return Bot.fromToken(settings.token, {
+        log,
+        testMode: settings.testMode,
+      }) as unknown as LiveBot
     },
     account: async () => {
       const settings = environment.account

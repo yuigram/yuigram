@@ -25,15 +25,20 @@ export const VARIABLES = {
   YUIGRAM_LIVE_SESSION_FORMAT: "The session string's layout: 'portable' (default) or 'tl-v3'.",
   YUIGRAM_LIVE_SERVER_KEYS: "A path to Telegram's published server keys, as PEM.",
   YUIGRAM_LIVE_DC: "The account's datacenter as id@host:port, when the session does not carry it.",
-  YUIGRAM_LIVE_TEST_NETWORK: 'Set to 1 when the account and the addresses are on the test network.',
+  YUIGRAM_LIVE_TEST_NETWORK:
+    "Set to 1 when everything is on Telegram's test environment: the account, its addresses and keys, and the bot, whose token then comes from the test environment's @BotFather.",
   YUIGRAM_LIVE_ACCOUNT_CHAT:
     'A chat the account may write to besides its own Saved Messages, for the mention and update checks: a test group that the bot is also in.',
+  YUIGRAM_LIVE_READER:
+    "The username of a second test account, operated by a person in an official client, for the reader's stop check.",
 } as const
 
 /** What a bot check is given. */
 export interface BotSettings {
   readonly token: string
   readonly chat: string | undefined
+  /** Whether the bot talks to the test environment, as the account does when it is set. */
+  readonly testMode: boolean
 }
 
 /** What an account check is given. */
@@ -46,6 +51,8 @@ export interface AccountSettings {
   readonly testMode: boolean
   readonly dc: { readonly id: number; readonly host: string; readonly port: number } | undefined
   readonly chat: string | undefined
+  /** A second account's username, which a person operates, for the reader's stop check. */
+  readonly reader: string | undefined
 }
 
 /** Everything the harness was given. */
@@ -97,7 +104,15 @@ export function readEnvironment(
 
   const token = present(env, 'YUIGRAM_LIVE_BOT_TOKEN')
   const bot =
-    token === undefined ? undefined : { token, chat: present(env, 'YUIGRAM_LIVE_BOT_CHAT') }
+    token === undefined
+      ? undefined
+      : {
+          token,
+          chat: present(env, 'YUIGRAM_LIVE_BOT_CHAT'),
+          // One switch for both: a test account and a production bot share no chat,
+          // so the update check could never pass with the two apart.
+          testMode: present(env, 'YUIGRAM_LIVE_TEST_NETWORK') === '1',
+        }
 
   const accountParts = {
     apiId: present(env, 'YUIGRAM_LIVE_API_ID'),
@@ -143,6 +158,7 @@ export function readEnvironment(
       testMode: present(env, 'YUIGRAM_LIVE_TEST_NETWORK') === '1',
       dc: dc === undefined ? undefined : readDc(dc),
       chat: present(env, 'YUIGRAM_LIVE_ACCOUNT_CHAT'),
+      reader: present(env, 'YUIGRAM_LIVE_READER'),
     }
   }
 

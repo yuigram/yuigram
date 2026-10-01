@@ -26,23 +26,39 @@ Nothing runs because something else did.
 
 ## 2. Before running
 
+**Pick one environment and keep everything in it.** Telegram runs a separate test environment
+with its own accounts, chats and bots, and nothing crosses between it and production: a test
+account cannot join a production group, and a production bot cannot write to a test one. One
+variable, `YUIGRAM_LIVE_TEST_NETWORK`, puts both the account and the bot on the test environment;
+unset, both are on production.
+
+| | Test environment (`YUIGRAM_LIVE_TEST_NETWORK=1`) — preferred | Production (unset) |
+| --- | --- | --- |
+| Bot API | `https://api.telegram.org/bot<token>/test/<method>`, with a token from the test environment's @BotFather | `https://api.telegram.org/bot<token>/<method>`, with an ordinary token |
+| MTProto | the test datacenters' addresses and server key, as Telegram's MTProto documentation publishes them | the production addresses and key |
+| Accounts | disposable `+99966 X YYYY` numbers (below) | a real number, and a real account |
+| What a run changes | the test environment only | real accounts and chats |
+
 | Need | Why |
 | --- | --- |
-| A **test account**, never a person's own | Every account step acts as it. Telegram's test network is preferred: its accounts are disposable and its datacenters are separate from production. |
-| A **test bot** from @BotFather | The bot checks call the Bot API with its token. For the test network, a bot made with the test network's @BotFather. |
-| A **test group** holding both | The update check has the bot write where the account can hear it; the mention check writes there as the account. |
-| **Telegram's server keys**, as PEM | Published in Telegram's MTProto documentation, for production and for the test network separately. An account refuses a datacenter whose key it does not hold — at the first call, with an error naming the fingerprints offered. |
-| An **application id and hash** | From my.telegram.org. |
+| A **test account**, never a person's own | Every account step acts as it. |
+| A **bot** made with the chosen environment's @BotFather | The bot checks call the Bot API with its token. |
+| A **public group** in the same environment, with a username, holding both | The update check has the bot write there where the account hears it; the mention check writes there as the account. Both chat variables name it by `@username`, which both clients resolve. |
+| **Telegram's server keys** for that environment, as PEM | An account refuses a datacenter whose key it does not hold — at the first call, with an error naming the fingerprints offered. |
+| An **application id and hash** | From my.telegram.org; the same pair serves both environments. |
+| A **second test account** that a person operates in an official client, for one step | The reader's stop: the person taps stop on a stream into their private chat with the test account. Named by `@username`. |
 
-**Test network accounts.** Telegram's documentation describes test-network numbers of the form
+**Test environment accounts.** Telegram's documentation describes test numbers of the form
 `+99966 X YYYY` — `X` the datacenter, `YYYY` any four digits — which need no SIM: the login code
 is `X` repeated five times, and the account may have to be registered on first use with an
-official client, since `login` does not register numbers. Prefer one of these to a real number.
+official client signed in to the test environment, since `login` does not register numbers. The
+group and the bot's membership in it are set up the same way, from that client.
 
 The session string, the token and the api hash are secrets; the phone number is treated as one.
-Keep them in the shell's environment for one command or in a file outside the repository — never
-in shell history, a ticket or a message. The code and the password are **never** variables:
-`login` asks for them at the terminal, and the password is read without being echoed.
+Keep them in a file outside the repository, readable only by its owner, and load it into the
+shell that runs the steps — never in shell history, a ticket or a message, and never pasted into
+a conversation. The code and the password are **never** variables: `login` asks for them at the
+terminal, and the password is read without being echoed.
 
 ## 3. The variables
 
@@ -53,8 +69,8 @@ in shell history, a ticket or a message. The code and the password are **never**
 | `YUIGRAM_LIVE_ALLOW_WRITES` | `1` to allow checks that send, edit or delete. A write check must also be named. | no |
 | `YUIGRAM_LIVE_ALLOW_LOGIN` | `1` to run `login`. | no |
 | `YUIGRAM_LIVE_ALLOW_LOGOUT` | `1` to run `logout`. | no |
-| `YUIGRAM_LIVE_BOT_TOKEN` | The test bot's token. | yes |
-| `YUIGRAM_LIVE_BOT_CHAT` | Where the bot may write: the test group, or the operator's private chat with the bot. | no |
+| `YUIGRAM_LIVE_BOT_TOKEN` | The bot's token, from the chosen environment's @BotFather. | yes |
+| `YUIGRAM_LIVE_BOT_CHAT` | Where the bot may write: the group, as `@username`. | no |
 | `YUIGRAM_LIVE_API_ID`, `YUIGRAM_LIVE_API_HASH` | The application's id and hash. | the hash |
 | `YUIGRAM_LIVE_PHONE` | The test account's number, for `login`. | yes |
 | `YUIGRAM_LIVE_SESSION_OUT` | Where `login` writes the session. Must not exist; created readable by its owner only. | the file is |
@@ -62,8 +78,9 @@ in shell history, a ticket or a message. The code and the password are **never**
 | `YUIGRAM_LIVE_SESSION_FORMAT` | `portable` (default) or `tl-v3`, for both writing and reading it. | no |
 | `YUIGRAM_LIVE_SERVER_KEYS` | Path to the server keys PEM. | no |
 | `YUIGRAM_LIVE_DC` | `id@host:port` of the account's datacenter. Required for `login`, and for a `portable` session, which carries no address. | no |
-| `YUIGRAM_LIVE_TEST_NETWORK` | `1` when the account, keys and addresses are the test network's. | no |
-| `YUIGRAM_LIVE_ACCOUNT_CHAT` | Where the account may write besides its Saved Messages: the test group. | no |
+| `YUIGRAM_LIVE_TEST_NETWORK` | `1` to put the account **and** the bot on the test environment; the keys, addresses and token must then be the test environment's. | no |
+| `YUIGRAM_LIVE_ACCOUNT_CHAT` | Where the account may write besides its Saved Messages: the same group, as `@username`. | no |
+| `YUIGRAM_LIVE_READER` | The second test account's `@username`, for `account.stream-stop`. | no |
 
 An account for `live` is configured when id, hash, session and keys are all set; half of them is an
 error naming what is missing, never a value. A check needing something not configured, or not
@@ -71,60 +88,45 @@ allowed, is refused with the reason, not skipped silently.
 
 ## 4. Running, in order
 
-List what exists, touching nothing:
+The smallest useful first run, in the order that keeps each step's effect small. The settings go
+in a file outside the repository once, so each step adds only what it allows and names:
 
 ```bash
-pnpm --filter @yuigram/live live --list
-```
-
-**Sign in.** Creates an authorization. Prompts for the code, and for the password if the account
-has one; writes the session to `YUIGRAM_LIVE_SESSION_OUT` and prints only its length.
-
-```bash
-YUIGRAM_LIVE_ALLOW_LOGIN=1 YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 YUIGRAM_LIVE_PHONE=… YUIGRAM_LIVE_SESSION_OUT=… pnpm --filter @yuigram/live login
-```
-
-Expected: `a code was sent to the account`, the prompts, then `signed in; the session (N
-characters) was written to …`. A number with no account is refused rather than registered.
-
-**Bot reads.** Change nothing.
-
-```bash
-YUIGRAM_LIVE_CHECKS=bot.identity,bot.webhook,bot.commands YUIGRAM_LIVE_BOT_TOKEN=… pnpm --filter @yuigram/live live
-```
-
-**Session checks.** Connect as the account; no messages.
-
-```bash
-YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_CHECKS=account.connect,account.identity,account.dialogs,account.session YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live live
-```
-
-**Writes.** Named one by one, with the chats they write to.
-
-```bash
-YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.message,account.saved,account.draft,account.mention,account.stream,bot-account.update YUIGRAM_LIVE_BOT_TOKEN=… YUIGRAM_LIVE_BOT_CHAT=… YUIGRAM_LIVE_ACCOUNT_CHAT=… YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live live
-```
-
-**Files.** Each moves one fixed 4,000-byte file up and back down, compares every byte, and
-deletes the message it made. Named on their own so a transfer failure is not read as anything
-else.
-
-```bash
-YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.file YUIGRAM_LIVE_BOT_TOKEN=… YUIGRAM_LIVE_BOT_CHAT=… pnpm --filter @yuigram/live live
+# ~/yuigram-live.env — chmod 600; never committed, never pasted anywhere
+YUIGRAM_LIVE_TEST_NETWORK=1
+YUIGRAM_LIVE_API_ID=…
+YUIGRAM_LIVE_API_HASH=…
+YUIGRAM_LIVE_SERVER_KEYS=/path/to/test-keys.pem
+YUIGRAM_LIVE_DC=2@…:443
+YUIGRAM_LIVE_PHONE=+99966…
+YUIGRAM_LIVE_SESSION_OUT=/path/outside/the/repository/session.txt
+YUIGRAM_LIVE_BOT_TOKEN=…
+YUIGRAM_LIVE_BOT_CHAT=@the_test_group
+YUIGRAM_LIVE_ACCOUNT_CHAT=@the_test_group
+YUIGRAM_LIVE_READER=@the_second_test_account
 ```
 
 ```bash
-YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=account.file YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live live
+set -a; . ~/yuigram-live.env; set +a
 ```
 
-Expected: `PASSED`, then `uploaded 4000 bytes, downloaded 4000, identical`. A difference is
-reported as the first byte that differs, and the check fails; the message is deleted either way.
+| # | Step | Command | Expected |
+| --- | --- | --- | --- |
+| 1 | List the checks; connects to nothing | `pnpm --filter @yuigram/live live --list` | every check with its tier and needs, then the variables; exit 0 |
+| 2 | **Sign in** — creates an authorization | `YUIGRAM_LIVE_ALLOW_LOGIN=1 pnpm --filter @yuigram/live login` | `a code was sent to the account`, `code: ` (and a hidden `password: ` if the account has one), then `signed in; the session (N characters) was written to …`; exit 0 |
+| 3 | Load the session, printing nothing | `export YUIGRAM_LIVE_SESSION="$(cat "$YUIGRAM_LIVE_SESSION_OUT")"` | no output |
+| 4 | Connection and identity | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_CHECKS=account.connect,account.identity pnpm --filter @yuigram/live live` | `PASSED account.connect` with `this_dc N`; `PASSED account.identity` with `id …NNN, bot false` |
+| 5 | Session restoration, in a new process | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_CHECKS=account.session,account.connect pnpm --filter @yuigram/live live` | `PASSED account.session` with `same key true`; `PASSED account.connect`. In an official client, the account's active sessions still show one entry for this application — the session was restored, not created again |
+| 6 | Bot reads | `YUIGRAM_LIVE_CHECKS=bot.identity,bot.webhook,bot.commands pnpm --filter @yuigram/live live` | `PASSED bot.identity` with `is_bot true, username present true`; the other two `PASSED` |
+| 7 | Messaging and incoming updates | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.message,account.saved,bot-account.update pnpm --filter @yuigram/live live` | `sent message N`, `edited`, `deleted true`; `sent true, newest is it true`; `heard true` — each `PASSED` |
+| 8 | Upload and download | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=bot.file,account.file pnpm --filter @yuigram/live live` | both `PASSED` with `uploaded 4000 bytes, downloaded 4000, identical` |
+| 9 | Mention, draft, stream stopped by abort | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=account.mention,account.draft,account.stream pnpm --filter @yuigram/live live` | `sent true, read back true`; `draft kept`, `draft cleared`; `drafts N, aborted true, messages M` — each `PASSED` |
+| 10 | Stream stopped by its reader — a person taps stop within 60 seconds | `YUIGRAM_LIVE_ALLOW_SESSION=1 YUIGRAM_LIVE_ALLOW_WRITES=1 YUIGRAM_LIVE_CHECKS=account.stream-stop pnpm --filter @yuigram/live live` | `streaming; the reader has 60 seconds to tap stop`, then `drafts N, stopped true, messages 0` and `PASSED`; nobody stopping it is `FAILED` with `expected: the reader stopped the stream` |
+| 11 | **Sign out** — ends the authorization | `YUIGRAM_LIVE_ALLOW_LOGOUT=1 pnpm --filter @yuigram/live logout` | `signed out; the authorization the session held is ended, and the string is now useless`; exit 0 |
+| 12 | Remove the session | `rm "$YUIGRAM_LIVE_SESSION_OUT"; unset YUIGRAM_LIVE_SESSION` | no output; then §6's checks by hand |
 
-**Sign out.** Ends the authorization `login` created.
-
-```bash
-YUIGRAM_LIVE_ALLOW_LOGOUT=1 YUIGRAM_LIVE_API_ID=… YUIGRAM_LIVE_API_HASH=… YUIGRAM_LIVE_SESSION=… YUIGRAM_LIVE_SERVER_KEYS=… YUIGRAM_LIVE_DC=… YUIGRAM_LIVE_TEST_NETWORK=1 pnpm --filter @yuigram/live logout
-```
+A step that fails stops the sequence there: the report names what was observed, and a step after
+it would be checking something the failure already put in doubt.
 
 Each `live` check prints one line — `PASSED`, `FAILED` or `REFUSED`, its id and its time — and what
 it observed, scrubbed. The exit code is `0` only when every named check passed, `1` when one
@@ -153,7 +155,8 @@ newest first — whether the check passed, failed or threw. A failed undo fails 
 | `account.draft` | Saved Messages | keep a draft, clear it | both accepted | nothing |
 | `account.mention` | the account chat | send a message mentioning the account's own username, read it back | it reads back as sent | nothing |
 | `account.stream` | Saved Messages | stream text as drafts, then abort before the end | drafts shown; the result says aborted | nothing: anything it sent is deleted |
-| `bot.file` | the bot chat | send a fixed 4,000-byte file as a document, download it by its `file_id` through the public `download` function, compare | `uploaded 4000 bytes, downloaded 4000, identical` | nothing: the message is deleted |
+| `account.stream-stop` | the reader's private chat | stream a piece every two seconds for up to a minute, which the reader may stop | `stopped true` | nothing: anything it sent is deleted |
+| `bot.file` | the bot chat | send a fixed 4,000-byte file as a document, download it with `bot.download`, compare | `uploaded 4000 bytes, downloaded 4000, identical` | nothing: the message is deleted |
 | `account.file` | Saved Messages | upload the same file, send it as a document, download it from the sent message, compare | `uploaded 4000 bytes, downloaded 4000, identical` | nothing: the message is deleted |
 
 The file is made by the harness — a fixed byte pattern named `yuigram-live-check.bin` — so
@@ -188,9 +191,9 @@ Afterwards:
 
 Some behaviour has no automatic counterpart, because it is somebody else's action:
 
-- **A reader stopping a stream.** `account.stream` stops by abort. Stopping from the reader's side
-  means a person tapping stop in a Telegram client while a stream into their chat runs; record
-  whether the stream reported `stopped` and whether `keepOnStop` kept the text.
+- **A reader stopping a stream.** `account.stream-stop` starts the stream and judges it; the
+  stop itself is a person tapping it in their client while the drafts arrive. Nothing is sent
+  when it stops, because the check leaves `keepOnStop` off.
 - **The code, the password and a QR login** are each a person at a phone; `login` asks for the
   first two and does not do the third.
 - **Mentions by somebody else**, payments, and anything that costs money.
