@@ -30,7 +30,7 @@ records the shape and measures what has a reading layer and what does not. An ac
 edits, forwards and deletes messages, walks dialogs and history page by page, and manages chats,
 members, forums, stories and the rest of what [roadmap.md](roadmap.md) Phase 11 lists.
 [api-design.md](api-design.md) describes the public surface as implemented, and its examples
-type-check against the packed package; [mtproto.md](mtproto.md) §5.3 and §11 record what remains
+type-check with `pnpm check:docs`; [mtproto.md](mtproto.md) §5.3 and §11 record what remains
 inside the protocol layers themselves.
 
 The rule when reading: the protocol subsystems, the clients on top of them and the ergonomic

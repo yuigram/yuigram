@@ -124,6 +124,8 @@ account.on('message', async (event) => {
 и проверка сужает контекст:
 
 ```ts
+import type { MessageContext, MtprotoContext } from 'yuigram'
+
 app.on<MessageContext | MtprotoContext>('message', async (event) => {
   await event.reply('работает на обоих')
   if (event.transport === 'mtproto') {

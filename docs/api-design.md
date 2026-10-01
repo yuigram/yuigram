@@ -9,9 +9,9 @@ Design priorities, in order: **honesty** (the type reflects what actually works)
 **concision** (no ceremony that carries no information), **discoverability** (autocomplete
 teaches the API).
 
-Everything this document shows is implemented, and its examples type-check against the
-`yuigram` package as it is packed for publishing. Where a passage records a decision rather than
-code, it says so. That covers the Bot API client — `Bot.fromToken`, the `on…` registrations,
+Everything this document shows is implemented, and `pnpm check:docs` type-checks its examples
+against the built packages ([testing.md](testing.md) §8 says what that does and does not show).
+Where a passage records a decision rather than code, it says so. That covers the Bot API client — `Bot.fromToken`, the `on…` registrations,
 per-event contexts, the bound method families, `Router`, the `f` filters, keyboards, the `media`
 sources, formatting, API hooks, middleware, sessions, storage, errors, files and the testing
 harness — the account client — connecting, signing in, typed events, the generated and bound
@@ -481,10 +481,16 @@ app.use(async (event, next) => {
 })
 
 // Gated on a filter — the middleware sees the narrowed type.
-app.use(when(f.chat.private, async (message, next) => { … }))
+app.use(when(f.chat.private, async (message, next) => {
+  message.log.debug('private message', { chat: message.chat.id })
+  await next()
+}))
 
 // Scoped to a client, and to a band.
-bot.use(async (event, next) => { … }, { priority: 'high' })
+bot.use(async (event, next) => {
+  event.log.debug('first in this bot', { kind: event.kind })
+  await next()
+}, { priority: 'high' })
 ```
 
 Middleware is named `event` rather than for a domain object, because it runs for every kind
@@ -537,8 +543,9 @@ A router declares what it needs, and the client must provide it:
 ```ts
 const cart = new Router<SessionFlavor<Cart>>()
 
-Bot.fromToken('…').extend(cart)                       // ✗ no session installed
-Bot.fromToken<SessionFlavor<Cart>>('…').extend(cart)  // ✓
+// @ts-expect-error — no session installed, so the router's requirement is unmet
+Bot.fromToken('…').extend(cart)
+Bot.fromToken<SessionFlavor<Cart>>('…').extend(cart)  // accepted
 ```
 
 This is the answer to scale. The minimal application stays three lines, and a large one gets
@@ -594,16 +601,17 @@ Framework sessions are distinct from MTProto authorization sessions; see
 ## 10. Storage
 
 ```ts
-import { memory, file } from 'yuigram'
+import { App, file, type KV, memory } from 'yuigram'
 
 new App({ storage: memory() })
 new App({ storage: file('./state') })
 
 // Any object satisfying the contract works.
+const entries = new Map<string, unknown>()
 const custom: KV<unknown> = {
-  get:    async (k) => …,
-  set:    async (k, v) => …,
-  delete: async (k) => …
+  get:    async (k) => entries.get(k),
+  set:    async (k, v) => { entries.set(k, v) },
+  delete: async (k) => { entries.delete(k) },
 }
 ```
 
@@ -646,8 +654,8 @@ await bot.api.sendMessage({ chat_id: 1, text: 'hi' })
 await user.api.messages.sendMessage({ peer, message: 'hi', random_id: rnd() })
 
 // Untyped, for anything newer than the installed schema.
-await bot.api.call('brandNewMethod', { … })
-await user.api.call({ _: 'messages.brandNewMethod', … })
+await bot.api.call('brandNewMethod', { chat_id: 1 })
+await user.api.call({ _: 'messages.brandNewMethod', peer })
 ```
 
 The same surface is on every context as `event.api`, so a handler never has to reach back to

@@ -30,6 +30,7 @@
     "smoke": "node scripts/smoke-package.mjs",
     "check:declarations": "pnpm build && node scripts/check-declarations.mjs",
     "check:contents": "pnpm build && node scripts/check-package-contents.mjs",
+    "check:docs": "pnpm build && node scripts/check-doc-examples.mjs",
     "bench": "pnpm build && tsx tools/bench/src/cli.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test && pnpm check:declarations",
     "changeset": "changeset",

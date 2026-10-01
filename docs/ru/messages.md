@@ -8,6 +8,8 @@
 У бота действия над сообщением, которое пришло в обновлении, есть прямо в контексте:
 
 ```ts
+import { media } from 'yuigram'
+
 bot.onMessage(async (message) => {
   await message.reply('с цитатой исходного сообщения')
   await message.send('в тот же чат, без цитаты')
@@ -120,6 +122,7 @@ await message.reply(html`Привет, <b>${message.sender?.first_name ?? 'го�
 `caption_entities`:
 
 ```ts
+import { media } from 'yuigram'
 import { bold, format, link } from 'yuigram/markup'
 
 bot.onCommand('docs', async (message) => {
