@@ -353,9 +353,11 @@ Meaningful targets instead:
 | Peer resolution | Every path including `min` and failure |
 | Public API | Every documented example compiles and runs |
 
-That last row is a documentation guarantee: every code sample in `docs/` and in the
-documentation site is extracted and compiled in CI. Documentation that does not compile is a
-bug, and it is the most common kind of documentation bug.
+That last row is a documentation requirement: every code sample in `docs/` and in the
+documentation site should be extracted and compiled in CI. Documentation that does not compile
+is a bug, and it is the most common kind of documentation bug. It is not automated yet. The
+examples under `examples/` type-check in CI; samples in the documents are checked against the
+packed package when they are revised, which is a release step rather than a gate.
 
 ---
 

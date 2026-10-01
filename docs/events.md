@@ -441,22 +441,27 @@ they hand over:
 
 Yuigram's defaults:
 
-- **Concurrent dispatch.** Updates process in parallel. This is the right default for
-  throughput and for the many bots whose handlers are independent.
+- **In order within a chat, in parallel across chats, for a polling bot.** Updates for one
+  chat run one after another; unrelated chats run at the same time, up to a bound. A
+  conversation's state machine sees its messages in the order they were sent, and one slow chat
+  does not hold up the rest.
 - **Deduplication on.** By `update_id` (Bot API) or message identity (MTProto), over a
   bounded recent window. Duplicate delivery is a real occurrence, not a theoretical one, and
   the failure it causes — a double reply, a double charge — is user-visible.
-- **Per-chat ordering opt-in.** `new App({ ordering: 'per-chat' })` serializes handlers per
-  chat. Correct for conversational state machines, a throughput ceiling for everything else,
-  which is why it is a choice.
 
 ```ts
-new App({ ordering: 'concurrent' })   // default
-new App({ ordering: 'per-chat' })     // serialize within a chat
-new App({ ordering: 'sequential' })   // one at a time, globally — debugging aid
+await bot.poll()                       // per chat in order, sixteen chats at a time
+await bot.poll({ concurrency: 64 })    // a wider bound
+await bot.poll({ concurrency: 1 })     // one update at a time — simplest to reason about
 ```
 
-In-flight handlers are tracked so `app.stop()` drains rather than severing.
+A webhook handles each update when the server it is mounted on delivers the request, so how
+many run at once is that server's. An account starts each update's handlers in the order its
+update sequence accepted them and does not wait for one to finish before starting the next, so
+one slow handler is not a gap in the sequence.
+
+In-flight handlers are tracked on every client, so `stop()` — and `app.stop()` over several —
+drains rather than severing.
 
 ---
 

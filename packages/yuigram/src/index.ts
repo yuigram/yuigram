@@ -16,9 +16,10 @@
  * await bot.poll()
  * ```
  *
- * **What is here today:** the Bot API subsystem, complete — clients, polling,
- * webhooks, routing, sessions, storage, files, errors and the testing harness.
- * The MTProto subsystem's account client. And `App`, which holds several
+ * **What is here:** the Bot API subsystem — clients, polling, webhooks,
+ * routing, sessions, storage, files, errors and the testing harness — and the
+ * MTProto subsystem's account client, with the message, chat, dialog and member
+ * operations built on its generated surface. And `App`, which holds several
  * clients of either kind at once:
  *
  * ```ts
@@ -50,9 +51,8 @@
  * Two bots in one program can then hold different state, which a merged
  * interface cannot express.
  *
- * **What is not:** the high-level MTProto surface — messages, chats, channels,
- * dialogs — which is demand-driven rather than stubbed; see `docs/roadmap.md`.
- * Nothing exported here is a placeholder.
+ * **What is not:** secret chats, and whatever else `docs/roadmap.md` lists as
+ * planned rather than shipped. Nothing exported here is a placeholder.
  */
 
 // The MTProto subsystem is requested first, and the order is load-bearing. A

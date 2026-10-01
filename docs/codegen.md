@@ -160,10 +160,11 @@ export const CHAT_BOUND = {
 The signatures come from `ApiMethods`, which is already generated, mapped through a type that
 makes the supplied parameters optional rather than absent. No parameter shape is restated, so
 none can drift. The runtime is one binder that reads the table and one prototype per client.
-**105 bound methods, 165 generated lines, no per-method code anywhere.**
+**About a hundred bound methods in under two hundred generated lines, and no per-method code
+anywhere.**
 
 **`registrations`** emits one `on…` declaration per event kind — `onMessage`,
-`onChatMemberJoined`, seventy-nine in all — and the list the client installs them from. Again
+`onChatMemberJoined` and the rest — and the list the client installs them from. Again
 a declaration and a table: the bodies are one loop over that list.
 
 The comparison worth making: the same breadth, emitted as code, is what takes a mature Bot API

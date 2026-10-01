@@ -161,7 +161,7 @@ same design working when MTProto lands, where addressing a peer needs an access 
 client holds.
 
 **A named registration per event kind.** `onMessage`, `onChatMemberJoined`,
-`onForumTopicCreated` — seventy-nine of them, each equivalent to `on(kind, handler)` with the
+`onForumTopicCreated` — one per event kind, each equivalent to `on(kind, handler)` with the
 kind fixed. `onText`, `onCommand` and `onCallbackQuery` stay hand-written, because each
 matches as well as selects.
 
@@ -173,9 +173,15 @@ there is no `0.1` equivalent to move off, and a bot that ignores it is unaffecte
 ```ts
 import { Account, App, Bot } from 'yuigram'
 
-const account = Account.fromString(process.env.SESSION!, { apiId, apiHash, keys: [], bootstrap, storage })
+const account = Account.fromString(process.env.SESSION!, { apiId, apiHash, keys, bootstrap, storage })
 account.onMessage((event) => event.reply('as me, not as a bot'))
 ```
+
+`keys` are Telegram's server public keys, read with `serverKeysFromPem` from the PEM form
+Telegram's MTProto documentation publishes, and `bootstrap` is the first address to reach, built
+with `bootstrapAt({ dc, host, port })`. Neither is compiled in; [api-design.md](api-design.md) §1
+says why. An account's events are filtered with the `f` from `yuigram/account-filters` — the
+Bot API's `f` reads fields they do not carry, and an account refuses it at compile time.
 
 An account is a client like a bot: its own lifecycle, its own store, its own handlers. An `App`
 holds any number of them alongside a bot, each with its own credentials and connections.

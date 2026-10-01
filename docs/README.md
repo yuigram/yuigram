@@ -26,15 +26,17 @@ sends and fetches files. `App` holds several clients of either kind together.
 
 Above that, messages, users and conversations are read through views over the schema value, and
 the people an answer named are joined to what its messages reference — [entities.md](entities.md)
-records the shape and measures what has a reading layer and what does not. Media, formatting,
-dialogs and history do not have one yet. [api-design.md](api-design.md) shows the proposed
-surface alongside what ships and says which is which; [mtproto.md](mtproto.md) §5.3 and §11
-record what remains inside the protocol layers themselves.
+records the shape and measures what has a reading layer and what does not. An account sends,
+edits, forwards and deletes messages, walks dialogs and history page by page, and manages chats,
+members, forums, stories and the rest of what [roadmap.md](roadmap.md) Phase 11 lists.
+[api-design.md](api-design.md) describes the public surface as implemented, and its examples
+type-check against the packed package; [mtproto.md](mtproto.md) §5.3 and §11 record what remains
+inside the protocol layers themselves.
 
-The rule when reading: the protocol subsystems and the clients on top of them exist today; the
-ergonomic layer over MTProto is being built demand-first. The [roadmap](roadmap.md) says when
-each part arrives, and nothing described anywhere here is a stub — unimplemented means absent,
-not hollow.
+The rule when reading: the protocol subsystems, the clients on top of them and the ergonomic
+layer over both exist today. The [roadmap](roadmap.md) says what is still planned — secret chats
+among it — and nothing described anywhere here is a stub: unimplemented means absent, not
+hollow.
 
 ## The premise
 

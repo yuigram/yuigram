@@ -9,15 +9,15 @@ Design priorities, in order: **honesty** (the type reflects what actually works)
 **concision** (no ceremony that carries no information), **discoverability** (autocomplete
 teaches the API).
 
-The Bot API half of what follows is implemented: `Bot.fromToken`, the `on…` registrations,
-per-event contexts, the bound method families, `Router`, the `f` filters, keyboards, the
-`media` sources, formatting, API hooks, middleware, sessions, storage, errors, files and the
-testing harness. So are `Account` and `App`: an account connects, signs in, dispatches typed
-events, calls methods through the generated surface or the bound one, and transfers files, and
-an application holds several clients of either kind. What remains design is the ergonomic layer
-above MTProto — entities, dialogs, and sending media through an account — and each example
-below says so where it applies. [roadmap.md](roadmap.md) says when each arrives; the rule for
-reading is in [README.md](README.md).
+Everything this document shows is implemented, and its examples type-check against the
+`yuigram` package as it is packed for publishing. Where a passage records a decision rather than
+code, it says so. That covers the Bot API client — `Bot.fromToken`, the `on…` registrations,
+per-event contexts, the bound method families, `Router`, the `f` filters, keyboards, the `media`
+sources, formatting, API hooks, middleware, sessions, storage, errors, files and the testing
+harness — the account client — connecting, signing in, typed events, the generated and bound
+method surfaces, files, and the message, chat, dialog and member operations built on them — and
+`App`, which holds several clients of either kind. [roadmap.md](roadmap.md) records what is still
+planned; the rule for reading the design documents is in [README.md](README.md).
 
 ---
 
@@ -32,37 +32,54 @@ Three candidate models were considered.
 | **`Bot` and `Account`, entered through named constructors** | **Adopted.** Two names, two capability sets, no conditional typing anywhere. The names carry real information: a `Bot` cannot read another user's history, an `Account` cannot answer inline queries, and both facts are compile-time truths. |
 
 ```ts
-import { Account, App, Bot } from 'yuigram'
+import { Account, Bot } from 'yuigram'
 
-const bot  = Bot.fromToken('123456:ABC-DEF…')
-const user = Account.fromSession('./me.session', { apiId: 12345, apiHash: 'abc…' })
+const bot = Bot.fromToken('123456:ABC-DEF…')
+const user = Account.fromSession('./me.session', { apiId, apiHash, keys, bootstrap })
 ```
 
 The credential is in the constructor's **name**, not in the shape of an options object. That
 is what lets the surface grow by adding a name rather than by growing a bag:
 
 ```ts
-Bot.fromToken(token)                            // Bot API
-Bot.fromMtproto(token, { apiId, apiHash })      // the same bot, over MTProto
-Account.fromSession(path, { apiId, apiHash })   // a user account, resumed from disk
-Account.fromString(session, { apiId, apiHash }) // the same, from a portable string
+Bot.fromToken(token)                                                  // Bot API
+Account.fromSession(directory, { apiId, apiHash, keys, bootstrap })   // an account, kept on disk
+Account.fromString(session, { apiId, apiHash, keys, bootstrap, storage }) // the same, from a string
 ```
 
-Each factory returns the type that matches its capabilities: `Bot.fromToken` has no
-`resolvePeer`, `Bot.fromMtproto` has no `file_id` reuse, and the two share an interface for
-what genuinely is common. The type system enforces the capability matrix rather than
+An account needs more than its credentials because MTProto starts below HTTP. `apiId` and
+`apiHash` name the application, from my.telegram.org. `keys` are Telegram's server public keys,
+which an account checks a datacenter against by fingerprint — `serverKeysFromPem(text)` reads
+them in the PEM form Telegram's MTProto documentation publishes. `bootstrap` is the first
+address to reach, which `bootstrapAt({ dc, host, port })` builds from one published address.
+Neither is compiled in: published keys and addresses change, and a value baked into a release
+would be one more thing to be stale ([mtproto.md](mtproto.md) §3.4, and §8 under "Addresses and
+selection").
+`fromSession` keeps everything in a directory; `fromString` takes the session as a string and a
+store for what an account writes while it runs, `memory()` where nothing should outlive the
+process.
+
+Each class carries the capabilities of what it is: a `Bot` has no peer resolution because the
+Bot API addresses chats by identifier, and an `Account` has no `file_id` reuse because a
+`file_id` is a Bot API construct. What genuinely is common is the context surface both
+transports implement (§6). The type system enforces the capability matrix rather than
 documenting it.
 
-A plain constructor stays available for the case where every option is being set —
-`new Bot({ … })` — but the factories are the documented path, because a reader of ten lines
-should be able to see how the client authenticated.
+A bot can also sign in over MTProto, and that is an account: `account.signInAsBot(token)`. It is
+the same identity reached through the other transport, with the account's surface — and with
+whatever Telegram refuses a bot on that transport, which it reports as it would to any client.
+
+Plain constructors stay available — `new Bot(token, options)` and `new Account(options)` — but the
+factories are the documented path, because a reader of ten lines should be able to see how the
+client authenticated.
 
 ### Naming
 
-`Bot` and `Account` describe *what the client is on Telegram*, not which protocol it speaks.
-That is the right axis: a developer thinks "I need my bot to do X" and "I need my account to
-do Y", and the protocol is an implementation consequence. Bot-over-MTProto is therefore a
-factory on `Bot` rather than a third class — same identity, different transport.
+`Bot` and `Account` describe *what the client is on Telegram* and how it reaches it: a `Bot`
+speaks the Bot API over HTTPS, an `Account` speaks MTProto. A developer thinks "I need my bot to
+do X" and "I need my account to do Y", and the class follows. A bot signed in over MTProto is an
+`Account` rather than a third class, because what it can call is MTProto's surface, not the Bot
+API's.
 
 ---
 
@@ -87,11 +104,14 @@ running (`poll`).
 And a user client:
 
 ```ts
-import { Account } from 'yuigram'
+import { readFileSync } from 'node:fs'
+import { Account, bootstrapAt, serverKeysFromPem } from 'yuigram'
 
 const user = Account.fromSession('./me.session', {
   apiId: Number(process.env.API_ID),
-  apiHash: process.env.API_HASH!
+  apiHash: process.env.API_HASH!,
+  keys: serverKeysFromPem(readFileSync('./telegram-keys.pem', 'utf8')),
+  bootstrap: bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 }),
 })
 
 user.onMessage((message) => console.log(message.text))
@@ -99,11 +119,14 @@ user.onMessage((message) => console.log(message.text))
 await user.connect()
 
 await user.signIn({
-  phone: () => prompt('Phone: '),
-  code: () => prompt('Code: '),
-  password: () => prompt('2FA password: '),
+  phone: () => ask('Phone: '),
+  code: () => ask('Code: '),
+  password: () => ask('2FA password: '),
 })
 ```
+
+`ask` is the application's: anything that returns a promise of what a person typed. Example 03
+uses `node:readline/promises`.
 
 `connect()` establishes the MTProto connection; the sign-in steps prove which account it
 belongs to. They are separate verbs because they are separate things that fail differently — a
@@ -127,8 +150,8 @@ account resumed from a session it was already signed in with reaches none of the
 Knowing that last part cannot be done locally. A stored flag outlives a session revoked from
 another device, and an authorization discarded and re-obtained is a new one nobody has proved
 anything to — so `signIn()` asks Telegram before it asks a person for anything.
-[mtproto.md](mtproto.md) §8 names the signal: a refusal that "says the key exists but no
-account is signed in against it".
+[mtproto.md](mtproto.md) §7, under "Reaching a datacenter", names the signal: a refusal that
+"says the key exists but no account is signed in against it".
 
 It asks with `updates.getState`, which takes no arguments and changes nothing, and whose answer
 is the four counters [mtproto.md](mtproto.md) §9.1 calls the client's own state — so the client
@@ -157,22 +180,31 @@ the store as it was. [mtproto.md](mtproto.md) §5.4 records why each of those is
 ## 3. Multiple clients: the `App`
 
 ```ts
-import { Account, App, Bot } from 'yuigram'
+import {
+  Account,
+  type AnyEventContext,
+  App,
+  Bot,
+  file,
+  type MtprotoContext,
+  type UnifiedContext,
+} from 'yuigram'
 
-const app = new App({ storage: file('./state') })
+const app = new App<AnyEventContext | MtprotoContext>({ storage: file('./state') })
 
 const bot   = app.add(Bot.fromToken(process.env.BOT_TOKEN!))
-const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash }))
-const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash }))
+const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash, keys, bootstrap }))
+const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash, keys, bootstrap }))
 
 // Middleware shared by every client.
 app.use(async (event, next) => {
-  event.log.info({ client: event.client.name, kind: event.kind })
+  event.log.info('update', { client: event.client.name, kind: event.kind })
   await next()
 })
 
-// Cross-client handler — event.transport discriminates.
-app.onMessage(async (message) => {
+// Cross-client handler. The type argument says the kinds registered for carry a
+// message to answer, which is what every client's `message` does.
+app.on<UnifiedContext>('message', async (message) => {
   if (message.text === 'ping') await message.reply('pong')
 })
 
@@ -184,24 +216,34 @@ await app.start()          // starts all clients, resolves when all are running
 await app.stop()           // drains in-flight handlers, then disconnects
 ```
 
+The type argument names what the clients produce. Without one, an application describes their
+events as `BaseContext` — the kind, the transport, the client, a logger and the raw payload —
+which is enough for middleware that logs or meters; naming the union is what lets a handler narrow
+on `transport` and read what only one subsystem has (§6).
+
 Each client keeps an independent lifecycle, session, connection state and error handling.
 `app.start()` is a convenience over starting each — and the only place a general `start` verb
 appears, because the `App` is the one object that knows which mechanism each client needs. A
 client that fails to start does not prevent the others from running, and its failure is
-reported through `app.onError`.
+reported through `app.onError`, which receives the client and the error:
 
 ```ts
-// Independent lifecycles remain accessible, in each client's own vocabulary.
+app.onError(({ client, error }) => console.error(`${client.name} failed`, error))
+```
+
+Independent lifecycles remain accessible, in each client's own vocabulary:
+
+```ts
 await bob.stop()
 await bob.connect()
-console.log(bob.state)      // 'idle' | 'starting' | 'running' | 'stopping' | 'failed'
+console.log(bob.state)      // 'idle', 'starting', 'running', 'stopping' or 'failed'
 ```
 
 Clients may be named for logging and lookup:
 
 ```ts
 app.add(Bot.fromToken(token, { name: 'support-bot' }))
-app.client('support-bot')   // Bot | undefined
+app.client('support-bot')   // the client as the application holds it, or undefined
 ```
 
 ---
@@ -230,8 +272,8 @@ bot.onChatMemberJoined(handler)
 bot.onForumTopicCreated(handler)
 ```
 
-There is one named registration per event kind — seventy-nine of them, generated from the same
-taxonomy the dispatcher indexes. That is how most people discover that a member joining has
+There is one named registration per event kind, generated from the same taxonomy the
+dispatcher indexes. That is how most people discover that a member joining has
 its own kind rather than arriving as a message to branch on. `onText`, `onCommand` and
 `onCallbackQuery` are hand-written, because each matches as well as selects.
 
@@ -245,6 +287,10 @@ without a caption is a message with no text. Registration is what earns the narr
 bot.once('message', handler)
 bot.off(handler)
 ```
+
+An account registers the same way — `account.on(kind, handler)`, `account.on(filter, handler)`,
+`account.on(kind, filter, handler)`, `once`, `off` and `onMessage` — over its own kinds, which
+are MTProto's (§6).
 
 The full taxonomy, the promoted service events and the type-inference rules are in
 [events.md](events.md).
@@ -284,6 +330,20 @@ const isWeekend = filter<MessageContext>(
 A composition is named before it is registered. Composing inside the registration argument
 does not infer — the narrowing cannot be carried out through the nested call — and the
 compile error is a better outcome than a handler that silently widened to every event.
+
+`f` filters a bot's updates. An account's events have filters of their own, because they carry
+different fields — a peer is a sort and a 64-bit number rather than a `Chat` with a `type`:
+
+```ts
+import { f } from 'yuigram/account-filters'
+
+account.on(f.text(/^ping$/), (event) => event.reply('pong'))   // `text` is a string here
+account.on('message', f.chat('user'), (event) => event.react('👍'))
+```
+
+Handing a bot's filter to an account is a compile error rather than a handler that never runs.
+A filter written with `defineFilter` against what both share — `UnifiedContext` — is accepted by
+either.
 
 The dual-parameter design (`Filter<Base, Mod>`) that makes the narrowing above work is
 described in [research.md](research.md) §1.5 and [middleware.md](middleware.md) §4.
@@ -360,7 +420,7 @@ owns.
 Escalating to transport-specific capability is explicit:
 
 ```ts
-app.onMessage(async (message) => {
+app.on<MessageContext | MtprotoContext>('message', async (message) => {
   await message.reply('works on both')
 
   if (message.transport === 'mtproto') {
@@ -487,16 +547,23 @@ registration accumulating on one client object in one file.
 ## 9. Sessions
 
 ```ts
-import { Bot, file, session } from 'yuigram'
+import { Bot, file, type SessionFlavor, session, userChatKey } from 'yuigram'
 
-const bot = Bot.fromToken<SessionFlavor<Cart>>(token)
-  .extend(session({ storage: file('./sessions'), key: (event) => event.sender?.id }))
+const bot = Bot.fromToken<SessionFlavor<Cart>>(token).extend(
+  session<Cart>({ storage: file('./sessions'), key: userChatKey, initial: () => ({ count: 0 }) }),
+)
 
 bot.onMessage(async (message) => {
   message.session.count++
   await message.reply(`seen ${message.session.count} messages`)
 })
 ```
+
+The key is required, so the scope is visible where the session is installed. `userChatKey` keeps
+one session per user per chat; a key of your own reads the chat and the sender an update carries —
+`key: (event) => event.sender?.id` is one session per user across chats — and may return a
+`bigint`, which an account's identifiers are. `initial` produces the value for a key with nothing
+stored.
 
 Typed by a **flavour** carried on the client's type parameter, so the shape is per bot rather
 than per program:
@@ -537,8 +604,9 @@ const custom: KV<unknown> = {
 }
 ```
 
-The contract is deliberately small so that adapters are trivial to write. Redis, SQLite and
-Postgres adapters ship as separate packages and never enter core's dependency tree. See
+The contract is deliberately small so that adapters are trivial to write: `get`, `set` and
+`delete`, with `has`, `clear` and `keys` optional. The SQLite and Redis adapters ship as separate
+packages, `@yuigram/sqlite` and `@yuigram/redis`, and never enter core's dependency tree. See
 [storage.md](storage.md).
 
 ---
@@ -554,7 +622,7 @@ bot.onError((err, event) => {
     return
   }
   if (err instanceof BotApiError) {
-    event.log.error({ code: err.code, description: err.description })
+    event.log.error('Telegram refused a call', { code: err.code, description: err.description })
     return
   }
   throw err            // rethrow what you do not handle
@@ -562,7 +630,8 @@ bot.onError((err, event) => {
 ```
 
 Every error preserves its origin. `err.cause` holds the untouched payload, and no wrapper
-discards `code`, `description` or the raw TL error. See [architecture.md](architecture.md) §6.
+discards `code`, `description` or the raw TL error. A logger takes a message and then fields,
+which is what lets a structured sink keep them apart. See [architecture.md](architecture.md) §6.
 
 ---
 
@@ -581,7 +650,7 @@ await user.api.call({ _: 'messages.brandNewMethod', … })
 The same surface is on every context as `event.api`, so a handler never has to reach back to
 the client it was registered on for something the actions do not cover.
 
-All four ship. The MTProto surface is 813 signatures generated from the committed TL schema,
+All four ship. The MTProto surface has a signature for every method in the committed TL schema,
 grouped by the namespace TL declares each method in, with the parameter type being the
 method's own request without its constructor and the result being the boxed type it returns.
 There is no code per method: dispatch is one proxy that turns a property path into the TL name
@@ -613,9 +682,10 @@ await message.reply({ video:    media.url('https://…/clip.mp4') })
 await message.reply({ document: media.buffer(bytes, 'report.pdf') })
 await message.reply({ photo:    media.id(existingFileId) })     // Bot API reuse
 
-const bytes = await bot.download(message.message.photo)       // the largest size
+const { photo, document } = message.message
+if (photo !== undefined) await bot.download(photo)                         // the largest size
+if (document !== undefined) await downloadToFile(bot.files, './out.pdf', document)   // to disk
 const stream = await bot.downloadStream(fileId)
-await downloadToFile(bot.files, './out.pdf', message.message.document)   // to disk
 
 bot.onMessage(async (message) => {
   const carried = await message.download()                    // the file this message carries
@@ -714,9 +784,11 @@ decoder this project does not have. Anything else a document could say about its
 duration, dimensions, a waveform — is the same problem, so those are attributes a caller
 states and this passes through.
 
-Where the media goes is a separate question with a separate answer. The peer is the caller's,
-through `account.resolve` or one an update carried, and the call is
-`account.api.messages.sendMedia` — `message` is the caption, `reply_to` the message being
+Where the media goes is a separate question with a separate answer.
+`account.sendMedia(peer, media, caption?, options?)` sends it to a peer named by `@username` or
+by a `PeerRef` an update carried, and `account.sendText(peer, text, options?)` does the same for
+text; both resolve to the message that was sent. `account.api.messages.sendMedia` remains for
+anything they do not cover — `message` is the caption there, `reply_to` the message being
 answered. See [mtproto.md](mtproto.md) §11 for what each form of media requires.
 
 What a send answers with is not the message. MTProto answers with the updates the send caused,
@@ -731,14 +803,36 @@ A page of dialogs is read the same way. `nextDialogs(answer)` says where the nex
 or nothing when there is nowhere to continue from:
 
 ```ts
-const answer = await account.api.messages.getDialogs({ ...offset, limit: 100, hash: 0n })
+const answer = await account.api.messages.getDialogs({
+  offset_date: 0,
+  offset_id: 0,
+  offset_peer: { _: 'inputPeerEmpty' },
+  limit: 100,
+  hash: 0n,
+})
+
 const next = nextDialogs(answer)
+if (next !== undefined) {
+  await account.api.messages.getDialogs({
+    offset_date: next.date,
+    offset_id: next.id,
+    offset_peer: await account.resolve(next.peer),
+    limit: 100,
+    hash: 0n,
+  })
+}
 ```
+
+The offset names a peer by reference rather than by the argument itself, because naming a peer
+needs an access hash and that is the peer table's to supply — `account.resolve()` turns it into
+what the call carries.
 
 The date it needs is on the last dialog's *message*, not on the dialog, which is the mistake
 that produces an offset Telegram accepts and answers from somewhere else —
-[mtproto.md](mtproto.md) §9.7. Iterating is not here: how many pages, how fast, and what to do
-with them are the caller's.
+[mtproto.md](mtproto.md) §9.7. Walking them is `account.dialogs()`, an async iterator over the
+account's dialogs that reads page after page, and `account.history(peer)` does the same for a
+conversation's messages; `account.dialogsPage()` and `account.historyPage()` read one page at a
+time, for a caller that decides how far to go.
 
 A datacenter may hand a download to a delivery node — a machine Telegram does not operate. That
 is a decision about trust rather than speed, so it is the caller's and off by default:
@@ -797,7 +891,7 @@ new InlineKeyboard().addFrom(products, (p) => ({ text: p.name, callback_data: `b
 ```ts
 import { html, md } from 'yuigram'
 
-await message.reply(html`Hello, <b>${message.sender.first_name}</b>!`, { parse_mode: 'HTML' })
+await message.reply(html`Hello, <b>${message.sender?.first_name ?? 'there'}</b>!`, { parse_mode: 'HTML' })
 ```
 
 The tag escapes what is **interpolated** and leaves the literal parts alone, which is the
@@ -831,7 +925,7 @@ beside it.
 ```ts
 await app.start()
 
-app.onError((error, event) => log.error({ client: event.client.name, error }))
+app.onError(({ client, error }) => console.error(`${client.name} failed`, error))
 
 process.on('SIGINT', async () => {
   await app.stop({ timeout: 10_000 })   // stop intake, drain in-flight, disconnect
@@ -859,24 +953,40 @@ is installed before the first update reaches a handler.
 ## 15. Plugins
 
 ```ts
-import { definePlugin } from 'yuigram'
+import { Bot, definePlugin, type MiddlewareHost } from 'yuigram'
 
-export const metrics = (opts: MetricsOptions = {}) =>
-  definePlugin({
-    name: 'metrics',
-    install (target) {
-      let handled = 0
-      target.use(async (_event, next) => { handled++; await next() }, { priority: 'low' })
-      return { get handled () { return handled } }
-    }
-  })
+export function metrics() {
+  let handled = 0
 
-const bot = Bot.fromToken(token).extend(metrics())
-bot.metrics.handled          // typed — exists only after .extend()
+  return {
+    plugin: definePlugin({
+      name: 'metrics',
+      install(target: MiddlewareHost) {
+        target.use(async (_event, next) => {
+          handled++
+          await next()
+        })
+      },
+    }),
+    get handled() {
+      return handled
+    },
+  }
+}
+
+const counter = metrics()
+const bot = Bot.fromToken(token).extend(counter.plugin)
+counter.handled              // read from the value the application kept
 ```
 
-The returned object is attached under the plugin's name, so two plugins cannot collide, and
-the type is only present once the plugin is installed.
+A plugin is a name and an `install` that receives the client. It is installed on the dispatch
+path, before the first update reaches a handler (§14), so whatever it returns from `install` is
+not available as a property of the client — state an application reads is kept where the plugin
+was made, as above. The name is what makes installing two plugins of one name an error rather
+than a silent replacement, and `dependsOn` orders plugins that need each other. A plugin that adds
+to every context does it with `bot.extendContext(owner, key, value)`; one that only needs
+somewhere to put middleware declares `MiddlewareHost` as its target, which is what lets it install
+on a `Router` as well as on a client.
 
 ---
 
@@ -913,7 +1023,7 @@ cosmetic:
 | **Consistent argument order** | Target, then content, then options — everywhere. |
 | **Predictable naming** | Everything that subscribes is `on…`; `use` / `extend` / `stop` mean one thing each. A model that has seen `onMessage` guesses `onCommand` correctly. |
 | **The credential is in the name** | `Bot.fromToken` versus `Account.fromSession` — a model picks the constructor from what it has, rather than assembling an options object it has to get right. |
-| **Single import root** | Everything from `'yuigram'`. No guessing which subpath a symbol lives in. |
+| **One package, few entry points** | Ordinary code imports from `'yuigram'`. The optional entry points each name what they hold — `yuigram/testing`, `yuigram/webhook`, `yuigram/worker`, `yuigram/markup`, `yuigram/stream`, `yuigram/rich`, `yuigram/account-filters`, `yuigram/account-utils` — so a program loads only what it uses. |
 | **Narrowing over casting** | Filters and registration narrow; `as` is never required in normal use. |
 | **Discriminated escape** | `event.transport` is a literal union, so a model can branch on it correctly. |
 
@@ -925,49 +1035,82 @@ turn out to be negligible, and consistency matters far more to inference than br
 ## 18. Complete example
 
 ```ts
-import { Account, and, App, Bot, f, file, FloodError, Router, session, when } from 'yuigram'
+import { readFileSync } from 'node:fs'
+import {
+  Account,
+  type AnyEventContext,
+  and,
+  App,
+  Bot,
+  bootstrapAt,
+  f,
+  FloodError,
+  file,
+  type MtprotoContext,
+  Router,
+  type SessionFlavor,
+  serverKeysFromPem,
+  session,
+  userChatKey,
+} from 'yuigram'
+import { f as account } from 'yuigram/account-filters'
 
-const app = new App({ storage: file('./state'), log: { level: 'info' } })
+interface Visits {
+  count: number
+}
+
+const app = new App<AnyEventContext | MtprotoContext>({ storage: file('./state') })
 
 const bot = app.add(
-  Bot.fromToken(process.env.BOT_TOKEN!, { name: 'main' })
-    .extend(session({ key: (event) => event.sender?.id }))
+  Bot.fromToken<SessionFlavor<Visits>>(process.env.BOT_TOKEN!, { name: 'main' }).extend(
+    session<Visits>({ storage: file('./sessions'), key: userChatKey, initial: () => ({ count: 0 }) }),
+  ),
 )
 
 const me = app.add(
   Account.fromSession('./me.session', {
     apiId: Number(process.env.API_ID),
     apiHash: process.env.API_HASH!,
-    name: 'me'
-  })
+    keys: serverKeysFromPem(readFileSync('./telegram-keys.pem', 'utf8')),
+    bootstrap: bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 }),
+    name: 'me',
+  }),
 )
 
 const fromAdmin = f.sender.id(Number(process.env.ADMIN_ID))
 
+// Its middleware runs only for updates it handles, so this is a real gate.
 const admin = new Router()
-admin.use(when(fromAdmin, async (_event, next) => next()))
+admin.use(async (event, next) => {
+  if (fromAdmin(event)) await next()
+})
 admin.onCommand('stats', (message) => message.reply(`uptime ${process.uptime() | 0}s`))
 
 bot.extend(admin)
-bot.onCommand('start', (message) => message.reply('Hi! Try /stats if you are an admin.'))
+bot.onCommand('start', async (message) => {
+  message.session.count++
+  await message.reply(`Hi! Visit ${message.session.count}. Try /stats if you are an admin.`)
+})
 bot.on(f.media.photo, (message) => message.react('👍'))
 
-// The userbot archives any text it sees in a private chat.
-const privateText = and(f.chat.private, f.text(/./))
+// The account archives any text it sees in a conversation with a user.
+const privateText = and(account.chat('user'), account.text())
 
-me.on(privateText, async (message) => {
+me.on('message', privateText, async (event) => {
   // `text` is a string here: the filter that selected this message proved it.
-  await archive(message.text, message.date)
+  await archive(event.text)
 })
 
-app.onError((err, event) => {
-  if (err instanceof FloodError) return event.log.warn(`flood ${err.retryAfter}s`)
-  event.log.error(err)
+bot.onError((error, event) => {
+  if (error instanceof FloodError) return event.log.warn(`flood wait ${error.retryAfter}s`)
+  event.log.error('a handler failed', { error })
 })
+app.onError(({ client, error }) => console.error(`${client.name} failed`, error))
 
 await app.start()
 process.on('SIGINT', () => app.stop({ timeout: 10_000 }).then(() => process.exit(0)))
 ```
 
-One package, one import, one application object, two clients, one middleware model — and no
-point at which the API claims a bot and a user account are the same thing.
+One package, one application object, two clients, one middleware model — and no point at which
+the API claims a bot and a user account are the same thing: each is filtered by what its own
+events carry, and each reports its own handler failures.

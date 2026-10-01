@@ -116,7 +116,7 @@ real accounts in this ecosystem.
 | TLS verification | Always on. No option to disable — a flag that disables certificate checking is a flag that will be found in production. |
 | `apiBaseUrl` override | Permitted for local Bot API servers; warn loudly when it is not `api.telegram.org` and not `localhost` |
 | Proxies | Supported explicitly, never picked up from ambient environment variables without opt-in |
-| MTProto server keys | Compiled in, sourced from Telegram's published MTProto documentation, verified by fingerprint |
+| MTProto server keys | Supplied by the application from Telegram's published MTProto documentation (`serverKeysFromPem`), never compiled in, and checked by fingerprint; a datacenter offering a key the account does not hold is refused |
 | DH parameter validation | Full safe-prime check on every handshake. Not optional, not skippable. |
 | `g_a`/`g_b` range checks | Enforced — omitting them is a known MTProto weakness |
 | Nonce equality checks | Enforced at every handshake step |

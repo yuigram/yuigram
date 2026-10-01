@@ -239,7 +239,7 @@ bot.onCallbackQuery(/^buy:/, handler)
 ```
 
 Every kind also has a named registration of its own — `onMessage`, `onChatMemberJoined`,
-`onForumTopicCreated`, seventy-nine in all — generated from the same taxonomy the dispatcher
+`onForumTopicCreated` and the rest — generated from the same taxonomy the dispatcher
 indexes and equivalent to `on(kind, handler)`. That is how most people discover that a member
 joining has its own kind rather than arriving as a message to branch on.
 

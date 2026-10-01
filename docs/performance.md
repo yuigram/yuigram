@@ -358,15 +358,11 @@ Telegram round trip.
 
 ### Concurrency
 
-Concurrent dispatch by default. In-flight tracking bounds memory and enables draining. An
-optional `maxConcurrent` protects downstream systems:
-
-```ts
-new App({ maxConcurrent: 100 })
-```
-
-`ordering: 'per-chat'` serializes within a chat and is a throughput ceiling — correct for
-conversational state machines, wrong as a default. See [events.md](events.md) §7.
+A polling bot runs unrelated chats in parallel and each chat's updates in order, up to a
+bound that protects downstream systems — sixteen unless `poll({ concurrency })` says otherwise —
+and stops fetching once `capacity` updates are outstanding, so the peak is a constant rather
+than a function of uptime. In-flight tracking bounds memory and enables draining. See
+[events.md](events.md) §7 for webhooks and accounts.
 
 ---
 
@@ -513,7 +509,8 @@ Ranked by cost of retrofitting:
    adapter. **Decide now: async throughout.**
 5. **Cross-imports between subsystems.** Destroys tree-shaking, and untangling it is a
    refactor of the whole dependency graph. **Decide now: forbidden, enforced in CI.**
-6. **No `maxConcurrent` bound.** Adding a limit later changes behaviour under load for
-   existing users. **Decide now: present, default unlimited, documented.**
+6. **No concurrency bound.** Adding a limit later changes behaviour under load for
+   existing users. **Decided: present from the start** — a polling bot runs at most
+   `poll({ concurrency })` updates at once, sixteen by default, with each chat's in order.
 
 Everything else can wait for evidence.
