@@ -21,6 +21,7 @@
 
 import type { Logger } from '@yuigram/core'
 import type { RawApi } from '../api.js'
+import type { DownloadDeps } from '../download.js'
 import { PAYLOAD_ALIASES } from '../generated/contexts.js'
 import { MESSAGE_KINDS } from '../generated/events.js'
 import type { CallbackQuery, Message } from '../generated/types/index.js'
@@ -36,6 +37,12 @@ export interface CreateEventContextOptions {
   /** The client the update arrived on. */
   readonly client: { readonly name: string }
   readonly log: Logger
+  /**
+   * What downloading a message's file needs, from the client it arrived on.
+   *
+   * Absent for a context built without a client, whose `download` then says so.
+   */
+  readonly files?: DownloadDeps
 }
 
 /** Fields Telegram uses for the sender, in the order they are checked. */
@@ -71,6 +78,8 @@ const HAND_WRITTEN = new Set([
   'pin',
   'unpin',
   'answer',
+  'download',
+  'downloadStream',
 ])
 
 /**
@@ -124,7 +133,14 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
   }
 
   if (carriesMessage) {
-    Object.assign(context, messageActions({ api, message: payload as unknown as Message }))
+    Object.assign(
+      context,
+      messageActions({
+        api,
+        message: payload as unknown as Message,
+        ...(options.files === undefined ? {} : { files: options.files }),
+      }),
+    )
   }
 
   if (kind === 'callback_query') {

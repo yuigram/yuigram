@@ -613,18 +613,29 @@ await message.reply({ video:    media.url('https://…/clip.mp4') })
 await message.reply({ document: media.buffer(bytes, 'report.pdf') })
 await message.reply({ photo:    media.id(existingFileId) })     // Bot API reuse
 
-const bytes = await bot.download(message.message.photo)
-await bot.download(message.message.document, './out.pdf')
+const bytes = await bot.download(message.message.photo)       // the largest size
+await bot.download(message.message.document, './out.pdf')     // to disk as it arrives
+const stream = await bot.downloadStream(fileId)
+
+bot.onMessage(async (message) => {
+  const carried = await message.download()                    // the file this message carries
+})
 ```
 
 One `media` namespace with a source per method. The `file_id` reuse path is Bot API only,
 and the type reflects that — `media.id()` is not accepted by an `Account` client, because
 `file_id` is a Bot API construct that does not convert without a round trip.
 
-Downloading ships today as free functions — `download`, `downloadStream`, `downloadToFile`,
-`getFileUrl` — taking the transport explicitly. That is the right shape for the primitive,
-which has to work without a client at all; the client methods above wrap it for the case
-where a client is right there. Both stay: one composes, the other reads well.
+Downloading is free functions — `download`, `downloadStream`, `downloadToFile`, `getFileUrl` —
+taking the transport explicitly, and the same four on the bot as `download(target)`,
+`download(target, path)`, `downloadStream` and `getFileUrl`. The functions are the primitive,
+which has to work without a client at all; the methods use the transport the bot was built
+with — a client it was given, a local Bot API server's paths on disk — which an application
+could not otherwise recover from the bot. A message context's `download()` and
+`downloadStream()` fetch the file that message carries through the client it arrived on: a
+document, video, audio, voice note, video note or animation as it is, a photo at its largest,
+a sticker only when nothing else is there, and a refusal for a message with no file. Neither
+form takes a cancellation signal; a download is one request for one file.
 
 A resolved download URL **contains the bot token**, because Telegram's file endpoint requires
 it. `getFileUrl` returns a credential, and it is documented as one — do not log it, and do

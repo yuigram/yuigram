@@ -160,3 +160,7 @@ export const redisSessions: KV<{ readonly count: number }> = redisStore<{ readon
   redis,
 )
 export const redisLimits = limiter({ counter: redisCounter(redis) })
+
+// The download methods resolve with their overloads from the installed declarations.
+export const downloaded: Promise<Uint8Array> = bot.download('file-id')
+export const written: Promise<void> = bot.download('file-id', './out.bin')

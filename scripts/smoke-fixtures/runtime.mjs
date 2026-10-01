@@ -175,6 +175,42 @@ const response = await bot.webhook()({
 
 check('the webhook handler acknowledges an update', () => response.status === 200)
 
+// A file fetched through a bot's own transport, and through a message it received.
+const served = new Uint8Array([1, 2, 3])
+const fileClient = {
+  call: async (request) => ({
+    status: 200,
+    body: { ok: true, result: { file_id: request.params.file_id, file_path: 'docs/f.bin' } },
+  }),
+  fileUrl: (path) => `memory:${path}`,
+  fetchFile: async () => ({
+    status: 200,
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(served)
+        controller.close()
+      },
+    }),
+  }),
+}
+const filesBot = new Bot('1:x', { client: fileClient })
+const downloaded = await filesBot.download('doc')
+check('a bot downloads through its own transport', () => downloaded.join() === '1,2,3')
+let fromMessage
+filesBot.on('message', async (ctx) => {
+  fromMessage = await ctx.download()
+})
+await filesBot.handleUpdate({
+  update_id: 10,
+  message: {
+    message_id: 2,
+    date: 1,
+    chat: { id: 1, type: 'private' },
+    document: { file_id: 'doc', file_unique_id: 'd' },
+  },
+})
+check('a message downloads the file it carries', () => fromMessage?.join() === '1,2,3')
+
 // The storage adapter, installed on its own, over the runtime's own SQLite.
 const { openDatabase, sqliteCounter, sqliteStore } = await import('@yuigram/sqlite')
 const database = await openDatabase(':memory:')

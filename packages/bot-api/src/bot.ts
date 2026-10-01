@@ -48,6 +48,14 @@ import {
 } from './core.js'
 import type { MethodDefaults } from './defaults.js'
 import {
+  type DownloadDeps,
+  type DownloadTarget,
+  download as downloadFile,
+  downloadToFile,
+  getFileUrl as fileUrlOf,
+  downloadStream as streamOf,
+} from './download.js'
+import {
   type AnyEventContext,
   type CallbackQueryContext,
   type CommandContext,
@@ -230,6 +238,8 @@ export class Bot<Ext = unknown> {
   /** Kinds of the application's own events, which are not subscribed to. */
   readonly #customKinds = new Set<string>()
   readonly #options: BotOptions
+  /** What a download needs: this bot's API and the transport its calls go through. */
+  readonly #files: DownloadDeps
 
   #polling: Polling | undefined
   #pollOptions: PollOptions = {}
@@ -302,6 +312,15 @@ export class Bot<Ext = unknown> {
       // `hook` can be called after construction.
       hooks: this.#hooks,
     })
+
+    // The transport is kept for files rather than rebuilt from the token, so a
+    // download goes where this bot's calls go — through a client it was given,
+    // or reading the paths a local Bot API server hands back.
+    this.#files = {
+      api: this.api,
+      client,
+      ...(options.local === undefined ? {} : { local: options.local }),
+    }
 
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#startPolling(),
@@ -612,6 +631,7 @@ export class Bot<Ext = unknown> {
         api: this.api,
         client: this,
         log: this.#log,
+        files: this.#files,
       }) as object,
     ) as AnyEventContext & Ext
 
@@ -679,6 +699,50 @@ export class Bot<Ext = unknown> {
     } & GiftFilters<GetBusinessAccountGiftsParams>,
   ): Pages<OwnedGift> {
     return businessGifts(this.api, businessConnectionId, options)
+  }
+
+  /**
+   * Fetch a file this bot can name, through this bot's own transport.
+   *
+   * ```ts
+   * const bytes = await bot.download(message.photo)          // the largest size
+   * await bot.download(message.document, './report.pdf')     // straight to disk
+   * ```
+   *
+   * The target is anything that carries a `file_id` — a bare identifier, a
+   * `Document`, a `File` from `getFile` (which saves a round trip), or a photo's
+   * size list, of which the largest is taken. With a path, the bytes go to disk
+   * as they arrive rather than into memory, which is what a large file from a
+   * local Bot API server needs; a runtime without a filesystem refuses that
+   * form.
+   *
+   * The free functions `download`, `downloadStream`, `downloadToFile` and
+   * `getFileUrl` are the same operations with the transport passed by hand, for
+   * code that has no client.
+   */
+  download(target: DownloadTarget): Promise<Uint8Array>
+  download(target: DownloadTarget, path: string): Promise<void>
+  async download(target: DownloadTarget, path?: string): Promise<unknown> {
+    if (path === undefined) return await downloadFile(this.#files, target)
+
+    await downloadToFile(this.#files, path, target)
+    return undefined
+  }
+
+  /** Open a file as a stream of bytes, without holding all of it at once. */
+  async downloadStream(target: DownloadTarget): Promise<ReadableStream<Uint8Array>> {
+    return await streamOf(this.#files, target)
+  }
+
+  /**
+   * Where a file can be fetched from.
+   *
+   * **The URL contains this bot's token**, because Telegram's file endpoint
+   * requires it: treat it as the credential it is. Do not log it, and do not
+   * hand it to anyone who should not be able to act as this bot.
+   */
+  async getFileUrl(target: DownloadTarget): Promise<string> {
+    return await fileUrlOf(this.#files, target)
   }
 
   /**

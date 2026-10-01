@@ -227,6 +227,20 @@ export interface MessageActions {
 
   /** Unpin this message. */
   unpin(): Promise<true>
+
+  /**
+   * Fetch the file this message carries, through the client it arrived on.
+   *
+   * A document, video, audio, voice note, video note or animation as it is; a
+   * photo at its largest size; a sticker only when nothing else is there.
+   * Refused, by name, for a message with no file. With a path, the bytes go to
+   * disk as they arrive, which a runtime without a filesystem refuses.
+   */
+  download(): Promise<Uint8Array>
+  download(path: string): Promise<void>
+
+  /** Open the file this message carries as a stream of bytes. */
+  downloadStream(): Promise<ReadableStream<Uint8Array>>
 }
 
 /**

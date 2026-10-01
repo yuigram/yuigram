@@ -20,6 +20,7 @@ import type {
   Bot,
   DownloadRequest,
   MediaDownloadOptions,
+  MessageContext,
   Middleware,
   MtprotoContext,
   MtprotoEventKind,
@@ -224,5 +225,24 @@ describe('the names Telegram documents for a refusal', () => {
     expectTypeOf<'FLOOD_WAIT_%d'>().toExtend<RpcErrorPattern>()
     expectTypeOf<'NOT_IN_ANY_LIST'>().toExtend<RpcErrorPattern>()
     expectTypeOf<RpcError['text']>().toEqualTypeOf<RpcErrorText>()
+  })
+})
+
+describe('downloading a file', () => {
+  it('is a method of the bot, with the bytes or a path', () => {
+    const bot = null as unknown as Bot
+    expectTypeOf(bot.download('file-id')).toEqualTypeOf<Promise<Uint8Array>>()
+    expectTypeOf(bot.download('file-id', './out.bin')).toEqualTypeOf<Promise<void>>()
+    expectTypeOf(bot.downloadStream('file-id')).toEqualTypeOf<Promise<ReadableStream<Uint8Array>>>()
+    expectTypeOf(bot.getFileUrl('file-id')).toEqualTypeOf<Promise<string>>()
+    // @ts-expect-error a number names no file
+    void bot.download(42)
+  })
+
+  it('is an action of a message, for the file it carries', () => {
+    const ctx = null as unknown as MessageContext
+    expectTypeOf(ctx.download()).toEqualTypeOf<Promise<Uint8Array>>()
+    expectTypeOf(ctx.download('./out.bin')).toEqualTypeOf<Promise<void>>()
+    expectTypeOf(ctx.downloadStream()).toEqualTypeOf<Promise<ReadableStream<Uint8Array>>>()
   })
 })
