@@ -107,6 +107,20 @@ describe('one step per hit', () => {
     ])
   })
 
+  it('never tells a hit to wait longer than the window, though its clock was read before the window opened', async () => {
+    // Two connections to one file, as two processes are. The second read its
+    // clock at 999 and reached the database after the first opened the window
+    // at 1,000 — which a caller waiting for the write lock does.
+    const first = sqliteCounter(await open('stale.db'))
+    const second = sqliteCounter(await open('stale.db'))
+
+    await first.hit('k', 60_000, 1_000)
+    const late = await second.hit('k', 60_000, 999)
+
+    expect(late.count).toBe(2)
+    expect(late.resetMs).toBe(60_000)
+  })
+
   it('reports a database failure as a storage error, which a limiter passes on', async () => {
     const database = await open()
     const limits = limiter({ counter: sqliteCounter(database) })

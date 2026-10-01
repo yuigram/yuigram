@@ -99,7 +99,14 @@ export function sqliteCounter(
         throw new StorageError(`SQLite returned no row for the hit on '${key}'`)
       }
 
-      return { count: Number(row.count), resetMs: Number(row.reset_at) - at }
+      // Never more than the window. A caller reads its clock before the write
+      // lock is its, so another process can open the window in between; then
+      // this hit's time is earlier than the window's start, and the window's
+      // end measured from it would overstate the wait by the time spent waiting.
+      return {
+        count: Number(row.count),
+        resetMs: Math.min(Number(row.reset_at) - at, Math.ceil(windowMs)),
+      }
     },
 
     async reset(key) {
