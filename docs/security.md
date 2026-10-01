@@ -62,13 +62,13 @@ MTProto session material is the highest-value asset in the system.
 | File permissions `0600` | **On** | Costs nothing; prevents the most common local exposure |
 | Warn on wider permissions | **On** | Detects a session copied or checked out carelessly. The directory rather than the file: nothing reaches a file whose directory denies it |
 | Encryption at rest | **Off**, opt-in | A mandatory passphrase pushes users to store the key beside the file, achieving nothing. Available and documented. |
-| Exclusive ownership | **On** | Two clients on one session corrupt both — fail loudly. An account claims its area of the store through a guard whose reach is reported: see §3.1 |
+| Ownership of an account's area | **On**, within the reach each backend has | Two clients on one session corrupt both — fail loudly where it can be detected. Exclusive within a process, a browser origin, or a SQLite/Redis store; over a plain directory across processes, a refusal on a later start only: see §3.1 |
 | Never in `git` | Documented + a `.gitignore` in every template, held by the `templates-ignore-secrets` invariant | The realistic leak path. A template is copied whole, so the root ignore file protects nothing once it has been copied |
 
 When enabled, encryption is AES-256-GCM with scrypt key derivation — authenticated, so
 tampering fails cleanly instead of producing confusing protocol errors.
 
-### 3.1 Exclusive ownership
+### 3.1 Ownership of an account's area
 
 The requirement is met by ownership of an area rather than by a lock inside `file()`. The generic
 driver stays shareable, because framework state is legitimately shared between processes —
@@ -76,15 +76,22 @@ several webhook workers behind one store is a supported deployment — and an ac
 own area, `accounts:<name>:`, through a guard before it reads or writes anything there.
 
 The guard is what the environment provides, and its reach is reported rather than assumed: the
-Web Locks API in a browser, which excludes every page of the origin; a lease the store records and
-checks with every write for `sqliteStore` and `redisStore`, which excludes every process and
-machine reaching the same database; and a registry inside the process everywhere else. A run that
-ends without stopping leaves its claim behind, and the next run refuses it with
-`StorageOwnershipError` until `takeOverStorage` says the previous run is gone. Over a plain
-directory shared by two processes, that recorded claim is the protection and the registry's reach
-is one process; an application with a better primitive — an advisory lock, a lock file — supplies
-it as `storageGuard`. A superseded run is fenced: its writes are refused the moment its lease is
-over.
+Web Locks API in a browser, which excludes every page, tab and worker of the origin; a registry
+inside the process everywhere else, which excludes other `Account`s in that process and nothing
+outside it. `sqliteStore` and `redisStore` add a lease the store records and checks in the same
+atomic step as every write, which excludes every process and machine reaching that database and
+refuses a superseded run's writes on the store itself.
+
+The claim record inside the area is not a lock. It is read and written in separate steps, so
+over `file()` or any other persistent adapter without leases it refuses a run that starts after
+another's claim was written — including the run after a crash, until `takeOverStorage` says the
+previous one has ended — but two processes that start together both proceed, and a take-over in
+one process does not stop a run still writing in another. Where the reach does cover every
+possible holder — a browser origin, a leasing store, an in-memory store — a claim left by a crash
+is adopted without a flag. An application with a better primitive for a shared directory — an
+advisory lock, a lock file — supplies it as `storageGuard`. Within the guard's reach, a
+superseded run is fenced: its writes are refused once it no longer holds the area, and what it
+had already begun finishes before the area is handed on.
 
 [storage.md](storage.md) §4, under "Which account a store's contents belong to", records the
 design and the cases a take-over refuses rather than forces.

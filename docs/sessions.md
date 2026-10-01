@@ -288,7 +288,10 @@ same key already there — a string imported on every start into a store that ke
 used. Once importing goes ahead, any authorization in the store for another datacenter this
 account could reach is cleared before the imported key is installed, so an account built from
 one session can never end up using a key left behind by another. Two runs importing into one
-area at once are refused by the ownership guard, like any two runs of one account.
+area at once are kept apart as any two runs of one account are: by the guard within its reach —
+one process, or a browser origin — and by the store's lease across processes over SQLite or
+Redis. Over a directory shared by two processes, only a run that starts after the other's claim
+was written is refused ([storage.md](storage.md) §4).
 
 The first connection after an import negotiates a key with a lifetime and has the imported key
 vouch for it; the long-lived exchange is skipped because that is what the string carried.
@@ -343,14 +346,17 @@ it finds permissions wider than that.
 Each `Account` owns an independent session; nothing is shared:
 
 ```ts
-const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash }))
-const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash }))
+const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash, keys, bootstrap }))
+const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash, keys, bootstrap }))
 ```
 
 `apiId`/`apiHash` are per-*developer*, not per-account, so they are legitimately shared across
-clients. Session state never is — sharing a session file between two running clients corrupts
-both, and the file driver takes an exclusive lock to make that failure loud rather than
-mysterious.
+clients. Session state never is — two running clients writing one session corrupt each other's
+keys and place in the update stream. No driver takes a file lock. Within one process, or one
+browser origin, the second run is refused by the guard; across processes a SQLite or Redis store
+refuses it with its lease; over a plain directory the claim record refuses a run that starts
+after another's claim is written, and nothing refuses two that start together.
+[storage.md](storage.md) §4 sets out each case.
 
 ---
 
@@ -367,9 +373,10 @@ Account.fromSession(storage, { apiId, apiHash })
 
 It fails on four counts:
 
-1. **Shape.** Framework sessions are key-value. The peer cache needs indexed lookup by id and
-   by username, with range scans. A KV interface forces peers into a serialized blob that must
-   be fully rewritten on every update — unusable for an account with tens of thousands of peers.
+1. **Shape.** An account's state is not one value per user: peers are a record each plus
+   username and phone indexes, authorization keys are per datacenter with expiries, and the
+   update position is committed as a whole. It shares the `KV` contract with framework storage,
+   but it is written under its own area by the account rather than handed to a plugin.
 2. **Sensitivity.** Auth keys and shopping carts have different threat models and belong under
    different access controls. One interface encourages one store.
 3. **Lifecycle.** Framework sessions expire; auth keys must not. A shared TTL mechanism would
@@ -378,8 +385,9 @@ It fails on four counts:
    requires human re-authentication with an SMS code — it cannot be recovered automatically,
    and the framework must treat it as a fatal, loud condition rather than a cache miss.
 
-They may share a *driver* — the same SQLite file, the same Redis instance — but through
-different contracts. That is the layering in [storage.md](storage.md).
+They may share a *driver* — the same SQLite file, the same Redis instance — but not a store
+object: an `App` keeps framework state in its own areas, and an account is given its store
+directly. That division is in [storage.md](storage.md) §3 and §4.
 
 ---
 
@@ -393,7 +401,7 @@ different contracts. That is the layering in [storage.md](storage.md).
 | Auth session corrupt | **Fail loudly.** Never silently re-authenticate — that turns a storage bug into an unexplained SMS to the user's phone |
 | Auth session rejected by Telegram (`AUTH_KEY_UNREGISTERED`) | Raise `SessionError`, stop the client, require explicit re-sign-in |
 | Peer cache corrupt | Rebuild — it is a cache; log the fact and continue |
-| Two clients on one session file | Refuse to start the second, with an explicit error |
+| Two clients on one session | Refuse the second with `StorageOwnershipError` — within the guard's reach (one process, one browser origin) and, across processes, over a leasing store (SQLite, Redis). Over a plain directory, only a second run that starts after the first's claim is written is refused |
 
 The asymmetry is the point: framework state degrades gracefully because it can, and
 authorization state fails loudly because a silent recovery path would be indistinguishable

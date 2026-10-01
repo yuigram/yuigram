@@ -500,17 +500,16 @@ export interface AccountOptions {
    * stored is a position and nothing else: the updates themselves arrive again
    * from the difference the position is used to ask for.
    *
-   * **One store per account.** The division here is by purpose, not by account,
-   * because before it signs in an account has no identity to divide by. Two
-   * accounts given the same store write to the same keys, and the second to
-   * reach a datacenter overwrites the first one's authorization for it — with
-   * no error, because neither key says who negotiated it. Give each account a
-   * store of its own, or an area of one: `namespaced(store, 'first:')`.
-   *
-   * This is easiest to reach by accident in a browser, where `web()` called
-   * twice with no arguments produces two stores over the same `localStorage`
-   * under the same prefix, which is one store. A path or a prefix is the whole
-   * of the fix.
+   * **One area per account name.** All of it lives under
+   * `accounts:<name>:`, using {@link AccountOptions.name}, so accounts with
+   * different names can share one store. Two with the same name — the default
+   * `'account'` included — land in the same area, and the second to start is
+   * refused with `StorageOwnershipError` where that can be detected: within this
+   * process, within a browser origin, and across processes over a store that
+   * leases areas (`@yuigram/sqlite`, `@yuigram/redis`). Over a plain directory
+   * shared by two processes, only a run that starts after the other's claim is
+   * written is refused; two that start together both proceed. Give each account
+   * a name of its own.
    */
   readonly storage: KV<unknown>
   /**
@@ -518,9 +517,11 @@ export interface AccountOptions {
    *
    * An account records that it holds its area of the store while it is running,
    * and gives that up when it stops. A run that ends without stopping — a
-   * crash, a process killed — leaves the record behind, and the next run cannot
-   * tell that from another program running right now. So it refuses, and this
-   * is how a caller that knows better says otherwise.
+   * crash, a process killed — leaves the record behind. Where the guard or the
+   * store covers every possible holder — a browser origin, a leasing store, an
+   * in-memory one — the next run adopts it unasked. Over any other persistent
+   * store the next run cannot tell it from another program running right now,
+   * so it refuses, and this is how a caller that knows better says otherwise.
    *
    * It does not let one account take another's area. That is not a claim left
    * behind, it is the wrong store, and no flag here makes it the right one.

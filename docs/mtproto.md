@@ -464,8 +464,9 @@ call. Three kinds of state were true only because the account was signed in, and
 The published address list stays. It describes Telegram rather than the account, nothing in it
 was issued to anybody, and it is what the next sign-in needs before it can reach anything.
 
-An account is given its own store — two sharing one would collide on every prefix above — so
-there is no case where clearing this account's areas removes another account's state. That is
+Every prefix above sits inside the account's own area, `accounts:<name>:`, so accounts with
+different names can share a store and there is no case where clearing this account's area
+removes another account's state. That is
 what settles the question the store interface otherwise leaves open.
 
 The call goes first. An authorization that survives a failed sign-out is still an authorization,

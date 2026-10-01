@@ -175,67 +175,37 @@ all; see §4 and [sessions.md](sessions.md) §4 for why it is a different contra
 
 ## 4. MTProto authorization storage
 
-A different contract, because the data is not key-value. Layered as
-driver / repository / service.
+An account takes one store — the same `KV` contract framework storage uses — and keeps
+everything that must survive a restart in it, under an area of its own (below). The contract is
+shared; the store is not. An account's store holds a signed-in authorization, and it is given to
+the account directly rather than taken from an `App`; [sessions.md](sessions.md) §4 says why the
+two are kept apart.
 
-The layering follows from the requirements rather than from taste: the peer table needs
-indexed lookup by three keys, auth keys need per-DC addressing with expiry on the temporary
-ones, and update state needs atomic multi-field commits. Those cannot share one flat interface
-without one of them being badly served. mtcute arrived at the same three-layer shape
-([research.md](research.md) §2.5), which is corroboration that the requirements drive it —
-convergence on a problem, not a borrowed design.
+Inside its area an account divides the store by purpose:
 
-```
-┌─────────────────────────────────────────────────┐
-│ service    auth keys · peers · update state ·    │  semantic operations
-│            current user · salts · DC options     │
-├─────────────────────────────────────────────────┤
-│ repository authKeys · kv · peers · refMessages   │  persistence contracts
-├─────────────────────────────────────────────────┤
-│ driver     memory · file · sqlite                │  connection, transactions
-└─────────────────────────────────────────────────┘
-```
+| Prefix | Holds | Written |
+|---|---|---|
+| `auth:` | the permanent key per datacenter, and temporary keys with their expiry | on a key exchange, and cleared on sign-out |
+| `dcs:` | the datacenter list the server published | when it changes |
+| `peers:` | one record per peer seen (`peer:<kind>:<id>`: kind, identifier, access hash), and `username:` and `phone:` entries pointing at it, rebuilt when the record is written | as updates and answers describe peers |
+| `updates:` | the place in the update stream | once per batch absorbed |
+| `claim` | which run holds the area | when a run takes or gives the area up |
 
-```ts
-interface AuthKeysRepository {
-  get (dc: number): Promise<Uint8Array | undefined>
-  set (dc: number, key: Uint8Array | null): Promise<void>
-  getTemp (dc: number, index: number, now: number): Promise<Uint8Array | undefined>
-  setTemp (dc: number, index: number, key: Uint8Array | null, expires: number): Promise<void>
-  deleteByDc (dc: number): Promise<void>
-}
-
-interface PeersRepository {
-  store (peer: CachedPeer): Promise<void>
-  getById (id: number): Promise<CachedPeer | undefined>
-  getByUsername (username: string): Promise<CachedPeer | undefined>
-  getByPhone (phone: string): Promise<CachedPeer | undefined>
-}
-```
-
-### Why peers cannot be KV
-
-The peer cache needs lookup by id **and** by username **and** by phone, it is written on
-every update that carries peer data, and in an active account it grows to tens or hundreds of
-thousands of rows. A KV interface would force it into a single serialized blob rewritten on
-every update — O(n) writes for O(1) information, and unusable well before the account is
-interesting.
-
-This is the concrete reason [sessions.md](sessions.md) §4 rejects a single shared contract.
+Peers are individual records rather than one serialized value, so learning a peer writes that
+record and its index entries however many peers the account already knows.
 
 ### Recommended drivers
 
-| Deployment | Driver |
+| Deployment | Store |
 |---|---|
 | Development, tests | `memory()` |
-| Single user client | `file('./me.session')` |
-| Many clients, or a large peer cache | `sqliteStore(await openDatabase('./sessions.db'))` |
-| Distributed | File or SQLite per client, on durable storage |
+| One account on a machine with a disk | `Account.fromSession('./me.session', …)`, which is `file()` over that directory |
+| Several processes or machines that could open the same account | `sqliteStore(await openDatabase('./accounts.db'))` or `redisStore(client)`, which lease areas and fence writes |
+| Edge runtime, browser | `Account.fromString(session, { storage: memory() })`, or `web()` in a page |
 
-MTProto sessions do **not** distribute well. A session belongs to exactly one running client;
-two processes sharing one session file corrupt each other's message-id and salt state. The
-file driver takes an exclusive lock so the failure is immediate and explicit rather than
-intermittent and baffling.
+An authorization belongs to one running client at a time: two runs writing one area overwrite
+each other's keys and their place in the update stream. What keeps them apart depends on the
+guard and on the store, and is set out next. No driver takes a file lock.
 
 ### Which account a store's contents belong to
 
@@ -279,7 +249,7 @@ whatever the environment actually provides — or, where the store can do it, th
 | Runtime or store | Primitive | What it excludes |
 | --- | --- | --- |
 | A browser page | `navigator.locks` (Web Locks API) | Every page, tab and worker of the origin — which is also everyone who can reach that origin's storage |
-| A store that leases — `sqliteStore`, `redisStore` | A lease the store records and checks with every write | Every process and machine that reaches the same database file or Redis server |
+| A store that leases — `sqliteStore`, `redisStore` | A lease the store records and checks with every write, taken as well as the guard | Every process and machine that reaches the same database file or Redis server |
 | Everywhere else | A registry inside the process | Two `Account`s in this process, exactly. Nothing outside it |
 
 **The reach is reported, not assumed.** `AreaLease.scope` is `store`, `origin` or `process`, and
@@ -287,6 +257,22 @@ nothing downstream may treat one as another. A registry says nothing about a sec
 opened over the same directory, and claiming otherwise would be worse than not excluding at all,
 because a caller would stop being careful. A caller with a better primitive than the runtime
 advertises — a database advisory lock, a lock file — supplies it as `storageGuard`.
+
+**What each part establishes, and what it does not.**
+
+| Part | Establishes | Does not establish |
+| --- | --- | --- |
+| The account's `name` | Which area its data is in, `accounts:<encoded name>:`. Two names never share a key | Who signed in — it is chosen before sign-in — or that only one run uses the area |
+| The claim record (`claim`: the name, and a token per run while it runs) | That a run with that token took the area and had not given it up in an orderly way when the record was read. An orderly stop rewrites it without the token | That the holder is still running, or any exclusion. It is read, judged and written in separate steps: over a store that does not lease, two processes that both read it before either writes both start, and the record names whichever wrote last |
+| The process registry, outside a browser | That no other `Account` in this process holds the name. A take-over inside the process drains the holder it replaces first | Anything about another process |
+| Web Locks, in a browser | That no other page, tab or worker of the origin holds the name. A page that closes or crashes has its lock released by the browser | — |
+| A SQLite or Redis lease | One current lease per area across every process and machine that reaches the database, and every `set` and `delete` through it checked against the current lease in the same atomic step as the write | Protection from writes that go around the lease — to the table or the keys directly — or from a Redis cluster, which refuses the scripts |
+
+So a claim record is a refusal on a later start, not a lock. Over `file()` or any other
+persistent adapter without leases, it turns a second run that starts *after* the first has
+written its claim into a `StorageOwnershipError` naming the account; it cannot stop two runs that
+start together in different processes, and nothing tells a run in another process that it has
+been taken over.
 
 **A lease that can be lost, and admitted work that finishes first.** Holding the guard now is
 not holding it forever, and two different things have to be true for that to be safe.
@@ -309,9 +295,9 @@ the run it is superseding.
 | Orderly release, any runtime | ✓ | ✓ |
 | Take-over inside one process | ✓ | ✓ |
 | Take-over inside one browser page | ✓ | ✓ |
-| Take-over from another page of an origin | ✓ | refused — see below |
+| Take-over from another page of an origin | refused — see below | refused |
 | Take-over from another process, over a store that leases | ✓, by the store | not needed: the store refuses what arrives late — see below |
-| Take-over from another process, over any other persistent store | ✓ | the caller's assertion — see below |
+| Take-over from another process, over any other persistent store | no — nothing reaches the other process, so its writes land if it is still running | no — the caller's assertion that it has ended |
 
 **A take-over that cannot drain is refused rather than forced.** The invariant is that a
 successor must not begin using an area while the run before it can still complete a conflicting
@@ -336,6 +322,23 @@ answer for — both holds are in that realm — so the one being replaced is dra
 as two in one process are. `Guard.drainsOnSteal` is where that property is declared, and a guard
 supplied from outside that answers `false` is refused a take-over outright.
 
+**What happens, by backend.**
+
+| | `memory()` (process registry) | `file()` or another persistent store without leases (process registry) | `web()` or any store in a browser (Web Locks) | `sqliteStore`, `redisStore` (lease) |
+| --- | --- | --- | --- | --- |
+| Orderly stop | Admitted writes finish, the claim loses its token, the name is freed | The same; the next run, in any process, adopts the claim without a flag | The same, and the lock is released | The same, and the lease is released if it is still this grant |
+| Crash | The store goes with the process | The claim keeps its token; the next run is refused until `takeOverStorage` | The browser releases the lock; the next page adopts the claim without a flag | The lease lapses after `storageLeaseMs` (30 s unless given); the next run then adopts the claim without a flag |
+| Expiry | — | None: a claim never expires | — | A lease not renewed in time lapses; a running account renews every third of its life |
+| `takeOverStorage` | Drains the holder in this process, then takes over | Taken on the caller's word that the other run has ended | Refused while another page holds the lock; inside one page, drains first | Supersedes the live lease; the store refuses the old run's writes from then on |
+| A late write from a superseded run | Refused by the area's fence | Lands, if the other process is still running | Refused by the fence within a page | Refused by the store, in the same atomic step as the write |
+
+These are pinned by tests: `packages/core/test/storage-guard.test.ts` for the two guards,
+`packages/mtproto/test/storage-ownership.test.ts` for claims, fencing, draining and the two
+cases between processes that a claim does not cover, `packages/sqlite/test/lease.test.ts` for
+the SQLite lease, and `packages/mtproto/test/storage-lease-account.test.ts` and
+`storage-lease-processes.test.ts` for accounts over a leasing store, the latter across real
+processes against SQLite and, where a server is configured, Redis.
+
 ### Stores that lease their areas
 
 `sqliteStore` and `redisStore` close the fifth row themselves. Each can lease an area of itself
@@ -346,7 +349,9 @@ through the process guard:
 | --- | --- | --- |
 | Where the lease lives | a `<table>_leases` row: area, token, holder, expiry | `<leaseNamespace><namespace><area>:owner`, expiring with the lease, and `…:token` |
 | A grant | one `BEGIN IMMEDIATE` transaction: refuse if a live lease exists, else count the token up and record the holder | one script: refuse if an owner is set, else `INCR` the token and set the owner |
-| A write through the lease | one `BEGIN IMMEDIATE` transaction: check the lease is current, then write | one script: compare the owner with this holder's, then write |
+| A `set` or `delete` through the lease | one `BEGIN IMMEDIATE` transaction: check the lease is current, then write | one script: compare the owner with this holder's, then write |
+| A `clear` through the lease | one transaction, as above | a `SCAN` that is not fenced, then each batch of deletions fenced by a script; a lease lost part-way leaves the batches before it deleted |
+| A read through the lease | not fenced: answered whoever holds the area | not fenced |
 | Whose clock expires it | the writer's; processes sharing a file share a host | the server's |
 
 **The fence is the token, not the expiry.** Every grant is numbered above every one before it —
