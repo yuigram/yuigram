@@ -811,6 +811,11 @@ describe('writing links', () => {
       /attachment target/,
     ],
     [
+      'a mini app mode that does not exist',
+      { kind: 'mini-app', bot: 'shop_bot', mode: 'tiny' as never },
+      /compact or fullscreen/,
+    ],
+    [
       'a proxy server with a space in it',
       { kind: 'proxy', server: 'a b', port: 443, secret: '00' },
       /proxy server/,

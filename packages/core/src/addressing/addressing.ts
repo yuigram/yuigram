@@ -761,6 +761,10 @@ function writeBotLink(link: Extract<TelegramLink, { bot: string }>): string {
 
     case 'mini-app':
       ensurePayload(link.payload)
+      ensure(
+        link.mode === undefined || link.mode === 'compact' || link.mode === 'fullscreen',
+        'a mini app opens compact or fullscreen',
+      )
       if (link.app === undefined) {
         return `${base}${query(['startapp', link.payload], link.mode !== undefined && ['mode', link.mode])}`
       }
