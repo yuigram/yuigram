@@ -415,6 +415,56 @@ describe('the age policy', () => {
   })
 })
 
+describe('which key a signature is checked with', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /** The Ed25519 key each check imported, as hexadecimal. */
+  async function keysImportedBy(
+    ...publicKeys: readonly ('production' | 'test' | Uint8Array | undefined)[]
+  ): Promise<readonly string[]> {
+    const imported: string[] = []
+    const real = globalThis.crypto.subtle.importKey.bind(globalThis.crypto.subtle)
+    vi.spyOn(globalThis.crypto.subtle, 'importKey').mockImplementation(((
+      ...args: Parameters<SubtleCrypto['importKey']>
+    ) => {
+      const [, material, algorithm] = args
+      if ((algorithm as { name?: string }).name === 'Ed25519') {
+        imported.push(Buffer.from(material as Uint8Array).toString('hex'))
+      }
+
+      return real(...args)
+    }) as SubtleCrypto['importKey'])
+
+    for (const publicKey of publicKeys) {
+      const { publicKey: _fixtureKey, ...rest } = signedOnly
+      await verifyInitDataSignature(SIGNED, {
+        ...rest,
+        ...(publicKey === undefined ? {} : { publicKey }),
+      }).catch(() => undefined)
+    }
+
+    return imported
+  }
+
+  it('takes the production key unless told otherwise, and the test key when named', async () => {
+    // The fixture is signed by neither, so a mismatch cannot tell the two apart.
+    // What can be told is which published key each check handed to the platform.
+    expect(await keysImportedBy(undefined, 'production', 'test')).toEqual([
+      'e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d',
+      'e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d',
+      '40055058a4ee38156a06562e52eece92a771bcd8346a8c4615cb7376eddf72ec',
+    ])
+  })
+
+  it('takes a key it is given as it is', async () => {
+    expect(await keysImportedBy(TEST_PUBLIC_KEY)).toEqual([
+      '7ce9dcbe6dbee74f1f2f56a0779ec34235b2bb9ed903e2bd13d34123bf0a743c',
+    ])
+  })
+})
+
 describe('a runtime without the Web Crypto API', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
