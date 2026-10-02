@@ -53,8 +53,9 @@ all of them.
 
 ## Why both in one framework
 
-A bot can do only what the Bot API allows. An account sees what a person sees, but is not what
-strangers should be talking to. Projects that need both usually glue two unrelated libraries
+Yuigram lets one application coordinate a Bot API bot and an MTProto account. The application
+chooses which transport performs each operation it supports, within Telegram's permissions and
+what the account is able to see. Projects that need both usually glue two unrelated libraries
 together, with two event models, two kinds of session and two ways to test. Yuigram gives them
 one application model:
 
