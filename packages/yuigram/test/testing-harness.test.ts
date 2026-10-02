@@ -252,6 +252,20 @@ describe('an account', () => {
     await harness.dispose()
   })
 
+  it('answers a method that returns a list with one, scripted without a cast', async () => {
+    const harness = mockAccount()
+    // `users.getUsers` answers with a vector rather than with one value.
+    harness.on('users.getUsers', () => [
+      { _: 'user', id: 7n, first_name: 'Ada', status: { _: 'userStatusRecently' } },
+    ])
+    await harness.account.connect()
+
+    const [found] = await harness.account.api.users.getUsers({ id: [{ _: 'inputUserSelf' }] })
+
+    expect(found).toMatchObject({ _: 'user', id: 7n, first_name: 'Ada' })
+    await harness.dispose()
+  })
+
   it('starts on the first update and stops when disposed, refusing what was never scripted', async () => {
     const harness = mockAccount()
     expect(harness.account.connected).toBe(false)

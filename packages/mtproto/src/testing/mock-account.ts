@@ -43,8 +43,11 @@ export interface RecordedInvoke {
   readonly index: number
 }
 
+/** What a method answers with: one value, or the list a method such as `users.getUsers` returns. */
+export type Answered = TlValue | readonly TlValue[]
+
 /** How a call is answered: a value, or a function of the call. */
-export type Answer = TlValue | ((query: TlValue) => TlValue | Promise<TlValue>)
+export type Answer = Answered | ((query: TlValue) => Answered | Promise<Answered>)
 
 /** Everything the account asked Telegram for. */
 export interface AccountCalls {
@@ -362,7 +365,8 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
       throw new Error(`no answer is scripted for '${call._}'; script one with on() or once()`)
     }
 
-    return typeof chosen === 'function' ? await chosen(call) : chosen
+    // A list goes back as it is: the account reads a vector where the method returns one.
+    return (typeof chosen === 'function' ? await chosen(call) : chosen) as TlValue
   }
 
   const log = capturing(options.log ?? createLogger({ sink: silentSink() }), errors)

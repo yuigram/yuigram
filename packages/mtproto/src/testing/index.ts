@@ -11,6 +11,7 @@ export {
   type AccountMessageOptions,
   type AccountSender,
   type Answer,
+  type Answered,
   type MockAccount,
   type MockAccountOptions,
   mockAccount,
