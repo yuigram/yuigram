@@ -18,6 +18,7 @@ import {
   memory,
   parseCommand,
   readLink,
+  readPresence,
   Router,
   schemaInfo,
   StorageError,
@@ -300,6 +301,16 @@ check('a command is parsed from text as a handler would receive it', () => {
 check('a slot machine shows its reels left to right', () =>
   slotMachineReels(64).join() === 'seven,seven,seven' && slotMachineReels(2).join() === 'grapes,bar,bar',
 )
+
+check('a status is read as a user’s presence is', () => {
+  const offline = readPresence({ _: 'userStatusOffline', was_online: 1_700_000_000 })
+  return (
+    offline?.state === 'offline' &&
+    offline.lastSeen === 1_700_000_000 &&
+    readPresence({ _: 'userStatusRecently', by_me: true })?.hiddenByMe === true &&
+    readPresence(undefined) === undefined
+  )
+})
 
 for (const [name, result] of checks) {
   process.stdout.write(`  ${result === 'ok' ? 'ok  ' : 'FAIL'}  ${name}\n`)
