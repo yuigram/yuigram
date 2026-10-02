@@ -77,6 +77,30 @@ describe('keeping to its own keys', () => {
     expect([...storage.raw.keys()]).toEqual(['app/k'])
   })
 
+  it('owns a store whose prefix its own begins, and leaves a sibling alone', async () => {
+    // A prefix is the whole of what separates two stores on one origin. Nested
+    // prefixes are one store inside another, and clearing the outer one clears
+    // both — which is how a page's cache check once emptied its session.
+    const storage = fakeStorage()
+    const outer = web({ storage, prefix: 'app:' })
+    const inner = web({ storage, prefix: 'app:sessions:' })
+    const sibling = web({ storage, prefix: 'other:' })
+
+    await inner.set('key', 1)
+    await sibling.set('key', 2)
+    await outer.clear?.()
+
+    expect(await inner.get('key')).toBeUndefined()
+    expect(await sibling.get('key')).toBe(2)
+
+    const first = web({ storage, prefix: 'app:cache:' })
+    await inner.set('key', 3)
+    await first.set('key', 4)
+    await first.clear?.()
+
+    expect(await inner.get('key')).toBe(3)
+  })
+
   it('scopes keys and clear to a sub-prefix', async () => {
     const storage = fakeStorage()
     const store = web({ storage })

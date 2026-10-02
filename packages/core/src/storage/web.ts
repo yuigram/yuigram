@@ -62,6 +62,11 @@ export interface WebOptions {
    * An origin's storage is shared by everything on the page, so a prefix is
    * what keeps this store's keys apart from whatever else the application
    * keeps there. Defaults to `yuigram:`.
+   *
+   * A store owns every key that begins with its prefix. One whose prefix
+   * begins another store's therefore lists that store's keys and clears them
+   * with its own, so stores meant to be separate take prefixes that do not
+   * nest: `app:sessions:` and `app:cache:`, not `app:` and `app:cache:`.
    */
   readonly prefix?: string
   /** Clock source, injectable so expiry is testable without waiting. */
