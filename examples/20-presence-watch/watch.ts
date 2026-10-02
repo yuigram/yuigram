@@ -13,10 +13,15 @@
  *   offers no way to ask for them. So the account also reads every watched user
  *   in one request on a slow timer, and treats a pushed update as a refinement.
  * - A status that says "online" carries when it expires, not when it began. The
- *   start of an interval is therefore the moment it was first observed, and an
- *   interval whose start was not observed has no length.
+ *   start of an interval is therefore the moment it was first observed here;
+ *   the user arrived at some point after the check before that, and an interval
+ *   whose start was not observed at all has no length.
  * - A status that says "offline" carries when the user was last online, by
- *   Telegram's clock. That is the end of an interval.
+ *   Telegram's clock. That is taken as the end of an interval.
+ * - Nothing between two observations proves the user stayed online, so the
+ *   figure given for an interval is an estimate, said to be one, with both of
+ *   its ends named. It is read off two clocks, and refused where they
+ *   contradict each other.
  * - Silence says nothing. An expired "online" is a reason to read again, never
  *   an offline transition, and a read that failed changes no state.
  */
@@ -95,7 +100,10 @@ interface OpenInterval {
   readonly at: number
   /** False where the user was already online when watching began. */
   readonly startKnown: boolean
-  /** The observation before it: the interval began after this moment. */
+  /**
+   * The last check before it, when the status was not yet "online": the user
+   * arrived after this moment and no later than `at`.
+   */
   readonly after: number | undefined
   readonly source: Seen['source']
   /** Why the interval can no longer be measured, once something interrupted it. */
@@ -145,6 +153,11 @@ const EXTRA_POLL_GAP = 30_000
 const EXPIRY_MARGIN = 5_000
 /** The longest the timer backs off to after Telegram asks it to wait. */
 const MAX_BACKOFF = 16
+/**
+ * How far ahead of this machine's clock a time from Telegram may be before the
+ * two are taken to disagree, and a figure built from both is refused.
+ */
+const CLOCK_TOLERANCE = 5_000
 /** How often a notification is tried before it is given up on. */
 const MAX_TRIES = 5
 const USERNAME = /^@?([A-Za-z][A-Za-z0-9_]{3,31})$/
@@ -211,13 +224,25 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
   let backoff = 1
   let offlineSince: number | undefined
   /**
-   * The order things were learned in, by arrival rather than by the clock.
+   * The order things were taken in by this process, counted rather than timed.
    *
-   * A read is told apart from an update that overtook it by which was taken in
-   * first, and two things in one millisecond still have an order.
+   * It says which of an update and a read's request came first *here* — two
+   * things in one millisecond still have an order — and nothing about the order
+   * Telegram produced them in. That is enough for the one judgement it is used
+   * for: an answer to a request that left before something newer was taken in
+   * is not allowed to replace it. Telegram's own times, where a status carries
+   * one, are compared separately in `superseded`.
    */
   let arrivals = 0
   const learned = new Map<string, number>()
+  /**
+   * How many times the link to Telegram has dropped.
+   *
+   * An answer to a request that was travelling when it dropped cannot be dated:
+   * it may have been composed before the gap and delivered after it. A read
+   * that finds this changed on its return discards its answer.
+   */
+  let drops = 0
   /** One change to the records at a time: an update and a read must not interleave. */
   let queue: Promise<unknown> = Promise.resolve()
 
@@ -312,29 +337,53 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     return `точное время скрыто: ${VAGUE[seen.state] ?? seen.state}${mine}`
   }
 
-  /** The closing of an online interval, said as exactly as what was observed allows. */
-  function closing(open: OpenInterval, end: number | undefined, why: string | undefined): string {
-    if (open.broken !== undefined)
-      return `интервал прерван: ${open.broken}; длительность не определяется`
+  /**
+   * What can be said of an online interval when it ends.
+   *
+   * A figure is given only as an estimate, and never as a bound on how long the
+   * user was online. It runs from the first moment this program saw the user
+   * online to the last-seen time Telegram reports, and what it rests on is said
+   * with it: the user may have arrived earlier, after the check before; nothing
+   * shows they stayed online in between; and its two ends are read off two
+   * clocks taken to agree. Where the ends contradict each other — a last-seen
+   * before the first sighting, or after the moment it was learned — no figure
+   * is given at all.
+   */
+  function closing(
+    open: OpenInterval,
+    end: number | undefined,
+    why: string | undefined,
+    noticedAt: number,
+  ): string {
+    if (open.broken !== undefined) {
+      return `наблюдение прервано: ${open.broken}; интервал не оценивается`
+    }
     if (!open.startKnown) {
-      return 'интервал не завершён: когда пользователь вошёл, неизвестно — он уже был в сети, когда началось наблюдение'
+      return 'интервал не оценивается: пользователь уже был в сети, когда началось наблюдение, и когда он вошёл — неизвестно'
     }
-    if (why !== undefined || end === undefined) {
-      return `интервал не завершён: в сети с ${local(open.at)} (замечено), ${why ?? 'конец неизвестен'}`
+    const first = `первое наблюдение «в сети» — ${local(open.at)} (${sourceName(open.source)})`
+    if (why !== undefined) return `интервал не завершён: ${first}; ${why}`
+    if (end === undefined) return `интервал не оценивается: ${first}; времени конца Telegram не дал`
+    if (end * 1000 < open.at) {
+      return `интервал не оценивается: это время раньше, чем ${first}; наблюдение устарело или часы компьютера и Telegram расходятся`
     }
-
-    const observed = end * 1000 - open.at
-    if (observed < 0) {
-      return `интервал не определяется: время Telegram (${server(end)}) раньше замеченного начала (${local(open.at)})`
-    }
-    if (open.source === 'update' || open.after === undefined) {
-      return `наблюдённый интервал: ${duration(observed)} — от замеченного начала (${sourceName(open.source)}, ${local(open.at)}) до времени Telegram`
+    if (end * 1000 > noticedAt + CLOCK_TOLERANCE) {
+      return `интервал не оценивается: это время позже момента, когда оно получено (${local(noticedAt)}); часы компьютера и Telegram расходятся`
     }
 
-    return (
-      `наблюдённый интервал: не меньше ${duration(observed)} и не больше ${duration(end * 1000 - open.after)} — ` +
-      `начало замечено опросом, между ${local(open.after)} и ${local(open.at)}`
+    const lines = [
+      `оценка интервала: ${duration(end * 1000 - open.at)} — от первого наблюдения «в сети» (${sourceName(open.source)}, ${local(open.at)}) до времени Telegram`,
+    ]
+    if (open.after !== undefined && open.after < open.at) {
+      lines.push(
+        `вход мог произойти раньше — после предыдущей проверки в ${local(open.after)}, когда статус ещё не был «в сети»; тогда оценка — до ${duration(end * 1000 - open.after)}`,
+      )
+    }
+    lines.push(
+      'это оценка, а не измерение: непрерывность между наблюдениями не подтверждена, часы компьютера и Telegram считаются согласованными',
     )
+
+    return lines.join('\n')
   }
 
   // ---- the observation model ----------------------------------------------
@@ -352,18 +401,24 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     at: number,
     source: Seen['source'],
   ): Observed {
+    const stamp = presence?.state === 'online' ? presence.onlineUntil : presence?.lastSeen
     const seen: Seen = {
       state: presence?.state ?? 'unavailable',
-      serverTime: presence?.state === 'online' ? presence.onlineUntil : presence?.lastSeen,
+      // A time that is not a positive number of seconds is no time at all.
+      serverTime: stamp !== undefined && Number.isFinite(stamp) && stamp > 0 ? stamp : undefined,
       at,
       source,
       hiddenByMe: presence?.hiddenByMe ?? false,
     }
     const before = record.last
 
-    // The same thing said again, by either source, is not news.
+    // Older than what is held, by Telegram's own times: it says nothing of how
+    // things stand now, so it is not a check either.
+    if (superseded(before, seen)) return { record, say: [] }
+    // The same thing said again is not news. A read that says it is still a
+    // check of how things stand; an update that repeats itself is a repetition.
     if (before?.state === seen.state && before.serverTime === seen.serverTime) {
-      return { record: { ...record, checked: at }, say: [] }
+      return { record: source === 'update' ? record : { ...record, checked: at }, say: [] }
     }
 
     const next = { ...record, checked: at, last: seen }
@@ -373,14 +428,53 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     return wentVague(next, before, seen)
   }
 
-  /** Online now. An interval opens, unless this is the same one with a later expiry. */
+  /**
+   * The last-seen time of an observation, where it can be reasoned from.
+   *
+   * One that lies ahead of the moment it was learned, by more than the two
+   * clocks may differ, is not: either it is wrong or this machine's clock is,
+   * and nothing is concluded from it.
+   */
+  function lastSeenOf(seen: Seen | undefined): number | undefined {
+    if (seen?.state !== 'offline' || seen.serverTime === undefined) return undefined
+
+    return seen.serverTime * 1000 > seen.at + CLOCK_TOLERANCE ? undefined : seen.serverTime
+  }
+
+  /**
+   * Whether Telegram's own times show an observation to be older than the one held.
+   *
+   * The only ordering here that speaks of Telegram's chronology rather than of
+   * when something reached this process, and it rests on two things alone: a
+   * last-seen time never moves back, and an online status runs out after it was
+   * issued. So against a known last-seen, an earlier last-seen is older, and so
+   * is an online status that had run out by then. Such an observation arrived
+   * late — a delayed update, a slow answer — and is not allowed to undo what is
+   * newer. Where the times cannot settle it, nothing is assumed: an online
+   * status that outlives the known last-seen may still be the older of the two,
+   * and is taken in the order it was processed.
+   */
+  function superseded(before: Seen | undefined, seen: Seen): boolean {
+    const known = lastSeenOf(before)
+    if (known === undefined || seen.serverTime === undefined) return false
+    if (seen.state === 'offline') return seen.serverTime < known
+
+    return seen.state === 'online' && seen.serverTime <= known
+  }
+
+  /**
+   * Online now. An interval opens, unless the user was already held to be online.
+   *
+   * Online after online is the same interval whatever its expiry says: a status
+   * that is renewed, or repeated with another expiry, is not somebody arriving.
+   */
   function cameOnline(
     next: WatchRecord,
     before: Seen | undefined,
     seen: Seen,
     lastChecked: number | undefined,
   ): Observed {
-    // Still online, with a later expiry: the status was renewed, nobody arrived.
+    // Still online, with another expiry: the status was renewed, nobody arrived.
     if (before?.state === 'online') return { record: next, say: [] }
 
     const open: OpenInterval = {
@@ -404,7 +498,7 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     return {
       record: { ...next, open },
       say: [
-        `🟢 ${who(next)} в сети\nзамечено: ${local(seen.at)} (местное время, ${sourceName(seen.source)})${until}`,
+        `🟢 ${who(next)} в сети\nзамечено: ${local(seen.at)} (местное время, ${sourceName(seen.source)}); когда пользователь вошёл, Telegram не сообщает${until}`,
       ],
     }
   }
@@ -416,21 +510,34 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
 
     const until =
       seen.serverTime === undefined
-        ? ''
+        ? '\nкогда пользователь был в сети в последний раз, Telegram не сообщил'
         : `\nбыл(а) в сети до: ${server(seen.serverTime)} (время Telegram)`
     const head = `⚪ ${who(next)} не в сети${until}\nзамечено: ${local(seen.at)} (местное время, ${sourceName(seen.source)})`
 
     if (next.open !== undefined) {
-      return { record: closed, say: [`${head}\n${closing(next.open, seen.serverTime, undefined)}`] }
+      return {
+        record: closed,
+        say: [`${head}\n${closing(next.open, seen.serverTime, undefined, seen.at)}`],
+      }
     }
-    // Offline before and offline now, with another last-seen: the user came and
-    // went between two observations, and the interval itself was not seen.
-    const unseen =
-      before.state === 'offline'
-        ? '\nсам интервал не наблюдался: вход между двумя наблюдениями замечен не был'
-        : ''
 
-    return { record: closed, say: [`${head}${unseen}`] }
+    return { record: closed, say: [`${head}${unseenVisit(before, seen)}`] }
+  }
+
+  /**
+   * Offline before and offline now, with a later last-seen: by Telegram's own
+   * account the user was online in between. Nothing of that visit was observed,
+   * so it is reported as a fact with no length — and only where both times can
+   * be reasoned from.
+   */
+  function unseenVisit(before: Seen, seen: Seen): string {
+    if (before.state !== 'offline' || seen.serverTime === undefined) return ''
+    if (lastSeenOf(seen) === undefined) {
+      return '\nэто время позже момента, когда оно получено: часы компьютера и Telegram расходятся, выводов из него не делается'
+    }
+    if (lastSeenOf(before) === undefined) return ''
+
+    return '\nэто позже, чем сообщалось раньше: по данным Telegram пользователь был в сети между двумя наблюдениями; сам интервал не наблюдался, его длительность неизвестна'
   }
 
   /** Hidden, coarse or unavailable: no time to report, and none is made up. */
@@ -438,7 +545,7 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     const say: string[] = []
     if (next.open !== undefined) {
       say.push(
-        `◻ ${who(next)}: ${closing(next.open, undefined, 'затем точное время перестало быть доступно')}`,
+        `◻ ${who(next)}: ${closing(next.open, undefined, 'затем точное время перестало быть доступно', seen.at)}`,
       )
     }
     // Said once, on the way in: from a status with a time, or between "hidden"
@@ -585,6 +692,7 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
 
     lastPollStarted = startedAt
     const asked = arrivals
+    const link = drops
     let views: Awaited<ReturnType<Account['peersOf']>>
     try {
       // One request for everybody watched; the account pages it if it must.
@@ -614,6 +722,14 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     }
     backoff = 1
 
+    // The link dropped while the request travelled: when this answer was true
+    // cannot be told, so it is not taken for how things stand now.
+    if (link !== drops) {
+      sooner()
+
+      return true
+    }
+
     await serialized(async () => {
       const at = now()
       for (const [position, was] of watched.entries()) {
@@ -621,9 +737,11 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
         // Unwatched while the read was in flight.
         if (record === undefined) continue
         // Something was learned of this user after this request left — an
-        // update that arrived while it travelled. Which of the two is later
-        // cannot be told, so the older answer is not allowed to undo the newer
-        // one; the next read, asked for after both, settles it.
+        // update that arrived while it travelled, or the user unwatched and
+        // watched again. Which of the two Telegram produced later cannot be
+        // told, so the answer to the earlier request is not allowed to undo
+        // what was taken in since; the next read, asked for after both,
+        // settles it. Everybody else in the same answer is judged separately.
         if ((learned.get(record.id) ?? 0) > asked) {
           sooner()
           continue
@@ -789,7 +907,7 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
       const open =
         record.open === undefined
           ? ''
-          : `\n${closing({ ...record.open, broken: record.open.broken ?? 'наблюдение остановлено командой' }, undefined, undefined)}`
+          : `\n${closing({ ...record.open, broken: record.open.broken ?? 'остановлено командой' }, undefined, undefined, now())}`
 
       return `Наблюдение остановлено: ${identity(record)}${open}`
     })
@@ -820,12 +938,12 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
       )
     }
     if (record.open?.broken !== undefined) {
-      lines.push(`текущий интервал прерван: ${record.open.broken}`)
+      lines.push(`наблюдение текущего интервала прервано: ${record.open.broken}`)
     } else if (record.open !== undefined) {
       lines.push(
         record.open.startKnown
-          ? `в сети с ${local(record.open.at)} (замечено)`
-          : 'был(а) в сети уже при начале наблюдения — начало неизвестно',
+          ? `первое наблюдение «в сети»: ${local(record.open.at)} (${sourceName(record.open.source)})`
+          : 'был(а) в сети уже при начале наблюдения — когда вошёл(ла), неизвестно',
       )
     }
     if (record.renamed !== undefined) {
@@ -889,6 +1007,7 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
 
   async function connection(status: string): Promise<void> {
     if (status !== 'connected') {
+      if (offlineSince === undefined) drops += 1
       offlineSince ??= now()
 
       return
@@ -918,6 +1037,8 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
         // Nobody was looking between the last sign of life and now. An interval
         // open across that time cannot be measured, and the operator is told.
         if (kept.alive !== undefined && watched.length > 0) {
+          // `alive` is the last read that was written down or a clean stop, so
+          // the gap is stated from there: it may begin a little early, never late.
           const gap = `наблюдение не велось с ${local(kept.alive)} по ${local(at)}`
           await interrupt(gap)
           await store.set('meta', {

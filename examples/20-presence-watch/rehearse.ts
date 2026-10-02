@@ -3,20 +3,28 @@
  *
  * ```sh
  * pnpm tsx examples/20-presence-watch/rehearse.ts
+ * pnpm tsx examples/20-presence-watch/rehearse.ts --show   # with what the bot said
  * ```
  *
  * The bot and the account are the in-process harnesses from `yuigram/testing`:
  * the real update pipeline and the real watch from `watch.ts`, with the network
  * replaced. The people are made up, their statuses are scripted, and the clock
  * and the timer are the rehearsal's own, so an hour passes in an instant. No
- * token, no sign-in and no connection are involved.
+ * token, no sign-in and no connection are involved. Its configuration and its
+ * state live in a scratch directory made for the run and removed after it; the
+ * `.env` of a real run is never read.
  *
  * Every step checks what the bot said and what the account was asked, and the
  * run stops with an error at the first that is not what the watch promises.
  */
 
-import { type KV, memory, type TlValue } from 'yuigram'
+import { generateKeyPairSync } from 'node:crypto'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, relative, resolve } from 'node:path'
+import { file, type KV, type TlValue } from 'yuigram'
 import { mockAccount, mockBot, privateChat, rpcError, user } from 'yuigram/testing'
+import { claimEnvironment, openRecords, readConfig } from './config.js'
 import { type PresenceWatch, presenceWatch } from './watch.js'
 
 // ---- a clock and a timer that only move when told to ------------------------
@@ -113,9 +121,78 @@ const operator = user({ id: OPERATOR, first_name: 'Operator' })
 const stranger = user({ id: 5151, first_name: 'Stranger' })
 const operatorChat = privateChat({ id: OPERATOR })
 
-/** Where the account keeps what is its own, and where the watch keeps its records: two stores. */
-const accountStore = memory()
-const watchStore: KV<unknown> = memory()
+// ---- configuration and state, in a scratch directory -------------------------
+
+/** Every name `.env.example` lists. */
+const SETTINGS = [
+  'TELEGRAM_ENV',
+  'BOT_TOKEN',
+  'OPERATOR_ID',
+  'API_ID',
+  'API_HASH',
+  'SERVER_KEYS',
+  'DC_ID',
+  'DC_HOST',
+  'DC_PORT',
+  'DATA_DIR',
+  'POLL_SECONDS',
+  'WATCH_LIMIT',
+  'TIME_ZONE',
+] as const
+
+const unset = (name: string): void => {
+  Reflect.deleteProperty(process.env, name)
+}
+
+const scratch = mkdtempSync(join(tmpdir(), 'presence-rehearsal-'))
+process.once('exit', () => rmSync(scratch, { recursive: true, force: true }))
+
+// Whatever the shell this runs in has set is put aside, unlooked at, and put
+// back at the end: the rehearsal is configured by its own file and nothing real.
+const outside = new Map(SETTINGS.map((name) => [name, process.env[name]]))
+for (const name of SETTINGS) unset(name)
+
+/** A path as a `.env` beside the example would give it: relative to this directory. */
+const fromExample = (path: string): string =>
+  relative(import.meta.dirname, path).replaceAll('\\', '/')
+
+// A key made for the occasion, in the form Telegram publishes its own in.
+writeFileSync(
+  join(scratch, 'keys.pem'),
+  generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({
+    type: 'pkcs1',
+    format: 'pem',
+  }),
+)
+const envFile = join(scratch, '.env')
+writeFileSync(
+  envFile,
+  [
+    'TELEGRAM_ENV=test',
+    'BOT_TOKEN=1:rehearsal-only',
+    `OPERATOR_ID=${OPERATOR}`,
+    'API_ID=1',
+    'API_HASH=rehearsal-only',
+    `SERVER_KEYS=${fromExample(join(scratch, 'keys.pem'))}`,
+    `DATA_DIR=${fromExample(join(scratch, 'state'))}`,
+    'POLL_SECONDS=45',
+    'WATCH_LIMIT=7',
+    'TIME_ZONE=UTC',
+    '',
+  ].join('\n'),
+)
+process.env['POLL_SECONDS'] = '90'
+const config = readConfig({ envFile })
+claimEnvironment(config)
+
+/**
+ * Where the account keeps what is its own, and where the watch keeps its
+ * records: two directories, opened the way a real run opens them.
+ */
+const openAccountStore = (): KV<unknown> =>
+  file(join(config.dataDir, 'account'), { now: () => clock })
+let accountStore = openAccountStore()
+let watchStore: KV<unknown> = openRecords(config)
 
 /** How Telegram refuses a name nobody has. */
 const notOccupied = rpcError(400, 'USERNAME_NOT_OCCUPIED')
@@ -204,12 +281,15 @@ const build = (): PresenceWatch =>
 
 // ---- what the rehearsal looks at --------------------------------------------
 
+/** `--show` prints every message of the bot's beside the checks made of it. */
+const SHOW = process.argv.includes('--show')
 let heard = 0
 /** What the bot has said since this was last asked. */
 function said(): string[] {
   const texts = bot.calls.callsTo('sendMessage').map((call) => String(call.params['text']))
   const fresh = texts.slice(heard)
   heard = texts.length
+  if (SHOW) for (const text of fresh) console.log(text.replace(/^/gm, '      │ '))
 
   return fresh
 }
@@ -241,7 +321,126 @@ const push = async (who: Person, status: TlValue): Promise<string[]> => {
   return said()
 }
 
+/**
+ * Start a read and hold its answer back.
+ *
+ * What it will say is settled when the request arrives; `release` delivers it,
+ * after whatever the rehearsal has had happen in between.
+ */
+async function heldRead(): Promise<{ release: () => Promise<void> }> {
+  let open: (() => void) | undefined
+  account.once('users.getUsers', async (query) => {
+    const stale = answerUsers(query)
+    await new Promise<void>((resolve) => {
+      open = resolve
+    })
+
+    return stale
+  })
+  const travelling = watch.poll()
+  while (open === undefined) await new Promise((resolve) => setImmediate(resolve))
+  const deliver = open
+
+  return {
+    release: async () => {
+      deliver()
+      await travelling
+      await watch.settled()
+    },
+  }
+}
+
+/** Give a command while a read is held: the answer is there once the handler returns. */
+const commandNow = async (text: string): Promise<string[]> => {
+  await bot.send.command(text, { from: operator, chat: operatorChat })
+
+  return said()
+}
+
+/** What reading the configuration refuses with, once the environment is changed so. */
+function refusal(
+  change: Readonly<Record<string, string | undefined>>,
+  options: { needBot?: boolean } = {},
+): string {
+  const kept = new Map(Object.keys(change).map((name) => [name, process.env[name]]))
+  const put = (name: string, value: string | undefined): void => {
+    if (value === undefined) unset(name)
+    else process.env[name] = value
+  }
+  for (const [name, value] of Object.entries(change)) put(name, value)
+
+  try {
+    readConfig({ ...options, envFile: false })
+
+    return ''
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  } finally {
+    for (const [name, value] of kept) put(name, value)
+  }
+}
+
 // ---- the rehearsal -----------------------------------------------------------
+
+console.log('configuration, from a file that is not the real one')
+check(
+  config.environment === 'test' && config.operatorId === OPERATOR && config.botToken !== '',
+  'the settings are read from the file the reader is pointed at',
+)
+check(
+  config.dataDir === resolve(scratch, 'state'),
+  'a relative DATA_DIR is taken from the example’s directory, wherever the command is run',
+  config.dataDir,
+)
+check(
+  config.pollSeconds === 90 && config.limit === 7,
+  'a variable already in the environment wins over the file',
+)
+check(
+  readFileSync(join(config.dataDir, 'environment'), 'utf8').trim() === 'test',
+  'the state directory remembers the environment it was made for',
+)
+let mismatch = ''
+try {
+  claimEnvironment({ ...config, environment: 'production' })
+} catch (error) {
+  mismatch = String(error)
+}
+check(
+  mismatch.includes('was set up for the test environment'),
+  'and refuses to be used for the other one',
+  mismatch,
+)
+check(
+  refusal({ API_HASH: undefined }).includes('API_HASH is not set'),
+  'a setting that is missing is named',
+)
+const placeholder = refusal({ BOT_TOKEN: '123456:REPLACE_WITH_THE_BOT_TOKEN' })
+check(
+  placeholder.includes('BOT_TOKEN still holds the placeholder') && !placeholder.includes('123456'),
+  'a placeholder left in place is refused, and its value is not echoed',
+  placeholder,
+)
+check(
+  refusal({ BOT_TOKEN: undefined, OPERATOR_ID: undefined }, { needBot: false }) === '',
+  'signing in needs neither the token nor the operator',
+)
+check(
+  refusal({ OPERATOR_ID: '0' }).includes('OPERATOR_ID must be a whole number above zero'),
+  'an operator that is not an identifier is refused',
+)
+check(
+  refusal({ TELEGRAM_ENV: 'staging' }).includes('TELEGRAM_ENV must be'),
+  'an environment Telegram does not have is refused',
+)
+check(
+  refusal({ TIME_ZONE: 'Mars/Olympus' }).includes('TIME_ZONE is not a time zone'),
+  'a time zone the system does not know is refused before anything starts',
+)
+check(
+  refusal({ SERVER_KEYS: 'no-such-file.pem' }).includes('does not exist'),
+  'a key file that is not there is refused',
+)
 
 watch = build()
 await watch.start()
@@ -330,10 +529,26 @@ check(
   out[0]?.includes('статус действует до: 15.01 12:05:00 (время Telegram)') === true,
   'and the expiry is named as Telegram’s time, not as a start',
 )
+check(
+  out[0]?.includes('когда пользователь вошёл, Telegram не сообщает') === true,
+  'and it says that when the user arrived is not something Telegram tells',
+)
 check((await push(ada, online(300))).length === 0, 'the same update again says nothing')
-await advance(17 * 60_000 + 29_000 - 1)
+await advance(5 * 60_000)
+check(
+  (await push(ada, online(300))).length === 0,
+  'a status renewed with a later expiry is not a new arrival',
+)
+check((await push(ada, online(30))).length === 0, 'nor is one with an earlier expiry')
+await advance(12 * 60_000 + 29_000 - 1)
 ada.status = online(300)
 check(said().length === 0, 'reads that find the user still online say nothing')
+check(
+  (await command('/status @ada_sample'))[0]?.includes(
+    'первое наблюдение «в сети»: 15.01 12:00:00 (обновление)',
+  ) === true,
+  'the interval still begins where the user was first seen online',
+)
 clock += 1
 out = await push(ada, offline(0))
 check(
@@ -345,9 +560,18 @@ check(
 )
 check(
   out[0]?.includes(
-    'наблюдённый интервал: 17 мин 29 с — от замеченного начала (обновление, 15.01 12:00:00) до времени Telegram',
+    'оценка интервала: 17 мин 29 с — от первого наблюдения «в сети» (обновление, 15.01 12:00:00) до времени Telegram',
   ) === true,
-  'the interval is an observed one, with its basis',
+  'the interval is given as an estimate, with both of its ends named',
+  out,
+)
+check(
+  out[0]?.includes(
+    'это оценка, а не измерение: непрерывность между наблюдениями не подтверждена, часы компьютера и Telegram считаются согласованными',
+  ) === true &&
+    !out[0].includes('не меньше') &&
+    !out[0].includes('не больше'),
+  'and as nothing more: continuity is not claimed, and no bound is',
 )
 check((await push(ada, offline(0))).length === 0, 'the same offline update again says nothing')
 
@@ -370,10 +594,96 @@ boris.status = offline(0)
 await advance(60_000)
 out = said()
 check(
-  out[0]?.includes('не меньше') === true &&
-    out[0].includes('и не больше') &&
-    out[0].includes('начало замечено опросом, между'),
-  'its length is given as bounds, not as a figure',
+  out[0]?.includes(
+    'оценка интервала: 4 мин 39 с — от первого наблюдения «в сети» (опрос, 15.01 12:19:00) до времени Telegram',
+  ) === true,
+  'its length is estimated from the read that first found the user online',
+  out,
+)
+check(
+  out[0]?.includes(
+    'вход мог произойти раньше — после предыдущей проверки в 15.01 12:18:00, когда статус ещё не был «в сети»; тогда оценка — до 5 мин 39 с',
+  ) === true &&
+    out[0].includes('это оценка, а не измерение') &&
+    !out[0].includes('не меньше') &&
+    !out[0].includes('не больше'),
+  'with the check before it named, since the user may have arrived any time after that — and no bound',
+)
+
+console.log('times that contradict each other')
+await push(ada, online(300))
+await advance(10_000)
+out = await push(ada, offline(60))
+check(
+  out.length === 1 &&
+    out[0]?.includes(
+      'интервал не оценивается: это время раньше, чем первое наблюдение «в сети»',
+    ) === true &&
+    !out[0].includes('оценка интервала'),
+  'a last-seen earlier than the first sighting gives no figure',
+  out,
+)
+await push(ada, online(300))
+await advance(10_000)
+out = await push(ada, { _: 'userStatusOffline', was_online: seconds() + 120 })
+check(
+  out.length === 1 &&
+    out[0]?.includes('интервал не оценивается: это время позже момента, когда оно получено') ===
+      true &&
+    !out[0].includes('оценка интервала'),
+  'nor does a last-seen that lies ahead of the clock',
+  out,
+)
+out = await push(ada, offline(0))
+check(
+  out.length === 1 &&
+    out[0]?.startsWith('⚪') === true &&
+    !out[0].includes('между двумя наблюдениями'),
+  'and nothing is concluded from that time afterwards: no visit is inferred from it',
+  out,
+)
+await advance(30_000)
+out = await push(ada, offline(0))
+check(
+  out.length === 1 &&
+    out[0]?.includes('по данным Telegram пользователь был в сети между двумя наблюдениями') ===
+      true &&
+    out[0].includes('его длительность неизвестна'),
+  'a later last-seen with nothing seen in between is a visit of unknown length',
+  out,
+)
+
+console.log('evidence that Telegram’s own times show to be older')
+const lastSeen = seconds()
+const known = (await command('/status @ada_sample'))[0]?.split('\n').slice(0, 3).join('\n')
+check(
+  (await push(ada, { _: 'userStatusOffline', was_online: lastSeen - 100 })).length === 0,
+  'an update with an earlier last-seen changes nothing',
+)
+check(
+  (await push(ada, { _: 'userStatusOnline', expires: lastSeen - 10 })).length === 0,
+  'nor does an online status that had run out before the user was last seen',
+)
+ada.status = { _: 'userStatusOffline', was_online: lastSeen - 500 }
+await advance(60_000)
+check(
+  said().length === 0,
+  'nor does a read, asked for later, that answers with an earlier last-seen',
+)
+check(
+  known !== undefined &&
+    (await command('/status @ada_sample'))[0]?.split('\n').slice(0, 3).join('\n') === known,
+  'what is held of the user is what it was',
+)
+await push(ada, online(300))
+out = await push(ada, { _: 'userStatusOffline', was_online: 0 })
+check(
+  out.length === 1 &&
+    out[0]?.includes('когда пользователь был в сети в последний раз, Telegram не сообщил') ===
+      true &&
+    out[0].includes('времени конца Telegram не дал') &&
+    !out[0].includes('оценка интервала'),
+  'an offline status with no time in it is reported as that, with no figure',
   out,
 )
 
@@ -407,11 +717,12 @@ check(
   out,
 )
 out = await command('/status @grace_sample')
-check(out[0]?.includes('начало неизвестно') === true, '/status says so too')
+check(out[0]?.includes('когда вошёл(ла), неизвестно') === true, '/status says so too')
 out = await push(grace, offline(0))
 check(
-  out[0]?.includes('интервал не завершён: когда пользователь вошёл, неизвестно') === true &&
-    !out[0].includes('наблюдённый интервал'),
+  out[0]?.includes(
+    'интервал не оценивается: пользователь уже был в сети, когда началось наблюдение',
+  ) === true && !out[0].includes('оценка интервала'),
   'going offline later does not give that interval a length',
   out,
 )
@@ -432,33 +743,35 @@ check(
   'a name with markup in it is escaped',
   out,
 )
-let release: (() => void) | undefined
-account.once('users.getUsers', async (query) => {
-  // Answered with what was true when the request left, after an update has said otherwise.
-  const stale = answerUsers(query)
-  await new Promise<void>((resolve) => {
-    release = resolve
-  })
-
-  return stale
-})
-const travelling = watch.poll()
-while (release === undefined) await new Promise((resolve) => setImmediate(resolve))
+// What the read will answer with: Eve as she was when the request left, offline,
+// and Ada, of whom nothing else is heard meanwhile, online.
+ada.status = online(300)
+let read = await heldRead()
 await account.send.update({ _: 'updateUserStatus', user_id: eve.id, status: online(300) })
 eve.status = online(300)
-release()
-await travelling
-await watch.settled()
+await read.release()
 out = said()
+const ofEve = out.filter((text) => text.includes('Eve'))
 check(
-  out.length === 1 && out[0]?.startsWith('🟢') === true,
-  'the update is reported, and the older answer does not undo it',
+  ofEve.length === 1 && ofEve[0]?.startsWith('🟢') === true,
+  'the update is reported, and the answer to the earlier request does not undo it',
+  out,
+)
+check(
+  out.length === 2 &&
+    out.some(
+      (text) =>
+        text.startsWith('🟢') && text.includes('Ada') && text.includes('(местное время, опрос)'),
+    ),
+  'the same answer is still taken for a user nothing newer was heard of',
   out,
 )
 check(
   (await command('/status @eve_sample'))[0]?.includes('сейчас: в сети') === true,
   'the user is still recorded as online',
 )
+await advance(45_000)
+await push(ada, offline(0))
 
 console.log('a notification that does not go through')
 bot.calls.failOnce('sendMessage')
@@ -476,6 +789,51 @@ const delivered = bot.sent.filter(
 )
 check(delivered.length === 1, 'it is delivered on the next pass, once', delivered.length)
 said()
+
+console.log('a user unwatched and watched again while a read travels')
+// What the read will answer with is Boris as the old watch knew him: offline.
+read = await heldRead()
+await commandNow('/unwatch @boris_sample')
+boris.status = online(300)
+out = await commandNow('/watch @boris_sample')
+check(
+  out.length === 1 && out[0]?.includes('Сейчас: в сети') === true,
+  'the new watch begins from what is true now',
+  out,
+)
+await read.release()
+out = said()
+check(out.length === 0, 'and the answer to a request older than the watch says nothing of it', out)
+out = await command('/status @boris_sample')
+check(
+  out[0]?.includes('сейчас: в сети') === true && out[0].includes('когда вошёл(ла), неизвестно'),
+  'the user is still recorded as online, since before the watch began',
+  out,
+)
+await push(boris, offline(0))
+
+console.log('the link to Telegram drops while a read travels')
+// The answer is composed before the gap — Eve online — and delivered after it.
+eve.status = online(300)
+read = await heldRead()
+await watch.connection('connecting')
+clock += 120_000
+await watch.connection('connected')
+const readsAtGap = reads()
+await read.release()
+out = said()
+check(out.length === 0, 'an answer that crossed the gap is not taken for how things stand', out)
+await advance(30_000)
+out = said()
+check(
+  reads() > readsAtGap &&
+    out.length === 1 &&
+    out[0]?.startsWith('🟢') === true &&
+    out[0].includes('Eve') &&
+    out[0].includes('(местное время, опрос)'),
+  'a read asked for after the gap is',
+  out,
+)
 
 console.log('Telegram asks the account to wait')
 await push(boris, online(900))
@@ -498,8 +856,9 @@ await advance(2_000)
 check(reads() === afterRefusal + 1, 'reading resumes once they have passed')
 out = await push(boris, offline(0))
 check(
-  out[0]?.includes('интервал прерван: Telegram попросил подождать 300 с') === true &&
-    !out[0].includes('наблюдённый интервал'),
+  out[0]?.includes('наблюдение прервано: Telegram попросил подождать 300 с') === true &&
+    out[0].includes('интервал не оценивается') &&
+    !out[0].includes('оценка интервала'),
   'the interval open across the wait is reported as interrupted',
   out,
 )
@@ -512,7 +871,7 @@ await watch.connection('connected')
 await watch.settled()
 out = await command('/status @boris_sample')
 check(
-  out[0]?.includes('текущий интервал прерван: соединение прерывалось с') === true,
+  out[0]?.includes('наблюдение текущего интервала прервано: соединение прерывалось с') === true,
   'an interval open across a disconnection is marked',
   out,
 )
@@ -527,13 +886,26 @@ await watch.stop()
 check(!watch.scheduled && pending().length === 0, 'stopping leaves no timer waiting')
 await account.dispose()
 clock += 3_600_000
+// Nothing is carried over in memory: both stores are opened again from their directories.
+accountStore = openAccountStore()
+watchStore = openRecords(config)
 account = scriptAccount()
 await account.account.connect()
 watch = build()
 grace.status = online(900)
 await watch.start()
-await watch.settled()
+await advance(0)
 out = said()
+const sinceRestart = account.calls.calls
+const firstRead = sinceRestart.find((call) => call.method === 'users.getUsers')
+const inputs = (firstRead?.query['id'] ?? []) as { user_id?: bigint; access_hash?: bigint }[]
+check(
+  inputs.length === 5 &&
+    inputs.every((input) => input.access_hash === (input.user_id ?? 0n) * 7n) &&
+    sinceRestart.every((call) => call.method !== 'contacts.resolveUsername'),
+  'the account reads the watched users from what it kept on disk, looking no name up again',
+  sinceRestart.map((call) => call.method),
+)
 check(
   out.some(
     (text) =>
@@ -551,8 +923,9 @@ check(
 )
 out = await push(grace, offline(0))
 check(
-  out[0]?.includes('интервал прерван: наблюдение не велось с') === true &&
-    !out[0].includes('наблюдённый интервал'),
+  out[0]?.includes('наблюдение прервано: наблюдение не велось с') === true &&
+    out[0].includes('интервал не оценивается') &&
+    !out[0].includes('оценка интервала'),
   'an interval open across the restart is not joined over the gap',
   out,
 )
@@ -595,9 +968,18 @@ out = await command('/unwatch 1000002')
 check(out[0]?.includes('Boris') === true, 'an identifier names a watch too')
 check((await command('/list'))[0]?.includes('Наблюдаем 3 из 5') === true, 'three are left')
 
-console.log('shutdown')
-await watch.stop()
-check(!watch.scheduled && pending().length === 0, 'no timer is left waiting')
+console.log('shutdown, with a read still travelling')
+read = await heldRead()
+let stopped = false
+const stopping = watch.stop().then(() => {
+  stopped = true
+})
+// Real time, for once: long enough for a stop that did not wait to have finished.
+await new Promise((resolve) => setTimeout(resolve, 100))
+check(!stopped, 'stopping waits for the read in flight')
+await read.release()
+await stopping
+check(!watch.scheduled && pending().length === 0, 'and leaves no timer waiting')
 const before = bot.calls.callsTo('sendMessage').length
 await bot.send.command('/list', { from: operator, chat: operatorChat })
 await account.send.update({
@@ -617,4 +999,9 @@ check(
 
 await account.dispose()
 await bot.dispose()
+for (const [name, value] of outside) {
+  if (value === undefined) unset(name)
+  else process.env[name] = value
+}
+rmSync(scratch, { recursive: true, force: true })
 console.log(`the presence watch behaves as it says: ${checks} checks`)

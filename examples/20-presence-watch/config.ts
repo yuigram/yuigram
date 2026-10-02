@@ -8,7 +8,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import {
   Account,
   type AccountOptions,
@@ -47,8 +47,26 @@ function required(name: string): string {
   if (value === undefined || value === '') {
     throw new Error(`${name} is not set. See examples/20-presence-watch/.env.example.`)
   }
+  // The placeholders of `.env.example`, copied and not filled in. The value is
+  // not echoed: what is there may be a half-typed credential.
+  if (value.includes('REPLACE_WITH')) {
+    throw new Error(`${name} still holds the placeholder from .env.example.`)
+  }
 
   return value
+}
+
+/** A time zone the runtime can format in, or a refusal before anything is started. */
+function timeZone(): string | undefined {
+  const zone = process.env['TIME_ZONE']
+  if (zone === undefined || zone === '') return undefined
+  try {
+    new Intl.DateTimeFormat('ru-RU', { timeZone: zone })
+  } catch {
+    throw new Error('TIME_ZONE is not a time zone this system knows, e.g. Europe/Moscow.')
+  }
+
+  return zone
 }
 
 function whole(name: string, fallback?: number): number {
@@ -69,17 +87,38 @@ function whole(name: string, fallback?: number): number {
   return value
 }
 
-/** Read the configuration. `needBot` is false for the sign-in command, which uses no bot. */
-export function readConfig(needBot = true): Config {
-  const envFile = join(HERE, '.env')
-  if (existsSync(envFile)) process.loadEnvFile(envFile)
+/** A path as the configuration gives it: relative ones are taken from this example's directory. */
+const fromHere = (path: string): string => resolve(HERE, path)
+
+export interface ReadOptions {
+  /** False for the sign-in command, which uses no bot. */
+  readonly needBot?: boolean
+  /**
+   * The file settings are read from before the environment is consulted.
+   * `.env` in this directory unless given; `false` reads the environment alone.
+   */
+  readonly envFile?: string | false
+}
+
+/**
+ * Read the configuration.
+ *
+ * `.env` is looked for beside this file, so the commands work from the
+ * repository root or from anywhere else, and a variable already set in the
+ * environment wins over the file. Relative paths in `SERVER_KEYS` and
+ * `DATA_DIR` are taken from this directory for the same reason.
+ */
+export function readConfig(options: ReadOptions = {}): Config {
+  const needBot = options.needBot ?? true
+  const envFile = options.envFile ?? join(HERE, '.env')
+  if (envFile !== false && existsSync(envFile)) process.loadEnvFile(envFile)
 
   const environment = process.env['TELEGRAM_ENV'] ?? 'production'
   if (environment !== 'production' && environment !== 'test') {
     throw new Error('TELEGRAM_ENV must be "production" or "test".')
   }
 
-  const keysFile = required('SERVER_KEYS')
+  const keysFile = fromHere(required('SERVER_KEYS'))
   if (!existsSync(keysFile)) throw new Error(`SERVER_KEYS names ${keysFile}, which does not exist.`)
 
   return {
@@ -101,10 +140,10 @@ export function readConfig(needBot = true): Config {
       }),
       name: 'observer',
     },
-    dataDir: process.env['DATA_DIR'] ?? join(HERE, 'state'),
+    dataDir: fromHere(process.env['DATA_DIR'] ?? 'state'),
     pollSeconds: whole('POLL_SECONDS', 60),
     limit: whole('WATCH_LIMIT', 10),
-    timeZone: process.env['TIME_ZONE'],
+    timeZone: timeZone(),
   }
 }
 
@@ -130,6 +169,24 @@ export function claimEnvironment(config: Config): void {
       `${config.dataDir} was set up for the ${made} environment and TELEGRAM_ENV is ${config.environment}. ` +
         'Use another DATA_DIR for another environment.',
     )
+  }
+}
+
+/**
+ * The configuration for a command: read, and its state directory claimed.
+ *
+ * What is wrong with it is said in one line, and the command ends there —
+ * before a client exists, so nothing has been connected to.
+ */
+export function configure(options: ReadOptions = {}): Config {
+  try {
+    const config = readConfig(options)
+    claimEnvironment(config)
+
+    return config
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
   }
 }
 

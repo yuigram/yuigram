@@ -17,11 +17,10 @@
  */
 
 import { App } from 'yuigram'
-import { claimEnvironment, openAccount, openBot, openRecords, readConfig } from './config.js'
+import { configure, openAccount, openBot, openRecords } from './config.js'
 import { presenceWatch } from './watch.js'
 
-const config = readConfig()
-claimEnvironment(config)
+const config = configure()
 
 const bot = openBot(config)
 const account = openAccount(config)

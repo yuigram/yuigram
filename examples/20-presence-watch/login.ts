@@ -17,7 +17,7 @@
 
 import { createInterface } from 'node:readline/promises'
 import { Writable } from 'node:stream'
-import { claimEnvironment, openAccount, readConfig } from './config.js'
+import { configure, openAccount } from './config.js'
 
 /** Somewhere for readline to echo to when what is typed must not be shown. */
 const nowhere = new Writable({
@@ -42,8 +42,7 @@ async function ask(question: string, hidden = false): Promise<string> {
   }
 }
 
-const config = readConfig(false)
-claimEnvironment(config)
+const config = configure({ needBot: false })
 const account = openAccount(config)
 
 try {

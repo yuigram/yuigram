@@ -26,3 +26,6 @@ state/
 *.db
 *.db-wal
 *.db-shm
+
+# Telegram server public keys the example is pointed at. Public, but yours to supply.
+*.pem
