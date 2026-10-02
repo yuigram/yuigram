@@ -50,8 +50,8 @@ await account.start()
 ```
 
 A new account signs in first with `account.signIn({ phone, code, password })`; the
-[repository README](https://github.com/yuigram/yuigram/blob/master/README.md#an-account) walks
-through it. The session directory is a signed-in account: keep it secret.
+[account example](https://github.com/yuigram/yuigram/tree/master/examples/03-basic-userbot)
+walks through it. The session directory is a signed-in account: keep it secret.
 
 ## What you get
 
