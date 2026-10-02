@@ -115,6 +115,32 @@ export async function launchUserElsewhere(initData: string) {
 `error.problem`: `'malformed'`, `'mismatch'`, `'unsigned'`, `'expired'`, `'future'` или
 `'unsupported'`. Токен бота остаётся на сервере. Подробности — [bot-api.md](../bot-api.md) §4.
 
+Для собственных тестов `hashInitData(fields, { token })` вычисляет `hash`, с которым эти поля
+пройдут проверку, — с токеном, придуманным для тестов. Это для записи данных, а не для их
+проверки: проверяет только `verifyInitData`.
+
+## Слот-машина
+
+Значение 🎰 — число от 1 до 64, в котором закодированы три барабана. `yuigram/dice` читает их
+слева направо:
+
+```ts
+import { slotMachineReels } from 'yuigram/dice'
+
+slotMachineReels(64) // ['seven', 'seven', 'seven']
+slotMachineReels(2) // ['grapes', 'bar', 'bar']
+
+bot.onMessage((message) => {
+  if (message.dice?.emoji !== '🎰') return
+  const [left, center, right] = slotMachineReels(message.dice.value)
+  if (left === center && center === right) return message.reply(`три ${left}`)
+})
+```
+
+Символы — `'bar'`, `'grapes'`, `'lemon'`, `'seven'`. Три одинаковых выпадают при значениях 1, 22,
+43 и 64; 64 — три семёрки. Значение вне диапазона 1–64 — `ValidationError`. У остальных кубиков
+значение и есть выпавшая грань, расшифровывать его не нужно.
+
 ## Ошибки и повторы
 
 Все ошибки фреймворка наследуют `YuigramError`. Основные ветви:

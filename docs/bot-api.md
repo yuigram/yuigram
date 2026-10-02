@@ -403,6 +403,34 @@ A successful check is not a session. Anyone holding the text can present it agai
 [security.md](security.md) §7. The entry point runs on the Web Crypto API alone and imports
 nothing from Node, and a program that never imports it does not load it.
 
+`hashInitData(fields, { token })` answers the `hash` those fields carry when they are the bot's —
+what an application's own tests need to write launch data their endpoint will accept, under a
+token made up for them. It is for writing, not for checking: `verifyInitData` compares in
+constant time and applies the age policy, and comparing two strings by hand does neither.
+
+### Dice
+
+A dice arrives as an emoji and a number, and for five of the six emoji the number is the face.
+A 🎰 is the exception: its value, 1 to 64, encodes three reels, and `yuigram/dice` reads them.
+
+```ts
+import { slotMachineReels } from 'yuigram/dice'
+
+bot.onMessage((message) => {
+  const dice = message.dice
+  if (dice?.emoji !== '🎰') return
+
+  const [left, center, right] = slotMachineReels(dice.value)
+  if (left === center && center === right) return message.reply(`three of ${left}`)
+})
+```
+
+The value less one is three base-four digits, the left reel lowest, and a digit names `'bar'`,
+`'grapes'`, `'lemon'` or `'seven'` in that order — so 1, 22, 43 and 64 are the three of a kind
+Telegram's apps animate as a win, and 64 is three sevens. A value outside 1 to 64 is a
+`ValidationError` rather than a guess. The same function reads an account's
+`message.media.diceValue`.
+
 ---
 
 ## 4.1 Payloads, built

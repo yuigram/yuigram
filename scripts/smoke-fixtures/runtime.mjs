@@ -16,6 +16,7 @@ import {
   inline,
   media,
   memory,
+  parseCommand,
   readLink,
   Router,
   schemaInfo,
@@ -23,8 +24,15 @@ import {
   throttle,
   writeLink,
 } from 'yuigram'
+import { slotMachineReels } from 'yuigram/dice'
 import { mockBot } from 'yuigram/testing'
-import { InitDataError, readInitData, verifyInitData, verifyInitDataSignature } from 'yuigram/web-app'
+import {
+  hashInitData,
+  InitDataError,
+  readInitData,
+  verifyInitData,
+  verifyInitDataSignature,
+} from 'yuigram/web-app'
 import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const checks = []
@@ -272,6 +280,25 @@ const problems = await Promise.all([
 ].map((pending) => pending.then(() => 'accepted', (error) => (error instanceof InitDataError ? error.problem : 'other'))))
 check('altered, old and unsigned launch data are each refused for what they are', () =>
   problems.join(' ') === 'mismatch expired unsigned',
+)
+const written = await hashInitData(launch, { token: placeholder })
+check('the hash of launch data is written as it was computed outside', () =>
+  written === 'e58bd23de3144a2f335326d90f673314212b5fd69bef9b771670af746442e042',
+)
+
+// The utilities that need no client.
+check('a command is parsed from text as a handler would receive it', () => {
+  const command = parseCommand('/give@shop_bot 10 gold')
+  return (
+    command?.name === 'give' &&
+    command.mention === 'shop_bot' &&
+    command.rest === '10 gold' &&
+    command.args.join() === '10,gold' &&
+    parseCommand('see /help') === undefined
+  )
+})
+check('a slot machine shows its reels left to right', () =>
+  slotMachineReels(64).join() === 'seven,seven,seven' && slotMachineReels(2).join() === 'grapes,bar,bar',
 )
 
 for (const [name, result] of checks) {

@@ -10,6 +10,8 @@ Mini App launch data, in a new entry point: `yuigram/web-app` (`@yuigram/bot-api
 the production key or, with `publicKey: 'test'`, the test environment's. Both follow Telegram's
 published data-check-strings and take a required `maxAge`, so the window in which the same text
 can be presented again is always stated.
+`hashInitData` answers the `hash` a set of fields carries under a token, for writing launch data
+in an application's own tests.
 
 Text that could be read two ways — a pair with no `=`, a field named twice, an escape that is not
 UTF-8, a line feed — is refused rather than guessed at. A refusal is an `InitDataError` whose

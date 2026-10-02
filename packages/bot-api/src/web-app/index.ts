@@ -6,11 +6,13 @@
  */
 
 export {
+  hashInitData,
   type InitData,
   InitDataError,
   type InitDataFreshness,
   InitDataKey,
   type InitDataProblem,
+  type InitDataSecret,
   readInitData,
   TELEGRAM_INIT_DATA_KEYS,
   type VerifyInitDataOptions,

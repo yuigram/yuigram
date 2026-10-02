@@ -277,6 +277,21 @@ dispatcher indexes. That is how most people discover that a member joining has
 its own kind rather than arriving as a message to branch on. `onText`, `onCommand` and
 `onCallbackQuery` are hand-written, because each matches as well as selects.
 
+The parser `onCommand` matches with is exported, for text read outside an update — a caption, a
+line from a queue, a test:
+
+```ts
+import { parseCommand } from 'yuigram'
+
+parseCommand('/give@shop_bot 10 gold')
+// { name: 'give', mention: 'shop_bot', rest: '10 gold', args: ['10', 'gold'] }
+parseCommand('see /help') // undefined: a command opens the text
+```
+
+It reads the text alone, not its entities, and ignores whitespace around it. Whether a suffixed
+command names this bot is `onCommand`'s question; with the parser alone, compare `mention` with
+the bot's username without regard to case.
+
 A shorthand is not only shorter — it types more precisely. `onText` matched on the text, so
 `message.text` is a `string` inside it; `onMessage` cannot promise that, because a photo
 without a caption is a message with no text. Registration is what earns the narrowing.
@@ -1034,7 +1049,7 @@ cosmetic:
 | **Consistent argument order** | Target, then content, then options — everywhere. |
 | **Predictable naming** | Everything that subscribes is `on…`; `use` / `extend` / `stop` mean one thing each. A model that has seen `onMessage` guesses `onCommand` correctly. |
 | **The credential is in the name** | `Bot.fromToken` versus `Account.fromSession` — a model picks the constructor from what it has, rather than assembling an options object it has to get right. |
-| **One package, few entry points** | Ordinary code imports from `'yuigram'`. The optional entry points each name what they hold — `yuigram/testing`, `yuigram/webhook`, `yuigram/worker`, `yuigram/markup`, `yuigram/stream`, `yuigram/rich`, `yuigram/web-app`, `yuigram/account-filters`, `yuigram/account-utils` — so a program loads only what it uses. |
+| **One package, few entry points** | Ordinary code imports from `'yuigram'`. The optional entry points each name what they hold — `yuigram/testing`, `yuigram/webhook`, `yuigram/worker`, `yuigram/markup`, `yuigram/stream`, `yuigram/rich`, `yuigram/web-app`, `yuigram/dice`, `yuigram/account-filters`, `yuigram/account-utils` — so a program loads only what it uses. |
 | **Narrowing over casting** | Filters and registration narrow; `as` is never required in normal use. |
 | **Discriminated escape** | `event.transport` is a literal union, so a model can branch on it correctly. |
 

@@ -16,22 +16,9 @@
  *   for another bot is worse than missing one.
  */
 
-/**
- * A parsed command.
- *
- * `/give 10 gold` yields name `give`, args `['10', 'gold']`, and the raw
- * argument text `10 gold`.
- */
-export interface ParsedCommand {
-  /** Command name, without the slash or the `@bot` suffix. */
-  readonly name: string
-  /** The `@bot` suffix, when present. */
-  readonly mention: string | undefined
-  /** Everything after the command, unsplit. */
-  readonly rest: string
-  /** `rest` split on whitespace, empty when there is none. */
-  readonly args: readonly string[]
-}
+import type { ParsedCommand } from './events/types.js'
+
+export type { ParsedCommand }
 
 /**
  * Matches a leading command.
@@ -41,7 +28,23 @@ export interface ParsedCommand {
  */
 const COMMAND = /^\/([A-Za-z0-9_]+)(?:@([A-Za-z0-9_]+))?(?:[\s]+([\s\S]*))?$/
 
-/** Parse a leading command from message text, or `undefined` if there is none. */
+/**
+ * Parse a leading command from text, or `undefined` if there is none.
+ *
+ * What `onCommand` and `f.command` read, without the question of whom the
+ * command is for: `/give@shop_bot 10 gold` yields name `give`, mention
+ * `shop_bot`, rest `10 gold` and args `['10', 'gold']`.
+ *
+ * The text is read alone, not through its entities, and surrounding whitespace
+ * is ignored as Telegram trims it from a message. The command must open the
+ * text: a slash, a name of Latin letters, digits and underscores, an optional
+ * `@` suffix of the same characters, then whitespace or the end. A command
+ * further into the text, a bare slash, or a name followed by anything else is
+ * not one. `rest` is trimmed, and `args` splits it on runs of whitespace.
+ *
+ * Whether a suffixed command names this bot is the caller's question here:
+ * compare `mention` with the bot's username without regard to case.
+ */
 export function parseCommand(text: string | undefined): ParsedCommand | undefined {
   if (text === undefined) return undefined
 

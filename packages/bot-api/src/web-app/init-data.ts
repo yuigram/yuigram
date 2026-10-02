@@ -124,12 +124,13 @@ export interface InitDataFreshness {
   readonly clockSkew?: number
 }
 
-/** Options for {@link verifyInitData}: the bot's token, or a key derived from it once. */
-export type VerifyInitDataOptions = InitDataFreshness &
-  (
-    | { readonly token: string; readonly key?: never }
-    | { readonly key: InitDataKey; readonly token?: never }
-  )
+/** The bot's token, or a key derived from it once with {@link InitDataKey.fromToken}. */
+export type InitDataSecret =
+  | { readonly token: string; readonly key?: never }
+  | { readonly key: InitDataKey; readonly token?: never }
+
+/** Options for {@link verifyInitData}: the bot's token or key, and the age policy. */
+export type VerifyInitDataOptions = InitDataFreshness & InitDataSecret
 
 /** Options for {@link verifyInitDataSignature}. */
 export interface VerifyInitDataSignatureOptions extends InitDataFreshness {
@@ -186,7 +187,7 @@ export class InitDataKey {
     const secret = new Uint8Array(await subtle.sign('HMAC', constant, encoder.encode(token)))
 
     try {
-      return new InitDataKey(await subtle.importKey('raw', secret, HMAC, false, ['verify']))
+      return new InitDataKey(await subtle.importKey('raw', secret, HMAC, false, ['sign', 'verify']))
     } finally {
       secret.fill(0)
     }
@@ -239,11 +240,7 @@ export async function verifyInitData(
   options: VerifyInitDataOptions,
 ): Promise<InitData> {
   const policy = freshness(options)
-  const key =
-    options.key !== undefined
-      ? keys.get(options.key)
-      : keys.get(await InitDataKey.fromToken(options.token))
-  if (key === undefined) throw new ConfigError('the key was not made by InitDataKey.fromToken')
+  const key = await hmacKey(options)
 
   const fields = fieldsOf(initData)
   const data = interpret(fields)
@@ -258,6 +255,36 @@ export async function verifyInitData(
   if (!valid) throw new InitDataError('the launch data does not carry this bot’s hash', 'mismatch')
 
   return fresh(data, policy)
+}
+
+/**
+ * The `hash` launch data carries when it is this bot's: the hexadecimal
+ * HMAC-SHA-256 of its data-check-string, under the key derived from the token.
+ *
+ * For writing launch data — a fixture in an application's own tests, signed
+ * with a token made up for them — and for reporting what was expected. Any
+ * `hash` already in the text is left out of the computation, so the answer is
+ * the same before and after one is appended:
+ *
+ * ```ts
+ * const fields = 'auth_date=1700000000&user=%7B%22id%22%3A1%2C%22first_name%22%3A%22Ada%22%7D'
+ * const launch = `${fields}&hash=${await hashInitData(fields, { token })}`
+ * ```
+ *
+ * To decide whether launch data is genuine, use {@link verifyInitData}: it
+ * compares in constant time and applies the age policy, and comparing two
+ * strings by hand does neither. Telegram's `signature` cannot be written this
+ * way — only Telegram holds that key.
+ *
+ * @throws InitDataError — `'malformed'` when the text does not read as fields, or `'unsupported'`.
+ * @throws ConfigError when the token or the key is not usable.
+ */
+export async function hashInitData(initData: string, secret: InitDataSecret): Promise<string> {
+  const key = await hmacKey(secret)
+  const signed = checkString(fieldsOf(initData), ['hash'])
+  const digest = new Uint8Array(await subtleCrypto().sign('HMAC', key, encoder.encode(signed)))
+
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 /**
@@ -330,6 +357,16 @@ export async function verifyInitDataSignature(
 }
 
 type Fields = ReadonlyMap<string, string>
+
+async function hmacKey(secret: InitDataSecret): Promise<CryptoKey> {
+  const key =
+    secret.key !== undefined
+      ? keys.get(secret.key)
+      : keys.get(await InitDataKey.fromToken(secret.token))
+  if (key === undefined) throw new ConfigError('the key was not made by InitDataKey.fromToken')
+
+  return key
+}
 
 interface Freshness {
   readonly maxAge: number

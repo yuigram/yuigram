@@ -58,6 +58,57 @@ describe('parseCommand', () => {
     expect(parseCommand('/')).toBeUndefined()
     expect(parseCommand('/ start')).toBeUndefined()
   })
+
+  it('answers with the name, the mention, the rest and its words, and nothing else', () => {
+    expect(parseCommand('/give@shop_bot 10 gold')).toEqual({
+      name: 'give',
+      mention: 'shop_bot',
+      rest: '10 gold',
+      args: ['10', 'gold'],
+    })
+    expect(parseCommand('/start')).toEqual({
+      name: 'start',
+      mention: undefined,
+      rest: '',
+      args: [],
+    })
+  })
+
+  it('ignores whitespace around the text, as Telegram trims a message', () => {
+    expect(parseCommand('  /start  ')).toEqual(parseCommand('/start'))
+    expect(parseCommand('/give 10 gold \n')?.rest).toBe('10 gold')
+  })
+
+  it('ends the command at any whitespace, and keeps the rest as written inside', () => {
+    expect(parseCommand('/give\t10\t\tgold')).toMatchObject({
+      rest: '10\t\tgold',
+      args: ['10', 'gold'],
+    })
+    expect(parseCommand('/note first line\nsecond  line')).toMatchObject({
+      rest: 'first line\nsecond  line',
+      args: ['first', 'line', 'second', 'line'],
+    })
+  })
+
+  it('takes the name up to its last letter, digit or underscore', () => {
+    expect(parseCommand('/a_b9')?.name).toBe('a_b9')
+    // Anything else directly after the name means the text is not a command.
+    for (const text of ['/start!', '/a/b', '/start-now', '/start@', '/start@my-bot', '/старт']) {
+      expect(parseCommand(text), text).toBeUndefined()
+    }
+  })
+
+  it('reads a mention of any length, leaving whose it is to the caller', () => {
+    expect(parseCommand('/start@ab')?.mention).toBe('ab')
+    expect(parseCommand('/start@Shop_Bot x')).toMatchObject({ mention: 'Shop_Bot', rest: 'x' })
+  })
+
+  it('reads only a command that opens the text', () => {
+    // The text decides, not its entities: a command further in is not one.
+    expect(parseCommand('see /help')).toBeUndefined()
+    expect(parseCommand('@shop_bot /start')).toBeUndefined()
+    expect(parseCommand('')).toBeUndefined()
+  })
 })
 
 describe('addressedToUs', () => {

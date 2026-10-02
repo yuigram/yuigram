@@ -10,6 +10,7 @@
 import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import * as accountUtils from '../src/account-utils.js'
+import * as dice from '../src/dice.js'
 import * as yuigram from '../src/index.js'
 import * as testing from '../src/testing.js'
 import * as webApp from '../src/web-app.js'
@@ -239,6 +240,16 @@ describe('the entry point', () => {
     ).toThrow(yuigram.LinkError)
   })
 
+  it('offers the command parser a bot dispatches with, for text read outside an update', () => {
+    expect(yuigram.parseCommand('/give@shop_bot 10 gold')).toEqual({
+      name: 'give',
+      mention: 'shop_bot',
+      rest: '10 gold',
+      args: ['10', 'gold'],
+    })
+    expect(yuigram.parseCommand('see /help')).toBeUndefined()
+  })
+
   it('offers the walk over a list that arrives one page at a time', () => {
     expect(typeof yuigram.walkDialogs).toBe('function')
     expect(typeof yuigram.walkHistory).toBe('function')
@@ -462,6 +473,23 @@ describe('the subpaths', () => {
     // Most bots never open a Mini App, and a page that checks launch data
     // needs nothing else from the framework.
     expect('verifyInitData' in yuigram).toBe(false)
+  })
+
+  it('writes the hash a fixture of launch data needs', async () => {
+    const fields = 'auth_date=1700000000&start_param=demo'
+    const token = '1:x'
+    const launch = `${fields}&hash=${await webApp.hashInitData(fields, { token })}`
+
+    await expect(
+      webApp.verifyInitData(launch, { token, maxAge: Number.POSITIVE_INFINITY }),
+    ).resolves.toMatchObject({ start_param: 'demo' })
+  })
+
+  it('exposes the reels of a slot machine, and keeps them out of the main entry point', () => {
+    expect(dice.slotMachineReels(64)).toEqual(['seven', 'seven', 'seven'])
+    expect(dice.slotMachineReels(2)).toEqual(['grapes', 'bar', 'bar'])
+    expect(() => dice.slotMachineReels(65)).toThrow(yuigram.ValidationError)
+    expect('slotMachineReels' in yuigram).toBe(false)
   })
 })
 

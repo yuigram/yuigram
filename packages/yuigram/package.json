@@ -60,6 +60,11 @@
       "import": "./dist/rich.js",
       "default": "./dist/rich.js"
     },
+    "./dice": {
+      "types": "./dist/dice.d.ts",
+      "import": "./dist/dice.js",
+      "default": "./dist/dice.js"
+    },
     "./web-app": {
       "types": "./dist/web-app.d.ts",
       "import": "./dist/web-app.js",

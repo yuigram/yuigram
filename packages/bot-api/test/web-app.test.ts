@@ -12,6 +12,7 @@
 import { ConfigError } from '@yuigram/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  hashInitData,
   InitDataError,
   InitDataKey,
   readInitData,
@@ -244,6 +245,49 @@ describe('checking the hash, with the bot token', () => {
     await expect(
       verifyInitData(SIGNED, { key: {} as InitDataKey, maxAge: Infinity }),
     ).rejects.toThrow(ConfigError)
+  })
+})
+
+describe('writing the hash', () => {
+  const withoutHash = (initData: string) => withField(initData, 'hash', undefined)
+
+  it('computes the hash that was computed independently', async () => {
+    expect(await hashInitData(withoutHash(SIGNED), { token: TOKEN })).toBe(HASH)
+    expect(
+      await hashInitData(withoutHash(UNSIGNED), { key: await InitDataKey.fromToken(TOKEN) }),
+    ).toBe('e58bd23de3144a2f335326d90f673314212b5fd69bef9b771670af746442e042')
+  })
+
+  it('leaves a hash already in the text out of the computation', async () => {
+    expect(await hashInitData(SIGNED, { token: TOKEN })).toBe(HASH)
+    expect(await hashInitData(withField(SIGNED, 'hash', 'f'.repeat(64)), { token: TOKEN })).toBe(
+      HASH,
+    )
+  })
+
+  it('writes launch data the check accepts, for a fixture of the application’s own', async () => {
+    const fields = 'auth_date=1700000100&user=%7B%22id%22%3A7%2C%22first_name%22%3A%22Test%22%7D'
+    const launch = `${fields}&hash=${await hashInitData(fields, { token: TOKEN })}`
+
+    await expect(
+      verifyInitData(launch, { token: TOKEN, maxAge: 60, now: 1_700_000_100 }),
+    ).resolves.toMatchObject({ user: { id: 7, first_name: 'Test' } })
+    expect(
+      await problemOf(
+        verifyInitData(launch, {
+          token: '123456789:AAAnother_token-of_the_same-shape_x',
+          maxAge: Infinity,
+        }),
+      ),
+    ).toBe('mismatch')
+  })
+
+  it('refuses text that does not read as fields, and a token it cannot use', async () => {
+    expect(await problemOf(hashInitData('auth_date=1&auth_date=2', { token: TOKEN }))).toBe(
+      'malformed',
+    )
+    expect(await problemOf(hashInitData('', { token: TOKEN }))).toBe('malformed')
+    await expect(hashInitData('auth_date=1', { token: 'not a token' })).rejects.toThrow(ConfigError)
   })
 })
 

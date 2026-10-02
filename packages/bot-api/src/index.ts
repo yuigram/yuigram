@@ -39,6 +39,7 @@ export {
   type RunningChatAction,
   withChatAction,
 } from './chat-action.js'
+export { parseCommand } from './command.js'
 export type { CommonDefaults, MethodDefaults, ParamsOf } from './defaults.js'
 export {
   type DownloadDeps,

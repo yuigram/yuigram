@@ -31,6 +31,7 @@ import {
   type TlValue,
   userChatKey,
 } from 'yuigram'
+import { type SlotMachineReels, slotMachineReels } from 'yuigram/dice'
 import { mockBot } from 'yuigram/testing'
 import { type InitData, InitDataKey, verifyInitData } from 'yuigram/web-app'
 import { nodeWebhook } from 'yuigram/webhook'
@@ -147,6 +148,9 @@ export const fromEvent: Promise<TlValue> = mtproto.api.call({ _: 'help.getConfig
 
 export const listener = nodeWebhook(bot.webhook())
 export const harness = mockBot()
+
+// The reels of a slot machine are a tuple of three named symbols.
+export const reels: SlotMachineReels = slotMachineReels(64)
 
 // Launch data is checked with a key derived once, under an age limit the caller states.
 declare const initData: string

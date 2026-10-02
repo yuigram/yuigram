@@ -10,6 +10,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { f as accountFilters } from '../src/account-filters.js'
 import { type EmbeddedThumbnail, embeddedThumbnail } from '../src/account-utils.js'
+import { type SlotMachineReels, type SlotMachineSymbol, slotMachineReels } from '../src/dice.js'
 import type {
   Account,
   AccountContext,
@@ -19,6 +20,7 @@ import type {
   AppClient,
   BaseContext,
   Bot,
+  CommandContext,
   DownloadDeps,
   DownloadRequest,
   MediaDownloadOptions,
@@ -27,6 +29,7 @@ import type {
   MtprotoContext,
   MtprotoEventKind,
   NormalizedUpdate,
+  ParsedCommand,
   PeerIdentity,
   PeerRef,
   PhotoThumbnail,
@@ -49,6 +52,7 @@ import {
   f,
   fileIdOfThumbnail,
   memory,
+  parseCommand,
   type photoFile,
   type SessionFlavor,
   session,
@@ -58,9 +62,11 @@ import {
   when,
 } from '../src/index.js'
 import {
+  hashInitData,
   type InitData,
   type InitDataKey,
   type InitDataProblem,
+  type InitDataSecret,
   type VerifyInitDataOptions,
   type VerifyInitDataSignatureOptions,
   verifyInitData,
@@ -189,7 +195,32 @@ describe('the name both subsystems wanted', () => {
   })
 })
 
+describe('a command read from text', () => {
+  it('answers with the command a handler receives, or nothing', () => {
+    expectTypeOf(parseCommand).parameter(0).toEqualTypeOf<string | undefined>()
+    expectTypeOf(parseCommand).returns.toEqualTypeOf<ParsedCommand | undefined>()
+    expectTypeOf<CommandContext['command']>().toEqualTypeOf<ParsedCommand>()
+  })
+})
+
+describe('the reels of a slot machine', () => {
+  it('names three symbols from a closed set, left to right', () => {
+    expectTypeOf(slotMachineReels).parameter(0).toEqualTypeOf<number>()
+    expectTypeOf(slotMachineReels).returns.toEqualTypeOf<SlotMachineReels>()
+    expectTypeOf<SlotMachineReels['length']>().toEqualTypeOf<3>()
+    expectTypeOf<SlotMachineReels[number]>().toEqualTypeOf<SlotMachineSymbol>()
+    expectTypeOf<SlotMachineSymbol>().toEqualTypeOf<'bar' | 'grapes' | 'lemon' | 'seven'>()
+  })
+})
+
 describe('Mini App launch data', () => {
+  it('writes a hash with the token or a key, and no age policy', () => {
+    expectTypeOf(hashInitData).returns.toEqualTypeOf<Promise<string>>()
+    expectTypeOf<{ token: string }>().toExtend<InitDataSecret>()
+    expectTypeOf<{ key: InitDataKey }>().toExtend<InitDataSecret>()
+    expectTypeOf<{ token: string; key: InitDataKey }>().not.toExtend<InitDataSecret>()
+  })
+
   it('requires an age policy, and one proof or the other', () => {
     expectTypeOf(verifyInitData).returns.toEqualTypeOf<Promise<InitData>>()
     expectTypeOf<{ token: string; maxAge: number }>().toExtend<VerifyInitDataOptions>()

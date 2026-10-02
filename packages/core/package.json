@@ -38,6 +38,11 @@
       "types": "./dist/stream/index.d.ts",
       "import": "./dist/stream/index.js",
       "default": "./dist/stream/index.js"
+    },
+    "./dice": {
+      "types": "./dist/dice/index.d.ts",
+      "import": "./dist/dice/index.js",
+      "default": "./dist/dice/index.js"
     }
   },
   "browser": {
