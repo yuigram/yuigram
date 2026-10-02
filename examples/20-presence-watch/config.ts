@@ -5,6 +5,11 @@
  * exists — `.env.example` beside it lists every name — and from the process
  * environment otherwise. Nothing here is printed: a token, an API hash and a
  * session are credentials.
+ *
+ * There are two readings, because there are two moments. Signing the account
+ * in needs the account's settings and nothing of the bot's — the operator's
+ * identifier may not be known yet, and the sign-in is what prints it. Starting
+ * the watch needs all of it, and does not start without an operator.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -18,17 +23,24 @@ import {
   type KV,
   serverKeysFromPem,
 } from 'yuigram'
+import { keyFileFor } from './server-keys.js'
 
 /** Which of Telegram's two environments both clients talk to. */
 export type TelegramEnvironment = 'production' | 'test'
 
-export interface Config {
+/** What the account needs: all that signing in reads. */
+export interface AccountConfig {
   readonly environment: TelegramEnvironment
-  readonly botToken: string
-  readonly operatorId: number
   readonly account: Omit<AccountOptions, 'storage'>
   /** The directory everything this example writes goes under. */
   readonly dataDir: string
+}
+
+/** What starting the watch needs: the account's settings, and the bot's and the operator's. */
+export interface Config extends AccountConfig {
+  readonly botToken: string
+  /** The one user who may command the bot. Always a real identifier: there is no "nobody yet". */
+  readonly operatorId: number
   readonly pollSeconds: number
   readonly limit: number
   readonly timeZone: string | undefined
@@ -91,8 +103,6 @@ function whole(name: string, fallback?: number): number {
 const fromHere = (path: string): string => resolve(HERE, path)
 
 export interface ReadOptions {
-  /** False for the sign-in command, which uses no bot. */
-  readonly needBot?: boolean
   /**
    * The file settings are read from before the environment is consulted.
    * `.env` in this directory unless given; `false` reads the environment alone.
@@ -100,35 +110,83 @@ export interface ReadOptions {
   readonly envFile?: string | false
 }
 
+/** Take the settings file into the environment, where there is one. What is already set wins. */
+function loadFile(options: ReadOptions): void {
+  const envFile = options.envFile ?? join(HERE, '.env')
+  if (envFile !== false && existsSync(envFile)) process.loadEnvFile(envFile)
+}
+
 /**
- * Read the configuration.
+ * The file of Telegram's server keys for an environment.
+ *
+ * Unless `SERVER_KEYS` names another, it is the one `keys.ts` writes for that
+ * environment — so the keys follow `TELEGRAM_ENV`, and one environment's file
+ * is never picked up for the other.
+ */
+function serverKeysFile(environment: TelegramEnvironment): string {
+  const named = process.env['SERVER_KEYS']
+  if (named !== undefined && named !== '') {
+    const path = fromHere(named)
+    if (!existsSync(path)) throw new Error(`SERVER_KEYS names ${path}, which does not exist.`)
+
+    return path
+  }
+
+  const path = keyFileFor(environment)
+  if (!existsSync(path)) {
+    throw new Error(
+      `${path} does not exist. Prepare it: pnpm tsx examples/20-presence-watch/keys.ts ${environment}`,
+    )
+  }
+
+  return path
+}
+
+/** The operator's identifier. There is no reading in which the watch runs without one. */
+function operator(): number {
+  const text = process.env['OPERATOR_ID']
+  if (text === undefined || text === '' || text === '0') {
+    throw new Error(
+      'OPERATOR_ID is not set. It is the Telegram user id of the one person who may command the bot; ' +
+        'login.ts prints the id of the account it signs in.',
+    )
+  }
+
+  return whole('OPERATOR_ID')
+}
+
+/**
+ * Read what the account needs, and nothing else.
+ *
+ * This is all that signing in reads: the environment, the application's
+ * credentials, the server keys, the first address and where state is kept. The
+ * bot's token and the operator are not looked at, so they need not be there
+ * yet, and no stand-in for them is made up.
  *
  * `.env` is looked for beside this file, so the commands work from the
  * repository root or from anywhere else, and a variable already set in the
  * environment wins over the file. Relative paths in `SERVER_KEYS` and
  * `DATA_DIR` are taken from this directory for the same reason.
  */
-export function readConfig(options: ReadOptions = {}): Config {
-  const needBot = options.needBot ?? true
-  const envFile = options.envFile ?? join(HERE, '.env')
-  if (envFile !== false && existsSync(envFile)) process.loadEnvFile(envFile)
+export function readAccountConfig(options: ReadOptions = {}): AccountConfig {
+  loadFile(options)
 
   const environment = process.env['TELEGRAM_ENV'] ?? 'production'
   if (environment !== 'production' && environment !== 'test') {
     throw new Error('TELEGRAM_ENV must be "production" or "test".')
   }
 
-  const keysFile = fromHere(required('SERVER_KEYS'))
-  if (!existsSync(keysFile)) throw new Error(`SERVER_KEYS names ${keysFile}, which does not exist.`)
+  const apiId = whole('API_ID')
+  const apiHash = required('API_HASH')
+  const keysFile = serverKeysFile(environment)
 
   return {
     environment,
-    botToken: needBot ? required('BOT_TOKEN') : '',
-    operatorId: needBot ? whole('OPERATOR_ID') : 0,
     account: {
-      apiId: whole('API_ID'),
-      apiHash: required('API_HASH'),
-      // Telegram's published keys for the chosen environment, checked by fingerprint.
+      apiId,
+      apiHash,
+      // The keys this account knows Telegram's datacenters by. A datacenter
+      // whose key is not among them is refused.
       keys: serverKeysFromPem(readFileSync(keysFile, 'utf8')),
       // One environment for both clients: the account's first address and the
       // bot's test mode are both decided by TELEGRAM_ENV and by nothing else.
@@ -141,6 +199,17 @@ export function readConfig(options: ReadOptions = {}): Config {
       name: 'observer',
     },
     dataDir: fromHere(process.env['DATA_DIR'] ?? 'state'),
+  }
+}
+
+/** Read everything starting the watch needs: the account's settings, the bot's and the operator. */
+export function readConfig(options: ReadOptions = {}): Config {
+  const account = readAccountConfig(options)
+
+  return {
+    ...account,
+    botToken: required('BOT_TOKEN'),
+    operatorId: operator(),
     pollSeconds: whole('POLL_SECONDS', 60),
     limit: whole('WATCH_LIMIT', 10),
     timeZone: timeZone(),
@@ -154,7 +223,7 @@ export function readConfig(options: ReadOptions = {}): Config {
  * authorization made in one environment means nothing in the other. The
  * directory remembers which it was made for.
  */
-export function claimEnvironment(config: Config): void {
+export function claimEnvironment(config: AccountConfig): void {
   mkdirSync(config.dataDir, { recursive: true })
   const marker = join(config.dataDir, 'environment')
   if (!existsSync(marker)) {
@@ -178,9 +247,9 @@ export function claimEnvironment(config: Config): void {
  * What is wrong with it is said in one line, and the command ends there —
  * before a client exists, so nothing has been connected to.
  */
-export function configure(options: ReadOptions = {}): Config {
+function orExit<T extends AccountConfig>(read: () => T): T {
   try {
-    const config = readConfig(options)
+    const config = read()
     claimEnvironment(config)
 
     return config
@@ -190,8 +259,15 @@ export function configure(options: ReadOptions = {}): Config {
   }
 }
 
+/** The configuration `index.ts` starts with. */
+export const configure = (options: ReadOptions = {}): Config => orExit(() => readConfig(options))
+
+/** The configuration `login.ts` signs in with. */
+export const configureAccount = (options: ReadOptions = {}): AccountConfig =>
+  orExit(() => readAccountConfig(options))
+
 /** The account, with its authorization in a directory of its own. */
-export function openAccount(config: Config): Account {
+export function openAccount(config: AccountConfig): Account {
   return Account.fromSession(join(config.dataDir, 'account'), config.account)
 }
 
@@ -204,6 +280,6 @@ export function openBot(config: Config): Bot {
 }
 
 /** Where the watch list and the observations go: beside the account's directory, never in it. */
-export function openRecords(config: Config): KV<unknown> {
+export function openRecords(config: AccountConfig): KV<unknown> {
   return file(join(config.dataDir, 'watch'))
 }

@@ -11,13 +11,17 @@
  * password is not echoed. Run again, it finds the account signed in and asks
  * for nothing.
  *
+ * It reads the account's settings only. The bot's token and `OPERATOR_ID` are
+ * not needed yet and are not looked at: this is the command that prints the
+ * account's identifier, which is what `OPERATOR_ID` is then set to.
+ *
  * The directory this writes **is** a signed-in account. It is ignored by Git;
  * keep it out of backups that others can read.
  */
 
 import { createInterface } from 'node:readline/promises'
 import { Writable } from 'node:stream'
-import { configure, openAccount } from './config.js'
+import { configureAccount, openAccount } from './config.js'
 
 /** Somewhere for readline to echo to when what is typed must not be shown. */
 const nowhere = new Writable({
@@ -42,7 +46,7 @@ async function ask(question: string, hidden = false): Promise<string> {
   }
 }
 
-const config = configure({ needBot: false })
+const config = configureAccount()
 const account = openAccount(config)
 
 try {

@@ -2,8 +2,9 @@
  * 20 — A bot that reports what an account sees of a user's status.
  *
  * ```sh
- * pnpm tsx examples/20-presence-watch/login.ts   # once, to sign the account in
- * pnpm tsx examples/20-presence-watch/index.ts   # the watch itself
+ * pnpm tsx examples/20-presence-watch/keys.ts production   # once, Telegram's server keys
+ * pnpm tsx examples/20-presence-watch/login.ts             # once, to sign the account in
+ * pnpm tsx examples/20-presence-watch/index.ts             # the watch itself
  * ```
  *
  * One `App` holds a `Bot` and an `Account`. The operator talks to the bot; the

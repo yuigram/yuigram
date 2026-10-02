@@ -18,13 +18,20 @@
  * run stops with an error at the first that is not what the watch promises.
  */
 
-import { generateKeyPairSync } from 'node:crypto'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash, generateKeyPairSync } from 'node:crypto'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { file, type KV, type TlValue } from 'yuigram'
 import { mockAccount, mockBot, privateChat, rpcError, user } from 'yuigram/testing'
-import { claimEnvironment, openRecords, readConfig } from './config.js'
+import { claimEnvironment, openRecords, readAccountConfig, readConfig } from './config.js'
+import {
+  fingerprintsOf,
+  type KeySource,
+  keyFileFor,
+  keysFromSource,
+  prepareServerKeys,
+} from './server-keys.js'
 import { type PresenceWatch, presenceWatch } from './watch.js'
 
 // ---- a clock and a timer that only move when told to ------------------------
@@ -156,14 +163,51 @@ for (const name of SETTINGS) unset(name)
 const fromExample = (path: string): string =>
   relative(import.meta.dirname, path).replaceAll('\\', '/')
 
-// A key made for the occasion, in the form Telegram publishes its own in.
-writeFileSync(
-  join(scratch, 'keys.pem'),
+// Keys made for the occasion, and a stand-in for the source file Telegram's are
+// read from: two tables of C string literals, one for each environment, in the
+// form the real file keeps them in. Nothing is retrieved; nothing here is real.
+const madeKey = (): string =>
   generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({
     type: 'pkcs1',
     format: 'pem',
-  }),
+  }) as string
+const asLiteral = (pem: string): string => `"\\\n${pem.trim().split('\n').join('\\n\\\n')}"`
+const madeKeys = { production: madeKey(), test: madeKey() }
+const sourceBytes = new TextEncoder().encode(
+  [
+    '// A stand-in for the file the keys are read from.',
+    `const char *kTestPublicRSAKeys[] = { ${asLiteral(madeKeys.test)} };`,
+    '',
+    `const char *kPublicRSAKeys[] = { ${asLiteral(madeKeys.production)} };`,
+    '',
+  ].join('\n'),
 )
+const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
+const standIn: KeySource = {
+  repository: 'https://source.invalid/rehearsal',
+  revision: 'rehearsal',
+  path: 'keys.cpp',
+  sha256: sha256(sourceBytes),
+  tables: { production: 'kPublicRSAKeys', test: 'kTestPublicRSAKeys' },
+  fingerprints: {
+    production: fingerprintsOf(madeKeys.production),
+    test: fingerprintsOf(madeKeys.test),
+  },
+}
+let retrieved = 0
+const retrieve = async (): Promise<Uint8Array> => {
+  retrieved += 1
+
+  return sourceBytes
+}
+const keysFile = join(scratch, 'keys.pem')
+const firstPrepared = await prepareServerKeys({
+  environment: 'test',
+  target: keysFile,
+  source: standIn,
+  retrieve,
+})
+
 const envFile = join(scratch, '.env')
 writeFileSync(
   envFile,
@@ -357,10 +401,24 @@ const commandNow = async (text: string): Promise<string[]> => {
   return said()
 }
 
-/** What reading the configuration refuses with, once the environment is changed so. */
+/** What preparing the key file refuses with. */
+async function keyRefusal(options: Parameters<typeof prepareServerKeys>[0]): Promise<string> {
+  try {
+    await prepareServerKeys(options)
+
+    return ''
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
+/**
+ * What reading the configuration refuses with, once the environment is changed
+ * so: as the watch reads it when it starts, or as signing in reads it.
+ */
 function refusal(
   change: Readonly<Record<string, string | undefined>>,
-  options: { needBot?: boolean } = {},
+  read: (options: { envFile: false }) => unknown = readConfig,
 ): string {
   const kept = new Map(Object.keys(change).map((name) => [name, process.env[name]]))
   const put = (name: string, value: string | undefined): void => {
@@ -370,7 +428,7 @@ function refusal(
   for (const [name, value] of Object.entries(change)) put(name, value)
 
   try {
-    readConfig({ ...options, envFile: false })
+    read({ envFile: false })
 
     return ''
   } catch (error) {
@@ -422,14 +480,6 @@ check(
   placeholder,
 )
 check(
-  refusal({ BOT_TOKEN: undefined, OPERATOR_ID: undefined }, { needBot: false }) === '',
-  'signing in needs neither the token nor the operator',
-)
-check(
-  refusal({ OPERATOR_ID: '0' }).includes('OPERATOR_ID must be a whole number above zero'),
-  'an operator that is not an identifier is refused',
-)
-check(
   refusal({ TELEGRAM_ENV: 'staging' }).includes('TELEGRAM_ENV must be'),
   'an environment Telegram does not have is refused',
 )
@@ -440,6 +490,149 @@ check(
 check(
   refusal({ SERVER_KEYS: 'no-such-file.pem' }).includes('does not exist'),
   'a key file that is not there is refused',
+)
+
+console.log('the server keys, from a stand-in for their source')
+const written = readFileSync(keysFile, 'utf8')
+check(
+  firstPrepared.status === 'written' &&
+    fingerprintsOf(written).join() === standIn.fingerprints.test.join() &&
+    fingerprintsOf(written).join() !== standIn.fingerprints.production.join(),
+  'the keys of the environment that was named are written, and not the other one’s',
+  firstPrepared,
+)
+check(
+  fingerprintsOf(
+    keysFromSource(new TextDecoder().decode(sourceBytes), 'production', standIn),
+  ).join() === standIn.fingerprints.production.join(),
+  'each environment is read from the table that is its own',
+)
+check(
+  written.includes('test environment') &&
+    written.includes('revision rehearsal') &&
+    !written.includes('PRIVATE KEY'),
+  'the file says which environment it is for and where it came from',
+)
+const again = await prepareServerKeys({
+  environment: 'test',
+  target: keysFile,
+  source: standIn,
+  retrieve,
+})
+check(
+  again.status === 'present' && retrieved === 1 && readFileSync(keysFile, 'utf8') === written,
+  'a file already holding those keys is left as it is, and nothing is retrieved again',
+)
+const otherKeys = await keyRefusal({
+  environment: 'production',
+  target: keysFile,
+  source: standIn,
+  retrieve,
+})
+check(
+  otherKeys.includes('holds other keys') &&
+    otherKeys.includes('It was not changed') &&
+    readFileSync(keysFile, 'utf8') === written,
+  'a file holding other keys is refused and not overwritten',
+  otherKeys,
+)
+const altered = await keyRefusal({
+  environment: 'production',
+  target: join(scratch, 'altered.pem'),
+  source: standIn,
+  retrieve: async () => new TextEncoder().encode(`${new TextDecoder().decode(sourceBytes)} `),
+})
+check(
+  altered.includes('is not the file that was checked') &&
+    altered.includes('Nothing was written') &&
+    !existsSync(join(scratch, 'altered.pem')),
+  'a source that is not byte for byte the one that was checked gives no file',
+  altered,
+)
+const unexpected = await keyRefusal({
+  environment: 'production',
+  target: join(scratch, 'unexpected.pem'),
+  source: { ...standIn, fingerprints: { ...standIn.fingerprints, production: ['0'] } },
+  retrieve,
+})
+check(
+  unexpected.includes('not the recorded') && !existsSync(join(scratch, 'unexpected.pem')),
+  'nor do keys whose fingerprints are not the recorded ones',
+  unexpected,
+)
+check(
+  keyFileFor('test').endsWith('telegram-keys.test.pem') &&
+    keyFileFor('production').endsWith('telegram-keys.production.pem'),
+  'each environment has a key file of its own name',
+)
+const unnamed = refusal({ SERVER_KEYS: undefined }, readAccountConfig)
+check(
+  existsSync(keyFileFor('test'))
+    ? unnamed === ''
+    : unnamed.includes('pnpm tsx examples/20-presence-watch/keys.ts test'),
+  'with no SERVER_KEYS the file is the one for TELEGRAM_ENV, and its absence names the command',
+  unnamed,
+)
+
+console.log('what signing in reads, and what starting the watch reads')
+const signIn = (change: Readonly<Record<string, string | undefined>>): string =>
+  refusal(change, readAccountConfig)
+check(
+  signIn({ BOT_TOKEN: undefined, OPERATOR_ID: undefined }) === '',
+  'signing in needs neither the token nor the operator',
+)
+check(
+  signIn({ BOT_TOKEN: '123456:REPLACE_WITH_THE_BOT_TOKEN', OPERATOR_ID: '0' }) === '',
+  'nor minds the placeholders .env.example leaves in their place',
+)
+check(
+  signIn({ POLL_SECONDS: 'often', WATCH_LIMIT: '-1', TIME_ZONE: 'Mars/Olympus' }) === '',
+  'nor reads the settings only the watch uses',
+)
+const forSignIn = readAccountConfig({ envFile: false })
+check(
+  !('operatorId' in forSignIn) && !('botToken' in forSignIn),
+  'and what it reads holds no stand-in for an operator or a token',
+  Object.keys(forSignIn),
+)
+check(
+  signIn({ API_HASH: undefined }).includes('API_HASH is not set') &&
+    signIn({ API_HASH: 'REPLACE_WITH_THE_API_HASH' }).includes('API_HASH still holds') &&
+    signIn({ API_ID: '0' }).includes('API_ID must be a whole number above zero') &&
+    signIn({ SERVER_KEYS: 'no-such-file.pem' }).includes('does not exist'),
+  'it still requires everything the account needs',
+)
+check(
+  refusal({ OPERATOR_ID: undefined }).includes('OPERATOR_ID is not set') &&
+    refusal({ OPERATOR_ID: '0' }).includes('OPERATOR_ID is not set'),
+  'starting the watch requires an operator: unset, or left at the placeholder, is refused',
+)
+check(
+  refusal({ OPERATOR_ID: 'me' }).includes('OPERATOR_ID must be a whole number above zero'),
+  'and so is one that is not an identifier',
+)
+check(
+  refusal({ BOT_TOKEN: undefined }).includes('BOT_TOKEN is not set'),
+  'and it requires the token',
+)
+const unowned = [0, -1, 1.5, Number.NaN].map((nobody) => {
+  try {
+    presenceWatch({
+      bot: bot.bot,
+      account: account.account,
+      store: watchStore,
+      operatorId: nobody,
+    })
+
+    return 'built'
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+})
+check(
+  unowned.every((answer) => answer.includes('needs its operator')),
+  'the watch itself is not built without an operator, whatever the configuration said',
+  unowned,
 )
 
 watch = build()

@@ -185,6 +185,11 @@ const isPrecise = (state: State): boolean => state === 'online' || state === 'of
 /** Build the watch over a bot and an account. Nothing happens until `start`. */
 export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
   const { bot, account, store, operatorId } = options
+  // No watch without an operator: an identifier that is nobody's would leave a
+  // bot that answers to no one, or — were the check ever loosened — to anyone.
+  if (!Number.isSafeInteger(operatorId) || operatorId <= 0) {
+    throw new Error('the presence watch needs its operator: a Telegram user id above zero')
+  }
   const now = options.now ?? Date.now
   const schedule =
     options.schedule ??
