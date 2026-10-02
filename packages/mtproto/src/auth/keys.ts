@@ -29,13 +29,18 @@ export interface ServerRsaKey extends RsaPublicKey {
  * `SHA1(bytes(n) ‖ bytes(e))`, low 64 bits, read little-endian — where each
  * value is a TL byte string: a length prefix, the big-endian magnitude, and
  * padding to a four-byte boundary.
+ *
+ * The magnitude is the number's bytes and nothing more. A modulus has its top
+ * bit set, and the DER it is published in puts a zero byte in front of it to
+ * keep it positive; that byte is DER's and is not part of what is hashed. A
+ * fingerprint computed with it names no key a datacenter holds.
  */
 export function rsaKeyFingerprint(key: RsaPublicKey): bigint {
   if (key.n <= 0n || key.e <= 0n) {
     throw new ValidationError('an rsa key needs a positive modulus and exponent')
   }
 
-  const digest = sha1(tlBytes(magnitude(key.n)), tlBytes(magnitude(key.e)))
+  const digest = sha1(tlBytes(bigIntToBytesBE(key.n)), tlBytes(bigIntToBytesBE(key.e)))
 
   // The fingerprint is the low 64 bits of the digest, read little-endian and
   // signed — which is what the server sends, so it is what has to be matched.
@@ -45,21 +50,6 @@ export function rsaKeyFingerprint(key: RsaPublicKey): bigint {
 /** Pair a key with its fingerprint so a handshake can match one by name. */
 export function serverRsaKey(key: RsaPublicKey): ServerRsaKey {
   return { n: key.n, e: key.e, fingerprint: rsaKeyFingerprint(key) }
-}
-
-/**
- * Big-endian magnitude, with a leading zero where the high bit is set.
- *
- * The serialization is of a signed integer, so a value whose top bit is set
- * needs the extra byte or it would encode as negative.
- */
-function magnitude(value: bigint): Uint8Array {
-  const bytes = bigIntToBytesBE(value)
-  if ((bytes[0] ?? 0) < 0x80) return bytes
-
-  const padded = new Uint8Array(bytes.length + 1)
-  padded.set(bytes, 1)
-  return padded
 }
 
 /** A TL byte string: length prefix, payload, padding to a four-byte boundary. */

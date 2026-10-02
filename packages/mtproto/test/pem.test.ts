@@ -7,7 +7,7 @@
  * reader under test.
  */
 
-import { generateKeyPairSync } from 'node:crypto'
+import { createHash, generateKeyPairSync } from 'node:crypto'
 import { ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { rsaKeyFingerprint } from '../src/auth/keys.js'
@@ -45,6 +45,65 @@ describe('reading keys', () => {
     const text = `# datacenter keys\n${one.pkcs1}\nsome note\n${two.spki}\n`
 
     expect(serverKeysFromPem(text).map((key) => key.n)).toEqual([one.n, two.n])
+  })
+})
+
+/**
+ * Telegram's two server keys, as its own clients carry them: Telegram Desktop,
+ * `Telegram/SourceFiles/mtproto/mtproto_dc_options.cpp` at revision
+ * 90c89dcde9ae, where `kPublicRSAKeys` is the production key and
+ * `kTestPublicRSAKeys` the test environment's. TDLib holds the same two.
+ *
+ * They are public, and they are here as a known answer. A generated key checks
+ * the reader against itself; these check it against what a datacenter offers.
+ */
+const TELEGRAM_PRODUCTION = `-----BEGIN RSA PUBLIC KEY-----
+MIIBCgKCAQEA6LszBcC1LGzyr992NzE0ieY+BSaOW622Aa9Bd4ZHLl+TuFQ4lo4g
+5nKaMBwK/BIb9xUfg0Q29/2mgIR6Zr9krM7HjuIcCzFvDtr+L0GQjae9H0pRB2OO
+62cECs5HKhT5DZ98K33vmWiLowc621dQuwKWSQKjWf50XYFw42h21P2KXUGyp2y/
++aEyZ+uVgLLQbRA1dEjSDZ2iGRy12Mk5gpYc397aYp438fsJoHIgJ2lgMv5h7WY9
+t6N/byY9Nw9p21Og3AoXSL2q/2IJ1WRUhebgAdGVMlV1fkuOQoEzR7EdpqtQD9Cs
+5+bfo3Nhmcyvk5ftB0WkJ9z6bNZ7yxrP8wIDAQAB
+-----END RSA PUBLIC KEY-----`
+const TELEGRAM_TEST = `-----BEGIN RSA PUBLIC KEY-----
+MIIBCgKCAQEAyMEdY1aR+sCR3ZSJrtztKTKqigvO/vBfqACJLZtS7QMgCGXJ6XIR
+yy7mx66W0/sOFa7/1mAZtEoIokDP3ShoqF4fVNb6XeqgQfaUHd8wJpDWHcR2OFwv
+plUUI1PLTktZ9uW2WE23b+ixNwJjJGwBDJPQEQFBE+vfmH0JP503wr5INS1poWg/
+j25sIWeYPHYeOrFp/eXaqhISP6G+q2IeTaWTXpwZj4LzXq5YOpk4bYEQ6mvRq7D1
+aHWfYmlEGepfaYR8Q0YqvvhYtMte3ITnuSJs171+GDqpdKcSwHnd6FudwGO4pcCO
+j4WcDuXc2CTHgH8gFTNhp/Y8/SpDOhvn9QIDAQAB
+-----END RSA PUBLIC KEY-----`
+
+describe('the fingerprint a datacenter names a key by', () => {
+  const named = (pem: string): string | undefined => {
+    const [key] = serverKeysFromPem(pem)
+
+    return key === undefined ? undefined : BigInt.asUintN(64, key.fingerprint).toString(16)
+  }
+
+  it('is the one Telegram’s own clients compute for its published keys', () => {
+    // SHA-1 over the modulus and the exponent as TL byte strings, each number
+    // written as its own bytes with no sign byte — TDLib's `RSA::get_fingerprint`,
+    // which takes them from `BN_bn2bin`.
+    expect(named(TELEGRAM_PRODUCTION)).toBe('d09d1d85de64fd85')
+    expect(named(TELEGRAM_TEST)).toBe('b25898df208d2603')
+  })
+
+  it('hashes a modulus as its own 256 bytes, without the zero DER writes before it', () => {
+    const [key] = serverKeysFromPem(TELEGRAM_PRODUCTION)
+    const { n, e } = key ?? { n: 0n, e: 0n }
+
+    // The top bit is set, which is what makes DER add the byte.
+    expect(n >> 2047n).toBe(1n)
+    // The same key with that byte hashed in is the name no datacenter uses.
+    const withSignByte = createHash('sha1')
+      .update(Buffer.from(`fe01010000${n.toString(16)}000000`, 'hex'))
+      .update(Buffer.from(`03${e.toString(16).padStart(6, '0')}`, 'hex'))
+      .digest()
+    expect(key?.fingerprint).not.toBe(withSignByte.readBigInt64LE(12))
+    expect(BigInt.asUintN(64, withSignByte.readBigInt64LE(12)).toString(16)).toBe(
+      '96c24024d17c6d33',
+    )
   })
 })
 

@@ -170,13 +170,12 @@ function base64UrlToBigInt(value: string): bigint {
   return BigInt(`0x${Buffer.from(value, 'base64url').toString('hex')}`)
 }
 
-/** Big-endian bytes, with a leading zero where the high bit would read as a sign. */
+/** Big-endian bytes of the number itself, with no sign byte in front. */
 function toBytes(value: bigint): Uint8Array {
   let hex = value.toString(16)
   if (hex.length % 2 === 1) hex = `0${hex}`
 
-  const bytes = Uint8Array.from(Buffer.from(hex, 'hex'))
-  return (bytes[0] ?? 0) >= 0x80 ? concat(Uint8Array.of(0), bytes) : bytes
+  return Uint8Array.from(Buffer.from(hex, 'hex'))
 }
 
 /** A TL byte string: length prefix, payload, padding to a four-byte boundary. */
