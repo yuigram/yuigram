@@ -99,6 +99,15 @@ every one within the budget, none by more than four milliseconds — and individ
 90 to 109 ms. That is the honest reading: met, on that machine, by a margin the machine's own
 load can take away, as the earlier history below shows it doing.
 
+**Later runs did not keep that margin.** With 131 modules on the eager path, five further runs
+gave medians of 99.1, 103, 101, 96.8 and 98.8 ms, and three single runs after them gave 108, 257
+and 110 ms — each over the budget. Controls measured in alternation sat in the same place every
+time: an isolated build of the earlier tree read 252–284 ms beside the 257, and 107–112 ms beside
+a candidate at 108–113. So the comparison finds no change that belongs to the code — the eager
+graph is the same 131 modules, about four kilobytes larger — and it does not say what moved the
+machine. The status is therefore the one the verdict above gives: **not reliably met**, with the
+absolute figure currently above the line on the machine it is measured on.
+
 Two changes brought it there from 129 ms, each measured against an isolated build of the tree
 before it, in twelve alternating rounds of seven samples:
 
