@@ -23,6 +23,7 @@ import {
   PeerError,
 } from '../core.js'
 import { readAction, type ServiceAction } from '../entities/action.js'
+import { readPresence, type UserPresence } from '../entities/peer.js'
 import type {
   TypeInputBotInlineMessageID,
   TypeInputBotInlineResult,
@@ -97,6 +98,12 @@ export interface MtprotoContext extends BaseContext, ContextActions {
   readonly data: string | undefined
   /** The query an answer goes back to, for the kinds that are questions. */
   readonly queryId: bigint | undefined
+  /**
+   * The status a `mtproto:user_status` update brings, read as
+   * `UserView.presence` reads a user's. The user is `target`. `undefined` for
+   * every other kind, and for a status this schema does not know.
+   */
+  readonly presence: UserPresence | undefined
   /** The untouched update, for everything this does not model. */
   readonly raw: TlValue
   /** The client this update arrived on. */
@@ -274,6 +281,8 @@ export function contextFor(normalized: NormalizedUpdate, options: ContextOptions
     topicId: normalized.topicId,
     data: dataOf(normalized.raw),
     queryId: queryIdOf(normalized.raw),
+    presence:
+      normalized.raw._ === 'updateUserStatus' ? readPresence(normalized.raw['status']) : undefined,
     raw: normalized.raw,
     client: options.client,
     log: options.log,

@@ -62,6 +62,68 @@ export interface UserPresence {
   readonly hiddenByMe: boolean
 }
 
+const vague = (state: UserPresence['state'], byMe: unknown): UserPresence => ({
+  state,
+  onlineUntil: undefined,
+  lastSeen: undefined,
+  hiddenByMe: byMe === true,
+})
+
+/** A Unix time in whole seconds, as a status carries one, or nothing. */
+const seconds = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+
+/**
+ * Read a user's status — the one a user carries, or the one a status update
+ * brings — as a {@link UserPresence}.
+ *
+ * ```ts
+ * account.on('mtproto:user_status', (event) => {
+ *   if (event.presence?.state === 'offline') console.log('last seen', event.presence.lastSeen)
+ * })
+ * ```
+ *
+ * The same reading `UserView.presence` gives, for a status on its own:
+ * `event.presence` is this applied to the update's status. The six
+ * constructors of the schema are read; `onlineUntil` and `lastSeen` are Unix
+ * seconds exactly as Telegram sent them, and the vague states carry neither —
+ * no time is derived for a status that states none. Anything that is not one
+ * of the six, including no status at all, reads as `undefined` rather than as
+ * a state. A status cannot say that its user is a bot, so `'bot'` comes only
+ * from `UserView.presence`.
+ */
+export function readPresence(status: unknown): UserPresence | undefined {
+  if (typeof status !== 'object' || status === null) return undefined
+  const value = status as { readonly _?: unknown; readonly [field: string]: unknown }
+
+  switch (value._) {
+    case 'userStatusOnline': {
+      const until = seconds(value['expires'])
+
+      return until === undefined
+        ? undefined
+        : { state: 'online', onlineUntil: until, lastSeen: undefined, hiddenByMe: false }
+    }
+    case 'userStatusOffline': {
+      const seen = seconds(value['was_online'])
+
+      return seen === undefined
+        ? undefined
+        : { state: 'offline', onlineUntil: undefined, lastSeen: seen, hiddenByMe: false }
+    }
+    case 'userStatusRecently':
+      return vague('recently', value['by_me'])
+    case 'userStatusLastWeek':
+      return vague('last-week', value['by_me'])
+    case 'userStatusLastMonth':
+      return vague('last-month', value['by_me'])
+    case 'userStatusEmpty':
+      return vague('long-ago', undefined)
+    default:
+      return undefined
+  }
+}
+
 /**
  * A person, read.
  *
@@ -382,37 +444,8 @@ export class UserView {
       return { state: 'bot', onlineUntil: undefined, lastSeen: undefined, hiddenByMe: false }
     }
 
-    const status = this.raw.status
-    const vague = (state: UserPresence['state'], byMe: true | undefined): UserPresence => ({
-      state,
-      onlineUntil: undefined,
-      lastSeen: undefined,
-      hiddenByMe: byMe === true,
-    })
-    switch (status?._) {
-      case 'userStatusOnline':
-        return {
-          state: 'online',
-          onlineUntil: status.expires,
-          lastSeen: undefined,
-          hiddenByMe: false,
-        }
-      case 'userStatusOffline':
-        return {
-          state: 'offline',
-          onlineUntil: undefined,
-          lastSeen: status.was_online,
-          hiddenByMe: false,
-        }
-      case 'userStatusRecently':
-        return vague('recently', status.by_me)
-      case 'userStatusLastWeek':
-        return vague('last-week', status.by_me)
-      case 'userStatusLastMonth':
-        return vague('last-month', status.by_me)
-      default:
-        return vague('long-ago', undefined)
-    }
+    // A user Telegram gives no status for is one whose status is empty.
+    return readPresence(this.raw.status) ?? vague('long-ago', undefined)
   }
 
   /** Whether a bot may manage other bots. */

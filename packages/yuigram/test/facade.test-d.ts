@@ -40,6 +40,8 @@ import type {
   Thumbnail,
   ThumbnailAvailability,
   UnifiedContext,
+  UserPresence,
+  UserView,
 } from '../src/index.js'
 import {
   AccountRouter,
@@ -54,6 +56,7 @@ import {
   memory,
   parseCommand,
   type photoFile,
+  readPresence,
   type SessionFlavor,
   session,
   thumbnail,
@@ -192,6 +195,15 @@ describe('the name both subsystems wanted', () => {
     // would leave behind.
     expectTypeOf<NormalizedUpdate>().not.toBeAny()
     expectTypeOf<NormalizedUpdate['updateId']>().toEqualTypeOf<number>()
+  })
+})
+
+describe('a status read on its own', () => {
+  it('gives the presence a user view gives, on a status update too', () => {
+    expectTypeOf(readPresence).returns.toEqualTypeOf<UserPresence | undefined>()
+    expectTypeOf<MtprotoContext['presence']>().toEqualTypeOf<UserPresence | undefined>()
+    expectTypeOf<NonNullable<UserView['presence']>>().toEqualTypeOf<UserPresence>()
+    expectTypeOf<UserPresence['onlineUntil']>().toEqualTypeOf<number | undefined>()
   })
 })
 

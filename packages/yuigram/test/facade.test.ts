@@ -250,6 +250,17 @@ describe('the entry point', () => {
     expect(yuigram.parseCommand('see /help')).toBeUndefined()
   })
 
+  it('offers the reading of a status, the one a user’s presence is read with', () => {
+    expect(yuigram.readPresence({ _: 'userStatusOffline', was_online: 1_700_000_000 })).toEqual({
+      state: 'offline',
+      onlineUntil: undefined,
+      lastSeen: 1_700_000_000,
+      hiddenByMe: false,
+    })
+    expect(yuigram.readPresence({ _: 'userStatusRecently', by_me: true })?.hiddenByMe).toBe(true)
+    expect(yuigram.readPresence(undefined)).toBeUndefined()
+  })
+
   it('offers the walk over a list that arrives one page at a time', () => {
     expect(typeof yuigram.walkDialogs).toBe('function')
     expect(typeof yuigram.walkHistory).toBe('function')

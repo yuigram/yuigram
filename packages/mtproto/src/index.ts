@@ -105,6 +105,7 @@ export {
   PeerIndex,
   readChat,
   readPeers,
+  readPresence,
   readUser,
   type UserPresence,
   UserView,

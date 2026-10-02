@@ -383,6 +383,7 @@ export {
   readPeerReference,
   readPeers,
   readPoll,
+  readPresence,
   readProfile,
   readReaction,
   readSession,
