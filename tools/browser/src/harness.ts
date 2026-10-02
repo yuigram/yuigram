@@ -81,6 +81,18 @@ interface SecondPage {
   destroy(): void
 }
 
+/** The store the storage check writes to and clears: its own, and nobody else's. */
+const STORAGE_CHECK_PREFIX = 'browser-check:storage:'
+
+/** Where the account this page runs keeps its session. */
+const ACCOUNT_PREFIX = 'browser-check:account:'
+
+/** The long-lived key that account stores, as the store names it. */
+const ACCOUNT_KEY = `${ACCOUNT_PREFIX}${areaFor('account')}auth:dc2:key`
+
+/** Where the page keeps the name of the datacenter that saw its keys. */
+const DATACENTER_NAME_KEY = 'browser-check:datacenter'
+
 /** How long the second page has to answer before it is called unresponsive. */
 const FRAME_TIMEOUT = 15_000
 
@@ -371,26 +383,65 @@ async function run(): Promise<void> {
   // ---- storage ------------------------------------------------------------
 
   await check('stores and reads back through localStorage', async () => {
-    const store = web({ prefix: 'browser-check:' })
+    // A prefix of its own. A store owns every key that begins with its prefix,
+    // so one that began the other stores' prefixes would clear them with it —
+    // including the session an earlier run of this page left to be resumed.
+    const store = web({ prefix: STORAGE_CHECK_PREFIX })
 
     await store.set('session', { dc: 2, at: Date.now() })
     const read = (await store.get('session')) as { dc: number } | undefined
 
     expect(read?.dc === 2, 'the value did not survive a write and a read')
     expect(
-      page.localStorage.getItem('browser-check:session') !== null,
+      page.localStorage.getItem(`${STORAGE_CHECK_PREFIX}session`) !== null,
       'nothing reached the real localStorage',
     )
 
     await store.clear?.()
 
     expect(
-      page.localStorage.getItem('browser-check:session') === null,
+      page.localStorage.getItem(`${STORAGE_CHECK_PREFIX}session`) === null,
       'clearing left the key behind',
     )
 
     return 'written to, read from and cleared out of the page’s own storage'
   })
+
+  await check('clears only its own store, leaving the others on the page alone', async () => {
+    // What made a second run on one server stall: the store above once owned
+    // every key on the page, cleared the keys the account had kept, and left
+    // the account to negotiate a second long-lived key with a datacenter that
+    // remembered the first.
+    const other = web({ prefix: 'browser-check:kept:' })
+    await other.set('session', { dc: 2 })
+
+    const store = web({ prefix: STORAGE_CHECK_PREFIX })
+    await store.set('session', { dc: 2 })
+    await store.clear?.()
+
+    const kept = (await other.get('session')) as { dc: number } | undefined
+    await other.clear?.()
+
+    expect(kept?.dc === 2, 'clearing one store removed what another had kept')
+
+    return 'a store with a prefix of its own cleared, and its neighbour kept what it held'
+  })
+
+  // ---- the built yuigram/web-app entry point --------------------------------
+
+  // A bundle of its own, made from built output, which leaves its checks where
+  // this one finds them. It loads before this script runs.
+  const webAppChecks = (
+    globalThis as { __webAppChecks?: (run: typeof check, verify: typeof expect) => Promise<void> }
+  ).__webAppChecks
+
+  if (webAppChecks === undefined) {
+    await check('loads the built yuigram/web-app entry point', () => {
+      throw new Error('the bundle made from dist did not load')
+    })
+  } else {
+    await webAppChecks(check, expect)
+  }
 
   // ---- a real connection --------------------------------------------------
 
@@ -435,10 +486,14 @@ async function run(): Promise<void> {
   // browser: the handshake, the key schedule, the message keys, the padding and
   // the session are all computed here, by the portable backend, and are
   // accepted or rejected by a peer that has no idea where its client is.
-  const config = (await (await fetch('/config')).json()) as {
+  const stored = page.localStorage.getItem(DATACENTER_NAME_KEY)
+  const config = (await (
+    await fetch(stored === null ? '/config' : `/config?client=${encodeURIComponent(stored)}`)
+  ).json()) as {
     readonly dc: number
     readonly now: number
     readonly key: { readonly n: string; readonly e: string }
+    readonly client: string
   }
 
   /**
@@ -453,7 +508,27 @@ async function run(): Promise<void> {
   const startedAt = Date.now()
   const clock = (): number => config.now + (Date.now() - startedAt)
 
-  const ws = `${page.location.protocol === 'https:' ? 'wss' : 'ws'}://${page.location.host}/mtproto`
+  /**
+   * Which datacenter this page is a client of.
+   *
+   * A datacenter remembers the long-lived key a client established and checks
+   * every later binding against it, so the datacenter has to be the one that
+   * saw the keys this page has stored. The server names it and the name is
+   * kept beside the keys: a reload offers the name back and resumes with the
+   * same datacenter. Where the server answers with another — the page is new,
+   * or the server has restarted and its datacenters went with it — the stored
+   * keys were established somewhere that no longer exists, and are let go of
+   * rather than presented to a datacenter that never issued them.
+   */
+  const client = config.client
+  const resuming = stored === client
+  if (!resuming) {
+    await web({ prefix: ACCOUNT_PREFIX }).clear?.()
+    page.localStorage.setItem(DATACENTER_NAME_KEY, client)
+  }
+  const keyBefore = page.localStorage.getItem(ACCOUNT_KEY)
+
+  const ws = `${page.location.protocol === 'https:' ? 'wss' : 'ws'}://${page.location.host}/mtproto?client=${client}`
 
   // How long the page goes without being able to do anything.
   //
@@ -533,7 +608,7 @@ async function run(): Promise<void> {
     apiId: 10_000,
     apiHash: 'browser-check',
     keys: [serverRsaKey({ n: BigInt(config.key.n), e: BigInt(config.key.e) })],
-    storage: web({ prefix: 'browser-check:account:' }),
+    storage: web({ prefix: ACCOUNT_PREFIX }),
     // Everything the account has to say is kept, so that a failure inside a
     // retry loop is readable afterwards rather than swallowed.
     now: clock,
@@ -593,6 +668,29 @@ async function run(): Promise<void> {
       return `answered with '${answer._}'`
     })
 
+    await check('resumes from the keys an earlier run stored, or starts from none', async () => {
+      // What a reload is: the same page, the same storage, the same datacenter.
+      // The long-lived key is the root credential, so a run that found one must
+      // still hold that one — and the datacenter must have seen no second.
+      const seenByDatacenter = (await (await fetch(`/stats?client=${client}`)).json()) as {
+        readonly permanentKeys: number
+      }
+      const keyAfter = page.localStorage.getItem(ACCOUNT_KEY)
+
+      expect(keyAfter !== null, 'no long-lived key was kept')
+      expect(
+        seenByDatacenter.permanentKeys === 1,
+        `the datacenter negotiated ${String(seenByDatacenter.permanentKeys)} long-lived keys with this page`,
+      )
+      if (!resuming || keyBefore === null) {
+        return 'nothing to resume: one long-lived key was negotiated and kept'
+      }
+
+      expect(keyAfter === keyBefore, 'the stored long-lived key was replaced')
+
+      return 'resumed with the long-lived key an earlier run stored, and negotiated no other'
+    })
+
     await check('normalizes and dispatches an update to a handler', async () => {
       // Handed to the account directly. This is the half after an update has
       // arrived: it becomes an event and reaches a handler.
@@ -614,7 +712,7 @@ async function run(): Promise<void> {
       // a handler. Everything before the handler is what the direct check
       // above skips.
       const before = seen.length
-      const pushed = await fetch('/deliver', { method: 'POST' })
+      const pushed = await fetch(`/deliver?client=${client}`, { method: 'POST' })
 
       expect(pushed.ok, `the datacenter could not push: ${await pushed.text()}`)
 

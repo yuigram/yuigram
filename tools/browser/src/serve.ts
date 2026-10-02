@@ -17,6 +17,7 @@
  * than through anything here.
  */
 
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createServer, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -128,6 +129,7 @@ const PAGE = `<!doctype html>
 origin's <code>localStorage</code>, and the connection is a real
 <code>WebSocket</code> to the server that sent this page.</p>
 <div id="results"><p>running\u2026</p></div>
+<script type="module" src="/web-app-check.js"></script>
 <script type="module" src="/harness.js"></script>
 `
 
@@ -170,7 +172,50 @@ async function bundle(entry: string): Promise<string> {
   return built.outputFiles[0]?.text ?? ''
 }
 
+/**
+ * Bundle a check of a published entry point from built output alone.
+ *
+ * No source is mapped in and nothing is substituted here: the entry is the
+ * file a package's `exports` names, its imports are resolved the way a
+ * consumer's bundler resolves them, and the packages' own `browser` fields are
+ * applied by the bundler itself. A graph that reaches a Node built-in, or a
+ * package module that is not built output, is refused rather than served —
+ * the claim the page then makes is about the package as it ships.
+ */
+async function bundleBuilt(entry: string): Promise<{ text: string; modules: number }> {
+  const built = await build({
+    entryPoints: [`${ROOT}tools/browser/src/${entry}`],
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    write: false,
+    metafile: true,
+    logLevel: 'silent',
+  }).catch((error: unknown) => {
+    process.stderr.write(
+      `the ${entry} bundle did not build from dist; run \`pnpm build\` first\n${String(error)}\n`,
+    )
+    process.exit(1)
+  })
+
+  const inputs = Object.keys(built.metafile.inputs).map(posix)
+  const builtins = inputs.filter((path) => path.startsWith('node:'))
+  const unbuilt = inputs.filter((path) => path.includes('packages/') && !path.includes('/dist/'))
+
+  if (builtins.length > 0 || unbuilt.length > 0) {
+    process.stderr.write(`the ${entry} bundle reaches ${[...builtins, ...unbuilt].join(', ')}\n`)
+    process.exit(1)
+  }
+
+  return {
+    text: built.outputFiles[0]?.text ?? '',
+    modules: inputs.filter((path) => path.includes('/dist/')).length,
+  }
+}
+
 const script = await bundle('harness.ts')
+const webAppCheck = await bundleBuilt('web-app-check.ts')
 const secondPageScript = await bundle('second-page.ts')
 const workerHostScript = await bundle('worker-host.ts')
 const workerTabScript = await bundle('worker-tab.ts')
@@ -221,21 +266,66 @@ function datacenterAt(): MockDatacenter {
 }
 
 /**
- * One datacenter per endpoint, not one shared between them.
+ * One datacenter per client, not one shared between them.
  *
  * A datacenter remembers the long-lived key its client established and checks
- * every later binding against it. The two checks establish their own, so
- * sharing one peer would have the second one's binding refused for naming a key
- * the first had already claimed — which is a fact about this harness and not
- * about either client.
+ * every later binding against it. So each client of this server has its own:
+ * the check that drives the exchange by hand, every account a worker hosts, and
+ * every page — where a page is whatever holds one set of stored keys. The
+ * server names a page's datacenter and the page keeps the name beside those
+ * keys, so a reload resumes with the datacenter that saw them. A page that has
+ * lost its storage, or whose name this server does not hold because it has
+ * restarted since, is given a new name and a datacenter that has never seen it.
+ *
+ * Without that, a second run against one server stalls rather than fails: the
+ * page negotiates a second long-lived key, the datacenter refuses every binding
+ * that names it by hanging up, and the client — correctly, for a connection
+ * that dropped — tries again for as long as it is left to.
  */
-const datacenter = datacenterAt()
+const pageDatacenters = new Map<string, MockDatacenter>()
+const pageLive = new Map<string, { peer: WebSocketPeer; server: MockServer }[]>()
 const rawDatacenter = datacenterAt()
+
+/** The datacenter a page's name stands for, made the first time it is named. */
+function pageDatacenter(name: string): MockDatacenter {
+  const existing = pageDatacenters.get(name)
+  if (existing !== undefined) return existing
+
+  const made = datacenterAt()
+  pageDatacenters.set(name, made)
+  pageLive.set(name, [])
+
+  return made
+}
+
+/** The page a request names, or the one name every unnamed request shares. */
+const clientOf = (address: URL): string => address.searchParams.get('client') ?? 'unnamed'
+
+/** A name no page has had, here or under an earlier run of this server. */
+const newPageName = (): string => `page-${randomUUID()}`
+
+/** How many connections a datacenter answered, and how many long-lived keys came of them. */
+function seenBy(place: MockDatacenter | undefined): { connections: number; permanentKeys: number } {
+  const permanentKeys = (place?.connections ?? []).filter((one) => {
+    const settled = one.peer.result
+
+    return settled !== undefined && settled.expiresIn === undefined
+  }).length
+
+  return { connections: place?.connections.length ?? 0, permanentKeys }
+}
 
 const server = createServer((request, response) => {
   if (request.url === '/harness.js') {
     response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' })
     response.end(script)
+
+    return
+  }
+
+  if (request.url === '/web-app-check.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' })
+    response.end(webAppCheck.text)
 
     return
   }
@@ -256,29 +346,51 @@ const server = createServer((request, response) => {
     return
   }
 
-  if (request.url === '/config') {
+  const address = new URL(request.url ?? '/', 'http://localhost')
+
+  if (address.pathname === '/config') {
     // The page needs the public half of the key to run an exchange at all.
     // Nothing here is a credential: the pair is generated on each start.
+    //
+    // It is also told which datacenter is its own. A page that names one this
+    // server holds keeps it, and with it the keys it stored. Any other page —
+    // new, emptied, or left over from a server that has since restarted and
+    // taken its datacenters with it — is given a new one, and is expected to
+    // let go of keys established anywhere else.
+    const named = address.searchParams.get('client')
+    const client = named !== null && pageDatacenters.has(named) ? named : newPageName()
+    pageDatacenter(client)
+
     response.writeHead(200, { 'content-type': 'application/json' })
     response.end(
       JSON.stringify({
         dc: DC,
         now: ORIGIN_SECONDS * 1000,
         key: { n: KEY.n.toString(), e: KEY.e.toString() },
+        client,
       }),
     )
 
     return
   }
 
-  if (request.url === '/deliver') {
+  if (address.pathname === '/stats') {
+    // What the page's own datacenter saw of it: a page that resumed a stored
+    // session negotiated no long-lived key that the datacenter had not already.
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify(seenBy(pageDatacenters.get(clientOf(address)))))
+
+    return
+  }
+
+  if (address.pathname === '/deliver') {
     // Push an update down whichever connection is carrying the session, so the
     // page has something to receive that it did not ask for.
     // Something that carries no `pts`. An update with one is held against the
     // account's place in the stream and may be deferred until a difference is
     // fetched, which is a subsystem of its own with its own tests — what is
     // being shown here is that an update crosses the encrypted session at all.
-    const sent = deliver({
+    const sent = deliverTo(pageLive.get(clientOf(address)) ?? [], {
       _: 'updateShort',
       update: {
         _: 'updateUserTyping',
@@ -342,14 +454,9 @@ function serveWorkerRoute(url: string, response: ServerResponse): boolean {
     // long-lived keys were negotiated over them. One shared account connected
     // once negotiates one; two independent connections of it would negotiate two.
     const place = workerDatacenters.get(address.searchParams.get('account') ?? '')
-    const permanentKeys = (place?.connections ?? []).filter((one) => {
-      const settled = one.peer.result
-
-      return settled !== undefined && settled.expiresIn === undefined
-    }).length
 
     response.writeHead(200, { 'content-type': 'application/json' })
-    response.end(JSON.stringify({ connections: place?.connections.length ?? 0, permanentKeys }))
+    response.end(JSON.stringify(seenBy(place)))
 
     return true
   }
@@ -367,7 +474,7 @@ function serveWorkerRoute(url: string, response: ServerResponse): boolean {
 const trace: (message: string) => void =
   process.env['TRACE'] === '1' ? (message) => process.stdout.write(`  ${message}\n`) : () => {}
 
-/** The connections the page has open, so an update has somewhere to go. */
+/** The connections of the check that drives the exchange by hand. */
 const live: { peer: WebSocketPeer; server: MockServer }[] = []
 
 /** A datacenter per account a worker hosts, so accounts never share one. */
@@ -386,10 +493,6 @@ function workerDatacenter(name: string): MockDatacenter {
 }
 
 /** Push an update down the newest connection that can carry one. */
-function deliver(update: TlValue): boolean {
-  return deliverTo(live, update)
-}
-
 function deliverTo(
   connections: readonly { peer: WebSocketPeer; server: MockServer }[],
   update: TlValue,
@@ -417,7 +520,13 @@ serveWebSockets(server, {
 
   // What the protocol runs over. The frames a browser sends go in as the
   // client's bytes, and what the datacenter answers goes back out as frames.
-  '/mtproto': (peer) => bridge(datacenter, peer),
+  // The datacenter is the one the page names: its own, for as long as it keeps
+  // the keys it established there.
+  '/mtproto': (peer, url) => {
+    const name = clientOf(url)
+
+    return bridge(pageDatacenter(name), peer, pageLive.get(name))
+  },
 
   // The same, for the check that drives the exchange by hand. Its own peer,
   // because each remembers the long-lived key its client established.
@@ -475,4 +584,8 @@ function bridge(
 server.listen(PORT, () => {
   process.stdout.write(`browser check: http://localhost:${PORT}\n`)
   process.stdout.write(`  bundle ${(script.length / 1024).toFixed(0)} KB, no Node built-ins\n`)
+  process.stdout.write(
+    `  yuigram/web-app from dist: ${(webAppCheck.text.length / 1024).toFixed(0)} KB, ` +
+      `${String(webAppCheck.modules)} built modules, no source and no Node built-ins\n`,
+  )
 })

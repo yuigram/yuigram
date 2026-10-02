@@ -311,7 +311,28 @@ datacenter the test suite uses. Nothing in the page is mocked: the cryptography 
 store is the origin's `localStorage`, and the connection is a real `WebSocket`.
 
 The page reports what it did rather than only whether it passed, because a check that silently did
-nothing would otherwise read as a pass. Nineteen checks, all passing in Chrome.
+nothing would otherwise read as a pass. Fifty checks, all passing in Chrome.
+
+Six of them run a second bundle, made from built output alone: `yuigram/web-app` as its `exports`
+name it, resolved the way a consumer's bundler resolves it, refused by the server if it reaches a
+Node built-in or a module that is not in `dist`. In the page it reads Mini App launch data, checks
+a hash under a made-up token and an Ed25519 signature made by an independent implementation,
+refuses altered data by either proof, applies the age limit, and loads the two keys Telegram
+publishes. That is the package executing in a browser. It is not a launch Telegram signed: the
+fixture's signature is under a key generated for it, so that such a launch verifies under the
+published keys is still to be shown with one.
+
+**The page can be run again against the same server.** A datacenter remembers the long-lived key
+its client established and refuses a binding that names another, so the server keeps a datacenter
+per page and names it; the page keeps the name beside its stored keys and offers it back. A reload
+therefore resumes — the stored key, no new exchange, which a check confirms from both ends — and
+a page whose storage was emptied, or whose name the server no longer holds because it restarted,
+is given a new datacenter and lets go of keys established with the old one. Before this, a second
+run stalled instead of failing: the page's storage check owned every key on the page and cleared
+the account's with its own, the account negotiated a second long-lived key, the datacenter hung up
+on each binding, and the client did what it should for a dropped connection and tried again. The
+storage check now has a prefix of its own, and a check beside it fails if clearing one store
+touches another.
 
 Two of those are about storage ownership, and they run against real `localStorage` rather than a
 stand-in. That matters here more than elsewhere: a browser gives an origin one store, so two
