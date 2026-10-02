@@ -39,6 +39,7 @@ names. A session string is a signed-in account — keep it out of shell history 
 | 17 | [streaming](17-streaming) | An answer shown as a draft while it is written, a rich stream, and the stop button, with an offline rehearsal |
 | 18 | [account handlers](18-account-handlers) | An account's filters, handler groups, a router, a dependency and a form that survives a restart, checked against a stand-in datacenter |
 | 19 | [shop](19-shop) | Sessions, a media cache and rate limits in one SQLite file, paged catalogues, typed buttons, method defaults and an application event, with an offline rehearsal |
+| 20 | [presence watch](20-presence-watch) | A bot as the operator's interface to an account: resolving a username, observing what Telegram reports of a user's status by updates and bounded reads, and reporting observed intervals honestly, with an offline rehearsal ([guide in Russian](20-presence-watch/README.ru.md)) |
 
 ## The gap at 11
 

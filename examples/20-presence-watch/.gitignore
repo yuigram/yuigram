@@ -1,0 +1,28 @@
+# Dependencies.
+node_modules/
+
+# Build output.
+dist/
+*.tsbuildinfo
+
+# Credentials. A bot token, an api_hash and a session string are all
+# equivalent to the account they belong to.
+.env
+.env.*
+!.env.example
+
+# Telegram sessions. `Account.fromSession(...)` writes one of these, and the
+# string form is a logged-in account in a single line of text.
+*.session
+*.session-journal
+sessions/
+
+# Framework state. `file("./state")` keeps whatever an application decided to
+# store, which for a userbot includes what it has learned about its peers.
+state/
+
+# The shop's database: carts, the media cache and the rate-limit counts, and
+# the write-ahead log SQLite keeps beside it.
+*.db
+*.db-wal
+*.db-shm

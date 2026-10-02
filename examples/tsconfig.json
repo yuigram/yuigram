@@ -54,6 +54,9 @@
     },
     {
       "path": "19-shop"
+    },
+    {
+      "path": "20-presence-watch"
     }
   ]
 }
