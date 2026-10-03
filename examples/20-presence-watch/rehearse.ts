@@ -32,6 +32,7 @@ import {
   keysFromSource,
   prepareServerKeys,
 } from './server-keys.js'
+import { reportBotErrors } from './errors.js'
 import { type PresenceWatch, presenceWatch } from './watch.js'
 
 // ---- a clock and a timer that only move when told to ------------------------
@@ -1160,6 +1161,30 @@ check((await push(ada, online(300))).length === 0, 'and their updates are no lon
 out = await command('/unwatch 1000002')
 check(out[0]?.includes('Boris') === true, 'an identifier names a watch too')
 check((await command('/list'))[0]?.includes('Наблюдаем 3 из 5') === true, 'three are left')
+
+console.log('a bot handler that fails')
+// A bot of its own, so the failure touches nothing the watch relies on.
+const probe = mockBot({ chat: operatorChat })
+const reported: string[] = []
+reportBotErrors(probe.bot, (line) => reported.push(line))
+probe.bot.on('message', () => {
+  throw new Error('quoting the message: private words, and BOT_TOKEN=1:rehearsal-only')
+})
+await probe.send.command('/private words', { from: operator, chat: operatorChat })
+check(
+  reported.length === 1 &&
+    reported[0]?.startsWith('[bot] a handler failed on message') === true &&
+    reported[0].endsWith(': Error'),
+  'is reported once, by the kind of update and the name of the error',
+  reported,
+)
+check(
+  !reported.some((line) => line.includes('private') || line.includes('rehearsal-only')) &&
+    probe.errors.length === 0,
+  'without what the message said or anything secret, and not logged a second time by the bot',
+  reported,
+)
+await probe.dispose()
 
 console.log('shutdown, with a read still travelling')
 read = await heldRead()

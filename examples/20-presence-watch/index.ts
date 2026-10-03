@@ -19,6 +19,7 @@
 
 import { App } from 'yuigram'
 import { configure, openAccount, openBot, openRecords } from './config.js'
+import { reportBotErrors } from './errors.js'
 import { presenceWatch } from './watch.js'
 
 const config = configure()
@@ -29,9 +30,12 @@ const account = openAccount(config)
 const app = new App()
 app.add(bot)
 app.add(account)
+// A client that fails to start or to keep running.
 app.onError(({ client, error }) => {
   console.error(`${client.name} failed:`, error instanceof Error ? error.message : error)
 })
+// A bot handler that throws while answering an update: a separate matter.
+reportBotErrors(bot, (line) => console.error(line))
 
 // The account has to be signed in already: this process asks nobody anything.
 await account.connect()
