@@ -1,16 +1,16 @@
 # Bot API Finalization
 
-The Bot API subsystem is feature-competitive. This plan closes what is left before the focus
-moves to MTProto, and states plainly what will not be built.
+The Bot API subsystem is feature-competitive. This document records the last gaps that were
+closed before the focus moved to MTProto, and states plainly what is not built.
 
 The standard is not "everything puregram has". It is: **nothing a developer would reasonably
 reject Yuigram over for a new Bot API project.**
 
 ---
 
-## 1. Remaining gaps
+## 1. Gaps against a production bot
 
-From the comparative audit, in the order a real bot meets them.
+Measured against puregram, in the order a real bot meets them.
 
 | # | Gap | Why it matters | Severity |
 |---|---|---|---|
@@ -27,9 +27,9 @@ From the comparative audit, in the order a real bot meets them.
 
 ## 2. Priority
 
-**Ship in this phase:** G1, G2, G3, G4, G7.
-**Document as a recipe, do not ship:** G5, G8.
-**Defer with a stated reason:** G6.
+**Shipped:** G1, G2, G3, G4, G7.
+**Documented as a recipe, not shipped:** G5, G8.
+**Deferred with a stated reason:** G6.
 
 The dividing line is whether the absence would make a competent developer choose otherwise.
 Throttling and streaming are on that side. A Redis adapter is not — it is thirty lines against
@@ -38,7 +38,7 @@ a version matrix for something the application already has a client for.
 
 ---
 
-## 3. Proposed architecture
+## 3. Architecture
 
 ### 3.1 Throttling
 
@@ -127,20 +127,7 @@ dependency or a policy.
 
 ---
 
-## 5. Implementation order
-
-1. **Streaming uploads** — self-contained, no API change, unblocks large media
-2. **Throttling** — plus the exported window primitive
-3. **Inbound rate limiting** — pairs with the above
-4. **Inline result builders** — small
-5. **Production hardening** — concurrency, backpressure, storage failure, cancellation
-6. **Docs and examples** — a production example that uses all of it
-
-Each step ends with the full verification suite and a look at the public surface.
-
----
-
-## 6. Testing strategy
+## 5. Testing strategy
 
 Beyond "does it work", every area gets tests for the failure it exists to prevent:
 
@@ -156,31 +143,13 @@ builders.
 
 ---
 
-## 7. Definition of done
+## 6. Production hardening
 
-- [x] Streaming uploads work, with memory behaviour tested
-- [x] Throttling ships, with defaults matching Telegram's published limits
-- [x] Inbound rate limiting ships
-- [x] Inline result builders ship
-- [x] Production audit complete, with every finding fixed or written down — see §10
-- [x] Public surface reviewed; nothing documented that does not exist, nothing shipped that is
-      not documented
-- [x] Full verification green: lint, typecheck, invariants, unit, type tests, smoke, package
-      contents
-- [x] Examples cover the production shape
-- [x] No release artifacts: no changeset, no version bump, no publish
+Four defects that are invisible until a bot meets real traffic, and what each is now.
 
----
-
-## 10. What the production audit found
-
-Four findings, all fixed. Each was invisible until a bot met real traffic, which is why an
-audit rather than a feature list was the right instrument.
-
-**P1 — updates were delivered strictly sequentially.** The polling loop awaited each handler
-before starting the next, so one handler waiting on a database was the throughput of the whole
-bot, and the next `getUpdates` waited behind it too. The documentation had promised concurrency
-since before there was any.
+**P1 — updates were delivered strictly sequentially.** A polling loop that awaits each handler
+before starting the next makes one handler waiting on a database the throughput of the whole
+bot, and the next `getUpdates` waits behind it too.
 
 Fixed by a scheduler that is concurrent across chats and sequential within one: unrelated
 conversations no longer wait for each other, and two messages from the same person are still
@@ -188,78 +157,27 @@ answered in the order they were sent — the one reordering a user actually noti
 `poll({ concurrency })`, default 16, because a batch of a hundred slow handlers opening a
 hundred database connections is how a bot takes down what it depends on.
 
-**P2 — shutdown could cut off handlers the last batch had started.** With sequential delivery
-the loop was inside the handler, so stopping the loop stopped the work. With concurrency it is
-not, so `stop()` now drains the scheduler as well as cancelling the poll.
+**P2 — shutdown could cut off handlers the last batch had started.** Under sequential delivery
+the loop sits inside the handler, so stopping the loop stops the work. Under concurrency it does
+not, so `stop()` drains the scheduler as well as cancelling the poll.
 
-**P3 — the throttle swept idle windows on every call.** The first implementation walked every
-tracked window per request: invisible at ten conversations, O(chats) per call at a hundred
-thousand. Sweeping is now periodic, which keeps memory bounded without putting a scan on the
-hot path.
+**P3 — the throttle swept idle windows on every call.** Walking every tracked window per
+request is invisible at ten conversations and O(chats) per call at a hundred thousand. Sweeping
+is periodic instead, which keeps memory bounded without putting a scan on the hot path.
 
 **P4 — `allowedUpdates` could only be set on the client.** It is a `getUpdates` parameter, and
-a reader looking for what a bot subscribes to looks at the call that starts it. Now accepted on
-`poll()` as well, where it wins.
+a reader looking for what a bot subscribes to looks at the call that starts it. It is accepted
+on `poll()` as well, where it wins.
 
-Two further checks came back clean and are recorded so they are not re-audited from scratch:
-session persistence already degrades rather than throws when a store is unavailable, and
-cancellation already reaches the in-flight long poll, the flood-wait sleep and now the throttle
-queue.
-
----
-
-## 8. Final comparison against puregram
-
-Where this leaves the two, once the plan is done:
-
-| Area | After this phase |
-|---|---|
-| Throttling | **Parity**, in core rather than a plugin |
-| Streaming uploads | **Parity** |
-| Inbound rate limiting | **Parity**, in core |
-| Inline results | **Parity** on the common shapes |
-| Storage adapters | **puregram ahead** — deliberate |
-| Scenes | **puregram ahead** — deferred, not rejected |
-| Media caching | **puregram ahead** — deliberate |
-| Everything else | Yuigram at parity or ahead, per the previous audit |
-
-The remaining deficit becomes a *packaging* deficit rather than a capability one, which is the
-right shape: a developer can build all three in an afternoon against interfaces that exist,
-and none of them blocks starting.
+Two adjacent properties hold without further work, and are recorded here because they are easy
+to assume broken: session persistence degrades rather than throws when a store is unavailable,
+and cancellation reaches the in-flight long poll, the flood-wait sleep and the throttle queue.
 
 ---
 
-## 9. What we will not implement, and why
+## 7. Correctness under load
 
-**Scenes and conversations, in this phase.** The design questions — where the position lives,
-what happens when a scene is re-entered, how cancellation interacts with global commands,
-whether scenes nest — deserve their own pass. Shipping a shallow version would fix the wrong
-answers into the public API. `Router` plus sessions covers step-wise dialogue today.
-
-**Storage adapters for Redis, SQLite or Postgres.** `KV` is `get`, `set`, `delete`, and an
-optional `info`. An adapter is thirty lines the application writes against the client it
-already configures. Shipping them means owning driver dependencies and a version matrix, and
-the framework's storage contract exists precisely so it does not have to.
-
-**Media caching.** A hook plus a `KV`, both of which ship. The part worth having an opinion
-about is eviction, and there is no answer that suits a bot with ten files and a bot with ten
-million.
-
-**Pagination helpers.** The Bot API paginates almost nothing.
-
-**Rich message builders.** Recent, narrow, and reachable through the generated types.
-
-**A plugin package per capability.** Package count is not a health metric. Every capability
-here rides an extension point that is public and documented, which is what makes an ecosystem
-possible; publishing thirteen packages to prove it is not the same thing.
-
-
----
-
-## 11. Post-audit remediation
-
-The release audit found four defects, three of them introduced by the finalization work above.
-All four are fixed; a fifth surfaced while verifying the third.
+Five defects in the subsystems above, and the reasoning behind each fix.
 
 ### The polling loop had no backpressure
 
@@ -275,8 +193,8 @@ completions, not a poll of a counter. Two watermarks, because resuming at the le
 producer stopped at makes it fetch one update at a time forever.
 
 The peak is roughly half the capacity plus one batch, since the check happens before a fetch
-and a fetch returns a whole batch. Trimming the batch to fit was rejected: it trades a
-bounded, predictable peak for more round trips. What matters is that the peak is a constant
+and a fetch returns a whole batch. Trimming the batch to fit is the wrong trade: it costs more
+round trips for no gain over a bounded, predictable peak. What matters is that the peak is a constant
 rather than a function of uptime, and that is what the regression test asserts — by running
 four times as long and requiring the peak not to grow.
 
@@ -306,9 +224,9 @@ uploaded an empty file that Telegram accepted.
 stream is marked single-use, and the encoder **claims** it when bytes are committed — refusing
 the second claim with an error that names the file and says how to make the upload retryable.
 
-The first design guarded the `data` getter and was wrong: choosing between the buffered and
-streaming paths *reads* `data`, so inspection counted as consumption and the guard would have
-rejected the first attempt. Separating inspection from consumption is the whole of the fix.
+Guarding the `data` getter instead does not work: choosing between the buffered and streaming
+paths *reads* `data`, so inspection would count as consumption and the guard would refuse the
+first attempt. Separating inspection from consumption is the whole of the fix.
 
 ### The throttle leaked its FIFO chains
 
@@ -317,9 +235,56 @@ could never be true. The window count returned to zero, so the leak was invisibl
 Fixed, and the chain count is now exposed so the invariant can be tested rather than measured
 in bytes.
 
-### New finding, found while verifying the third
+### The refusal surfaced as a network error
 
-The refusal above was reaching callers as a `NetworkError`. Encoding happens inside the
+The refusal above reached callers as a `NetworkError`. Encoding happens inside the
 transport call, and `invoke` wrapped anything thrown there as "could not reach the Telegram
 API" — false, and hiding the one message that says what to do. Errors the framework raised
 deliberately now pass through unwrapped.
+
+---
+
+## 8. Comparison against puregram
+
+Where this leaves the two:
+
+| Area | Where it stands |
+|---|---|
+| Throttling | **Parity**, in core rather than a plugin |
+| Streaming uploads | **Parity** |
+| Inbound rate limiting | **Parity**, in core |
+| Inline results | **Parity** on the common shapes |
+| Storage adapters | **puregram ahead** — deliberate |
+| Scenes | **puregram ahead** — deferred, not rejected |
+| Media caching | **puregram ahead** — deliberate |
+| Everything else | Yuigram at parity or ahead |
+
+The remaining deficit becomes a *packaging* deficit rather than a capability one, which is the
+right shape: a developer can build all three in an afternoon against interfaces that exist,
+and none of them blocks starting.
+
+---
+
+## 9. What is deliberately not implemented, and why
+
+**Scenes and conversations.** The design questions — where the position lives,
+what happens when a scene is re-entered, how cancellation interacts with global commands,
+whether scenes nest — deserve their own pass. Shipping a shallow version would fix the wrong
+answers into the public API. `Router` plus sessions covers step-wise dialogue today.
+
+**Storage adapters for Redis, SQLite or Postgres.** `KV` is `get`, `set`, `delete`, and an
+optional `info`. An adapter is thirty lines the application writes against the client it
+already configures. Shipping them means owning driver dependencies and a version matrix, and
+the framework's storage contract exists precisely so it does not have to.
+
+**Media caching.** A hook plus a `KV`, both of which ship. The part worth having an opinion
+about is eviction, and there is no answer that suits a bot with ten files and a bot with ten
+million.
+
+**Pagination helpers.** The Bot API paginates almost nothing.
+
+**Rich message builders.** Recent, narrow, and reachable through the generated types.
+
+**A plugin package per capability.** Package count is not a health metric. Every capability
+here rides an extension point that is public and documented, which is what makes an ecosystem
+possible; publishing thirteen packages to prove it is not the same thing.

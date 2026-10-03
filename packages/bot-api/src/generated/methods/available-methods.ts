@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Available methods
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
-import type { AcceptedGiftTypes, BotCommand, BotCommandScope, ChatAdministratorRights, ChatPermissions, ForceReply, InlineKeyboardMarkup, InlineQueryResult, InputChecklist, InputMediaAudio, InputMediaDocument, InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo, InputPaidMedia, InputPollMedia, InputPollOption, InputProfilePhoto, InputStoryContent, KeyboardButton, LinkPreviewOptions, MenuButton, MessageEntity, ReactionType, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, StoryArea, SuggestedPostParameters } from '../types/index.js'
+import type { AcceptedGiftTypes, BotCommand, BotCommandScope, ChatAdministratorRights, ChatPermissions, EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, InlineQueryResult, InputChecklist, InputMediaAudio, InputMediaDocument, InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo, InputPaidMedia, InputPollMedia, InputPollOption, InputProfilePhoto, InputStoryContent, KeyboardButton, LinkPreviewOptions, MenuButton, MessageEntity, ReactionType, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, StoryArea, SuggestedPostParameters } from '../types/index.js'
 import type { InputFile } from '../../input-file.js'
 
 /**
@@ -61,18 +61,10 @@ export interface SendMessageParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Text of the message to be sent, 1-4096 characters after entities parsing
@@ -448,18 +440,10 @@ export interface SendPhotoParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Photo to send. Pass a file_id as String to send a photo that exists on the
@@ -574,18 +558,10 @@ export interface SendLivePhotoParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Live photo video to send. The video must be no longer than 10 seconds and
@@ -707,18 +683,10 @@ export interface SendAudioParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Audio file to send. Pass a file_id as String to send an audio file that
@@ -847,18 +815,10 @@ export interface SendDocumentParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * File to send. Pass a file_id as String to send a file that exists on the
@@ -979,18 +939,10 @@ export interface SendVideoParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Video to send. Pass a file_id as String to send a video that exists on the
@@ -1149,18 +1101,10 @@ export interface SendAnimationParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Animation to send. Pass a file_id as String to send an animation that exists
@@ -1300,18 +1244,10 @@ export interface SendVoiceParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Audio file to send. Pass a file_id as String to send a file that exists on
@@ -1418,18 +1354,10 @@ export interface SendVideoNoteParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Video note to send. Pass a file_id as String to send a video note that
@@ -1711,18 +1639,10 @@ export interface SendLocationParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Latitude of the location
@@ -1834,18 +1754,10 @@ export interface SendVenueParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Latitude of the venue
@@ -1964,18 +1876,10 @@ export interface SendContactParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
    * Contact's phone number
@@ -2395,7 +2299,8 @@ export interface SendMessageDraftParams {
 
   /**
    * Unique identifier of the message draft; must be non-zero. Changes to drafts
-   * with the same identifier are animated.
+   * with the same identifier are animated. Otherwise, the draft is replaced
+   * without animation.
    */
   draft_id: number
 
@@ -2416,6 +2321,21 @@ export interface SendMessageDraftParams {
    * which can be specified instead of parse_mode
    */
   entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True to show the user a button to stop further drafts. The bot will
+   * receive an Update “stopped_message_generation” if the user presses the
+   * button.
+   */
+  can_stop?: boolean | undefined
+
+  /**
+   * Pass True to keep the draft in the chat when the button is pressed. The
+   * draft will still disappear after a short time or if the bot sends a message.
+   * To fully preserve the partial draft, the bot should send it as a new
+   * message.
+   */
+  keep_on_stop?: boolean | undefined
 }
 
 /**
@@ -2782,6 +2702,12 @@ export interface PromoteChatMemberParams {
    * groups and supergroups only
    */
   can_manage_tags?: boolean | undefined
+
+  /**
+   * Pass True if the administrator can manage chat welcome messages or directly
+   * send them in the case of bots
+   */
+  can_send_welcome_messages?: boolean | undefined
 }
 
 /**
@@ -3648,8 +3574,7 @@ export interface AnswerCallbackQueryParams {
 
   /**
    * The maximum amount of time in seconds that the result of the callback query
-   * may be cached client-side. Telegram apps will support caching starting in
-   * version 3.14. Defaults to 0.
+   * may be cached client-side. Defaults to 0.
    */
   cache_time?: number | undefined
 }

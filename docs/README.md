@@ -11,9 +11,9 @@ dispatch and errors in [middleware.md](middleware.md), typing in [sessions.md](s
 it describes running code, and the behaviour is pinned by tests.
 
 [api-review.md](api-review.md), [api-proposals.md](api-proposals.md),
-[api-decisions.md](api-decisions.md) and [post-release-audit.md](post-release-audit.md) are the
-record of how that surface was arrived at. They quote the `0.1.0` API they argue against, and
-are deliberately left as written.
+[api-decisions.md](api-decisions.md) and [post-release-audit.md](post-release-audit.md) hold the
+reasoning behind that surface. They quote the `0.1.0` API they argue against, so they read
+against that release rather than against the current code.
 
 **MTProto is not implemented.** Neither is the `App` container that holds several clients, nor
 anything that depends on it. [api-design.md](api-design.md) is labelled the *proposed* API and
@@ -72,7 +72,7 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 18 | [feasibility.md](feasibility.md) | Honest engineering assessment + executive summary |
 | 19 | [roadmap.md](roadmap.md) | Phased delivery plan |
 | 20 | [migration.md](migration.md) | What changes between releases, and what to do about it |
-| 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, what was closed, and what will not be built |
+| 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, how they were closed, and what is deliberately not built |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
 the specification does not cover. Empty until the MTProto subsystem begins.

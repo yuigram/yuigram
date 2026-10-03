@@ -1,9 +1,9 @@
 /**
  * Bounded ingestion.
  *
- * The audit finding these exist for: the poll loop scheduled work and returned,
- * so a transport that always had another batch outran the handlers and the
- * backlog became the process's memory — at any concurrency, including one.
+ * A poll loop that schedules work and returns is outrun by a transport that
+ * always has another batch waiting, and the backlog it accumulates becomes the
+ * process's memory — at any concurrency, including one.
  *
  * What is asserted here is the **invariant**, not the mechanism: outstanding
  * work stays bounded while a full transport is served, ordering survives, and
@@ -155,16 +155,16 @@ async function peakBacklog(concurrency: number, ms: number): Promise<number> {
 
 describe('a permanently full transport', () => {
   it('cannot make outstanding work grow with the time it runs', async () => {
-    // The audit's failure was exactly this: the backlog tracked elapsed time
-    // until the process ran out of memory. Four times the runtime must not
-    // mean a materially larger backlog.
+    // An unbounded loop's backlog tracks elapsed time until the process runs
+    // out of memory. Four times the runtime must not mean a materially larger
+    // backlog.
     const short = await peakBacklog(4, 150)
     const long = await peakBacklog(4, 600)
 
     expect(long).toBeLessThanOrEqual(short * 2)
   })
 
-  it('stays bounded at concurrency 1, where sequential delivery used to be the only guard', async () => {
+  it('stays bounded at concurrency 1, where running one handler at a time is not itself a bound', async () => {
     const short = await peakBacklog(1, 150)
     const long = await peakBacklog(1, 600)
 

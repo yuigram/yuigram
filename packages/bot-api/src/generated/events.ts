@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API event taxonomy
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
 
 /**
  * Event kinds produced by a top-level `Update` field.
@@ -33,6 +33,7 @@ export type UpdateEventKind =
   | 'pre_checkout_query'
   | 'purchased_paid_media'
   | 'shipping_query'
+  | 'stopped_message_generation'
   | 'subscription'
 
 /**
@@ -60,6 +61,7 @@ export type ServiceEventKind =
   | 'checklist_tasks_added'
   | 'checklist_tasks_done'
   | 'community_chat_added'
+  | 'community_chat_joined'
   | 'community_chat_removed'
   | 'connected_website'
   | 'direct_message_price_changed'
@@ -129,6 +131,7 @@ export const UPDATE_EVENTS = {
   "pre_checkout_query": 'pre_checkout_query',
   "purchased_paid_media": 'purchased_paid_media',
   "shipping_query": 'shipping_query',
+  "stopped_message_generation": 'stopped_message_generation',
   "subscription": 'subscription',
 } as const satisfies Record<string, UpdateEventKind>
 
@@ -156,6 +159,7 @@ export const SERVICE_EVENTS = {
   "checklist_tasks_added": 'checklist_tasks_added',
   "checklist_tasks_done": 'checklist_tasks_done',
   "community_chat_added": 'community_chat_added',
+  "community_chat_joined": 'community_chat_joined',
   "community_chat_removed": 'community_chat_removed',
   "connected_website": 'connected_website',
   "direct_message_price_changed": 'direct_message_price_changed',
@@ -223,6 +227,7 @@ export interface UpdatePayloads {
   "pre_checkout_query": PreCheckoutQuery
   "purchased_paid_media": PaidMediaPurchased
   "shipping_query": ShippingQuery
+  "stopped_message_generation": MessageGenerationStopped
   "subscription": BotSubscriptionUpdated
 }
 
@@ -291,6 +296,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'checklist_tasks_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'checklist_tasks_done': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'community_chat_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'community_chat_joined': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'community_chat_removed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'connected_website': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'direct_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
@@ -327,6 +333,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'purchased_paid_media': ['purchased_paid_media'],
   'refunded_payment': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'shipping_query': ['shipping_query'],
+  'stopped_message_generation': ['stopped_message_generation'],
   'subscription': ['subscription'],
   'suggested_post_approval_failed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'suggested_post_approved': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
@@ -376,5 +383,6 @@ export const ALL_UPDATE_TYPES: readonly string[] = [
   'pre_checkout_query',
   'purchased_paid_media',
   'shipping_query',
+  'stopped_message_generation',
   'subscription',
 ]
