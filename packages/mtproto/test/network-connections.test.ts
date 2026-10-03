@@ -22,7 +22,11 @@ import {
 import { describe, expect, it } from 'vitest'
 import { AuthKey } from '../src/message/auth-key.js'
 import { AUTH_KEY_NOT_FOUND, type Channel, TransportError } from '../src/network/channel.js'
-import { type Connections, openConnections } from '../src/network/connections.js'
+import {
+  type ConnectionDiagnostic,
+  type Connections,
+  openConnections,
+} from '../src/network/connections.js'
 import type { ConnectOptions, Datacenters } from '../src/network/datacenters.js'
 import type { DcDirectory } from '../src/network/dc.js'
 import { isUpdateSource } from '../src/normalize/events.js'
@@ -175,14 +179,17 @@ function harness(options: Record<string, unknown> = {}) {
       return channel
     },
 
-    async forget(id: number, keyId: Uint8Array): Promise<void> {
+    async forget(id: number, keyId: Uint8Array): Promise<'temporary' | 'permanent' | 'none'> {
       forgotten.push({ id, keyId })
       await holdForget
 
       // The same comparison the real layer makes: a refusal naming a key that
       // has already been replaced removes nothing.
       const held = keys.get(id)
-      if (held !== undefined && equal(held.id, keyId)) keys.delete(id)
+      if (held === undefined || !equal(held.id, keyId)) return 'none'
+
+      keys.delete(id)
+      return lifetimes ? 'temporary' : 'permanent'
     },
 
     refresh: async () => {
@@ -1299,6 +1306,134 @@ describe('a datacenter that does not know the key', () => {
  * key is a call being refused part-way through, which costs that call on top of
  * the exchange the replacement needed anyway.
  */
+describe('what a connection reports when its channel ends', () => {
+  /** Every report, in order. */
+  const reporting = () => {
+    const reports: ConnectionDiagnostic[] = []
+    const h = harness({
+      onDiagnostic: (_origin: unknown, report: ConnectionDiagnostic) => reports.push(report),
+    })
+
+    return { ...h, reports }
+  }
+
+  it('names the connection, the channel, the key kind and the recovery for a refused key', async () => {
+    const h = reporting()
+    h.withLifetimes()
+    const connection = h.layer.get()
+    await connection.ready()
+    const written = connection.invoke({ _: 'help.getConfig' })
+    await settle()
+
+    h.channels[0]?.die(new TransportError(AUTH_KEY_NOT_FOUND))
+    // The call already written fails; it is not written again.
+    await expect(written).rejects.toBeInstanceOf(NetworkError)
+    await settle()
+
+    expect(h.reports).toEqual([
+      {
+        event: 'channel-lost',
+        connection: '2:main:0',
+        dcId: 2,
+        purpose: 'main',
+        slot: 0,
+        generation: 1,
+        keyKind: 'temporary',
+        cause: 'TransportError',
+        transportCode: 404,
+        failedCalls: 1,
+        waitingCalls: 0,
+        action: 'discard-key-and-reconnect',
+        delayMs: 1000,
+        failures: 1,
+      },
+      {
+        event: 'key-discarded',
+        connection: '2:main:0',
+        dcId: 2,
+        purpose: 'main',
+        slot: 0,
+        generation: 1,
+        refused: 'temporary',
+        removed: 'temporary',
+      },
+    ])
+  })
+
+  it('counts the channels a connection has held, so one incident can be told from the next', async () => {
+    const h = reporting()
+    const connection = h.layer.get()
+    await connection.ready()
+    h.channels[0]?.die(new NetworkError('the socket closed'))
+    await settle()
+    h.fire()
+    await settle()
+    h.channels[1]?.die(new NetworkError('the socket closed again'))
+    await settle()
+
+    const lost = h.reports.filter((report) => report.event === 'channel-lost')
+    expect(lost.map((report) => [report.generation, report.action, report.cause])).toEqual([
+      [1, 'reconnect', 'NetworkError'],
+      [2, 'reconnect', 'NetworkError'],
+    ])
+    expect(lost.every((report) => !('transportCode' in report))).toBe(true)
+  })
+
+  it('says when the refused key was the long-lived one, which is the authorization itself', async () => {
+    const h = reporting()
+    await h.layer.get().ready()
+
+    h.channels[0]?.die(new TransportError(AUTH_KEY_NOT_FOUND))
+    await settle()
+
+    expect(
+      h.reports.map((report) =>
+        report.event === 'channel-lost' ? report.keyKind : report.removed,
+      ),
+    ).toEqual(['permanent', 'permanent'])
+  })
+
+  it('carries nothing a datacenter could recognise: no key, no key identifier, no session', async () => {
+    const h = reporting()
+    h.withLifetimes()
+    await h.layer.get().ready()
+    const key = h.keys.get(2)
+
+    h.channels[0]?.die(new TransportError(AUTH_KEY_NOT_FOUND))
+    await settle()
+
+    const allowed = new Set([
+      'event',
+      'connection',
+      'dcId',
+      'purpose',
+      'slot',
+      'generation',
+      'keyKind',
+      'cause',
+      'transportCode',
+      'failedCalls',
+      'waitingCalls',
+      'action',
+      'delayMs',
+      'failures',
+      'refused',
+      'removed',
+    ])
+    for (const report of h.reports) {
+      for (const [field, value] of Object.entries(report)) {
+        expect(allowed.has(field), field).toBe(true)
+        expect(['string', 'number'].includes(typeof value), field).toBe(true)
+      }
+    }
+    const written = JSON.stringify(h.reports)
+    const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex')
+    expect(key).toBeDefined()
+    expect(written).not.toContain(hex(key?.id ?? new Uint8Array(0)))
+    expect(written).not.toContain(hex((key?.toBytes() ?? new Uint8Array(0)).subarray(0, 16)))
+  })
+})
+
 describe('a connection whose key is nearly finished', () => {
   /** The lifetime every channel in this harness is given, in Unix seconds. */
   const EXPIRES_AT = 4_000_000_000

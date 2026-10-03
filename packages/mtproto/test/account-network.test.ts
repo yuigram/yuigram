@@ -3048,6 +3048,47 @@ describe('an account signing out', () => {
   })
 })
 
+describe('a datacenter that refuses the key a connection presents', () => {
+  it('is logged with the connection, the key kind and the recovery, and nothing secret', async () => {
+    const records: LogRecord[] = []
+    const instance = harness({
+      log: createLogger({ sink: { write: (record) => records.push(record) } }),
+    })
+    await instance.account.connect()
+    await instance.account.api.call({ _: 'help.getConfig' })
+
+    const connection = instance.datacenter(2).connections.find((one) => one.open())
+    expect(connection).toBeDefined()
+    connection?.push(connection.peer.transportError(404))
+
+    const deadline = Date.now() + 5000
+    const refusals = () =>
+      records.filter((record) => record.message === 'connection: the datacenter refused the key')
+    while (refusals().length < 2 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+
+    const [lost, discarded] = refusals()
+    expect(lost?.level).toBe('warn')
+    expect(lost?.fields).toMatchObject({
+      event: 'channel-lost',
+      dcId: 2,
+      purpose: 'main',
+      cause: 'TransportError',
+      transportCode: 404,
+      action: 'discard-key-and-reconnect',
+    })
+    expect(discarded?.fields).toMatchObject({ event: 'key-discarded', dcId: 2 })
+    // Local names and counters only.
+    for (const record of refusals()) {
+      for (const value of Object.values(record.fields)) {
+        expect(['string', 'number'].includes(typeof value)).toBe(true)
+      }
+    }
+    await instance.dispose()
+  })
+})
+
 describe('where an account resumes the update stream', () => {
   /** An update that advances the common box by one. */
   const message = (pts: number): TlValue => ({

@@ -113,6 +113,12 @@ export interface ConnectionsOptions {
    * the change has been made.
    */
   readonly onState?: (origin: ManagedConnection, state: ConnectionState) => void
+  /**
+   * What happened when a channel ended and what is being done about it, for a
+   * log. Counters and names only: never key material, a key's identifier, a
+   * session, a salt or anything a call carried.
+   */
+  readonly onDiagnostic?: (origin: ManagedConnection, report: ConnectionDiagnostic) => void
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
   readonly now?: () => number
   /** Randomness for the jitter between attempts. */
@@ -120,6 +126,49 @@ export interface ConnectionsOptions {
   /** Run something later, and return the way to cancel it. */
   readonly schedule?: (run: () => void, delayMs: number) => () => void
 }
+
+/**
+ * A connection's account of a channel ending, or of a key discarded after one.
+ *
+ * `connection` and `generation` are local names: which logical connection
+ * (datacenter, purpose, slot) and which of the channels it has held, counted
+ * from one. They correlate the reports of one incident without saying anything
+ * a datacenter could recognise.
+ */
+export type ConnectionDiagnostic =
+  | {
+      readonly event: 'channel-lost'
+      readonly connection: string
+      readonly dcId: number
+      readonly purpose: DcPurpose
+      readonly slot: number
+      readonly generation: number
+      /** The kind of key the lost channel presented. */
+      readonly keyKind: KeyKind
+      /** The error's name, and the transport code when the datacenter sent one. */
+      readonly cause: string
+      readonly transportCode?: number
+      /** Calls already written on the channel: they fail, and are not written again. */
+      readonly failedCalls: number
+      /** Calls waiting for a channel: they wait for the next one. */
+      readonly waitingCalls: number
+      readonly action: 'discard-key-and-reconnect' | 'reconnect'
+      readonly delayMs: number
+      /** Consecutive failures, this one included. */
+      readonly failures: number
+    }
+  | {
+      readonly event: 'key-discarded'
+      readonly connection: string
+      readonly dcId: number
+      readonly purpose: DcPurpose
+      readonly slot: number
+      readonly generation: number
+      /** The kind of key the refused channel presented. */
+      readonly refused: KeyKind
+      /** What the datacenter layer removed: the key with a lifetime, the long-lived one, or nothing. */
+      readonly removed: DiscardedKey
+    }
 
 /** How one call is made through a logical connection. */
 export interface ConnectionInvokeOptions extends InvokeOptions {
@@ -249,6 +298,10 @@ class Logical implements ManagedConnection {
   readonly purpose: DcPurpose
   readonly slot: number
   #inFlight = 0
+  /** Calls that have been written on the current channel and not yet answered. */
+  #written = 0
+  /** How many channels this connection has held, the current one included. */
+  #generation = 0
 
   readonly #options: ConnectionsOptions
   readonly #base: number
@@ -334,10 +387,15 @@ class Logical implements ManagedConnection {
 
       // The write. Everything before it may be repeated freely; nothing after
       // it may be repeated at all.
-      return await channel.invoke(
-        query,
-        options.timeout === undefined ? {} : { timeout: options.timeout },
-      )
+      this.#written += 1
+      try {
+        return await channel.invoke(
+          query,
+          options.timeout === undefined ? {} : { timeout: options.timeout },
+        )
+      } finally {
+        this.#written -= 1
+      }
     } finally {
       this.#inFlight -= 1
     }
@@ -447,6 +505,7 @@ class Logical implements ManagedConnection {
     this.#attempt = undefined
     this.#abort = undefined
     this.#channel = channel
+    this.#generation += 1
     this.#enter('ready')
     this.#readyAt = this.#now()
 
@@ -545,6 +604,21 @@ class Logical implements ManagedConnection {
     const delay = this.#delayFor(error)
     this.#lastDelay = delay
 
+    if (refused !== undefined) {
+      this.#options.onDiagnostic?.(this, {
+        event: 'channel-lost',
+        ...this.#identity(),
+        keyKind: kindOf(refused.authorization),
+        cause: causeOf(error).name,
+        ...transportCodeOf(error),
+        failedCalls: this.#written,
+        waitingCalls: this.#inFlight - this.#written,
+        action: refusedKey ? 'discard-key-and-reconnect' : 'reconnect',
+        delayMs: delay,
+        failures: this.#failures,
+      })
+    }
+
     this.#cancelTimer = this.#schedule(() => {
       this.#cancelTimer = undefined
       // The wait may have been called off while the timer was already on its
@@ -567,11 +641,32 @@ class Logical implements ManagedConnection {
    * defeat that.
    */
   #discard(refused: Channel): void {
+    const identity = this.#identity()
+    const kind = kindOf(refused.authorization)
     this.#discarding = this.#options.datacenters
       .forget(this.dcId, refused.authorization.key.id)
+      .then((removed) => {
+        this.#options.onDiagnostic?.(this, {
+          event: 'key-discarded',
+          ...identity,
+          refused: kind,
+          removed: removed ?? 'unknown',
+        })
+      })
       .catch((error: unknown) => {
         this.#options.onFailure?.(this, asError(error))
       })
+  }
+
+  /** Which connection this is, and which of its channels, by local names only. */
+  #identity() {
+    return {
+      connection: `${this.dcId}:${this.purpose}:${this.slot}`,
+      dcId: this.dcId,
+      purpose: this.purpose,
+      slot: this.slot,
+      generation: this.#generation,
+    }
   }
 
   /**
@@ -631,7 +726,22 @@ class Logical implements ManagedConnection {
 }
 
 /** Which of a datacenter's two keys a connection was using. */
-type KeyKind = 'temporary' | 'permanent'
+export type KeyKind = 'temporary' | 'permanent'
+
+/** What discarding a refused key removed; `unknown` where the layer did not say. */
+export type DiscardedKey = 'temporary' | 'permanent' | 'none' | 'unknown'
+
+/** The error behind a `the connection ended`, which is what names the reason. */
+function causeOf(error: Error): Error {
+  return error.cause instanceof Error ? error.cause : error
+}
+
+/** The transport code of a refusal, as a field to spread into a report. */
+function transportCodeOf(error: Error): { readonly transportCode?: number } {
+  const cause = causeOf(error)
+
+  return cause instanceof TransportError ? { transportCode: cause.code } : {}
+}
 
 /**
  * Which kind of key an authorization is.

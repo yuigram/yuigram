@@ -5243,6 +5243,15 @@ export class Account<Ext = unknown> {
         this.#link = state
         this.#observeStatus()
       },
+      // Which connection lost its channel, with which kind of key, and what is
+      // being done about it — the record an operator needs to tell a refused
+      // key from a dropped socket. Counters and local names only.
+      onDiagnostic: (_origin, report) => {
+        const refused =
+          report.event === 'key-discarded' || report.action === 'discard-key-and-reconnect'
+        if (refused) this.#log.warn('connection: the datacenter refused the key', report)
+        else this.#log.info('connection: a channel ended', report)
+      },
       ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
       ...(this.#options.random === undefined ? {} : { random: this.#options.random }),
       ...(this.#options.schedule === undefined ? {} : { schedule: this.#options.schedule }),

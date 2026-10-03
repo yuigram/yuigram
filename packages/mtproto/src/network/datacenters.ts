@@ -147,8 +147,11 @@ export interface Datacenters {
    * already have obtained a replacement — and removing that replacement would
    * leave a live connection authorized against a key stored nowhere, which is
    * the same damage this guards everywhere else.
+   *
+   * Answers what it removed: the key with a lifetime, the long-lived key, or
+   * nothing, when the key named is no longer the one held.
    */
-  forget(id: number, keyId: Uint8Array): Promise<void>
+  forget(id: number, keyId: Uint8Array): Promise<'temporary' | 'permanent' | 'none'>
   /**
    * Ask the server for the current configuration, and adopt what it says.
    *
@@ -423,7 +426,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       // compare against a key that has since been replaced and delete the
       // replacement, leaving a live connection authorized against a key stored
       // nowhere.
-      await authorize(id, async () => {
+      return await authorize(id, async (): Promise<'temporary' | 'permanent' | 'none'> => {
         // The key a connection presents is the one with a lifetime, so that is
         // what a refusal names. Discarding it leaves the long-lived key exactly
         // where it is: a replacement costs one exchange and one vouching, while
@@ -434,17 +437,18 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
         // it finished.
         const temporary = await options.authorization.temporaryKey(id, TEMPORARY_INDEX, 0)
         if (temporary !== undefined) {
-          if (!equalBytes(authKeyId(temporary.key), keyId)) return
+          if (!equalBytes(authKeyId(temporary.key), keyId)) return 'none'
 
           await options.authorization.setTemporaryKey(id, TEMPORARY_INDEX, undefined, 0)
-          return
+          return 'temporary'
         }
 
         const stored = await options.authorization.key(id)
-        if (stored === undefined) return
-        if (!equalBytes(authKeyId(stored), keyId)) return
+        if (stored === undefined) return 'none'
+        if (!equalBytes(authKeyId(stored), keyId)) return 'none'
 
         await options.authorization.forget(id)
+        return 'permanent'
       })
     },
 

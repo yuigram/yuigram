@@ -696,7 +696,8 @@ describe('discarding a key the datacenter refused', () => {
     const { layer } = await datacenters({}, stores)
     await layer.connect()
 
-    await layer.forget(2, idOf(TEMPORARY))
+    // And says which it removed, which is what a diagnostic reports.
+    await expect(layer.forget(2, idOf(TEMPORARY))).resolves.toBe('temporary')
 
     // The key with a lifetime is replaceable material. The long-lived key is
     // the authorization itself, and losing it would mean starting again.
@@ -729,7 +730,7 @@ describe('discarding a key the datacenter refused', () => {
     // in use is already gone — but when it does, the authorization is finished.
     await layer.forget(2, idOf(TEMPORARY))
 
-    await layer.forget(2, idOf(PERMANENT))
+    await expect(layer.forget(2, idOf(PERMANENT))).resolves.toBe('permanent')
 
     expect(await stored(stores.auth).key(2)).toBeUndefined()
   })
@@ -755,7 +756,7 @@ describe('discarding a key the datacenter refused', () => {
     const { layer } = await datacenters({}, stores)
     await layer.connect()
 
-    await layer.forget(2, idOf(9))
+    await expect(layer.forget(2, idOf(9))).resolves.toBe('none')
 
     expect((await stored(stores.auth).temporaryKey(2, 0, 0))?.key).toEqual(material(TEMPORARY))
     expect(await stored(stores.auth).key(2)).toEqual(material(PERMANENT))
@@ -765,7 +766,7 @@ describe('discarding a key the datacenter refused', () => {
     const stores = { auth: memory(), dcs: memory() }
     const { layer } = await datacenters({}, stores)
 
-    await expect(layer.forget(2, idOf(1))).resolves.toBeUndefined()
+    await expect(layer.forget(2, idOf(1))).resolves.toBe('none')
     expect(stores.auth.values.size).toBe(0)
   })
 
@@ -887,7 +888,7 @@ describe('discarding a key the datacenter refused', () => {
     // Datacenters have authorizations of their own, so one waiting on a slow
     // store is not a reason for the others to wait with it — while anything
     // else for the same datacenter waits exactly as it should.
-    await expect(layer.forget(1, idOf(9))).resolves.toBeUndefined()
+    await expect(layer.forget(1, idOf(9))).resolves.toBe('none')
     expect(behind).toBe(false)
 
     release()
@@ -945,7 +946,7 @@ describe('discarding a key the datacenter refused', () => {
 
     // The next operation is not the one that failed, and it reads the store for
     // itself.
-    await expect(layer.forget(2, idOf(1))).resolves.toBeUndefined()
+    await expect(layer.forget(2, idOf(1))).resolves.toBe('none')
   })
 
   it('is safe when two connections to one datacenter refuse the same key', async () => {
