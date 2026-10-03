@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Available types
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 import type { CallbackGame, Game } from './games.js'
 import type { Invoice, RefundedPayment, SuccessfulPayment } from './payments.js'
@@ -1008,12 +1008,17 @@ export interface Message {
   readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
 
   /**
-   * Service message: chat added to a Community
+   * Service message: chat or bot added to a Community
    */
   readonly community_chat_added?: CommunityChatAdded | undefined
 
   /**
-   * Service message: chat removed from a Community
+   * Service message: chat was joined by a user from a Community
+   */
+  readonly community_chat_joined?: CommunityChatJoined | undefined
+
+  /**
+   * Service message: chat or bot removed from a Community
    */
   readonly community_chat_removed?: CommunityChatRemoved | undefined
 
@@ -1513,6 +1518,30 @@ export interface ReplyParameters {
 }
 
 /**
+ * @see https://corefork.telegram.org/bots/api#ephemeralmessageparameters
+ */
+export interface EphemeralMessageParameters {
+  /**
+   * Identifier of the user who will receive the message. It is not guaranteed
+   * that the user will receive the message, especially if they are offline. See
+   * here for more details.
+   */
+  readonly receiver_user_id: number
+
+  /**
+   * Identifier of the callback query which triggered the message, if any
+   */
+  readonly callback_query_id?: string | undefined
+
+  /**
+   * Pass True if the ephemeral message must be shown in place of the original
+   * message. Must be False for callback queries from ephemeral messages, which
+   * must be edited using regular editEphemeralMessage… methods.
+   */
+  readonly replace_callback_query_message?: boolean | undefined
+}
+
+/**
  * This object describes the origin of a message. It can be one of
  *
  * @see https://corefork.telegram.org/bots/api#messageorigin
@@ -1999,8 +2028,7 @@ export interface Video {
 }
 
 /**
- * This object represents a video message (available in Telegram apps as of
- * v.4.0).
+ * This object represents a video message.
  *
  * @see https://corefork.telegram.org/bots/api#videonote
  */
@@ -2915,6 +2943,28 @@ export interface BotSubscriptionUpdated {
 }
 
 /**
+ * This object describes an update about a user stopping message generation.
+ *
+ * @see https://corefork.telegram.org/bots/api#messagegenerationstopped
+ */
+export interface MessageGenerationStopped {
+  /**
+   * Chat in which the message is generated
+   */
+  readonly chat: Chat
+
+  /**
+   * Unique identifier of the message thread in which the message is generated
+   */
+  readonly message_thread_id?: number | undefined
+
+  /**
+   * Unique identifier of the message draft which was stopped
+   */
+  readonly draft_id: number
+}
+
+/**
  * Describes a service message about an option added to a poll.
  *
  * @see https://corefork.telegram.org/bots/api#polloptionadded
@@ -3238,20 +3288,34 @@ export interface ChecklistTasksAdded {
 }
 
 /**
- * Describes a service message about a chat being added to a community.
+ * Describes a service message about a chat or a bot being added to a
+ * community.
  *
  * @see https://corefork.telegram.org/bots/api#communitychatadded
  */
 export interface CommunityChatAdded {
   /**
-   * The new community to which the chat belongs
+   * The new community to which the chat or the bot belongs
    */
   readonly community: Community
 }
 
 /**
- * Describes a service message about a chat being removed from a community.
- * Currently holds no information.
+ * Describes a service message about a chat being joined by a user from a
+ * community.
+ *
+ * @see https://corefork.telegram.org/bots/api#communitychatjoined
+ */
+export interface CommunityChatJoined {
+  /**
+   * The community from which the chat was joined
+   */
+  readonly community: Community
+}
+
+/**
+ * Describes a service message about a chat or a bot being removed from a
+ * community. Currently holds no information.
  *
  * @see https://corefork.telegram.org/bots/api#communitychatremoved
  */
@@ -4100,6 +4164,12 @@ export interface ReplyKeyboardMarkup {
    * new language. Other users in the group don't see the keyboard.
    */
   readonly selective?: boolean | undefined
+
+  /**
+   * Pass True if the reply interface must be shown to the user, as if they had
+   * manually selected the bot's message and tapped 'Reply'
+   */
+  readonly force_reply?: boolean | undefined
 }
 
 /**
@@ -4384,6 +4454,13 @@ export interface InlineKeyboardMarkup {
    * objects
    */
   readonly inline_keyboard: InlineKeyboardButton[][]
+
+  /**
+   * Pass True if the reply interface must be shown to the user, as if they had
+   * manually selected the bot's message and tapped 'Reply'. The value of the
+   * field can't be changed when the inline keyboard is edited.
+   */
+  readonly force_reply?: boolean | undefined
 }
 
 /**
@@ -4437,7 +4514,8 @@ export interface InlineKeyboardButton {
 
   /**
    * An HTTPS URL used to automatically authorize the user. Can be used as a
-   * replacement for the Telegram Login Widget.
+   * replacement for the Telegram Login Widget. Not supported for ephemeral
+   * messages.
    */
   readonly login_url?: LoginUrl | undefined
 
@@ -4488,15 +4566,19 @@ export interface InlineKeyboardButton {
    * invoice messages.
    */
   readonly pay?: boolean | undefined
+
+  /**
+   * If set, then the button is disabled and does nothing
+   */
+  readonly disabled?: DisabledButton | undefined
 }
 
 /**
  * This object represents a parameter of the inline keyboard button used to
- * automatically authorize a user. Serves as a great replacement for the
+ * automatically authorize a user. It serves as a great replacement for the
  * Telegram Login Widget when the user is coming from Telegram. All the user
  * needs to do is tap/click a button and confirm that they want to log in:
- * Telegram apps support these buttons as of version 5.7. Sample bot:
- * @discussbot
+ * Sample bot: @DiscussBot
  *
  * @see https://corefork.telegram.org/bots/api#loginurl
  */
@@ -4518,10 +4600,11 @@ export interface LoginUrl {
   readonly forward_text?: string | undefined
 
   /**
-   * Username of a bot, which will be used for user authorization. See Setting up
-   * a bot for more details. If not specified, the current bot's username will be
-   * assumed. The url's domain must be the same as the domain linked with the
-   * bot. See Linking your domain to the bot for more details.
+   * Username of a bot, which will be used for user authorization; not supported
+   * in RichMessageButton. See Setting up a bot for more details. If not
+   * specified, the current bot's username will be assumed. The url's domain must
+   * be the same as the domain linked with the bot. See Linking your domain to
+   * the bot for more details.
    */
   readonly bot_username?: string | undefined
 
@@ -4578,6 +4661,15 @@ export interface CopyTextButton {
    */
   readonly text: string
 }
+
+/**
+ * This object represents a disabled button which does nothing. Currently holds
+ * no information.
+ *
+ * @see https://corefork.telegram.org/bots/api#disabledbutton
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
+export interface DisabledButton {}
 
 /**
  * This object represents an incoming callback query from a callback button in
@@ -4642,8 +4734,8 @@ export interface CallbackQuery {
  */
 export interface ForceReply {
   /**
-   * Shows reply interface to the user, as if they manually selected the bot's
-   * message and tapped 'Reply'
+   * Shows reply interface to the user, as if they had manually selected the
+   * bot's message and tapped 'Reply'
    */
   readonly force_reply: true
 
@@ -4885,9 +4977,15 @@ export interface ChatAdministratorRights {
 
   /**
    * True, if the administrator can edit the tags of regular members; for groups
-   * and supergroups only. If omitted, defaults to the value of can_pin_messages.
+   * and supergroups only
    */
   readonly can_manage_tags?: boolean | undefined
+
+  /**
+   * True, if the administrator can manage chat welcome messages or directly send
+   * them in the case of bots
+   */
+  readonly can_send_welcome_messages: boolean
 }
 
 /**
@@ -5098,9 +5196,15 @@ export interface ChatMemberAdministrator {
 
   /**
    * True, if the administrator can edit the tags of regular members; for groups
-   * and supergroups only. If omitted, defaults to the value of can_pin_messages.
+   * and supergroups only
    */
   readonly can_manage_tags?: boolean | undefined
+
+  /**
+   * True, if the administrator can manage chat welcome messages or directly send
+   * them in the case of bots
+   */
+  readonly can_send_welcome_messages: boolean
 
   /**
    * Custom title for this user
@@ -6392,6 +6496,22 @@ export interface UniqueGiftInfo {
    * sold through gift purchase offers.
    */
   readonly origin: string
+
+  /**
+   * Text of the message that was added to the gift
+   */
+  readonly text?: string | undefined
+
+  /**
+   * Special entities that appear in the text
+   */
+  readonly entities?: MessageEntity[] | undefined
+
+  /**
+   * True, if the sender and gift text are shown only to the gift receiver;
+   * otherwise, everyone will be able to see them
+   */
+  readonly is_private?: true | undefined
 
   /**
    * For gifts bought from other users, the currency in which the payment for the
