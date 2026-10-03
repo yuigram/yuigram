@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Context method bindings (18 message, 79 chat, 4 source)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 
 /**
  * Methods addressed to the message that arrived. `chat_id` and `message_id`
