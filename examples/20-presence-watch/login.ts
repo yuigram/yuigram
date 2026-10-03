@@ -31,7 +31,11 @@ const nowhere = new Writable({
 })
 
 async function ask(question: string, hidden = false): Promise<string> {
-  process.stdout.write(question)
+  // In a terminal readline redraws the line it reads on, so a question written
+  // there beforehand is wiped before anyone sees it: readline writes it itself.
+  // A hidden answer is read with readline writing nowhere, so its question goes
+  // out directly and stays.
+  if (hidden) process.stdout.write(question)
   const input = createInterface({
     input: process.stdin,
     output: hidden ? nowhere : process.stdout,
@@ -39,10 +43,21 @@ async function ask(question: string, hidden = false): Promise<string> {
   })
 
   try {
-    return (await input.question('')).trim()
+    return (await input.question(hidden ? '' : question)).trim()
   } finally {
     input.close()
     if (hidden) process.stdout.write('\n')
+  }
+}
+
+/** Ask for the phone number until what is typed could be one: digits, with + ( ) - and spaces. */
+async function askPhone(): Promise<string> {
+  for (;;) {
+    const phone = await ask(
+      'Номер телефона аккаунта в международном формате, например +79991234567: ',
+    )
+    if (/^\+?[\d\s()-]+$/.test(phone) && /\d{5}/.test(phone.replace(/\D/g, ''))) return phone
+    console.log('Это не номер телефона: нужны цифры, можно с +, пробелами, скобками и дефисами.')
   }
 }
 
@@ -52,7 +67,7 @@ const account = openAccount(config)
 try {
   await account.connect()
   await account.signIn({
-    phone: () => ask('Номер телефона аккаунта (в международном формате): '),
+    phone: askPhone,
     code: () => ask('Код, который прислал Telegram: '),
     password: () => ask('Пароль двухэтапной аутентификации: ', true),
   })
