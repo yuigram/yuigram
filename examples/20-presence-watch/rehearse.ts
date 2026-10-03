@@ -25,6 +25,7 @@ import { join, relative, resolve } from 'node:path'
 import { file, type KV, type TlValue } from 'yuigram'
 import { mockAccount, mockBot, privateChat, rpcError, user } from 'yuigram/testing'
 import { claimEnvironment, openRecords, readAccountConfig, readConfig } from './config.js'
+import { reportBotErrors } from './errors.js'
 import {
   fingerprintsOf,
   type KeySource,
@@ -32,7 +33,6 @@ import {
   keysFromSource,
   prepareServerKeys,
 } from './server-keys.js'
-import { reportBotErrors } from './errors.js'
 import { type PresenceWatch, presenceWatch } from './watch.js'
 
 // ---- a clock and a timer that only move when told to ------------------------
