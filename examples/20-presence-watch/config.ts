@@ -46,9 +46,13 @@ export interface Config extends AccountConfig {
   readonly timeZone: string | undefined
 }
 
-/** The first address of datacenter 2 in each environment, as Telegram publishes them. */
+/**
+ * The first address of datacenter 2 in each environment: the ones Telegram
+ * Desktop starts from (`kBuiltInDcs` and `kBuiltInDcsTest`), in the same file
+ * and at the same revision the server keys are read from — see `server-keys.ts`.
+ */
 const FIRST_ADDRESS: Readonly<Record<TelegramEnvironment, string>> = {
-  production: '149.154.167.50',
+  production: '149.154.167.51',
   test: '149.154.167.40',
 }
 
