@@ -44,6 +44,7 @@ import { RequestRegistry } from './requests.js'
 import { getFutureSalts, SaltReservoir } from './salts.js'
 import { ConnectionSchedule, type Duty, type ScheduleOptions } from './schedule.js'
 import { Session } from './session.js'
+import { isUnreadVector, readVectorResult } from './vector-result.js'
 
 /**
  * How long a call waits before it is given up on, in milliseconds.
@@ -126,6 +127,8 @@ interface Pending {
   readonly id: number
   /** The method named, for the error a failure raises. */
   readonly method: string
+  /** The method the answer is the result of: the query inside any wrappers. */
+  readonly answers: string
   /** The encoded query, kept so a refused message can be sent again. */
   readonly body: Uint8Array
   readonly resolve: (value: TlValue) => void
@@ -288,7 +291,7 @@ export class Connection {
         deadline: this.#now() + (options.timeout ?? this.#timeout),
       })
 
-      this.#pending.set(id, { id, method, body, resolve, reject })
+      this.#pending.set(id, { id, method, answers: innermost(query), body, resolve, reject })
       this.#schedule.expireAt(this.#registry.earliestDeadline())
       this.#enqueue({ body, id })
     })
@@ -332,7 +335,7 @@ export class Connection {
         deadline: this.#now() + (options.timeout ?? this.#timeout),
       })
 
-      this.#pending.set(id, { id, method, body, resolve, reject })
+      this.#pending.set(id, { id, method, answers: method, body, resolve, reject })
       this.#schedule.expireAt(this.#registry.earliestDeadline())
       this.#registry.sent(id, msgId)
 
@@ -609,6 +612,20 @@ export class Connection {
       return true
     }
 
+    // A list is read now that the call it answers is known. One that cannot be
+    // read as that call declares fails the call, and only the call.
+    let answer: unknown = result
+    if (isUnreadVector(result)) {
+      try {
+        answer = readVectorResult(result.raw, pending.answers, this.#scope)
+      } catch (error) {
+        this.#registry.fail(reqMsgId)
+        this.#release(pending.id, reqMsgId)
+        pending.reject(error)
+        return true
+      }
+    }
+
     this.#registry.complete(reqMsgId)
     this.#release(pending.id, reqMsgId)
 
@@ -618,7 +635,7 @@ export class Connection {
     if (pending.method === 'auth.bindTempAuthKey') this.#initialised = false
     else this.#initialised = true
 
-    pending.resolve(result as TlValue)
+    pending.resolve(answer as TlValue)
 
     return true
   }
@@ -789,4 +806,23 @@ function takeBatch(queue: readonly Queued[], ackCount: number): Queued[] {
 
 function isRpcError(value: unknown): value is TlValue {
   return typeof value === 'object' && value !== null && (value as TlValue)._ === 'rpc_error'
+}
+
+/**
+ * The method a query is the result of, through the wrappers around it.
+ *
+ * `invokeWithLayer`, `initConnection`, `invokeWithoutUpdates` and the others
+ * carry the call they modify in a `query` field, and what comes back is that
+ * call's result.
+ */
+function innermost(query: TlValue): string {
+  let current = query
+  for (let depth = 0; depth < 8; depth += 1) {
+    const inner = current['query']
+    if (typeof inner !== 'object' || inner === null) break
+    if (typeof (inner as { _?: unknown })._ !== 'string') break
+    current = inner as TlValue
+  }
+
+  return current._
 }

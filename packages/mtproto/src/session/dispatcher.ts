@@ -26,6 +26,7 @@ import { type InboundMessage, inflatePacked, unpackMessages } from './inbound.js
 import { decodeMessageStatuses, type MessageStatus } from './outbound.js'
 import { type FutureSalt, readFutureSalts } from './salts.js'
 import type { Session } from './session.js'
+import { startsWithVector, type UnreadVector } from './vector-result.js'
 
 export {
   isRpcError,
@@ -372,10 +373,15 @@ export class SessionDispatcher {
 
     const value = result as TlValue
     if (value._ === 'gzip_packed') {
-      const packed = readBytes(value, 'packed_data')
+      const inflated = inflatePacked(readBytes(value, 'packed_data'))
+      // A packed list is left unread for the same reason an unpacked one is.
+      const unread: UnreadVector | undefined = startsWithVector(inflated)
+        ? { _: 'vector', raw: inflated }
+        : undefined
+
       return {
         ...message,
-        value: { ...message.value, result: readObject(inflatePacked(packed), this.#scope) },
+        value: { ...message.value, result: unread ?? readObject(inflated, this.#scope) },
       }
     }
 

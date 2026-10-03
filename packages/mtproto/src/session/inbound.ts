@@ -16,11 +16,14 @@
 import { YuigramError } from '@yuigram/core'
 import { readObject, TlReader, type TlScope, type TlValue } from '../tl/index.js'
 import { gunzip } from './gunzip.js'
+import { startsWithVector, type UnreadVector } from './vector-result.js'
 
 /** `gzip_packed#3072cfa1 packed_data:bytes = Object` */
 const GZIP_PACKED_ID = 0x3072_cfa1
 /** `msg_container#73f1f8dc messages:vector<%Message> = MessageContainer` */
 const MSG_CONTAINER_ID = 0x73f1_f8dc
+/** `rpc_result#f35c6d01 req_msg_id:long result:Object = RpcResult` */
+const RPC_RESULT_ID = 0xf35c_6d01
 
 /**
  * Nesting this module will follow.
@@ -113,7 +116,29 @@ function unpack(
     return
   }
 
-  out.push({ msgId, seqNo, value: readObject(body, scope) })
+  out.push({ msgId, seqNo, value: readMessage(body, scope) })
+}
+
+/**
+ * Read one message, leaving a vector result unread.
+ *
+ * `rpc_result` is the one message whose result may be a vector, and a vector
+ * cannot be read without knowing what it holds (`vector-result.ts` says why).
+ * The result is the last field, so it is the rest of the body, kept as it is.
+ */
+function readMessage(body: Uint8Array, scope: TlScope): TlValue {
+  const view = new DataView(body.buffer, body.byteOffset, body.byteLength)
+  if (
+    body.length >= 16 &&
+    view.getUint32(0, true) === RPC_RESULT_ID &&
+    startsWithVector(body, 12)
+  ) {
+    const result: UnreadVector = { _: 'vector', raw: body.slice(12) }
+
+    return { _: 'rpc_result', req_msg_id: view.getBigInt64(4, true), result }
+  }
+
+  return readObject(body, scope)
 }
 
 /**
