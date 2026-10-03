@@ -460,6 +460,12 @@ function systemVersion(): string {
   return 'web'
 }
 
+/** How the update manager's reports read in a log. */
+const PROGRESS = {
+  baseline: 'took the starting position from Telegram',
+  continuing: 'a long catch-up continues in a further attempt',
+} as const
+
 /** What the server is told about this client when nothing else is said. */
 const DEVICE: Omit<ClientInfo, 'apiId'> = {
   deviceModel: 'Yuigram',
@@ -5153,6 +5159,17 @@ export class Account<Ext = unknown> {
     this.#selfId = await readSelfId(storage)
     const resumed = await this.#updates.load()
     this.#state = new UpdateState(resumed ?? {})
+    // Resumed as it is: a position far behind is legitimate after a long
+    // absence, and nothing here can tell one from a position an earlier
+    // version reached by starting where it assumed rather than where Telegram
+    // said. Said, so that an operator watching a long catch-up knows why.
+    if (resumed !== undefined && resumed.basis === undefined) {
+      this.#log.warn(
+        'updates: resuming from a position written without a recorded starting point; ' +
+          'everything after it will be fetched and delivered',
+        { pts: resumed.pts, date: resumed.date },
+      )
+    }
 
     const datacenters = await openDatacenters({
       scope,
@@ -5203,8 +5220,9 @@ export class Account<Ext = unknown> {
           // existed was never delivered — but only an account that had a place
           // in the stream can have lost anything. One that has never run has
           // nothing behind it, and asking for the difference from a position it
-          // invented would fetch a backlog it was never meant to see.
-          if (resumed !== undefined) this.#lifecycle.track(this.#catchUp())
+          // invented would fetch a backlog it was never meant to see. One that
+          // has taken its starting position since does have a place.
+          if (this.#network?.updates.established === true) this.#lifecycle.track(this.#catchUp())
 
           return
         }
@@ -5243,6 +5261,14 @@ export class Account<Ext = unknown> {
         this.#lifecycle.track(this.deliver(update))
       },
       onFailure: (error) => this.#log.error('updates', { error }),
+      // A position read back from the store is one Telegram reported, however
+      // small its numbers. Only an account that has none asks for one.
+      established: resumed !== undefined,
+      onPosition: async () => await this.#remember(),
+      onProgress: (report) => {
+        if (report.kind === 'retrying') this.#log.warn('updates: will try again', report)
+        else this.#log.info(`updates: ${PROGRESS[report.kind]}`, report)
+      },
       ...(this.#options.schedule === undefined ? {} : { schedule: this.#options.schedule }),
     })
 

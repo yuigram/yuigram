@@ -66,7 +66,12 @@ function account(records: LogRecord[]): Account {
           ...(options.expiresIn === undefined ? {} : { expiresAt: 2_000_000_000 }),
         },
         state: 'ready',
-        invoke: async () => ({ _: 'boolTrue' }) as TlValue,
+        // Where a fresh account stands, which it asks once its first update
+        // arrives; anything else is answered as a peer modelling no API would.
+        invoke: async (query: TlValue) =>
+          (query._ === 'updates.getState'
+            ? { _: 'updates.state', pts: 1, qts: 1, date: 1_700_000_000, seq: 0, unread_count: 0 }
+            : { _: 'boolTrue' }) as TlValue,
         bind: async () => {},
         close() {},
       }) as unknown as Channel,

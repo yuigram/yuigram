@@ -1060,8 +1060,15 @@ export class MockServer {
 
       default: {
         // A peer that models no API still has to answer one, or a call made
-        // through it never settles.
-        return this.#modelled(element.value) ?? { _: 'boolTrue' }
+        // through it never settles. The one exception is where an account
+        // stands in the update stream, which every account that receives an
+        // update asks for: a datacenter answers that with a state, and a peer
+        // models a fresh one unless the case says otherwise.
+        const modelled = this.#modelled(element.value)
+        if (modelled !== undefined) return modelled
+        if (element.value._ === 'updates.getState') return this.#freshState()
+
+        return { _: 'boolTrue' }
       }
     }
   }
@@ -1136,6 +1143,18 @@ export class MockServer {
         error_code: stated?.[2] === undefined ? 400 : Number(stated[2]),
         error_message: stated?.[1] ?? error.message,
       }
+    }
+  }
+
+  /** Where a fresh account stands: nothing has happened in any of its sequences yet. */
+  #freshState(): TlValue {
+    return {
+      _: 'updates.state',
+      pts: 1,
+      qts: 1,
+      date: this.#options.serverTime,
+      seq: 0,
+      unread_count: 0,
     }
   }
 

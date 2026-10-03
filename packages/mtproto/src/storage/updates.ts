@@ -72,6 +72,7 @@ export function updateStore(kv: KV<unknown>): UpdateStore {
         // A plain object rather than the map, because a store keeps what JSON
         // can carry and a map is not that.
         channels: Object.fromEntries(snapshot.channels),
+        ...(snapshot.basis === undefined ? {} : { basis: snapshot.basis }),
       })
     },
   }
@@ -96,12 +97,18 @@ function decode(stored: unknown): UpdateStateSnapshot {
     )
   }
 
+  const basis = record['basis']
+  if (basis !== undefined && basis !== 'telegram') {
+    throw new UpdateStorageError('the stored update position names a starting point it cannot have')
+  }
+
   return {
     pts: counter(record['pts'], 'pts'),
     qts: counter(record['qts'], 'qts'),
     seq: counter(record['seq'], 'seq'),
     date: counter(record['date'], 'date'),
     channels: new Map(entries.map(([id, pts]) => [id, counter(pts, `channel ${id}`)])),
+    ...(basis === undefined ? {} : { basis }),
   }
 }
 

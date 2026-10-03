@@ -3103,21 +3103,25 @@ describe('where an account resumes the update stream', () => {
     await second.dispose()
   })
 
-  it('keeps nothing but the position', async () => {
+  it('keeps nothing but the position, and where it began', async () => {
     // Not the updates, not the messages, not the peers they mentioned: those
-    // arrive again from the difference the position is used to ask for.
+    // arrive again from the difference the position is used to ask for. The
+    // basis says the position began where Telegram said rather than where it
+    // was assumed to.
     const instance = harness()
     await instance.account.connect()
 
     await instance.account.feed(message(2))
 
     expect(Object.keys(written(instance) ?? {}).toSorted()).toEqual([
+      'basis',
       'channels',
       'date',
       'pts',
       'qts',
       'seq',
     ])
+    expect((written(instance) as { basis?: string } | undefined)?.basis).toBe('telegram')
     await instance.dispose()
   })
 
@@ -3151,6 +3155,74 @@ describe('where an account resumes the update stream', () => {
     expect(records.filter((record) => record.level === 'warn').map((record) => record.message)) //
       .toContain('could not write down how far through the stream this account has got')
     await instance.dispose()
+  })
+
+  it('starts where Telegram says, and fetches none of the history behind it', async () => {
+    // An account with no position asks for one. Judging its first update
+    // against a position nobody reported would make it a gap, and the catch-up
+    // that followed would page through everything the account ever received.
+    const asked: string[] = []
+    const instance = harness({
+      api: (query) => {
+        if (query._.startsWith('updates.')) asked.push(query._)
+        if (query._ === 'updates.getState') {
+          return {
+            _: 'updates.state',
+            pts: 500,
+            qts: 1,
+            date: 1_700_000_000,
+            seq: 0,
+            unread_count: 0,
+          }
+        }
+        return undefined
+      },
+    })
+    await instance.account.connect()
+
+    const seen: number[] = []
+    instance.account.on('message', (event) => {
+      seen.push(Number(event.raw['pts']))
+    })
+    await instance.account.feed(message(501))
+
+    expect(asked).toEqual(['updates.getState'])
+    expect(seen).toEqual([501])
+    expect(written(instance)?.pts).toBe(501)
+    await instance.dispose()
+  })
+
+  it('says so when it resumes a position written without a starting point', async () => {
+    // A position written by a version that began where it assumed is resumed
+    // as it is: nothing tells it from a legitimate one far behind. What an
+    // operator watching the long catch-up that may follow needs is the reason.
+    const first = harness()
+    await first.account.connect()
+    await first.account.feed(message(2))
+    await first.account.stop()
+    first.stored.set('updates:state', { pts: 2, qts: 1, seq: 0, date: 0, channels: {} })
+
+    const records: LogRecord[] = []
+    const second = harness({
+      datacenters: first.datacenters,
+      stored: first.rawStored,
+      log: createLogger({ sink: { write: (record) => records.push(record) } }),
+    })
+    await second.account.connect()
+
+    const warned = records.filter((record) => record.level === 'warn')
+    expect(warned.map((record) => record.message)).toContain(
+      'updates: resuming from a position written without a recorded starting point; ' +
+        'everything after it will be fetched and delivered',
+    )
+    // Resumed, not replaced: the next update follows on from it.
+    const seen: number[] = []
+    second.account.on('message', (event) => {
+      seen.push(Number(event.raw['pts']))
+    })
+    await second.account.feed(message(3))
+    expect(seen).toEqual([3])
+    await second.dispose()
   })
 
   it('refuses a stored position that cannot be read rather than starting again', async () => {

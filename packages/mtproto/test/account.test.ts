@@ -66,6 +66,16 @@ const BOOTSTRAP: DcConfiguration = {
   ],
 }
 
+/** Nothing has happened in any of a fresh account's sequences yet. */
+const FRESH_STATE: TlValue = {
+  _: 'updates.state',
+  pts: 1,
+  qts: 1,
+  date: 1_700_000_000,
+  seq: 0,
+  unread_count: 0,
+}
+
 /** A channel of the shape the network layer builds, answering from a script. */
 function fakeChannel(options: ChannelOptions, asked: TlValue[]): Channel {
   const record = { closed: false }
@@ -80,6 +90,11 @@ function fakeChannel(options: ChannelOptions, asked: TlValue[]): Channel {
     },
     async invoke(query: TlValue) {
       asked.push(query)
+
+      // Where a fresh account stands, which every account asks once its first
+      // update arrives. Anything else is answered the way a peer that models
+      // no API answers it.
+      if (query._ === 'updates.getState') return FRESH_STATE
 
       return { _: 'boolTrue' } as TlValue
     },
@@ -140,6 +155,23 @@ function harness(options: { readonly name?: string } = {}): Harness {
   })
 
   return { account, asked, channels, timers, storage }
+}
+
+/**
+ * Give an account the position an earlier run wrote down.
+ *
+ * An account with none asks Telegram where it stands before judging anything,
+ * and nothing in this harness can answer a call. The cases that are about how
+ * the sequence judges what it is fed start from a position instead.
+ */
+function hasRunBefore(storage: Harness['storage'], name = 'account'): void {
+  storage.entries.set(`${areaFor(name)}updates:state`, {
+    pts: 1,
+    qts: 1,
+    seq: 0,
+    date: 0,
+    channels: {},
+  })
 }
 
 /** An update as the stream carries one. */
@@ -308,7 +340,8 @@ describe('bringing an account up and down', () => {
   it('stops the updates manager chasing what it was waiting for', async () => {
     // A gap arms a wait before anything is chased. Shutting down while one is
     // armed must cancel it, or the account has left work running behind it.
-    const { account, timers } = harness()
+    const { account, timers, storage } = harness()
+    hasRunBefore(storage)
     await account.connect()
     // Far ahead of where the sequence is, which is a gap rather than the next
     // update — so the manager waits to see whether it resolves itself.
@@ -735,7 +768,8 @@ describe('updates arriving at an account', () => {
     // The manager decides what this account is meant to see. An account that
     // dispatched what it was fed would report an update twice when a catch-up
     // mentioned it again.
-    const { account } = harness()
+    const { account, storage } = harness()
+    hasRunBefore(storage)
     const seen: string[] = []
     account.onMessage((event) => {
       seen.push(event.text ?? '')
@@ -751,7 +785,8 @@ describe('updates arriving at an account', () => {
     // The manager decides what this account is meant to see. An account that
     // dispatched whatever it was fed would report an update twice the moment a
     // catch-up mentioned one the stream had already delivered.
-    const { account } = harness()
+    const { account, storage } = harness()
+    hasRunBefore(storage)
     const seen: string[] = []
     account.onMessage((event) => {
       seen.push(event.text ?? '')

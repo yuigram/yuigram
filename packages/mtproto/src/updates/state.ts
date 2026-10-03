@@ -55,6 +55,13 @@ export interface UpdateStateSnapshot {
   readonly date: number
   /** Where each channel stands, by identifier. */
   readonly channels: ReadonlyMap<string, number>
+  /**
+   * `'telegram'` once the position began at a starting point Telegram
+   * reported. Absent for one written by a version that began from an assumed
+   * position, which nothing can tell apart from a legitimate one that is far
+   * behind.
+   */
+  readonly basis?: 'telegram'
 }
 
 /** How much of the recent past is remembered for the sake of not repeating it. */
@@ -72,6 +79,7 @@ export class UpdateState {
   #qts: number
   #seq: number
   #date: number
+  #basis: 'telegram' | undefined
   readonly #channels = new Map<string, number>()
 
   /**
@@ -95,6 +103,7 @@ export class UpdateState {
     this.#qts = initial.qts ?? 1
     this.#seq = initial.seq ?? 0
     this.#date = initial.date ?? 0
+    this.#basis = initial.basis
     this.#memory = options.memory ?? DEFAULT_MEMORY
 
     for (const [id, pts] of initial.channels ?? []) this.#channels.set(id, pts)
@@ -116,6 +125,16 @@ export class UpdateState {
     return this.#date
   }
 
+  /** Whether the position began at a starting point Telegram reported. */
+  get basis(): 'telegram' | undefined {
+    return this.#basis
+  }
+
+  /** Record that the position now held is one Telegram reported as a starting point. */
+  adoptBaseline(): void {
+    this.#basis = 'telegram'
+  }
+
   /** Where a channel stands, or nothing when it has never been followed. */
   channelPts(channelId: bigint): number | undefined {
     return this.#channels.get(channelId.toString())
@@ -129,6 +148,7 @@ export class UpdateState {
       seq: this.#seq,
       date: this.#date,
       channels: new Map(this.#channels),
+      ...(this.#basis === undefined ? {} : { basis: this.#basis }),
     }
   }
 
