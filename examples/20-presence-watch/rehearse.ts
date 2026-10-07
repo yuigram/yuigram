@@ -873,6 +873,31 @@ check(
   out,
 )
 
+console.log('Telegram’s whole seconds against this clock’s milliseconds')
+clock += 1_700 - (clock % 1000)
+await push(ada, online(300))
+out = await push(ada, offline(0))
+check(
+  out.length === 1 &&
+    out[0]?.includes('интервал не оценивается: время Telegram приходится на ту же секунду') ===
+      true &&
+    !out[0].includes('оценка интервала') &&
+    !out[0].includes('раньше, чем'),
+  'a last-seen in the second of the first sighting gives no figure, and is not called earlier',
+  out,
+)
+clock += 1_000
+await push(ada, online(300))
+clock += 400
+out = await push(ada, offline(0))
+check(
+  out.length === 1 &&
+    out[0]?.includes('оценка интервала: 1 с — от первого наблюдения') === true &&
+    out[0].includes('с точностью до секунды'),
+  'one second later on Telegram’s clock is one second, not the 300 ms between the two clocks',
+  out,
+)
+
 console.log('evidence that Telegram’s own times show to be older')
 const lastSeen = seconds()
 const known = (await command('/status @ada_sample'))[0]?.split('\n').slice(0, 3).join('\n')

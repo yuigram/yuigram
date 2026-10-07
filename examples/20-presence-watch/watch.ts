@@ -369,19 +369,26 @@ export function presenceWatch(options: PresenceWatchOptions): PresenceWatch {
     const first = `первое наблюдение «в сети» — ${local(open.at)} (${sourceName(open.source)})`
     if (why !== undefined) return `интервал не завершён: ${first}; ${why}`
     if (end === undefined) return `интервал не оценивается: ${first}; времени конца Telegram не дал`
-    if (end * 1000 < open.at) {
+    // Telegram's times are whole seconds and this clock's are not, so the two
+    // are compared in whole seconds. A last-seen in the very second of the
+    // first sighting says nothing of how long the visit lasted.
+    const firstSecond = Math.floor(open.at / 1000)
+    if (end < firstSecond) {
       return `интервал не оценивается: это время раньше, чем ${first}; наблюдение устарело или часы компьютера и Telegram расходятся`
     }
     if (end * 1000 > noticedAt + CLOCK_TOLERANCE) {
       return `интервал не оценивается: это время позже момента, когда оно получено (${local(noticedAt)}); часы компьютера и Telegram расходятся`
     }
+    if (end === firstSecond) {
+      return `интервал не оценивается: время Telegram приходится на ту же секунду, что и ${first}; время Telegram записано с точностью до секунды, и длительность по нему не оценить`
+    }
 
     const lines = [
-      `оценка интервала: ${duration(end * 1000 - open.at)} — от первого наблюдения «в сети» (${sourceName(open.source)}, ${local(open.at)}) до времени Telegram`,
+      `оценка интервала: ${duration((end - firstSecond) * 1000)} — от первого наблюдения «в сети» (${sourceName(open.source)}, ${local(open.at)}) до времени Telegram, с точностью до секунды`,
     ]
     if (open.after !== undefined && open.after < open.at) {
       lines.push(
-        `вход мог произойти раньше — после предыдущей проверки в ${local(open.after)}, когда статус ещё не был «в сети»; тогда оценка — до ${duration(end * 1000 - open.after)}`,
+        `вход мог произойти раньше — после предыдущей проверки в ${local(open.after)}, когда статус ещё не был «в сети»; тогда оценка — до ${duration((end - Math.floor(open.after / 1000)) * 1000)}`,
       )
     }
     lines.push(
