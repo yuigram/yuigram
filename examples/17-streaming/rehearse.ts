@@ -18,7 +18,6 @@
  * Nothing leaves this process, and no model is called.
  */
 
-import type { Bot } from 'yuigram'
 import { type StreamFlavour, stream } from 'yuigram/stream'
 import { messageUpdate, mockBot, ok, privateChat, user } from 'yuigram/testing'
 import { answer, richAnswer } from './answer.js'
@@ -28,15 +27,14 @@ const chat = privateChat({ id: 7 })
 
 /** A bot whose draft and rich methods answer as Telegram would. */
 function harness() {
-  const mock = mockBot()
+  const mock = mockBot<StreamFlavour>()
   mock.on('sendMessageDraft', ok(true))
   mock.on('sendRichMessageDraft', ok(true))
   mock.on('sendRichMessage', (request) =>
     ok({ message_id: 9100, date: 0, chat: { id: request.params['chat_id'], type: 'private' } }),
   )
 
-  // The harness builds a plain bot; the flavour is what the plugin adds.
-  return { ...mock, bot: mock.bot as unknown as Bot<StreamFlavour> }
+  return mock
 }
 
 const shorten = (text: unknown): string => {

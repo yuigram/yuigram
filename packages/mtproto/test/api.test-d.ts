@@ -19,6 +19,7 @@ import { inputChannel, inputPeerFromMessage } from '../src/network/peers.js'
 import type { MtprotoContext } from '../src/normalize/context.js'
 import { type DialogsOffset, nextDialogs } from '../src/normalize/paging.js'
 import { type SentMessage, sentMessage } from '../src/normalize/sent.js'
+import { mockAccount } from '../src/testing/mock-account.js'
 import type { TlValue } from '../src/tl/index.js'
 
 declare const account: Account
@@ -234,5 +235,21 @@ describe('the helpers beside the generated surface', () => {
     expectTypeOf(photoMedia).returns.toEqualTypeOf<types.TypeInputMedia>()
     expectTypeOf(uploadedPhoto).returns.toEqualTypeOf<types.TypeInputMedia>()
     expectTypeOf(uploadedDocument).returns.toEqualTypeOf<types.TypeInputMedia>()
+  })
+})
+
+describe('the test harness', () => {
+  it('builds the account a plugin expects when told the flavour', () => {
+    interface Tenant {
+      tenant: string
+    }
+
+    const { account: flavoured } = mockAccount<Tenant>()
+
+    flavoured.use(async (event, next) => {
+      expectTypeOf(event.tenant).toEqualTypeOf<string>()
+      await next()
+    })
+    expectTypeOf(mockAccount().account).toEqualTypeOf<Account>()
   })
 })

@@ -47,10 +47,16 @@ export interface Sender {
   press(data: string, options?: { readonly message?: Message; readonly from?: User }): Promise<void>
 }
 
-/** What {@link mockBot} hands back. */
-export interface MockBot {
+/**
+ * What {@link mockBot} hands back.
+ *
+ * `Ext` is the flavour the bot's plugins add to its contexts, as
+ * `Bot.fromToken<Ext>` takes it, so code written for an extended bot is tested
+ * without a cast.
+ */
+export interface MockBot<Ext = unknown> {
   /** The bot under test. Register handlers on it as usual. */
-  readonly bot: Bot
+  readonly bot: Bot<Ext>
   /** Feed updates in. */
   readonly send: Sender
   /** Everything the bot asked Telegram to do. */
@@ -171,8 +177,11 @@ function capturing(target: Logger, errors: unknown[]): Logger {
  * sending and forwarding with the message as Telegram would build it, editing
  * with the edited message, and confirmations with `true`. Anything else, or
  * anything a case wants answered differently, is scripted with `on`.
+ *
+ * A bot whose plugins add to its contexts names their flavour, as it would with
+ * `Bot.fromToken`: `mockBot<ConversationFlavour>()`.
  */
-export function mockBot(options: MockBotOptions = {}): MockBot {
+export function mockBot<Ext = unknown>(options: MockBotOptions = {}): MockBot<Ext> {
   resetFixtureIds()
 
   const transport = mockTransport()
@@ -241,7 +250,7 @@ export function mockBot(options: MockBotOptions = {}): MockBot {
   for (const method of CONFIRMING) transport.on(method, ok(true))
   transport.on('copyMessage', () => ok({ message_id: nextMessageId++ }))
 
-  const bot = new Bot(TEST_TOKEN, {
+  const bot = new Bot<Ext>(TEST_TOKEN, {
     ...options,
     client: transport,
     log: capturing(options.log ?? createLogger({ sink: silentSink() }), errors),

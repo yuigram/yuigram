@@ -101,10 +101,15 @@ export interface AccountSender {
   ): Promise<void>
 }
 
-/** What {@link mockAccount} hands back. */
-export interface MockAccount {
+/**
+ * What {@link mockAccount} hands back.
+ *
+ * `Ext` is the flavour the account's plugins add to its events, as
+ * `Account.fromSession<Ext>` takes it.
+ */
+export interface MockAccount<Ext = unknown> {
   /** The account under test. Register handlers on it as usual. */
-  readonly account: Account
+  readonly account: Account<Ext>
   /** Feed updates in. */
   readonly send: AccountSender
   /** Everything the account asked Telegram for. */
@@ -117,9 +122,9 @@ export interface MockAccount {
    */
   readonly errors: readonly unknown[]
   /** Answer a method this way from now on. */
-  on(method: string, answer: Answer): MockAccount
+  on(method: string, answer: Answer): MockAccount<Ext>
   /** Answer a method this way once, before any standing answer. */
-  once(method: string, answer: Answer): MockAccount
+  once(method: string, answer: Answer): MockAccount<Ext>
   /** Stop the account. */
   dispose(): Promise<void>
 }
@@ -243,7 +248,7 @@ const peerOf = (ref: PeerRef): TlValue =>
  * answer them. Anything else is refused with an error naming the method, and
  * scripted with `on` or `once`.
  */
-export function mockAccount(options: MockAccountOptions = {}): MockAccount {
+export function mockAccount<Ext = unknown>(options: MockAccountOptions = {}): MockAccount<Ext> {
   const recorded: RecordedInvoke[] = []
   const standing = new Map<string, Answer>()
   const queued = new Map<string, Answer[]>()
@@ -371,7 +376,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
 
   const log = capturing(options.log ?? createLogger({ sink: silentSink() }), errors)
   const { self: _self, ...accountOptions } = options
-  const account = new Account({
+  const account = new Account<Ext>({
     apiId: 1,
     apiHash: 'test',
     storage: memory(),
@@ -464,7 +469,7 @@ export function mockAccount(options: MockAccountOptions = {}): MockAccount {
     )
   }
 
-  const harness: MockAccount = {
+  const harness: MockAccount<Ext> = {
     account,
     sent,
     errors,

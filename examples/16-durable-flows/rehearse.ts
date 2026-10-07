@@ -20,7 +20,6 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Bot } from 'yuigram'
 import { messageUpdate, mockBot, privateChat, user } from 'yuigram/testing'
 import { install, type WithConversation } from './flow.js'
 
@@ -37,9 +36,8 @@ async function say(send: ReturnType<typeof mockBot>['send'], updateId: number, t
 }
 
 async function stageOne(state: string): Promise<void> {
-  const { bot, send, calls } = mockBot()
-  // The harness builds a plain bot; the flavour is what the plugin adds.
-  install(bot as unknown as Bot<WithConversation>, state)
+  const { bot, send, calls } = mockBot<WithConversation>()
+  install(bot, state)
 
   await say(send, 101, '/order')
   await say(send, 102, 'flat white')
@@ -48,8 +46,8 @@ async function stageOne(state: string): Promise<void> {
 }
 
 async function stageTwo(state: string): Promise<void> {
-  const { bot, send, calls } = mockBot()
-  install(bot as unknown as Bot<WithConversation>, state)
+  const { bot, send, calls } = mockBot<WithConversation>()
+  install(bot, state)
 
   await say(send, 103, 'enormous')
   await say(send, 104, 'Large')

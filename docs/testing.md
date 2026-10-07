@@ -165,6 +165,9 @@ What an application test needs beyond recording calls is provided without script
 - **The other updates a bot receives.** Builders for chosen inline results, reactions,
   pre-checkout queries, poll answers and join requests, beside the message, callback and inline
   query ones.
+- **The bot a plugin expects.** `mockBot<ConversationFlavour>()` builds the bot with the
+  flavour an installed plugin adds, as `Bot.fromToken<…>()` does, so its handlers are typed
+  without a cast. `mockAccount<…>()` takes the same parameter.
 
 ### 3.1a Account harness
 
