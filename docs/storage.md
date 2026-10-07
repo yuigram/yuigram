@@ -64,6 +64,17 @@ key, keys hashed for filesystem safety. It exists so that "persist my sessions" 
 infrastructure, not to be a database. The documentation says so, and points at SQLite past a
 few thousand keys.
 
+Within one process, operations on one file run one at a time in the order they were asked for,
+across every `file()` store pointed at the same directory: writes, removals, the removal a read
+makes of an expired value, and the reads that list keys. A later write therefore cannot be
+replaced by an earlier one that finished last, and a read cannot remove a value written after it
+found the old one expired. Replacement stays a single rename; the old file is never removed
+first. A rename Windows refuses with `EPERM`, `EACCES` or `EBUSY` — typically because something
+else holds the target open — is retried after waits rising from 10 ms to 400 ms, about three
+quarters of a second in all, and the refusal then reaches the caller unchanged. A write that
+fails removes its temporary file. Nothing is locked across processes: two processes writing one
+directory need a store with a lease (§4).
+
 ### Writing an adapter
 
 ```ts

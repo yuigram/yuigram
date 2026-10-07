@@ -1188,6 +1188,15 @@ negative signed 32-bit integer, framed exactly like a payload. The smallest encr
 handed those four bytes onward would try to decrypt an error report. Documented codes: 404 (auth
 key not found), 429 (transport flood), 444 (invalid datacenter).
 
+When a datacenter answers 404 on an established connection, the account discards the key the
+connection presented and reconnects. The logical connection reports the ending as it happens:
+which connection (datacenter, purpose, slot) and which of its channels, the kind of key
+presented, the cause and transport code, how many written calls fail and how many waiting calls
+wait for the next channel, the action taken and the wait before it, and what the datacenter
+layer removed — the temporary key, the permanent one, or nothing. A refused key is logged as a
+warning, any other ending as information. Reports carry local names and counters only: never key
+material, a key's identifier, a session, or anything a call carried.
+
 Because the length is the only marker, an error frame is **never padded**. Padded intermediate
 frames may otherwise carry up to fifteen extra bytes, and a padded error frame would be
 indistinguishable from a short payload; a zero-padding frame is still a valid one.
@@ -1713,6 +1722,20 @@ else                                   -> GAP: recover
 8. `CHANNEL_PRIVATE` means the channel is gone — stop trying, and invalidate only when an
    `updateChannel` arrives for it.
 
+A catch-up that runs out of pages having moved the position on writes the position down and
+continues in another attempt; one that moved nothing is a failure. A failed catch-up keeps the
+updates it buffered and tries again after a wait that doubles up to a minute — it does not drop
+them.
+
+**No position is not position zero.** An account with no stored position asks Telegram for one
+with `updates.getState` when its first update arrives, as the documentation prescribes for a
+first login, and holds what arrives meanwhile. Once it has the position, what the position
+already covers is handed out as the live updates it is, and what lies beyond is judged by §9.2.
+The position is written down as soon as it is taken. A failed or abandoned question invents
+nothing: what was held stays held and the question is asked again, only while something waits
+for it. Starting from an assumed `pts` of 1 instead would make the first ordered update a gap,
+and the catch-up that followed would page through the account's history as if it were new.
+
 ### 9.4 What survives a restart
 
 The position, and nothing else. `pts`, `qts`, `seq`, `date` and the per-channel `pts` are
@@ -1736,6 +1759,10 @@ since a file that can be replaced is attacker-controlled.
 **A store that will not take it does not fail the stream.** The updates have already been
 judged and handed on; losing the place costs a catch-up on the next start rather than
 correctness now.
+
+**Where a position began is recorded with it.** A position taken from `updates.getState` is
+marked as such. One written before that mark existed is resumed unchanged, with a warning that
+everything after it will be fetched and delivered.
 
 ### 9.5 Deduplication
 
