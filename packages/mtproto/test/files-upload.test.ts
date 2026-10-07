@@ -246,9 +246,10 @@ describe('the line between the two ways of sending', () => {
     expect(await methodFor(THRESHOLD - 1)).toEqual(new Set(['upload.saveFilePart']))
   })
 
-  it('sends a file exactly at the threshold the other way', async () => {
-    // The threshold is the protocol's, so the boundary itself is the case.
-    expect(await methodFor(THRESHOLD)).toEqual(new Set(['upload.saveBigFilePart']))
+  it('sends a file exactly at the threshold the ordinary way', async () => {
+    // The threshold is the protocol's, so the boundary itself is the case:
+    // the big-file method is for a file of more than 10 MB.
+    expect(await methodFor(THRESHOLD)).toEqual(new Set(['upload.saveFilePart']))
   })
 
   it('sends a file one byte above the threshold the other way', async () => {

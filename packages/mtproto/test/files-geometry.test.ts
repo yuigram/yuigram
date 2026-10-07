@@ -94,10 +94,11 @@ describe('planning a file up', () => {
     expect(planUpload({ size: BIG_FILE_THRESHOLD - 1 }).path).toBe('small')
   })
 
-  it('sends a file at the threshold by the other path', () => {
-    // The threshold is the protocol's, not a tuning choice, so the boundary
-    // itself is worth pinning.
-    expect(planUpload({ size: BIG_FILE_THRESHOLD }).path).toBe('big')
+  it('sends a file of exactly the threshold as a small one, and one byte more as big', () => {
+    // The threshold is the protocol's, so the boundary itself is worth
+    // pinning: the big-file method is for a file of *more than* 10 MB.
+    expect(planUpload({ size: BIG_FILE_THRESHOLD }).path).toBe('small')
+    expect(planUpload({ size: BIG_FILE_THRESHOLD + 1 }).path).toBe('big')
   })
 
   it('sends a file of unknown length the only way it can be sent', () => {

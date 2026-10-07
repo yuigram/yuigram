@@ -40,9 +40,11 @@ export const MAX_PART_SIZE = 512 * KILOBYTE
 /**
  * Where a file stops being small.
  *
- * Below this the parts go one way and above it another. The two paths differ in
- * what the server is told rather than in what is sent, so the threshold is the
- * protocol's rather than a tuning choice.
+ * Up to and including this the parts go one way, and above it another. The two
+ * paths differ in what the server is told rather than in what is sent, so the
+ * threshold is the protocol's rather than a tuning choice: Telegram's file
+ * documentation sends a file by `upload.saveBigFilePart` when it is *more than*
+ * 10 MB.
  */
 export const BIG_FILE_THRESHOLD = 10 * 1024 * 1024
 
@@ -131,7 +133,7 @@ export function planUpload(options: {
     // An empty file is still one part: the server is told about a file, not
     // about nothing.
     parts: size === 0 ? 1 : Math.ceil(size / partSize),
-    path: size >= BIG_FILE_THRESHOLD ? 'big' : 'small',
+    path: size > BIG_FILE_THRESHOLD ? 'big' : 'small',
   }
 }
 
