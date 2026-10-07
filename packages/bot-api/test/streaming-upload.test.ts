@@ -60,6 +60,34 @@ describe('choosing a path', () => {
 })
 
 describe('the envelope', () => {
+  it('is read back by the platform’s own form-data parser, field for field', async () => {
+    // The encoder and every other check here are this package's own reading of
+    // the format. The runtime's parser is not, so it is the one that says the
+    // envelope is what a server will accept.
+    const stream = (async function* () {
+      yield new TextEncoder().encode('first chunk, ')
+      yield new TextEncoder().encode('second chunk')
+    })()
+    const encoded = await encodeRequest({
+      chat_id: 42,
+      caption: 'привет, "quoted"',
+      reply_markup: { force_reply: true },
+      document: media.stream(stream, 'report "final".txt'),
+    })
+
+    const form = await new Response(encoded.body, {
+      headers: { 'content-type': encoded.contentType ?? '' },
+    }).formData()
+
+    expect(form.get('chat_id')).toBe('42')
+    expect(form.get('caption')).toBe('привет, "quoted"')
+    expect(JSON.parse(String(form.get('reply_markup')))).toEqual({ force_reply: true })
+    const document = form.get('document')
+    expect(document).toBeInstanceOf(Blob)
+    expect(await (document as Blob).text()).toBe('first chunk, second chunk')
+    expect((document as File).name).toBe('report "final".txt')
+  })
+
   it('writes headers, body and terminator in multipart order', async () => {
     const boundary = createBoundary()
     const body = ReadableStream.from(
