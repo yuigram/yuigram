@@ -93,8 +93,9 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 26 | [formatting.md](formatting.md) | Formatted text, rich messages and their readers, and streaming an answer as it is written |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
-the specification does not cover. No observation is recorded yet, because nothing has been run
-against Telegram itself.
+the specification does not cover. No observation is recorded yet: the hand-run of example 20
+against Telegram ([live-verification.md](live-verification.md) §8) met nothing the specification
+does not describe.
 
 The executive summary is at the end of [feasibility.md](feasibility.md).
 
@@ -131,8 +132,9 @@ Research phase: **complete.**
 Bot API subsystem: **implemented**, on the redesigned public surface.
 MTProto subsystem: **implemented** from the protocol upward, with the account client and its
 high-level surface, and verified against mock services and a stand-in datacenter that speaks the
-real protocol. It has not been run against Telegram; [live-verification.md](live-verification.md)
-is the prepared procedure.
+real protocol. Against Telegram it has run only through example 20, by hand;
+[live-verification.md](live-verification.md) records that, and its prepared procedure has not
+been run.
 
 All measurements were taken from published package artifacts on 2026-08-19 against
 puregram 3.7.0 / @puregram/api 10.2.1, @mtcute/core 0.31.0 / @mtcute/tl 223.0.0, Bot API 10.2

@@ -165,8 +165,9 @@ SQLite and Redis storage are separate packages: `@yuigram/sqlite` and `@yuigram/
 ## Requirements
 
 Node.js 22 or newer. ESM only. Where else it runs, and what has been executed there, is in
-[docs/runtimes.md](https://github.com/yuigram/yuigram/blob/master/docs/runtimes.md); nothing has
-yet been run against Telegram itself.
+[docs/runtimes.md](https://github.com/yuigram/yuigram/blob/master/docs/runtimes.md). Against
+Telegram itself, one example has been run by hand under Node.js; the prepared live procedure has
+not.
 
 ## Documentation
 

@@ -5,9 +5,10 @@ stand-in datacenter that speaks the real protocol over real sockets, a browser p
 runtime matrix against that datacenter. What none of them can show is that Telegram itself
 agrees. This is the checklist for finding out, and `tools/live` is the harness that runs it.
 
-**It has not been run.** Every step below is prepared and exercised offline against stand-ins;
-none has reached Telegram. A record of a real run goes at the end of this document, with the
-revision it was made at.
+**The procedure has not been run.** Every step below is prepared and exercised offline against
+stand-ins; none has reached Telegram. Example 20 has been run by hand against production
+Telegram, outside this procedure; §8 records what those runs showed and what they did not. A
+record of a real run goes there, with the revision it was made at.
 
 ---
 
@@ -211,4 +212,45 @@ checks run, and the output as printed.
 
 | Date | Revision | Network | Steps and checks | Result |
 | --- | --- | --- | --- | --- |
-| — | — | — | — | not yet run |
+| — | — | — | `tools/live`: none | not yet run |
+| 2026-10-03 | `fcf7970` | production | Example 20 by hand: sign-in, watch, bot commands | works; four defects found, below |
+| 2026-10-07 | `7936a44` | production | Example 20 by hand, new data directory: sign-in, commands, pushed and read statuses, restart | works; one display defect in the example, below |
+
+### Example 20, run by hand
+
+Both runs used one production account and one bot, on Windows under Node.js 22, with Telegram's
+production server key. They are evidence for what the program printed and the bot sent, not for
+anything the `tools/live` steps check.
+
+What they showed:
+
+- **Account.** A new authorization by login code and two-step password (SRP); the key exchange
+  against the production key, and encrypted calls afterwards under the default arrangement — a
+  temporary key bound to the permanent one, which the calls succeeding implies rather than a
+  logged step shows; `users.getUsers` and username resolution; `updateUserStatus` pushed down the
+  session; periodic reads; a restart that reused the stored authorization without asking again.
+- **Updates, from `7936a44`.** A fresh authorization took its starting position from
+  `updates.getState` on its first update, and no catch-up followed.
+- **Bot.** `getMe`, long polling, commands answered with HTML `sendMessage`, and Ctrl+C stopping
+  polling.
+
+What the first run found, each fixed or instrumented offline before the second:
+
+- the update stream began at an assumed position, so every start paged through history — fixed
+  in `f68ece1` (§9.3 of [mtproto.md](mtproto.md));
+- a Windows `EPERM` on a file-store rename lost one write — in-process ordering and a retry added
+  in `fdbaced`; what held the file open was not identified;
+- three transport 404 answers, each recovered by discarding the key — cause unknown; `f7efdb6`
+  reports which connection, key and recovery, so a recurrence can be traced;
+- a failing bot handler was logged without the example saying so — fixed in the example.
+
+What the second run found: the example compared Telegram's last-seen time, in whole seconds, with
+its own first sighting, in milliseconds, so a last-seen in the same second was reported as
+earlier than the sighting. Fixed in the example since; a same-second end now gives no estimate,
+because it does not show that the visit lasted less than a second. The second run also reported
+the gap across its restart as the example documents.
+
+What they did not show: any `tools/live` step; the test environment; an account sending, editing
+or deleting; files; rate limits and `FLOOD_WAIT`; a datacenter migration. The 404s and the `EPERM`
+did not recur in the second run, which was short: that is not evidence that their causes are
+gone.

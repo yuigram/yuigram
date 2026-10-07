@@ -134,10 +134,12 @@ TypeScript sample in this file is compiled against the built packages by `pnpm c
   Chromium page have also run the runtime checks: Bot API calls and webhooks, the stores, and an
   account's key exchange, encrypted calls and updates. [docs/runtimes.md](docs/runtimes.md) says
   what was run and what is inferred.
-- **Nothing here has been run against Telegram itself yet.** Those checks use mock transports and
-  a stand-in datacenter that speaks the real protocol. Signing in an account and calling the live
-  service are unverified; [docs/live-verification.md](docs/live-verification.md) is the prepared
-  procedure.
+- **Against Telegram itself, one example has run, by hand.** Example 20 ran against production
+  Telegram: an account signing in with a code and a two-step password, receiving status updates
+  and reading users, and a bot answering commands over long polling. Everything else is checked
+  against mock transports and a stand-in datacenter that speaks the real protocol, and the
+  prepared live procedure has not been run; [docs/live-verification.md](docs/live-verification.md)
+  records what the runs showed and what they did not.
 - **The 100 ms cold-import budget is not reliably met** on the machine it is measured on;
   [docs/performance.md](docs/performance.md) has the method and the figures.
 - [docs/roadmap.md](docs/roadmap.md) lists what is still planned.

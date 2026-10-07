@@ -282,7 +282,7 @@ broken down rather than given a single mark.
 | Two accounts share one store without colliding | **run** | expected | expected | expected | **run** |
 | A second run of one account is refused | **run** | expected | expected | expected | **run** |
 | Stopping closes what was held | **run** | **run** | **run** | **run**⁴ | **run** |
-| Against Telegram itself | **not run**³ | **not run**³ | **not run**³ | **not run**³ | **not run**³ |
+| Against Telegram itself | **run** by hand, one example³ | not run | not run | not run | not run |
 
 ¹ The browser check talks to a datacenter over a real socket instead, which is a stronger claim
 than the same peer reached in-process.
@@ -291,7 +291,9 @@ than the same peer reached in-process.
 update stream to keep, and an account with no authorization has none. Signing in needs credentials
 this check does not have. The dispatch half is run in a browser; the ingestion half is not.
 
-³ No credentials. Nothing in this repository has been pointed at Telegram's production network.
+³ Example 20 under Node.js 22 on Windows, against production Telegram: an account signing in and
+receiving updates, and a bot over long polling ([live-verification.md](live-verification.md) §8).
+Not the prepared live procedure, and in no other runtime.
 
 ⁴ The worker's socket is closed from the worker's side. The local proxy Miniflare puts between a
 worker and the network does not pass a WebSocket close frame on — a bare `WebSocket` closed from a
