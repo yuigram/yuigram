@@ -165,21 +165,30 @@ const fromExample = (path: string): string =>
   relative(import.meta.dirname, path).replaceAll('\\', '/')
 
 // Keys made for the occasion, and a stand-in for the source file Telegram's are
-// read from: two tables of C string literals, one for each environment, in the
-// form the real file keeps them in. Nothing is retrieved; nothing here is real.
+// read from: one key in each branch of `if (is_test)`, as adjacent C string
+// literals, in the form the real file keeps them in. Nothing is retrieved;
+// nothing here is real.
 const madeKey = (): string =>
   generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({
     type: 'pkcs1',
     format: 'pem',
   }) as string
-const asLiteral = (pem: string): string => `"\\\n${pem.trim().split('\n').join('\\n\\\n')}"`
+const asLiterals = (pem: string): string =>
+  pem
+    .trim()
+    .split('\n')
+    .map((line) => `"${line}\\n"`)
+    .join('\n    ')
 const madeKeys = { production: madeKey(), test: madeKey() }
 const sourceBytes = new TextEncoder().encode(
   [
     '// A stand-in for the file the keys are read from.',
-    `const char *kTestPublicRSAKeys[] = { ${asLiteral(madeKeys.test)} };`,
-    '',
-    `const char *kPublicRSAKeys[] = { ${asLiteral(madeKeys.production)} };`,
+    'if (is_test) {',
+    `  add_pem(keys, ${asLiterals(madeKeys.test)});`,
+    '} else {',
+    `  add_pem(keys, ${asLiterals(madeKeys.production)});`,
+    '  return main_public_rsa_key;',
+    '}',
     '',
   ].join('\n'),
 )
@@ -189,7 +198,10 @@ const standIn: KeySource = {
   revision: 'rehearsal',
   path: 'keys.cpp',
   sha256: sha256(sourceBytes),
-  tables: { production: 'kPublicRSAKeys', test: 'kTestPublicRSAKeys' },
+  sections: {
+    test: { after: 'if (is_test) {', before: '} else {' },
+    production: { after: '} else {', before: 'return main_public_rsa_key;' },
+  },
   fingerprints: {
     production: fingerprintsOf(madeKeys.production),
     test: fingerprintsOf(madeKeys.test),
@@ -506,7 +518,21 @@ check(
   fingerprintsOf(
     keysFromSource(new TextDecoder().decode(sourceBytes), 'production', standIn),
   ).join() === standIn.fingerprints.production.join(),
-  'each environment is read from the table that is its own',
+  'each environment is read from the section that is its own',
+)
+const misplaced = await keyRefusal({
+  environment: 'production',
+  target: join(scratch, 'misplaced.pem'),
+  source: {
+    ...standIn,
+    sections: { ...standIn.sections, production: { after: '{', before: '}' } },
+  },
+  retrieve: async () => sourceBytes,
+})
+check(
+  misplaced.includes('exactly once') && !existsSync(join(scratch, 'misplaced.pem')),
+  'a section marker the file does not hold exactly once is refused, not guessed at',
+  misplaced,
 )
 check(
   written.includes('test environment') &&

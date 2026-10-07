@@ -79,17 +79,18 @@ pnpm tsx examples/20-presence-watch/keys.ts production
 
 По этим ключам аккаунт отличает серверы Telegram от любого другого, кто ответит по их адресу.
 Поэтому файл должен происходить из источника самого Telegram, а не из ответа сервера и не из
-случайной страницы. Telegram встраивает эти ключи в собственные клиенты, исходный код которых
-публикует. Команда берёт один файл исходного кода Telegram Desktop — репозиторий
-[telegramdesktop/tdesktop](https://github.com/telegramdesktop/tdesktop), на который ссылается
-[telegram.org/apps](https://telegram.org/apps), — в зафиксированной ревизии
-`90c89dcde9aec6974883fd1a270d4ee50d8ba688`:
-`Telegram/SourceFiles/mtproto/mtproto_dc_options.cpp`. В нём ключи двух сред лежат в двух
-таблицах: `kPublicRSAKeys` — боевая, `kTestPublicRSAKeys` — тестовая. Те же два ключа держит TDLib
-(`td/telegram/net/PublicRsaKeySharedMain.cpp`, ветка `is_test`).
+случайной страницы. Telegram встраивает эти ключи в собственную клиентскую библиотеку TDLib,
+исходный код которой публикует под лицензией Boost 1.0. Команда берёт один её файл — репозиторий
+[tdlib/td](https://github.com/tdlib/td), на который ссылается
+[core.telegram.org/tdlib](https://core.telegram.org/tdlib), — в зафиксированной ревизии
+`4d06d1ba3a1978476fe2b6575de8388439f6baa3`: `td/telegram/net/PublicRsaKeySharedMain.cpp`. В нём
+ключ каждой среды лежит в своей ветке `if (is_test)`: тестовый — в ней, боевой — в `else`. Отпечаток
+боевого ключа совпадает с тем, который выбирает пример создания ключа авторизации в документации
+Telegram ([samples-auth_key](https://core.telegram.org/mtproto/samples-auth_key), там байты
+записаны в порядке передачи: `85FD64DE851D9DD0`).
 
 Команда проверяет, что полученный файл побайтно совпадает с проверенным (SHA-256
-`64a50e0e1650c9313f36eefb16df245085f35718bbd84faa0d99ef9192b43111`), читает ключи разбором самого
+`6c13eb0ad9139269eef0df71a032049a78b4e64c9c2abed1d673f2845cc0c10b`), читает ключи разбором самого
 Yuigram, сверяет отпечатки и пишет `examples/20-presence-watch/telegram-keys.production.pem` (для
 тестовой среды — `telegram-keys.test.pem`). Отпечатки, которые она печатает:
 
@@ -120,7 +121,7 @@ cp examples/20-presence-watch/.env.example examples/20-presence-watch/.env
 | `TELEGRAM_ENV` | `production` или `test` — общая среда для бота и аккаунта | Выбираете вы; та же, что в шаге 2 |
 | `API_ID`, `API_HASH` | Учётные данные приложения | [my.telegram.org](https://my.telegram.org), «API development tools» |
 | `SERVER_KEYS` | Необязательно: другой PEM-файл с ключами | По умолчанию — файл из шага 2 для выбранной среды |
-| `DC_ID`, `DC_HOST`, `DC_PORT` | Необязательно: первый адрес датацентра | По умолчанию — датацентр 2 выбранной среды, как его задаёт тот же файл Telegram Desktop: `149.154.167.51` (боевая), `149.154.167.40` (тестовая) |
+| `DC_ID`, `DC_HOST`, `DC_PORT` | Необязательно: первый адрес датацентра | По умолчанию — датацентр 2 выбранной среды, как его первым перечисляет TDLib (`td/telegram/net/ConnectionCreator.cpp` той же ревизии): `149.154.167.51` (боевая), `149.154.167.40` (тестовая) |
 | `DATA_DIR` | Необязательно: каталог состояния | По умолчанию `examples/20-presence-watch/state` |
 
 `BOT_TOKEN` и `OPERATOR_ID` пока можно оставить заглушками: `login.ts` их не читает.

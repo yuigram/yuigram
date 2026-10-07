@@ -49,10 +49,12 @@ describe('reading keys', () => {
 })
 
 /**
- * Telegram's two server keys, as its own clients carry them: Telegram Desktop,
- * `Telegram/SourceFiles/mtproto/mtproto_dc_options.cpp` at revision
- * 90c89dcde9ae, where `kPublicRSAKeys` is the production key and
- * `kTestPublicRSAKeys` the test environment's. TDLib holds the same two.
+ * Telegram's two server keys, as its own library carries them: TDLib,
+ * `td/telegram/net/PublicRsaKeySharedMain.cpp` at revision 4d06d1ba3a19, where
+ * the key under `is_test` is the test environment's and the other the
+ * production key. Telegram's worked example of creating an authorization key
+ * chooses the production key by the same fingerprint, written in wire order
+ * (https://core.telegram.org/mtproto/samples-auth_key: `85FD64DE851D9DD0`).
  *
  * They are public, and they are here as a known answer. A generated key checks
  * the reader against itself; these check it against what a datacenter offers.
@@ -87,6 +89,16 @@ describe('the fingerprint a datacenter names a key by', () => {
     // which takes them from `BN_bn2bin`.
     expect(named(TELEGRAM_PRODUCTION)).toBe('d09d1d85de64fd85')
     expect(named(TELEGRAM_TEST)).toBe('b25898df208d2603')
+  })
+
+  it('is, on the wire, the fingerprint Telegram’s worked example chooses', () => {
+    // An answer from outside this repository and outside TDLib: the
+    // documentation's sample exchange, which writes the eight bytes as sent.
+    const [key] = serverKeysFromPem(TELEGRAM_PRODUCTION)
+    const wire = Buffer.alloc(8)
+    wire.writeBigInt64LE(key?.fingerprint ?? 0n)
+
+    expect(wire.toString('hex').toUpperCase()).toBe('85FD64DE851D9DD0')
   })
 
   it('hashes a modulus as its own 256 bytes, without the zero DER writes before it', () => {

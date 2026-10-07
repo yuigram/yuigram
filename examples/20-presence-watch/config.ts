@@ -47,9 +47,10 @@ export interface Config extends AccountConfig {
 }
 
 /**
- * The first address of datacenter 2 in each environment: the ones Telegram
- * Desktop starts from (`kBuiltInDcs` and `kBuiltInDcsTest`), in the same file
- * and at the same revision the server keys are read from — see `server-keys.ts`.
+ * The first address of datacenter 2 in each environment, as TDLib lists it in
+ * `ConnectionCreator::get_default_dc_options`
+ * (`td/telegram/net/ConnectionCreator.cpp`, at the revision the server keys
+ * are read from — see `server-keys.ts`).
  */
 const FIRST_ADDRESS: Readonly<Record<TelegramEnvironment, string>> = {
   production: '149.154.167.51',

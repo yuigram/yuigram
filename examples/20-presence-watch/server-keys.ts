@@ -7,9 +7,9 @@
  * Telegram, and from nowhere else — not from a datacenter's own answer, and not
  * from a key that happens to match a fingerprint a server offered.
  *
- * Telegram compiles these keys into its own clients, whose source it
- * publishes. This reads them out of that source at one revision, fixed below,
- * and writes them as the PEM file an account is configured with. Nothing here
+ * Telegram compiles these keys into its own client library, TDLib, whose
+ * source it publishes. This reads them out of that source at one revision,
+ * fixed below, and writes them as the PEM file an account is configured with. Nothing here
  * runs when the example starts: retrieving the keys is a command a person
  * gives, once.
  */
@@ -29,33 +29,47 @@ export interface KeySource {
   readonly path: string
   /** SHA-256 of the file at that revision, in hex. Anything else is refused. */
   readonly sha256: string
-  /** The table in the file that holds each environment's keys. */
-  readonly tables: Readonly<Record<TelegramEnvironment, string>>
+  /** Where in the file each environment's keys are. */
+  readonly sections: Readonly<Record<TelegramEnvironment, KeySection>>
   /** The fingerprints of each environment's keys, as a datacenter names them, in hex. */
   readonly fingerprints: Readonly<Record<TelegramEnvironment, readonly string[]>>
 }
 
 /**
- * Telegram Desktop's built-in datacenter options.
+ * The stretch of the file one environment's keys are in: after the first
+ * marker, which occurs once, and before the second.
+ */
+export interface KeySection {
+  readonly after: string
+  readonly before: string
+}
+
+/**
+ * TDLib's built-in server keys.
  *
- * The repository is the one https://telegram.org/apps links as the source of
- * Telegram Desktop. The file keeps the keys of the two environments in two
- * tables and chooses between them by the environment the client runs in, which
- * is what says which key is for which. TDLib — linked from
- * https://core.telegram.org/tdlib — holds the same two keys under `is_test` in
- * `td/telegram/net/PublicRsaKeySharedMain.cpp` (revision 4d06d1ba3a19), and the
- * two were compared when this was written.
+ * TDLib is Telegram's client library, linked from
+ * https://core.telegram.org/tdlib and published under the Boost Software
+ * License 1.0. Telegram's applications are GPL-licensed, and their source is
+ * not read for this project (see `docs/licensing.md`). The file holds the key
+ * of each environment in one branch of `if (is_test)`, which is what says
+ * which key is for which. The production key's fingerprint is also the one
+ * Telegram's worked example of creating an authorization key chooses
+ * (https://core.telegram.org/mtproto/samples-auth_key, where its bytes are
+ * written in wire order: `85FD64DE851D9DD0`).
  *
  * To move to a later revision, read the file there, compare it with a second
  * of Telegram's sources, and replace the revision, the digest and the
  * fingerprints together.
  */
 export const KEY_SOURCE: KeySource = {
-  repository: 'https://github.com/telegramdesktop/tdesktop',
-  revision: '90c89dcde9aec6974883fd1a270d4ee50d8ba688',
-  path: 'Telegram/SourceFiles/mtproto/mtproto_dc_options.cpp',
-  sha256: '64a50e0e1650c9313f36eefb16df245085f35718bbd84faa0d99ef9192b43111',
-  tables: { production: 'kPublicRSAKeys', test: 'kTestPublicRSAKeys' },
+  repository: 'https://github.com/tdlib/td',
+  revision: '4d06d1ba3a1978476fe2b6575de8388439f6baa3',
+  path: 'td/telegram/net/PublicRsaKeySharedMain.cpp',
+  sha256: '6c13eb0ad9139269eef0df71a032049a78b4e64c9c2abed1d673f2845cc0c10b',
+  sections: {
+    test: { after: 'if (is_test) {', before: '} else {' },
+    production: { after: '} else {', before: 'return main_public_rsa_key;' },
+  },
   fingerprints: { production: ['d09d1d85de64fd85'], test: ['b25898df208d2603'] },
 }
 
@@ -75,27 +89,35 @@ export function fingerprintsOf(pem: string): string[] {
 const sameSet = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && [...left].sort().join() === [...right].sort().join()
 
+/** What a C string literal holds, its escapes undone. */
+const unescaped = (literal: string): string =>
+  literal.replace(/\\(.)/g, (_, escaped: string) => (escaped === 'n' ? '\n' : escaped))
+
 /**
  * The keys of one environment, as PEM, out of the source file's text.
  *
- * The file holds each table as C string literals with their line breaks
- * escaped. Only the table named for the environment is read, so one
- * environment's keys cannot be taken for the other's.
+ * The file writes each key as adjacent C string literals, one line of the PEM
+ * apiece. Only the section recorded for the environment is read, so one
+ * environment's keys cannot be taken for the other's; a marker that is
+ * missing, or that occurs more than once, is refused rather than guessed at.
  */
 export function keysFromSource(
   text: string,
   environment: TelegramEnvironment,
   source: KeySource = KEY_SOURCE,
 ): string {
-  const name = source.tables[environment]
-  const table = new RegExp(`const char \\*${name}\\[\\] = \\{([\\s\\S]*?)\\};`).exec(text)?.[1]
-  if (table === undefined) throw new Error(`the source holds no table named ${name}`)
+  const { after, before } = source.sections[environment]
+  const start = text.indexOf(after)
+  if (start === -1 || text.indexOf(after, start + 1) !== -1) {
+    throw new Error(`the source does not hold "${after}" exactly once`)
+  }
+  const end = text.indexOf(before, start + after.length)
+  if (end === -1) throw new Error(`the source holds no "${before}" after "${after}"`)
 
-  const unescaped = table.replace(/\\\r?\n/g, '').replace(/\\n/g, '\n')
-  const blocks = unescaped.match(
-    /-----BEGIN RSA PUBLIC KEY-----[\s\S]*?-----END RSA PUBLIC KEY-----/g,
-  )
-  if (blocks === null) throw new Error(`the table ${name} holds no key`)
+  const literals = text.slice(start + after.length, end).match(/"(?:[^"\\\r\n]|\\.)*"/g) ?? []
+  const joined = literals.map((literal) => unescaped(literal.slice(1, -1))).join('')
+  const blocks = joined.match(/-----BEGIN RSA PUBLIC KEY-----[\s\S]*?-----END RSA PUBLIC KEY-----/g)
+  if (blocks === null) throw new Error(`the ${environment} section of the source holds no key`)
 
   return `${blocks.join('\n')}\n`
 }
@@ -166,7 +188,7 @@ export async function prepareServerKeys(options: PrepareOptions): Promise<Prepar
   const header = [
     `Telegram server public keys, ${environment} environment.`,
     `Source: ${source.repository}, revision ${source.revision},`,
-    `${source.path} (${source.tables[environment]}).`,
+    `${source.path}, its ${environment} keys.`,
     'These keys are how this client knows Telegram’s servers. Replace them only from that source.',
     '',
     '',

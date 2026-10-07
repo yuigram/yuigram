@@ -6,12 +6,12 @@
  * pnpm tsx examples/20-presence-watch/keys.ts test
  * ```
  *
- * Retrieves one source file of Telegram Desktop at a fixed revision — see
- * `server-keys.ts` for which, and why that one — checks it is byte for byte
- * the file that was read when the revision was recorded, and writes the keys
- * of the named environment to `telegram-keys.<environment>.pem` beside this
- * file, which is where the configuration looks unless `SERVER_KEYS` says
- * otherwise. A second argument names another file.
+ * Retrieves one source file of TDLib, Telegram's client library, at a fixed
+ * revision — see `server-keys.ts` for which, and why that one — checks it is
+ * byte for byte the file that was read when the revision was recorded, and
+ * writes the keys of the named environment to `telegram-keys.<environment>.pem`
+ * beside this file, which is where the configuration looks unless
+ * `SERVER_KEYS` says otherwise. A second argument names another file.
  *
  * This is the only command of the example that reaches anything but Telegram,
  * and the only time the keys are retrieved. The environment is always named:
