@@ -27,6 +27,8 @@ Verified against published package metadata and `LICENSE` files on 2026-08-19.
 | `ark0f/tg-bot-api` schemas | rolling | **Apache-2.0 OR MIT** | ark0f |
 | Telethon `errors.csv` | — | MIT | LonamiWebs |
 | Telegram TL schema | layer 223 | *unstated* — see §5 | Telegram |
+| Telegram TL schema, Telegram Desktop's `api.tl` (added later) | layer 229 | *unstated*, in a GPL-licensed repository — see §5 | Telegram |
+| TDLib `PublicRsaKeySharedMain.cpp` — the two server public keys only (added later) | `4d06d1ba3a19` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
 | Telegram Bot API documentation | 10.2 | *unstated* — see §5 | Telegram |
 | Telegram error database (`/api/errors.json`) — codes, names and methods only | layer 227 | *unstated* — see §5 | Telegram |
 
@@ -188,9 +190,10 @@ than assuming.
 |---|---|---|
 | Bot API method and type **names, shapes, parameters** | Facts / interface specification | Not copyrightable as such. Safe. |
 | Bot API **prose descriptions**, copied verbatim into JSDoc | Telegram's authored text | **FLAG.** Universal industry practice; low practical risk; still technically Telegram's expression. |
-| TL schema (`.tl` files, layer 223) | Interface definition | Same reasoning as the Bot API surface. Universally reused. Safe in practice. |
-| **Server RSA public keys** | Public keys — data, not code | Safe. Published in Telegram's own MTProto documentation; take them from there, **not** from Telegram Desktop or Android source. |
-| Telegram client source (Desktop / Android) | **GPL-family** | **Do not read, port, or copy.** Copying would force GPL onto Yuigram. mtcute notes its RSA keys were "manually extracted from Telegram for Android source" — Yuigram will use the published documentation instead, to avoid inheriting that question. |
+| TL schema (`.tl` files) | Interface definition | Same reasoning as the Bot API surface. Universally reused. Safe in practice. |
+| TL schema of the current layer, from Telegram Desktop's `api.tl` | Interface definition, read from a GPL-licensed repository | **FLAG.** The documentation page serves an older layer, so `fetch --from-client` reads the schema file Telegram's desktop client carries ([codegen.md](codegen.md)). It is the interface, not client code, and only it is read; but it is the one artifact taken from a GPL repository. TDLib's `td/generate/scheme/telegram_api.tl` (Boost 1.0) states the same layer and is the permissive alternative; it adds TDLib's own combinators and omits `null`, so moving to it is a regeneration, not a URL change. |
+| **Server RSA public keys** | Public keys — data, not code | Safe. Telegram's documentation names the production key by fingerprint but does not print it; take the keys from TDLib (`td/telegram/net/PublicRsaKeySharedMain.cpp`, Boost 1.0), Telegram's own library, **not** from Telegram Desktop or Android source. |
+| Telegram client source (Desktop / Android) | **GPL-family** | **Do not read, port, or copy.** Copying would force GPL onto Yuigram. mtcute notes its RSA keys were "manually extracted from Telegram for Android source" — Yuigram takes them from TDLib instead, to avoid inheriting that question. The one exception to "do not read" is the TL schema file above, flagged as such. |
 | Telethon `errors.csv` | MIT | Safe with attribution, if used for the MTProto error table. |
 | Telegram's error database (`/api/errors.json`) | Error codes and names, and the methods listed for each: facts about the interface | Same reasoning as the Bot API surface. Its `descriptions` are Telegram's prose and are not recorded. |
 
@@ -224,7 +227,7 @@ project holds itself to: third-party provenance is disclosed, never hidden.
 | Multipart encoding | native `FormData` / `Blob` | Node core | Yes | — | Free | None | No | No `formdata-node` dependency |
 | TL schema definitions | Telegram | unstated | Yes (practice) | Yes | — | Cite source | No | **FLAG** §5 |
 | Bot API descriptions | Telegram | unstated | Yes (practice) | Yes | — | Cite source URL | No | **FLAG** §5 |
-| Server RSA public keys | Telegram MTProto docs | unstated (data) | Yes | No | — | Cite doc URL | No | Never from GPL client source |
+| Server RSA public keys | TDLib (Telegram) | Boost 1.0 (the keys themselves: data) | Yes | No | — | Cite source and revision | No | Never from GPL client source |
 | Telegram client source | Telegram | GPL-family | **No** | — | — | — | — | Do not read or port |
 
 ---

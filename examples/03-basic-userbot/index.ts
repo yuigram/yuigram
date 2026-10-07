@@ -24,9 +24,10 @@
  * Get `API_ID` and `API_HASH` from https://my.telegram.org. They belong to the
  * application rather than to the account, so they never go in the session.
  *
- * `SERVER_KEYS` names a file holding Telegram's server public keys as PEM, as
- * Telegram's MTProto documentation publishes them. They are public rather than
- * secret, and an account refuses a datacenter whose key is not among them.
+ * `SERVER_KEYS` names a file holding Telegram's server public keys as PEM —
+ * `examples/20-presence-watch/keys.ts` writes one from TDLib, Telegram's own
+ * library. They are public rather than secret, and an account refuses a
+ * datacenter whose key is not among them.
  *
  * Send yourself `ping`, `read` or `contacts` from another device to exercise
  * the handlers below. A file with the caption `echo` is fetched and sent
@@ -68,10 +69,9 @@ async function ask(question: string): Promise<string> {
 /**
  * Where Telegram is reached and which keys it may be reached with.
  *
- * Both come from Telegram's published MTProto documentation. The addresses are
- * a starting point rather than the whole list, which is enough to reach
- * Telegram and to follow it if it says this account lives at another
- * datacenter.
+ * Both are Telegram's own. The address is a starting point rather than the
+ * whole list, which is enough to reach Telegram and to follow it if it says
+ * this account lives at another datacenter.
  */
 const bootstrap = bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 })
 

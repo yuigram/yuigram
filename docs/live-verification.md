@@ -35,7 +35,7 @@ unset, both are on production.
 | | Test environment (`YUIGRAM_LIVE_TEST_NETWORK=1`) — preferred | Production (unset) |
 | --- | --- | --- |
 | Bot API | `https://api.telegram.org/bot<token>/test/<method>`, with a token from the test environment's @BotFather | `https://api.telegram.org/bot<token>/<method>`, with an ordinary token |
-| MTProto | the test datacenters' addresses and server key, as Telegram's MTProto documentation publishes them | the production addresses and key |
+| MTProto | the test datacenters' addresses and server key, as TDLib, Telegram's library, carries them | the production addresses and key |
 | Accounts | disposable `+99966 X YYYY` numbers (below) | a real number, and a real account |
 | What a run changes | the test environment only | real accounts and chats |
 

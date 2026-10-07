@@ -177,8 +177,8 @@ const account = Account.fromString(process.env.SESSION!, { apiId, apiHash, keys,
 account.onMessage((event) => event.reply('as me, not as a bot'))
 ```
 
-`keys` are Telegram's server public keys, read with `serverKeysFromPem` from the PEM form
-Telegram's MTProto documentation publishes, and `bootstrap` is the first address to reach, built
+`keys` are Telegram's server public keys, read with `serverKeysFromPem` from PEM — the form
+TDLib, Telegram's own library, carries them in — and `bootstrap` is the first address to reach, built
 with `bootstrapAt({ dc, host, port })`. Neither is compiled in; [api-design.md](api-design.md) §1
 says why. An account's events are filtered with the `f` from `yuigram/account-filters` — the
 Bot API's `f` reads fields they do not carry, and an account refuses it at compile time.

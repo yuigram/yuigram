@@ -28,10 +28,18 @@ The protocol implementations are written from Telegram's published documentation
 Method names, type shapes and protocol algorithms are interface facts. Where documentation
 prose is reproduced in generated JSDoc, the generated entry carries a link to its source page.
 
-Yuigram ships none of Telegram's server RSA public keys: an application supplies them, and the
-documentation directs it to Telegram's published MTProto documentation. They are deliberately
-**not** taken from Telegram's own client applications, which are GPL-licensed. The keys in the
-test suites are generated for the tests.
+Yuigram ships none of Telegram's server RSA public keys: an application supplies them. The
+documentation and example 20 take them from [TDLib](https://github.com/tdlib/td), Telegram's
+client library, which is published under the Boost Software License 1.0
+(`td/telegram/net/PublicRsaKeySharedMain.cpp`, retrieved at a pinned revision and checked by
+digest). They are deliberately **not** taken from Telegram's own client applications, which are
+GPL-licensed. The test suites generate their keys, except one known-answer test, which holds
+Telegram's two public server keys as they appear in that TDLib file: public data, no code.
+
+The TL schema of the current layer is taken from the schema file in Telegram Desktop's
+repository, because Telegram's documentation page serves an older layer; the documentation is
+used where it is current. The schema is an interface definition rather than client code, but
+the repository it is read from is GPL-licensed; see [docs/licensing.md](docs/licensing.md) §5.
 
 ## Acknowledgements
 

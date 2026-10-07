@@ -157,10 +157,18 @@ cost. `p` is 256 bytes; `g_b` is at most 256.
 
 ### 3.4 Server RSA keys
 
-Taken from Telegram's **published MTProto documentation**, matched by fingerprint at runtime.
+Supplied by the application as PEM, matched by fingerprint at runtime. None is compiled in.
+
+Telegram's MTProto documentation names the production key by its fingerprint — its worked
+example of creating an authorization key chooses `85FD64DE851D9DD0`, the key's fingerprint in
+wire order — but does not print the key. The source the project uses is TDLib, Telegram's own
+client library, published under the Boost Software License 1.0:
+`td/telegram/net/PublicRsaKeySharedMain.cpp` holds both environments' keys. Example 20's
+`keys.ts` retrieves that file at a pinned revision, checks its SHA-256, and checks the keys'
+fingerprints before writing them.
 
 Deliberately **not** extracted from Telegram Desktop or Android source, both of which are
-GPL-licensed. The keys are public data and the documentation is a clean source; there is no
+GPL-licensed. The keys are public data and TDLib is a permissively licensed source; there is no
 reason to acquire them from a copyleft codebase. See [licensing.md](licensing.md) §5.
 
 ---

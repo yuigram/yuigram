@@ -60,9 +60,8 @@ export interface BootstrapAddress {
  * The address list an account starts from, given one address.
  *
  * Fetching the list needs an address and the address comes from the list, so
- * the first one is the application's to supply — taken from Telegram's
- * published MTProto documentation, not compiled in here, because published
- * addresses change. One is enough: a redirection to a datacenter it does not
+ * the first one is the application's to supply — one of Telegram's known
+ * addresses, not compiled in here, because addresses change. One is enough: a redirection to a datacenter it does not
  * name is followed by asking for the whole list, and once the server has
  * published one it is stored and preferred over this.
  *

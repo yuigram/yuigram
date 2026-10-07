@@ -50,8 +50,10 @@ Account.fromString(session, { apiId, apiHash, keys, bootstrap, storage }) // the
 An account needs more than its credentials because MTProto starts below HTTP. `apiId` and
 `apiHash` name the application, from my.telegram.org. `keys` are Telegram's server public keys,
 which an account checks a datacenter against by fingerprint — `serverKeysFromPem(text)` reads
-them in the PEM form Telegram's MTProto documentation publishes. `bootstrap` is the first
-address to reach, which `bootstrapAt({ dc, host, port })` builds from one published address.
+them as PEM, the form TDLib, Telegram's own library, carries them in
+(`examples/20-presence-watch/keys.ts` writes them from TDLib's source at a pinned revision,
+checking the file's digest and the keys' fingerprints). `bootstrap` is the first address to
+reach, which `bootstrapAt({ dc, host, port })` builds from one known address.
 Neither is compiled in: published keys and addresses change, and a value baked into a release
 would be one more thing to be stale ([mtproto.md](mtproto.md) §3.4, and §8 under "Addresses and
 selection").
