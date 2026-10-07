@@ -208,8 +208,8 @@ function decodeBase64(session: string): Uint8Array {
  *
  * - `'portable'` — this library's own: a fixed 348 characters, the key and
  *   where it belongs, and nothing else.
- * - `'tl-v3'` — the version-3 TL record other MTProto libraries write: URL-safe
- *   base64, with the datacenter's address and, optionally, the account's user.
+ * - `'tl-v3'` — the version-3 TL record mtcute writes: URL-safe base64, with
+ *   the datacenter's address and, optionally, the account's user.
  */
 export type SessionFormat = 'portable' | 'tl-v3'
 

@@ -298,9 +298,11 @@ vouch for it; the long-lived exchange is skipped because that is what the string
 
 ### Strings from other libraries
 
-The version-3 TL session string other MTProto libraries write is read and written as
-`format: 'tl-v3'`; the layout is always named, since a string read as a layout it is not in
-would be somebody else's account.
+The version-3 TL session string that mtcute writes is read and written as `format: 'tl-v3'`; the
+layout is always named, since a string read as a layout it is not in would be somebody else's
+account. That is the one foreign layout supported. The string formats of Telethon, Pyrogram,
+GramJS and MTKruto are different layouts and are not read; mtcute converts those through a
+separate package, and Yuigram has no counterpart to it.
 
 ```ts
 const me = Account.fromString(process.env.SESSION!, { ...options, format: 'tl-v3' })
@@ -326,6 +328,11 @@ bot are known, since the layout records both. Every field is checked on the way 
 unknown flags, lengths, the datacenter, the port, the network of each address, the Bool, the key's
 size — and nothing may follow the key. A string in the wrong layout is refused with a message
 naming the layout it looks like, and no message repeats what it read.
+
+Only the authorization moves. The other library's record of peers and its place in the update
+stream are not in the string, so an imported account learns peers again as answers name them, and
+starts its update stream where Telegram is when it first connects (§9.3 of
+[mtproto.md](mtproto.md)): updates the other library had not yet received are not fetched.
 
 ### Encryption at rest
 

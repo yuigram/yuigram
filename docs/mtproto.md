@@ -1237,8 +1237,10 @@ offsets of the byte-reversed copy; both hashed with the proxy secret when one is
 packet encrypts itself, and bytes 56–63 of the ciphertext replace the plaintext at those
 positions.
 
-Transports sit behind an interface, so TCP, MTProxy, WebSocket and test transports are
-interchangeable.
+Transports sit behind an interface, so TCP, WebSocket and test transports are interchangeable;
+an account's `open` option supplies the byte stream, which is how a SOCKS or HTTP proxy is put in
+the path. The obfuscation step accepts a proxy secret, but no public option sets one, and the
+fake-TLS form of MTProxy is not implemented: MTProxy is not offered.
 
 ### The link
 

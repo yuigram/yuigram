@@ -233,8 +233,10 @@ app.post('/hook', fastifyWebhook(handler))       // fastify
 
 **No adapter is a dependency.** Each describes the shape it needs structurally — a `headers`
 bag, a `body`, a way to send a status — so no framework has to be installed for the types to
-resolve, and no version is pinned. Koa, hono, h3, elysia and the Web `Request`/`Response` pair
-follow the same pattern; they are additions to one file, not new dependencies.
+resolve, and no version is pinned. `webWebhook` serves the Web `Request`/`Response` pair, which
+is what hono, elysia, h3 and the edge runtimes hand a route. Koa has no adapter of its own. Its
+`ctx.req` and `ctx.res` are Node's request and response, which is what `nodeWebhook` takes, with
+`ctx.respond = false` so that Koa leaves the response alone; that pairing has no test here.
 
 Non-negotiable webhook behaviours, all pinned by tests:
 

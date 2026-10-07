@@ -1,5 +1,5 @@
 /**
- * Reading and writing the version-3 session string other MTProto libraries use.
+ * Reading and writing the version-3 session string mtcute uses.
  *
  * Where Yuigram's own session string is fixed-length, this one is a small TL
  * record in URL-safe base64 without padding, and carries more: the address of
