@@ -22,6 +22,7 @@ not.
 | Storage — `encrypted()` | **run** | **run**⁸ | **run** | no⁴ | no |
 | Storage — `@yuigram/sqlite`, fenced leases included | **run** | **run** (`node:sqlite`) | **run** (`node:sqlite`) | no | no |
 | Storage — `web()`, over `localStorage` | expected⁵ | expected | expected | no | **run** |
+| Storage — `indexedDb()` | over a supplied IndexedDB¹⁰ | no | no | no | **run** |
 | MTProto — accounts, in full | **run** | **run**⁹ | **run**⁹ | **run**⁶ ⁹ | **run**⁷ |
 
 ¹ Telegram's Bot API does not send CORS headers, so a browser page cannot call it directly. The
@@ -55,6 +56,10 @@ reports `null`, and the store took that for a failure.
 ⁹ A key exchanged, an encrypted call answered and an update pushed down the session dispatched, over
 the runtime's own connection to the mock datacenter, and a stop that closes it — §5.3. Signing in
 needs credentials, and is not run anywhere.
+
+¹⁰ Node has no IndexedDB of its own. The store's unit tests run it over fake-indexeddb, an
+implementation of the specification passed as `factory`; Chromium runs it on the real thing in
+the browser check, an account's session included.
 
 ---
 
@@ -503,8 +508,10 @@ connect the account once per page, which is exactly what a shared host exists to
 In Node, the host passes `parentPort` as the scope to serve. In a browser it passes nothing, and
 tells a shared worker from a dedicated one by the scope it finds itself in.
 
-**A worker has no `localStorage`**, so `web()` is not a store an account in a worker can use. An
-account hosted there keeps what it learns in `memory()` or in a store the application supplies,
+**A worker has no `localStorage`**, so `web()` is not a store an account in a worker can use. A
+worker does have IndexedDB, so `indexedDb()` is expected to work there; the browser check runs it
+in a page, not in a worker. An account hosted there keeps what it learns in `memory()`,
+`indexedDb()` or a store the application supplies,
 and survives a restart through its session string: export it, keep it where the page can, and
 pass it as `restore` next time. The browser check does exactly that.
 

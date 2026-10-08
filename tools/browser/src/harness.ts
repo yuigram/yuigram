@@ -32,6 +32,7 @@ import {
   StorageOwnershipError,
   web,
 } from '../../../packages/yuigram/src/index.js'
+import { runIndexedDbAccountCheck, runIndexedDbChecks } from './indexeddb-checks.js'
 import { runWorkerChecks } from './worker-checks.js'
 
 /**
@@ -426,6 +427,12 @@ async function run(): Promise<void> {
 
     return 'a store with a prefix of its own cleared, and its neighbour kept what it held'
   })
+
+  // ---- the IndexedDB store ---------------------------------------------------
+
+  // A name of its own per run, so a check never reads what an earlier run left.
+  const idbRun = Date.now().toString(36)
+  await runIndexedDbChecks(check, expect, idbRun)
 
   // ---- the built yuigram/web-app entry point --------------------------------
 
@@ -989,6 +996,23 @@ async function run(): Promise<void> {
       return 'the account stopped and its connections closed'
     })
   }
+
+  await runIndexedDbAccountCheck(
+    check,
+    expect,
+    {
+      key: config.key,
+      dc: config.dc,
+      host: page.location.hostname,
+      port: Number(page.location.port),
+      socket: (name) =>
+        `${page.location.protocol === 'https:' ? 'wss' : 'ws'}://${page.location.host}/mtproto?client=${name}`,
+      stats: async (name) =>
+        (await (await fetch(`/stats?client=${name}`)).json()) as { readonly permanentKeys: number },
+      now: clock,
+    },
+    idbRun,
+  )
 
   // ---- an account hosted in a worker ---------------------------------------
 

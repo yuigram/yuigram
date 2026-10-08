@@ -34,7 +34,8 @@ import {
   verifyInitData,
   verifyInitDataSignature,
 } from 'yuigram/web-app'
-import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
+import { indexedDb } from 'yuigram/indexeddb'
+import { expressWebhook, fastifyWebhook, koaWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const checks = []
 
@@ -109,9 +110,18 @@ check('the container registers across clients', () => {
 check('schemaInfo names the TL layer', () => Number.isInteger(schemaInfo.tlLayer))
 check('the testing subpath resolves', () => typeof mockBot === 'function')
 check('the webhook subpath resolves', () =>
-  [nodeWebhook, expressWebhook, fastifyWebhook].every((f) => typeof f === 'function'))
+  [nodeWebhook, expressWebhook, fastifyWebhook, koaWebhook].every((f) => typeof f === 'function'))
 const entry = await import('yuigram')
-check('the adapters stay out of the entry point', () => !('nodeWebhook' in entry))
+check('the adapters stay out of the entry point', () => !('nodeWebhook' in entry) && !('koaWebhook' in entry))
+check('the IndexedDB store is its own entry point, and says what a runtime without IndexedDB lacks', () => {
+  if ('indexedDb' in entry) return false
+  try {
+    indexedDb()
+    return false
+  } catch (error) {
+    return /indexedDB/.test(error.message)
+  }
+})
 // The mock datacenter runs a real key exchange. It belongs to the test tree,
 // and this is the only check that can see whether it reached a consumer.
 check('the MTProto test infrastructure stays out of the installed package', () =>

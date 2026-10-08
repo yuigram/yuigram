@@ -95,10 +95,24 @@ session<Cart>({ ...base, key: (event) => event.chat?.id })    // чат, общ�
 | `file(каталог)` | `yuigram` | файлы в каталоге | один процесс на машине с диском |
 | `encrypted(store, secret)` | `yuigram` | поверх другого хранилища | шифрование значений на диске |
 | `web()` | `yuigram` | `localStorage` | страница в браузере |
+| `indexedDb({ database, store })` | `yuigram/indexeddb` | IndexedDB | страница или воркер в браузере, состояние побольше |
 | `namespaced(store, prefix)` | `yuigram` | область другого хранилища | несколько владельцев одного хранилища |
 | `tiered(front, back)` | `yuigram` | два хранилища | быстрый слой поверх медленного |
 | `sqliteStore(db, …)` | `@yuigram/sqlite` | файл SQLite | одна машина, несколько процессов |
 | `redisStore(client, …)` | `@yuigram/redis` | сервер Redis | несколько машин |
+
+`indexedDb()` — отдельная точка входа, её загружает только программа, которая её импортирует.
+Запись считается сделанной, когда завершилась транзакция; ошибка запроса или прерванная
+транзакция — это `StorageError`. От второго запуска того же аккаунта в другой вкладке защищает
+не IndexedDB, а та же блокировка Web Locks, что и для `web()`:
+
+```ts
+import { indexedDb } from 'yuigram/indexeddb'
+
+const browserState = indexedDb({ database: 'my-app' })
+await browserState.set('theme', 'dark')
+await browserState.close()
+```
 
 ```ts
 import { encrypted, file, type KV, memory, namespaced } from 'yuigram'

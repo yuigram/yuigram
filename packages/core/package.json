@@ -43,6 +43,11 @@
       "types": "./dist/dice/index.d.ts",
       "import": "./dist/dice/index.js",
       "default": "./dist/dice/index.js"
+    },
+    "./indexeddb": {
+      "types": "./dist/indexeddb/index.d.ts",
+      "import": "./dist/indexeddb/index.js",
+      "default": "./dist/indexeddb/index.js"
     }
   },
   "browser": {

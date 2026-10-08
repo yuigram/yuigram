@@ -79,6 +79,11 @@
       "types": "./dist/account-utils.d.ts",
       "import": "./dist/account-utils.js",
       "default": "./dist/account-utils.js"
+    },
+    "./indexeddb": {
+      "types": "./dist/indexeddb.d.ts",
+      "import": "./dist/indexeddb.js",
+      "default": "./dist/indexeddb.js"
     }
   },
   "main": "./dist/index.js",

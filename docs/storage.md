@@ -44,6 +44,8 @@ and lazy eviction — the framework detects which by feature-probing the driver.
 |---|---|---|---|
 | `memory()` | core | none | Development, tests, ephemeral state |
 | `file(dir)` | core | JSON per key | Small deployments, single process |
+| `web()` | core | `localStorage` | A browser page, a few megabytes |
+| `indexedDb()` | core, `yuigram/indexeddb` | IndexedDB | A browser page or worker, larger state |
 | `sqliteStore(db)` | `@yuigram/sqlite` | single file | Single-host production, several processes on one file |
 | `redisStore(client)` | `@yuigram/redis` | external | Multi-process, horizontal scale |
 | — | — | external | Existing Postgres/MySQL: an adapter is four methods against the application's own client |
@@ -58,6 +60,19 @@ see [Rate limits across processes](#rate-limits-across-processes).
 ```ts
 memory({ max: 10_000 })
 ```
+
+`indexedDb({ database, store })` keeps each key in one object store of one IndexedDB database
+(`yuigram` and `kv` unless named). Values are the same JSON envelope `web()` and `file()` keep, so
+a value round-trips here exactly as it does there. A write resolves when its transaction
+completes — not when its request succeeds, since a transaction can still abort after that — and
+asks for strict durability unless `durability` says otherwise. Read-write transactions over one
+object store run one at a time in the order they were created, across every connection of the
+origin, so writes through a store land in the order they were called. An object store missing
+from an existing database is added by raising the database's version; a connection of this kind
+closes when another needs a newer version, and reopens on its next call. `close()` ends the
+connection; transactions already begun finish, and later calls are refused. A failed request or
+an aborted transaction rejects with `StorageError`, carrying the browser's error as its cause.
+It is an entry point of its own, so programs that do not use it do not load it.
 
 `file()` is deliberately unsophisticated — atomic write via temp-file rename, one file per
 key, keys hashed for filesystem safety. It exists so that "persist my sessions" needs no
@@ -212,7 +227,7 @@ record and its index entries however many peers the account already knows.
 | Development, tests | `memory()` |
 | One account on a machine with a disk | `Account.fromSession('./me.session', …)`, which is `file()` over that directory |
 | Several processes or machines that could open the same account | `sqliteStore(await openDatabase('./accounts.db'))` or `redisStore(client)`, which lease areas and fence writes |
-| Edge runtime, browser | `Account.fromString(session, { storage: memory() })`, or `web()` in a page |
+| Edge runtime, browser | `Account.fromString(session, { storage: memory() })`, or `web()` or `indexedDb()` in a page; `indexedDb()` in a worker |
 
 An authorization belongs to one running client at a time: two runs writing one area overwrite
 each other's keys and their place in the update stream. What keeps them apart depends on the
@@ -335,7 +350,7 @@ supplied from outside that answers `false` is refused a take-over outright.
 
 **What happens, by backend.**
 
-| | `memory()` (process registry) | `file()` or another persistent store without leases (process registry) | `web()` or any store in a browser (Web Locks) | `sqliteStore`, `redisStore` (lease) |
+| | `memory()` (process registry) | `file()` or another persistent store without leases (process registry) | `web()`, `indexedDb()` or any store in a browser (Web Locks) | `sqliteStore`, `redisStore` (lease) |
 | --- | --- | --- | --- | --- |
 | Orderly stop | Admitted writes finish, the claim loses its token, the name is freed | The same; the next run, in any process, adopts the claim without a flag | The same, and the lock is released | The same, and the lease is released if it is still this grant |
 | Crash | The store goes with the process | The claim keeps its token; the next run is refused until `takeOverStorage` | The browser releases the lock; the next page adopts the claim without a flag | The lease lapses after `storageLeaseMs` (30 s unless given); the next run then adopts the claim without a flag |
@@ -429,7 +444,14 @@ A start that fails after taking the area gives it back. Nothing above calls `sto
 process.
 
 This also covers browser defaults. `web()` is one place per origin, so two accounts in a page
-share it whether or not they meant to; what separates them is the area, not the store. Passing
+share it whether or not they meant to; what separates them is the area, not the store.
+
+`indexedDb()` adds no exclusion of its own. Its transactions make each write atomic, which keeps
+a value whole; they do not keep two tabs from running one account. That is the guard's, exactly
+as for `web()`: in a browser the Web Locks API, whose reach is the origin — which is also who can
+reach the database — so an account over `indexedDb()` is excluded across tabs and workers, a
+second run is refused, and a superseded run's writes are fenced off. Where `indexedDB` exists but
+`navigator.locks` does not, the guard is the process registry, and the area is not exclusive. Passing
 a different `prefix` per account still works and is no longer required.
 
 ### Compatibility
