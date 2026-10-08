@@ -628,6 +628,16 @@ describe('making and unmaking conversations', () => {
     await expect(deleteGroup(client, '@channel')).rejects.toThrow(/not a basic group/)
   })
 
+  it('deletes a basic group by its bare number', async () => {
+    const client = fake([true], GROUP)
+
+    await deleteGroup(client, 'group')
+
+    expect(client.asked).toEqual([{ method: 'messages.deleteChat', params: { chat_id: 3n } }])
+    // The answer is a Bool, which carries no updates to hand on.
+    expect(client.fed).toEqual([])
+  })
+
   it('keeps the conversation when only its history was asked to go', async () => {
     const client = fake([{ _: 'messages.affectedHistory', pts: 1, pts_count: 0, offset: 0 }])
 

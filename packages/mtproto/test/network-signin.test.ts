@@ -17,6 +17,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { validateDhParameters } from '../src/crypto/primes.js'
 import {
   requestLoginToken,
+  resendCode,
   sendCode,
   signIn,
   signInAsBot,
@@ -186,6 +187,55 @@ describe('asking for a code', () => {
     await expect(sendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+7' })).rejects.toThrow(
       /expected a sent code/,
     )
+  })
+})
+
+describe('asking for the code again', () => {
+  it('continues the attempt under way, and hands back the hash the answer names', async () => {
+    const dcs = datacenters({
+      2: {
+        'auth.resendCode': () => ({
+          _: 'auth.sentCode',
+          type: { _: 'auth.sentCodeTypeSms', length: 5 },
+          phone_code_hash: 'second',
+          timeout: 120,
+        }),
+      },
+    })
+
+    const state = await resendCode({
+      ...API,
+      reach: dcs.reach,
+      dcId: 2,
+      phone: '+7 (000) 000-00-00',
+      phoneCodeHash: 'first',
+      reason: 'no code arrived',
+    })
+
+    expect(dcs.at(2, 'auth.resendCode')[0]?.query).toEqual({
+      _: 'auth.resendCode',
+      phone_number: '70000000000',
+      phone_code_hash: 'first',
+      reason: 'no code arrived',
+    })
+    expect(dcs.at(2, 'auth.sendCode')).toEqual([])
+    expect(state).toEqual({ kind: 'code-sent', dcId: 2, phoneCodeHash: 'second', timeout: 120 })
+  })
+
+  it('leaves the reason off when none was given', async () => {
+    const dcs = datacenters({
+      2: {
+        'auth.resendCode': () => ({
+          _: 'auth.sentCode',
+          type: { _: 'auth.sentCodeTypeApp', length: 5 },
+          phone_code_hash: 'first',
+        }),
+      },
+    })
+
+    await resendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+7', phoneCodeHash: 'first' })
+
+    expect(dcs.at(2, 'auth.resendCode')[0]?.query).not.toHaveProperty('reason')
   })
 })
 

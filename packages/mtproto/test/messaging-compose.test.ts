@@ -900,6 +900,20 @@ describe('a comment', () => {
     })
   })
 
+  it('sends one piece of media as a comment, into the discussion group', async () => {
+    const client = scripted({ 'messages.getDiscussionMessage': thread })
+
+    await sendMedia(client, '@channel_news', { _: 'inputMediaDice', emoticon: '🎲' }, undefined, {
+      commentOn: 5,
+    })
+
+    expect(methods(client)).toEqual(['messages.getDiscussionMessage', 'messages.sendMedia'])
+    expect(called(client, 'messages.sendMedia')).toMatchObject({
+      peer: { _: 'inputPeerChannel', channel_id: 77n },
+      reply_to: { _: 'inputReplyToMessage', reply_to_msg_id: 100 },
+    })
+  })
+
   it('sends an album as a comment, prepared for the discussion group', async () => {
     const client = scripted({
       'messages.getDiscussionMessage': thread,
