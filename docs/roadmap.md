@@ -309,6 +309,14 @@ change in the minor position and nothing between the two was published.
   - A connection status on every account, carried across a worker, and a worker host that lets a
     closed tab go at once without mistaking a hidden one for it. See [runtimes.md](runtimes.md) §6
   - Still to come in this phase: the storage drivers below
+  - Open gaps against the libraries the surface was compared with, each a missing capability
+    rather than a deliberate difference: an MTProxy transport, fake-TLS included, which
+    mtcute's core ships; an IndexedDB store for browser accounts, which mtcute's web package
+    ships (`web()` keeps state in `localStorage`); and a Koa webhook adapter, which puregram
+    ships (`nodeWebhook` serves Koa's request and response). Converting session strings from
+    Telethon, Pyrogram, GramJS and MTKruto is a further capability, which mtcute provides in a
+    separate package; Yuigram reads and writes mtcute's own version-3 string. A SOCKS or HTTP
+    proxy can be put in an account's path through its `open` option, but no helper is shipped
 - Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
   merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
