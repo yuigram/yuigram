@@ -44,12 +44,14 @@ function memoryFs(platform = 'win32') {
     string | Promise<void> | { after: Promise<void>; code: string } | undefined
   > = []
   const writes: Array<string | undefined> = []
+  const mkdirs: Array<Promise<void> | undefined> = []
   const slept: number[] = []
 
   const name = (path: string) => path.split(/[\\/]/).at(-1) ?? path
 
   const fs: FileSystem = {
     async mkdir() {
+      await mkdirs.shift()
       return undefined
     },
     async readdir() {
@@ -104,6 +106,7 @@ function memoryFs(platform = 'win32') {
     log,
     renames,
     writes,
+    mkdirs,
     slept,
     temporaries: () => [...files.keys()].filter((path) => path.endsWith('.tmp')),
   }
@@ -239,6 +242,28 @@ describe('operations on one key', () => {
     await Promise.all([first, second])
 
     expect(await one.get('key')).toBe('from two')
+  })
+
+  it('keep the order they were asked in when one store is slower to make its directory', async () => {
+    // Each store makes the directory once, on its first operation. A write
+    // that waited for that before taking its place in the queue could be
+    // overtaken by a later write from a store that was ready sooner.
+    const fake = memoryFs()
+    const directory = join(DIRECTORY, 'slow-directory')
+    const one = fileStore<string>(directory, {}, fake.io)
+    const two = fileStore<string>(directory, {}, fake.io)
+    const slow = deferred()
+    fake.mkdirs.push(slow.promise)
+
+    const first = one.set('key', 'from one')
+    const second = two.set('key', 'from two')
+    await settle()
+    expect(fake.log).toEqual([])
+
+    slow.release()
+    await Promise.all([first, second])
+
+    expect(await two.get('key')).toBe('from two')
   })
 
   it('do not hold up an unrelated key', async () => {

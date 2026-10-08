@@ -246,10 +246,10 @@ export function fileStore<V = unknown>(
    * strength of an old read must not take away a value written since.
    */
   const read = async (key: string): Promise<Envelope<V> | undefined> => {
-    await ensureDirectory()
     const path = join(directory, fileNameFor(key))
 
     return await ordered(path, async () => {
+      await ensureDirectory()
       let text: string
       try {
         text = await fs.readFile(path, 'utf8')
@@ -284,8 +284,6 @@ export function fileStore<V = unknown>(
     },
 
     async set(key, value, setOptions: SetOptions = {}) {
-      await ensureDirectory()
-
       const envelope: Envelope<V> = {
         key,
         value,
@@ -295,7 +293,12 @@ export function fileStore<V = unknown>(
       const path = join(directory, fileNameFor(key))
       const text = JSON.stringify(envelope)
 
+      // The place in the file's queue is taken now, when the write is asked
+      // for. Each store makes its directory once, and another store's may be
+      // ready sooner: waiting for it first would let a later write from that
+      // store overtake this one.
       await ordered(path, async () => {
+        await ensureDirectory()
         // Write to a unique temporary file, then rename. A crash mid-write then
         // leaves the previous value intact rather than a half-written one.
         const temporary = `${path}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
@@ -313,9 +316,11 @@ export function fileStore<V = unknown>(
     },
 
     async delete(key) {
-      await ensureDirectory()
       const path = join(directory, fileNameFor(key))
-      await ordered(path, async () => await fs.rm(path, { force: true }))
+      await ordered(path, async () => {
+        await ensureDirectory()
+        await fs.rm(path, { force: true })
+      })
     },
 
     async has(key) {
