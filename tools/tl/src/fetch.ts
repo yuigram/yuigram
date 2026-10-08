@@ -18,36 +18,28 @@ export interface SchemaSource {
   /** Base name under `schemas/tl/`, without an extension. */
   readonly basename: string
   /**
-   * How the document arrives.
-   *
-   * `page` is TL text inside an HTML page, which is how the documentation
-   * publishes it. `text` is the schema as a file, which is how Telegram's own
-   * clients carry it.
+   * How the document arrives: TL text inside an HTML page, which is how the
+   * documentation publishes it. A schema carried as a file is read by
+   * `tdlib.ts`, at a pinned revision.
    */
-  readonly form: 'page' | 'text'
+  readonly form: 'page'
 }
 
 /**
- * The canonical documents, in the order the pipeline reads them.
+ * The documentation pages, in the order the pipeline reads them.
  *
- * Two sources for the API schema, because Telegram publishes the same document
- * in two places and they are not always at the same layer. The documentation
- * page is the one to prefer: it is the published contract, it carries the layer
- * index the pipeline reads the number from, and it has a JSON rendering the
- * crosscheck compares against. Telegram's own client repository carries the
- * schema its client speaks, which is at or ahead of the page — a layer is
- * served by the servers before it is written up.
+ * The documentation page is the API schema's preferred source: it is the
+ * published contract, it carries the layer index the pipeline reads the number
+ * from, and it has a JSON rendering the crosscheck compares against. A layer
+ * the page does not describe yet is read from TDLib, Telegram's own library, at
+ * a pinned revision (`tdlib.ts`); the page still supplies the constructors the
+ * TL language owns.
  *
  * Both are Telegram's. Nothing here reads a schema assembled by anybody else.
  */
 export const SOURCES = {
   mtproto: { url: 'https://core.telegram.org/schema/mtproto', basename: 'mtproto', form: 'page' },
   api: { url: 'https://core.telegram.org/schema', basename: 'api', form: 'page' },
-  apiFromClient: {
-    url: 'https://raw.githubusercontent.com/telegramdesktop/tdesktop/dev/Telegram/SourceFiles/mtproto/scheme/api.tl',
-    basename: 'api',
-    form: 'text',
-  },
 } as const satisfies Record<string, SchemaSource>
 
 /** A page that could not be turned into schema text. */
@@ -120,26 +112,6 @@ export function extractLayer(html: string): number {
   }
 
   return highest
-}
-
-/**
- * The layer a schema file states in its trailer.
- *
- * A schema carried as a file has no layer index to take the highest entry from;
- * it ends with the layer it is, written as a comment, which is what a client
- * building from it compiles in.
- */
-export function layerFromText(text: string): number {
-  const stated = [...text.matchAll(/^\/\/\s*LAYER\s+(\d+)\s*$/gm)].map((match) =>
-    Number.parseInt(match[1] ?? '', 10),
-  )
-  const layer = stated.at(-1)
-
-  if (layer === undefined || !Number.isInteger(layer) || layer <= 0) {
-    throw new TlFetchError('the schema file states no layer in its trailer')
-  }
-
-  return layer
 }
 
 /** Download a page. */

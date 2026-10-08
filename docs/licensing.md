@@ -27,7 +27,7 @@ Verified against published package metadata and `LICENSE` files on 2026-08-19.
 | `ark0f/tg-bot-api` schemas | rolling | **Apache-2.0 OR MIT** | ark0f |
 | Telethon `errors.csv` | — | MIT | LonamiWebs |
 | Telegram TL schema | layer 223 | *unstated* — see §5 | Telegram |
-| Telegram TL schema, Telegram Desktop's `api.tl` (added later) | layer 229 | *unstated*, in a GPL-licensed repository — see §5 | Telegram |
+| TDLib `td/generate/scheme/telegram_api.tl` — the layer-229 schema (added later; replaces Telegram Desktop's `api.tl`) | `42e6a5259551` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
 | TDLib `PublicRsaKeySharedMain.cpp` — the two server public keys only (added later) | `4d06d1ba3a19` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
 | Telegram Bot API documentation | 10.2 | *unstated* — see §5 | Telegram |
 | Telegram error database (`/api/errors.json`) — codes, names and methods only | layer 227 | *unstated* — see §5 | Telegram |
@@ -191,9 +191,9 @@ than assuming.
 | Bot API method and type **names, shapes, parameters** | Facts / interface specification | Not copyrightable as such. Safe. |
 | Bot API **prose descriptions**, copied verbatim into JSDoc | Telegram's authored text | **FLAG.** Universal industry practice; low practical risk; still technically Telegram's expression. |
 | TL schema (`.tl` files) | Interface definition | Same reasoning as the Bot API surface. Universally reused. Safe in practice. |
-| TL schema of the current layer, from Telegram Desktop's `api.tl` | Interface definition, read from a GPL-licensed repository | **FLAG.** The documentation page serves an older layer, so `fetch --from-client` reads the schema file Telegram's desktop client carries ([codegen.md](codegen.md)). It is the interface, not client code, and only it is read; but it is the one artifact taken from a GPL repository. TDLib's `td/generate/scheme/telegram_api.tl` (Boost 1.0) states the same layer and is the permissive alternative; it adds TDLib's own combinators and omits `null`, so moving to it is a regeneration, not a URL change. |
+| TL schema of the current layer, from TDLib | Interface definition, copied from a Boost-licensed repository | The documentation page serves an older layer, so `fetch --from-tdlib` reads TDLib's `telegram_api.tl` at a pinned revision, checked by digest ([codegen.md](codegen.md) §3.3). The copy in `schemas/tl/` carries TDLib's notice beside it, and `@yuigram/mtproto`, whose code is generated from it, ships the same notice — an engineering decision to meet the licence's notice condition for any copy or derived work, made without deciding whether generated codecs are one. The constructors the TL language owns, `null` included, are taken from the documentation schema instead, and recorded as such in `schemas/tl/sources.json`. **History:** until this change the layer was read from Telegram Desktop's `api.tl`, a GPL-licensed repository. Its 2,465 schema-proper definitions are textually identical to TDLib's, and regeneration from the TDLib copy produces byte-identical code; the Desktop-derived snapshots remain in the repository's history before the move. Whether that history needs anything further is a question this analysis records rather than answers. |
 | **Server RSA public keys** | Public keys — data, not code | Safe. Telegram's documentation names the production key by fingerprint but does not print it; take the keys from TDLib (`td/telegram/net/PublicRsaKeySharedMain.cpp`, Boost 1.0), Telegram's own library, **not** from Telegram Desktop or Android source. |
-| Telegram client source (Desktop / Android) | **GPL-family** | **Do not read, port, or copy.** Copying would force GPL onto Yuigram. mtcute notes its RSA keys were "manually extracted from Telegram for Android source" — Yuigram takes them from TDLib instead, to avoid inheriting that question. The one exception to "do not read" is the TL schema file above, flagged as such. |
+| Telegram client source (Desktop / Android) | **GPL-family** | **Do not read, port, or copy.** Copying would force GPL onto Yuigram. mtcute notes its RSA keys were "manually extracted from Telegram for Android source" — Yuigram takes them from TDLib instead, to avoid inheriting that question. The layer-229 schema was an exception until it moved to TDLib; see the row above. |
 | Telethon `errors.csv` | MIT | Safe with attribution, if used for the MTProto error table. |
 | Telegram's error database (`/api/errors.json`) | Error codes and names, and the methods listed for each: facts about the interface | Same reasoning as the Bot API surface. Its `descriptions` are Telegram's prose and are not recorded. |
 
@@ -226,6 +226,7 @@ project holds itself to: third-party provenance is disclosed, never hidden.
 | SQLite driver | better-sqlite3 | MIT | Yes, optional adapter | Yes | Free | Notice | No | Keep out of core — native build step |
 | Multipart encoding | native `FormData` / `Blob` | Node core | Yes | — | Free | None | No | No `formdata-node` dependency |
 | TL schema definitions | Telegram | unstated | Yes (practice) | Yes | — | Cite source | No | **FLAG** §5 |
+| TL schema, layer 229 | TDLib `telegram_api.tl` (pinned revision) | Boost 1.0 | Yes | Normalized: TDLib's own definitions left out, the language's taken from the documentation | Free | Copyright notice and licence text with the copy and with `@yuigram/mtproto` (`TDLIB-LICENSE.txt`) | No | Pinned by digest; `schemas/tl/sources.json` records the inputs |
 | Bot API descriptions | Telegram | unstated | Yes (practice) | Yes | — | Cite source URL | No | **FLAG** §5 |
 | Server RSA public keys | TDLib (Telegram) | Boost 1.0 (the keys themselves: data) | Yes | No | — | Cite source and revision | No | Never from GPL client source |
 | Telegram client source | Telegram | GPL-family | **No** | — | — | — | — | Do not read or port |
@@ -263,6 +264,8 @@ protection is not worth the adoption cost.
 - [ ] `package.json` `license` field matches reality for every published package.
 - [ ] No file contains puregram-derived or mtcute-derived source. Enforced by a CI check (§9).
 - [ ] Generated schema records `source` URL and `fetchedAt` per release.
+- [ ] `@yuigram/mtproto` ships `TDLIB-LICENSE.txt`, identical to `schemas/tl/TDLIB-LICENSE.txt`
+      (enforced by `pnpm check:contents`), for as long as a TL snapshot is copied from TDLib.
 - [ ] Documentation states plainly that users must obtain their own `api_id`/`api_hash`, and
       links to `my.telegram.org`.
 - [ ] `THIRD-PARTY-NOTICES` generated from the dependency tree as a release step.

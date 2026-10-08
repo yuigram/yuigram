@@ -294,8 +294,9 @@ message is retried only when Telegram said to wait, and every way of ending earl
 outcome. A reader's stop is honoured only for the stream that showed that draft. An account
 streams through its own drafts with `streamTo`.
 
-**Layer 229.** The committed schema follows the one Telegram's own client ships, which the
-documentation page lags behind. A conversation-list row may be a community, which has no peer
+**Layer 229.** The committed schema is TDLib's, at a pinned revision, because the
+documentation page lags behind it; the constructors the TL language owns are the
+documentation's. TDLib's notice ships with `@yuigram/mtproto`, whose code is generated from it. A conversation-list row may be a community, which has no peer
 and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;
 `ChatForm` gains `'community'`. The rights records express every right the layer defines,
 checked against the generated tables so the next layer's additions fail a test rather than go

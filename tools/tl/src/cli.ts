@@ -25,10 +25,18 @@ import {
   readErrorDatabase,
   serializeErrorSnapshot,
 } from './errors.js'
-import { download, extractLayer, extractSchemaText, layerFromText, SOURCES } from './fetch.js'
+import { download, extractLayer, extractSchemaText, SOURCES } from './fetch.js'
 import type { TlSchema } from './ir.js'
 import { parseSchema } from './parse.js'
 import { serializeSchema } from './serialize.js'
+import {
+  checkDigest,
+  layerFromVersionHeader,
+  schemaFromTdlib,
+  TDLIB,
+  tdlibNotice,
+  tdlibUrl,
+} from './tdlib.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const SCHEMA_DIR = join(ROOT, 'schemas', 'tl')
@@ -60,30 +68,96 @@ export function readLayer(): number {
   return pin.layer
 }
 
+/** Where a committed schema document came from, as `sources.json` records it. */
+type SourceRecord = Readonly<Record<string, unknown>>
+
+/** What a fetch of the API schema produced. */
+interface FetchedApi {
+  readonly text: string
+  readonly layer: number
+  readonly source: SourceRecord
+  /** Files written beside the schema, by name. */
+  readonly beside: Readonly<Record<string, string>>
+}
+
 /**
  * Read the API schema from whichever source was asked for.
  *
- * The documentation page by default. `--from-client` takes it from Telegram's
- * own client repository instead, which is where a layer appears first: the
- * servers speak it before the page describes it, and a capability that exists
- * only in the newer layer cannot be implemented from the older document.
+ * The documentation page by default. `--from-tdlib` takes it from TDLib at the
+ * pinned revision instead, which is where a layer appears before the page
+ * describes it: a capability that exists only in the newer layer cannot be
+ * implemented from the older document.
  */
-async function fetchApi(fromClient: boolean): Promise<{ text: string; layer: number }> {
-  if (!fromClient) {
-    const html = await download(SOURCES.api.url)
+async function fetchApi(fromTdlib: boolean, retrieved: string): Promise<FetchedApi> {
+  const html = await download(SOURCES.api.url)
+  const documentation = extractSchemaText(html, SOURCES.api.url)
 
-    return { text: extractSchemaText(html, SOURCES.api.url), layer: extractLayer(html) }
+  if (!fromTdlib) {
+    return {
+      text: documentation,
+      layer: extractLayer(html),
+      source: { from: SOURCES.api.url, retrieved },
+      beside: {},
+    }
   }
 
-  const text = await download(SOURCES.apiFromClient.url)
+  const schema = await download(tdlibUrl(TDLIB.schema.path))
+  checkDigest(schema, TDLIB.schema.sha256, TDLIB.schema.path)
+  const version = await download(tdlibUrl(TDLIB.version.path))
+  checkDigest(version, TDLIB.version.sha256, TDLIB.version.path)
+  const licence = await download(tdlibUrl(TDLIB.licenceText.path))
+  checkDigest(licence, TDLIB.licenceText.sha256, TDLIB.licenceText.path)
 
-  return { text, layer: layerFromText(text) }
+  const layer = layerFromVersionHeader(version)
+  const imported = schemaFromTdlib(schema, documentation)
+
+  return {
+    text: imported.text,
+    layer,
+    source: {
+      retrieved,
+      schemaProper: {
+        from: 'TDLib',
+        repository: TDLIB.repository,
+        revision: TDLIB.revision,
+        path: TDLIB.schema.path,
+        sha256: TDLIB.schema.sha256,
+        licence: TDLIB.licence,
+        notice: 'TDLIB-LICENSE.txt',
+        layer: { path: TDLIB.version.path, sha256: TDLIB.version.sha256, states: layer },
+      },
+      languageOwned: { from: SOURCES.api.url, definitions: imported.languageOwned },
+      setAside: imported.setAside.map((one) => ({
+        definition: one.text,
+        kind: one.kind,
+        reason: one.reason,
+      })),
+    },
+    beside: { 'TDLIB-LICENSE.txt': tdlibNotice(version, licence) },
+  }
 }
 
-async function commandFetch(fromClient: boolean): Promise<void> {
+/** Record where each document written now came from, keeping what others record. */
+function recordSources(entries: Readonly<Record<string, SourceRecord>>): void {
+  const path = join(SCHEMA_DIR, 'sources.json')
+  const current = existsSync(path)
+    ? (JSON.parse(readFileSync(path, 'utf8')) as Record<string, SourceRecord>)
+    : {}
+  const merged: Record<string, SourceRecord> = { ...current, ...entries }
+  const ordered = Object.fromEntries(
+    Object.keys(merged)
+      .sort()
+      .map((key) => [key, merged[key]]),
+  )
+  writeFileSync(path, `${JSON.stringify(ordered, null, 2)}\n`)
+}
+
+async function commandFetch(fromTdlib: boolean): Promise<void> {
   mkdirSync(SCHEMA_DIR, { recursive: true })
 
-  const { text: apiText, layer } = await fetchApi(fromClient)
+  const retrieved = new Date().toISOString().slice(0, 10)
+  const fetched = await fetchApi(fromTdlib, retrieved)
+  const { text: apiText, layer } = fetched
 
   const mtprotoHtml = await download(SOURCES.mtproto.url)
   const mtprotoText = extractSchemaText(mtprotoHtml, SOURCES.mtproto.url)
@@ -98,6 +172,13 @@ async function commandFetch(fromClient: boolean): Promise<void> {
   writeFileSync(join(SCHEMA_DIR, 'mtproto.json'), serializeSchema(mtproto))
   writeFileSync(join(SCHEMA_DIR, `api.${layer}.json`), serializeSchema(api))
   writeFileSync(join(SCHEMA_DIR, 'layer.json'), `${JSON.stringify({ layer }, null, 2)}\n`)
+  for (const [name, text] of Object.entries(fetched.beside)) {
+    writeFileSync(join(SCHEMA_DIR, name), text)
+  }
+  recordSources({
+    [`api.${layer}.tl`]: fetched.source,
+    'mtproto.tl': { from: SOURCES.mtproto.url, retrieved },
+  })
 
   process.stdout.write(
     `fetched layer ${layer}: ` +
@@ -198,7 +279,7 @@ the API rendering is layer ${publishedLayer} and this repository is pinned to ${
 }
 
 const COMMANDS: Record<string, (flags: readonly string[]) => void | Promise<void>> = {
-  fetch: async (flags) => await commandFetch(flags.includes('--from-client')),
+  fetch: async (flags) => await commandFetch(flags.includes('--from-tdlib')),
   errors: commandErrors,
   emit: commandEmit,
   crosscheck: commandCrosscheck,
@@ -209,7 +290,7 @@ const flags = process.argv.slice(3)
 const command = COMMANDS[name]
 
 if (command === undefined) {
-  process.stderr.write(`usage: cli <${Object.keys(COMMANDS).join('|')}> [--from-client]\n`)
+  process.stderr.write(`usage: cli <${Object.keys(COMMANDS).join('|')}> [--from-tdlib]\n`)
   process.exitCode = 1
 } else {
   await command(flags)

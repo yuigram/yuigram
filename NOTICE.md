@@ -4,7 +4,9 @@ Yuigram is licensed under the [MIT License](LICENSE).
 
 ## Third-party code
 
-**Yuigram ships no third-party code.**
+**Yuigram ships no third-party code**, with one bounded exception: `@yuigram/mtproto` contains
+code generated from Telegram's TL schema, and the copy of that schema the current layer is
+generated from is taken from TDLib. That package carries TDLib's notice; see below.
 
 The published packages have **zero runtime dependencies**. The Bot API subsystem uses Node's
 built-in `fetch`, `FormData` and `Blob`; the MTProto subsystem uses `node:crypto` and native
@@ -36,10 +38,16 @@ digest). They are deliberately **not** taken from Telegram's own client applicat
 GPL-licensed. The test suites generate their keys, except one known-answer test, which holds
 Telegram's two public server keys as they appear in that TDLib file: public data, no code.
 
-The TL schema of the current layer is taken from the schema file in Telegram Desktop's
-repository, because Telegram's documentation page serves an older layer; the documentation is
-used where it is current. The schema is an interface definition rather than client code, but
-the repository it is read from is GPL-licensed; see [docs/licensing.md](docs/licensing.md) §5.
+The TL schema of the current layer, `schemas/tl/api.229.tl`, is TDLib's
+`td/generate/scheme/telegram_api.tl` at a pinned revision, checked by digest — Telegram's
+documentation page serves an older layer. TDLib is distributed under the Boost Software License
+1.0. Its notice is kept beside the schema (`schemas/tl/TDLIB-LICENSE.txt`) and ships with
+`@yuigram/mtproto` (`TDLIB-LICENSE.txt`), whose generated code is produced from that schema.
+Six definitions are not TDLib's: the constructors the TL language owns, `null` among them, are
+taken from Telegram's documentation schema. `schemas/tl/sources.json` records every input, and
+what TDLib declares before its schema proper that is left out. Earlier revisions of this
+repository took the same layer from Telegram Desktop's schema file; see
+[docs/licensing.md](docs/licensing.md) §5.
 
 ## Acknowledgements
 

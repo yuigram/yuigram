@@ -366,23 +366,60 @@ Two consequences only appear once the tables exist, and both are handled rather 
 
 **Yuigram pins one TL layer per release. The pin is layer 229.**
 
-#### Telegram publishes the schema in two places, and they are not always the same layer
+#### Where a layer's schema is read from
 
-`core.telegram.org/schema` is the written-up contract. Telegram's own client repository carries
-the schema its client is built from, as a `.tl` file ending in the layer it is. The servers speak
-a layer before the documentation describes it, so the second is at or ahead of the first — on
-2026-09-18 the documentation served 223 while the client schema stated 229.
+`core.telegram.org/schema` is the written-up contract. The servers speak a layer before the
+documentation describes it — on 2026-09-18 the documentation served 223 while Telegram's
+clients were built from 229 — so a newer layer is read from TDLib, Telegram's own client
+library, which carries the schema it is built from in `td/generate/scheme/telegram_api.tl` and
+states the layer in `td/telegram/Version.h`. TDLib is distributed under the Boost Software
+License 1.0. Telegram's applications are GPL-licensed, and their copies of the schema are not
+read.
 
-Both are Telegram's own. Nothing here reads a schema assembled by anybody else, because a
-third-party reconstruction would put someone else's reading of the protocol into generated
+Both sources are Telegram's own. Nothing here reads a schema assembled by anybody else, because
+a third-party reconstruction would put someone else's reading of the protocol into generated
 codecs, and a mistake in it would be indistinguishable from a mistake in this parser.
 
-The default source is the documentation page, and `fetch --from-client` takes the client schema
-instead. Which one a release is pinned to is a decision with a cost either way: the page is
-reviewable prose with a JSON oracle beside it, and the client schema is what the servers
-currently accept. **The pin moved to 229 because capabilities that only exist there could not
-otherwise be implemented at all** — rich messages, communities, and ephemeral and welcome
-messages are constructors the 223 document does not contain.
+```sh
+pnpm --filter @yuigram/tl-codegen run fetch                # the documentation page
+pnpm --filter @yuigram/tl-codegen run fetch --from-tdlib   # TDLib, at the pinned revision
+```
+
+`run` matters: `pnpm fetch` is a pnpm command of its own.
+
+The TDLib path is pinned and checked, not followed (`tools/tl/src/tdlib.ts`):
+
+- **One revision, three digests.** `telegram_api.tl`, `Version.h` and the licence text are read at
+  the commit `TDLIB` names, and each must have the SHA-256 recorded with it. A file that differs
+  stops the fetch before anything is written.
+- **The layer is the pinned one.** `Version.h` must state `MTPROTO_LAYER` exactly once, as the
+  layer the pin is for. Moving to another layer is a deliberate change of the pin, not a side
+  effect of a newer file.
+- **Everything before the schema proper is accounted for, by its exact text.** TDLib's file
+  opens with the language's builtins, five of the constructors the TL language owns, and
+  definitions of its own: its simple-configuration types, two legacy file locations, two test
+  entries and four encodings of wrapper prefixes, one of which declares an identifier its own
+  text does not compute to. `TDLIB_PREFIX` lists each with its section and what becomes of it.
+  A definition that is not listed, one listed that is gone, or one that changed shape under a
+  familiar name stops the fetch. The identifier check is not relaxed for any of them: they are
+  excluded by text, not admitted by exception.
+- **The language's constructors come from the documentation.** `boolFalse`, `boolTrue`, `true`,
+  `vector`, `error` and `null` are taken from the documentation schema, which is the one that
+  defines `null`, and TDLib's copies of the other five must match it exactly.
+- **The inputs are recorded.** `schemas/tl/sources.json` names, for each committed document,
+  where it came from: for the TDLib-derived one, the revision, path and digest of the schema
+  proper and of the file the layer was read from, the documentation's definitions, and every
+  definition left out with the reason. `schemas/tl/TDLIB-LICENSE.txt` is written from the
+  pinned revision's own copyright notice and licence text, and `@yuigram/mtproto` ships the same
+  file, because its generated code is produced from the copy.
+
+Which source a release is pinned to is a decision with a cost either way: the page is reviewable
+prose with a JSON oracle beside it, and TDLib's file is what Telegram's clients are built from
+now. **The pin moved to 229 because capabilities that only exist there could not otherwise be
+implemented at all** — rich messages, communities, and ephemeral and welcome messages are
+constructors the 223 document does not contain. Layer 229 was first read from Telegram
+Desktop's schema file; reading it from TDLib instead produced an identical parsed schema and
+byte-identical generated code.
 
 #### What the pin costs while the documentation is behind
 
@@ -418,9 +455,11 @@ schemaInfo.tlLayer   // 229
 #### The update procedure
 
 1. The drift job reports that a source serves a layer above the pin — the documentation page, or
-   the client schema, which moves first.
+   TDLib, which moves first.
 2. `fetch` writes the new `.tl` and IR alongside the current ones. Old snapshots stay — they are
-   the record of what each release spoke.
+   the record of what each release spoke. For TDLib, the pin moves first: the revision, the three
+   digests and the layer in `TDLIB`, and `TDLIB_PREFIX` if what precedes the schema proper
+   changed — each entry read, not copied in.
 3. `emit` regenerates. Output is deterministic, so the diff is attributable.
 4. The generated round-trip corpus grows with the schema, so new constructors arrive with
    coverage rather than without it.

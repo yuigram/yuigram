@@ -66,6 +66,7 @@
     "dist",
     "src",
     "LICENSE",
+    "TDLIB-LICENSE.txt",
     "README.md"
   ],
   "engines": {

@@ -3,9 +3,10 @@
  *
  * `files` in a manifest is an allowlist, which is the safe direction — but it
  * is easy to widen by accident, and nothing otherwise looks *inside* the
- * archive. This packs every publishable package and asserts two things about
- * the result: that no file which should stay in the repository is in it, and
- * that no credential is.
+ * archive. This packs every publishable package and asserts three things about
+ * the result: that no file which should stay in the repository is in it, that
+ * no credential is, and that code generated from the TL schema carries the
+ * notice of the source the schema was copied from.
  *
  * ```sh
  * pnpm check:contents
@@ -112,6 +113,24 @@ try {
     for (const file of files) {
       for (const pattern of FORBIDDEN_PATHS) {
         if (pattern.test(file)) fail(`ships ${file} — matched ${pattern}`)
+      }
+    }
+
+    // Code generated from the TL schema — the core, service and API tables —
+    // is produced from a copy of TDLib's schema file, and goes out with TDLib's
+    // notice: the one kept beside the schema, not a version of it. The Bot API's
+    // generated code comes from another schema and is not covered.
+    if (files.some((file) => /(^|\/)generated\/(api|core|mtproto)\//.test(file))) {
+      if (!files.includes('TDLIB-LICENSE.txt')) {
+        fail('ships code generated from the TL schema without TDLIB-LICENSE.txt')
+      } else {
+        const shipped = execSync(`tar -xzOf "${archive}" package/TDLIB-LICENSE.txt`, {
+          encoding: 'utf8',
+          cwd: dir,
+        })
+        if (shipped !== readFileSync('schemas/tl/TDLIB-LICENSE.txt', 'utf8')) {
+          fail('TDLIB-LICENSE.txt is not the notice kept beside the schema')
+        }
       }
     }
 
