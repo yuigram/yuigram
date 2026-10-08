@@ -217,6 +217,7 @@ import type { Callable } from './network/migration.js'
 import { harvest, inputPeer, resolveUsername } from './network/peers.js'
 import type { Pools } from './network/pools.js'
 import type { QrOptions } from './network/qr.js'
+import type { ConnectionRoute } from './network/route.js'
 import type { LoginTokenState, Reach, SignInOptions, SignInState } from './network/signin.js'
 import { contextFor, type MtprotoContext } from './normalize/context.js'
 import {
@@ -586,6 +587,15 @@ export interface AccountOptions {
   /** Hide the shape of connections. Defaults to hiding them. */
   readonly obfuscated?: boolean
   /**
+   * Connect through an MTProxy, made by `mtproxy()` from `yuigram/mtproxy`.
+   *
+   * Every connection — to this account's datacenter, to another for a file, in
+   * the test environment as in production — goes to the proxy, which forwards
+   * it. None falls back to a direct connection. Connections through a proxy
+   * are always obfuscated, so `obfuscated: false` beside one is refused.
+   */
+  readonly proxy?: ConnectionRoute
+  /**
    * Open the byte stream a connection travels over.
    *
    * The network, and only the network. Everything above it — the handshake, the
@@ -757,6 +767,12 @@ export class Account<Ext = unknown> {
   #importing: (TransferredSession & { readonly replace: boolean }) | undefined
 
   constructor(options: AccountOptions) {
+    // Said where the account is made rather than on its first connection: a
+    // proxy is reached obfuscated or not at all, and neither is a choice to
+    // make silently on the caller's behalf.
+    if (options.proxy !== undefined && options.obfuscated === false) {
+      throw new ValidationError('an account that connects through a proxy is always obfuscated')
+    }
     this.#options = options
     this.name = options.name ?? 'account'
     this.#log = options.log ?? createLogger()
@@ -5179,6 +5195,7 @@ export class Account<Ext = unknown> {
       datacenters: datacenterStore(namespaced(storage, 'dcs:')),
       bootstrap: this.#options.bootstrap,
       ...(this.#options.obfuscated === undefined ? {} : { obfuscated: this.#options.obfuscated }),
+      ...(this.#options.proxy === undefined ? {} : { route: this.#options.proxy }),
       ...(this.#options.open === undefined ? {} : { open: this.#options.open }),
       ...(this.#options.openChannel === undefined
         ? {}

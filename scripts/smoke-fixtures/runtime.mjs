@@ -35,6 +35,7 @@ import {
   verifyInitDataSignature,
 } from 'yuigram/web-app'
 import { indexedDb } from 'yuigram/indexeddb'
+import { FakeTlsError, mtproxy } from 'yuigram/mtproxy'
 import { expressWebhook, fastifyWebhook, koaWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const checks = []
@@ -121,6 +122,13 @@ check('the IndexedDB store is its own entry point, and says what a runtime witho
   } catch (error) {
     return /indexedDB/.test(error.message)
   }
+})
+check('MTProxy is its own entry point, and a proxy never shows its secret', () => {
+  if ('mtproxy' in entry || !(new FakeTlsError('x') instanceof Error)) return false
+  const key = 'ee0123456789abcdef0123456789abcdef' + Buffer.from('example.org').toString('hex')
+  const proxy = mtproxy({ host: '127.0.0.1', port: 443, secret: key })
+  const shown = `${JSON.stringify(proxy)} ${proxy.description}`
+  return proxy.mode === 'fake-tls' && proxy.domain === 'example.org' && !shown.includes('0123456789abcdef')
 })
 // The mock datacenter runs a real key exchange. It belongs to the test tree,
 // and this is the only check that can see whether it reached a consumer.

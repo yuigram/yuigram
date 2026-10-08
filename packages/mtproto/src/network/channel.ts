@@ -36,16 +36,18 @@ import {
 import { bindTemporaryKey } from '../auth/bind.js'
 import { Handshake } from '../auth/handshake.js'
 import type { ServerRsaKey } from '../auth/keys.js'
+import { randomBytes } from '../crypto/random.js'
 import type { AuthKey } from '../message/auth-key.js'
 import { type ClientInfo, Connection, type InvokeOptions } from '../session/connection.js'
 import type { SessionEvent } from '../session/dispatcher.js'
 import type { TlScope, TlValue } from '../tl/index.js'
 import type { Framing } from '../transport/framing.js'
-import { IntermediateFraming } from '../transport/framing.js'
-import { createObfuscation } from '../transport/obfuscation.js'
+import { IntermediateFraming, PaddedIntermediateFraming } from '../transport/framing.js'
+import { createObfuscation, type Obfuscation } from '../transport/obfuscation.js'
 import { connectStream } from './connect.js'
 import type { DcAddress } from './dc.js'
 import { Link } from './link.js'
+import type { ConnectionRoute } from './route.js'
 import type { ByteStream } from './stream.js'
 
 /**
@@ -145,6 +147,16 @@ export interface ChannelOptions {
   readonly framing?: Framing
   /** Hide the shape of the connection. */
   readonly obfuscated?: boolean
+  /**
+   * Reach the datacenter through an intermediary — an MTProxy.
+   *
+   * The route chooses the envelope, binds the obfuscation to its secret and
+   * opens the stream; the connection is always obfuscated, and asking for it
+   * not to be is refused rather than ignored.
+   */
+  readonly route?: ConnectionRoute
+  /** Whether the datacenter is the test environment's, which a route has to say. */
+  readonly testMode?: boolean
   /** Milliseconds to wait for the socket handshake. */
   readonly connectTimeout?: number
   /** Abandon the attempt. */
@@ -242,6 +254,64 @@ export interface Channel {
 }
 
 /**
+ * How a channel's bytes travel: the envelope, the obfuscation, the stream and
+ * what the server is told about the client.
+ *
+ * Directly, these are the caller's choices. Through a route — an MTProxy — the
+ * route makes them: its envelope, obfuscation bound to its secret and naming
+ * the datacenter, a stream it opens, and an `initConnection` that names it.
+ */
+function transportFor(options: ChannelOptions): {
+  readonly framing: Framing
+  readonly obfuscation: Obfuscation | undefined
+  readonly openStream: (request: StreamRequest) => Promise<ByteStream>
+  readonly client: ClientInfo
+} {
+  const random = options.random === undefined ? {} : { random: options.random }
+  const direct = options.open ?? defaultOpen
+  const routed = options.route?.connection({
+    id: options.address.id,
+    mediaOnly: options.address.mediaOnly,
+    testMode: options.testMode ?? false,
+  })
+
+  if (routed === undefined) {
+    const framing = options.framing ?? new IntermediateFraming()
+    const obfuscation =
+      options.obfuscated === true
+        ? createObfuscation(framing, {
+            ...random,
+            ...(options.address.secret === undefined ? {} : { secret: options.address.secret }),
+            dcId: options.address.id,
+          })
+        : undefined
+
+    return { framing, obfuscation, openStream: direct, client: options.client }
+  }
+
+  if (options.obfuscated === false) {
+    throw new ValidationError('a connection through a proxy is always obfuscated')
+  }
+
+  const framing =
+    routed.framing === 'padded-intermediate'
+      ? new PaddedIntermediateFraming(options.random ?? defaultPadding)
+      : new IntermediateFraming()
+
+  return {
+    framing,
+    obfuscation: createObfuscation(framing, {
+      ...random,
+      secret: routed.secret,
+      dcId: routed.dcId,
+    }),
+    openStream: (request) => routed.open(request, direct),
+    client:
+      routed.proxy === undefined ? options.client : { ...options.client, proxy: routed.proxy },
+  }
+}
+
+/**
  * Open a channel.
  *
  * Resolves once the connection is usable — the socket is open and an
@@ -250,19 +320,10 @@ export interface Channel {
  * everything that goes wrong after arrives through `onClosed`.
  */
 export async function openChannel(options: ChannelOptions): Promise<Channel> {
-  const framing = options.framing ?? new IntermediateFraming()
   const now = options.now ?? Date.now
   const later = options.schedule ?? defaultSchedule
-  const openStream = options.open ?? defaultOpen
 
-  const obfuscation =
-    options.obfuscated === true
-      ? createObfuscation(framing, {
-          ...(options.random === undefined ? {} : { random: options.random }),
-          ...(options.address.secret === undefined ? {} : { secret: options.address.secret }),
-          dcId: options.address.id,
-        })
-      : undefined
+  const { framing, obfuscation, openStream, client } = transportFor(options)
 
   /** What the link is currently handing payloads to. */
   let deliver: (payload: Uint8Array) => void = () => {}
@@ -356,6 +417,7 @@ export async function openChannel(options: ChannelOptions): Promise<Channel> {
         deliver = handle.deliver
         ended = handle.ended
       },
+      client,
     })
   } catch (error) {
     shutdown()
@@ -485,6 +547,8 @@ function live(context: {
   shutdown: () => void
   isClosed: () => boolean
   accept: (wiring: Wiring) => void
+  /** What the server is told this client is, the route included. */
+  client: ChannelOptions['client']
 }): Channel {
   const { options, link, authorization, now, later } = context
   let cancelTimer: (() => void) | undefined
@@ -494,7 +558,7 @@ function live(context: {
     key: authorization.key,
     scope: options.scope,
     salt: authorization.salt,
-    client: options.client,
+    client: context.client,
     send: (bytes) => link.send(bytes),
     ...(options.onEvent === undefined ? {} : { onEvent: options.onEvent }),
     ...(options.now === undefined ? {} : { now: options.now }),
@@ -616,6 +680,11 @@ function live(context: {
 
 function defaultOpen(request: StreamRequest): Promise<ByteStream> {
   return connectStream(request)
+}
+
+/** Randomness for padded frames, where nothing else was given. */
+function defaultPadding(length: number): Uint8Array {
+  return randomBytes(length)
 }
 
 function defaultSchedule(run: () => void, delayMs: number): () => void {

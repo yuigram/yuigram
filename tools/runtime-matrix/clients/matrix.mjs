@@ -304,6 +304,38 @@ await check('server keys come from the published PEM form and fingerprint as Tel
   return `1 key, fingerprint ${BigInt.asUintN(64, keys[0].fingerprint).toString(16)}; a malformed one refused`
 })
 
+await check('an account reaches its datacenter only through a fake-TLS MTProxy', async () => {
+  const { mtproxy } = await import('yuigram/mtproxy')
+  const { port, secret } = await (await fetch(`http://127.0.0.1:${httpPort}/mtproxy`)).json()
+  const pem = await (await fetch(`http://127.0.0.1:${httpPort}/key`)).text()
+  const t0 = Date.now()
+  const proxied = new yuigram.Account({
+    apiId: 1,
+    apiHash: 'matrix',
+    name: 'proxied',
+    storage: yuigram.memory(),
+    keys: yuigram.serverKeysFromPem(pem),
+    now: () => 1_700_000_000_000 + (Date.now() - t0),
+    bootstrap: {
+      thisDc: 2,
+      testMode: false,
+      // Nothing listens here: the proxy is the only way through.
+      options: [{ id: 2, host: '127.0.0.3', port: 9, ipv6: false, mediaOnly: false, tcpoOnly: false, cdn: false, static: true, thisPortOnly: true, secret: undefined }],
+    },
+    proxy: mtproxy({ host: '127.0.0.1', port, secret }),
+  })
+  try {
+    await proxied.connect()
+    const config = await proxied.api.call({ _: 'help.getConfig' })
+    expect(typeof config._ === 'string', 'no answer through the proxy')
+    const after = await (await fetch(`http://127.0.0.1:${httpPort}/mtproxy`)).json()
+    expect(after.refused === 0, `the proxy refused ${after.refused} connections`)
+    return `fake-TLS greeting, obfuscated padded stream; help.getConfig answered '${config._}'`
+  } finally {
+    await proxied.stop({ timeout: 1000 })
+  }
+})
+
 await rm(directory, { recursive: true, force: true })
 const failed = results.filter((one) => !one.ok)
 console.log(`SUMMARY ${runtime}: ${results.length - failed.length}/${results.length} passed`)

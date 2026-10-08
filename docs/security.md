@@ -122,7 +122,7 @@ real accounts in this ecosystem.
 |---|---|
 | TLS verification | Always on. No option to disable — a flag that disables certificate checking is a flag that will be found in production. |
 | `apiBaseUrl` override | Permitted for local Bot API servers; warn loudly when it is not `api.telegram.org` and not `localhost` |
-| Proxies | Never picked up from ambient environment variables. None is shipped: a Bot API proxy is a `fetch` given to `fetchClient`, and an account's connections can be routed through a SOCKS or HTTP proxy by its `open` option, which supplies the byte stream. MTProxy is not offered |
+| Proxies | Never picked up from ambient environment variables. A Bot API proxy is a `fetch` given to `fetchClient`, and an account's connections can be routed through a SOCKS or HTTP proxy by its `open` option, which supplies the byte stream. An MTProxy is the account's `proxy` option (`yuigram/mtproxy`): its secret is a credential, and is never written to a description, an error, `JSON.stringify` or `util.inspect`. Nothing falls back to a direct connection when the proxy fails |
 | MTProto server keys | Supplied by the application (`serverKeysFromPem`) from Telegram's own source — TDLib, which example 20 retrieves at a pinned revision and checks by digest — never compiled in, and checked by fingerprint; a datacenter offering a key the account does not hold is refused |
 | DH parameter validation | Full safe-prime check on every handshake. Not optional, not skippable. |
 | `g_a`/`g_b` range checks | Enforced — omitting them is a known MTProto weakness |

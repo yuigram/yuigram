@@ -11,6 +11,8 @@
  *                        POST /deliver push an update down the newest live connection
  *                        GET /closed   how many connections have ended
  *                        GET /datacenter?name=…  the TCP port of a datacenter for one account
+ *                        GET /mtproxy  a fake-TLS MTProxy in front of a datacenter of its own:
+ *                                      its port and secret, as JSON
  *                        /bot<t>/getMe a Bot API stand-in; /bot<t>/slow never answers
  * ```
  *
@@ -20,7 +22,7 @@
  * the client under test.
  */
 
-import { createPublicKey } from 'node:crypto'
+import { createPublicKey, randomBytes } from 'node:crypto'
 import { createServer as createHttp, type ServerResponse } from 'node:http'
 import { createServer as createTcp } from 'node:net'
 import { REGISTRY as API } from '../../../packages/mtproto/src/generated/api/registry.js'
@@ -30,6 +32,10 @@ import type { TlValue } from '../../../packages/mtproto/src/tl/index.js'
 import { TlScope } from '../../../packages/mtproto/src/tl/registry.js'
 import { MockDatacenter } from '../../../packages/mtproto/test/server/datacenter.js'
 import { createServerKey } from '../../../packages/mtproto/test/server/keys.js'
+import {
+  type MtProxyPeer,
+  startMtProxyPeer,
+} from '../../../packages/mtproto/test/server/mtproxy.js'
 import { serveWebSockets } from '../../browser/src/websocket-server.js'
 
 /** The instant both sides work from; the client is given it as well. */
@@ -145,6 +151,24 @@ export async function startDatacenter(): Promise<Datacenter> {
   const main = await datacenterFor('main')
   const tcpPort = main.port
 
+  // The test suite's MTProxy peer — node:net and node:crypto, sharing nothing
+  // with the client — in front of a datacenter of its own, with a fake-TLS
+  // secret, so a runtime's account is checked through the whole proxy path.
+  const proxyKey = new Uint8Array(randomBytes(16))
+  const proxyDomain = 'matrix.example.org'
+  let proxy: MtProxyPeer | undefined
+  const proxyFor = async (): Promise<MtProxyPeer> => {
+    if (proxy !== undefined) return proxy
+    const { place } = await datacenterFor('mtproxy')
+    proxy = await startMtProxyPeer({
+      mode: 'fake-tls',
+      key: proxyKey,
+      domain: proxyDomain,
+      backend: () => place,
+    })
+    return proxy
+  }
+
   /** Push an update down the newest connection that can carry one. */
   const deliver = (): boolean => {
     // Something that carries no `pts`, so it is dispatched as it arrives rather
@@ -179,6 +203,22 @@ export async function startDatacenter(): Promise<Datacenter> {
   const http = createHttp((request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1')
     const path = url.pathname
+    if (path === '/mtproxy') {
+      void proxyFor().then((peer) => {
+        const secret = Buffer.from([0xee, ...proxyKey, ...Buffer.from(proxyDomain)]).toString(
+          'base64url',
+        )
+        response.setHeader('content-type', 'application/json')
+        response.end(
+          JSON.stringify({
+            port: peer.port,
+            secret,
+            refused: peer.connections.filter((seen) => seen.refused !== undefined).length,
+          }),
+        )
+      })
+      return
+    }
     if (path === '/datacenter') {
       void datacenterFor(url.searchParams.get('name') ?? 'main').then(({ port }) =>
         response.end(String(port)),
@@ -234,6 +274,7 @@ export async function startDatacenter(): Promise<Datacenter> {
     async close() {
       http.closeAllConnections()
       for (const socket of sockets) socket.destroy()
+      await proxy?.close()
       await Promise.all([
         new Promise((resolve) => http.close(resolve)),
         ...listeners.map((tcp) => new Promise((resolve) => tcp.close(resolve))),

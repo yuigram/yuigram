@@ -48,6 +48,7 @@ import {
   sameConfiguration,
 } from './dc.js'
 import type { Callable } from './migration.js'
+import type { ConnectionRoute } from './route.js'
 import type { ByteStream } from './stream.js'
 
 /**
@@ -97,6 +98,8 @@ export interface DatacentersOptions {
   readonly framing?: Framing
   /** Hide the shape of connections. */
   readonly obfuscated?: boolean
+  /** Reach every datacenter through an intermediary — an MTProxy. */
+  readonly route?: ConnectionRoute
   /** Milliseconds to wait for a socket handshake. */
   readonly connectTimeout?: number
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
@@ -280,6 +283,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       scope: options.scope,
       client: options.client,
       keys: options.keys,
+      testMode: directory.testMode,
       ...pass(options),
     })
 
@@ -314,6 +318,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
       client: options.client,
       keys: options.keys,
       expiresIn: TEMPORARY_LIFETIME,
+      testMode: directory.testMode,
       ...pass(options),
     })
 
@@ -412,6 +417,7 @@ export async function openDatacenters(options: DatacentersOptions): Promise<Data
         scope: options.scope,
         client: options.client,
         authorization,
+        testMode: directory.testMode,
         ...pass(options),
         ...(query.signal === undefined ? {} : { signal: query.signal }),
         ...(query.onClosed === undefined ? {} : { onClosed: query.onClosed }),
@@ -517,6 +523,7 @@ function pass(options: DatacentersOptions) {
   return {
     ...(options.framing === undefined ? {} : { framing: options.framing }),
     ...(options.obfuscated === undefined ? {} : { obfuscated: options.obfuscated }),
+    ...(options.route === undefined ? {} : { route: options.route }),
     ...(options.connectTimeout === undefined ? {} : { connectTimeout: options.connectTimeout }),
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.random === undefined ? {} : { random: options.random }),

@@ -170,6 +170,7 @@ new Koa().use(koaWebhook(handler, { path: '/hook' })).listen(8080)
 | `yuigram/account-filters` | Filters for an account's events |
 | `yuigram/account-utils` | Utilities for an account's data that need no account |
 | `yuigram/indexeddb` | `indexedDb()`, a store over a browser's IndexedDB |
+| `yuigram/mtproxy` | `mtproxy()`, an MTProxy for an account's connections, fake TLS included |
 
 SQLite and Redis storage are separate packages: `@yuigram/sqlite` and `@yuigram/redis`.
 

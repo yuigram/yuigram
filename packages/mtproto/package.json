@@ -52,13 +52,19 @@
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js",
       "default": "./dist/testing/index.js"
+    },
+    "./mtproxy": {
+      "types": "./dist/mtproxy/index.d.ts",
+      "import": "./dist/mtproxy/index.js",
+      "default": "./dist/mtproxy/index.js"
     }
   },
   "browser": {
     "./dist/crypto/backend.js": "./dist/crypto/backend.browser.js",
     "./dist/files/node-stream.js": "./dist/files/node-stream.browser.js",
     "./dist/network/connect.js": "./dist/network/connect.browser.js",
-    "./dist/session/gunzip.js": "./dist/session/gunzip.browser.js"
+    "./dist/session/gunzip.js": "./dist/session/gunzip.browser.js",
+    "./dist/mtproxy/index.js": "./dist/mtproxy/index.browser.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

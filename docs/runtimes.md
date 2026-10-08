@@ -24,6 +24,7 @@ not.
 | Storage — `web()`, over `localStorage` | expected⁵ | expected | expected | no | **run** |
 | Storage — `indexedDb()` | over a supplied IndexedDB¹⁰ | no | no | no | **run** |
 | MTProto — accounts, in full | **run** | **run**⁹ | **run**⁹ | **run**⁶ ⁹ | **run**⁷ |
+| MTProto — through an MTProxy, fake TLS included | **run**¹¹ | **run**¹¹ | **run**¹¹ | no | no |
 
 ¹ Telegram's Bot API does not send CORS headers, so a browser page cannot call it directly. The
 code runs; the request is what the browser refuses. This matters for embedding Yuigram in a
@@ -60,6 +61,10 @@ needs credentials, and is not run anywhere.
 ¹⁰ Node has no IndexedDB of its own. The store's unit tests run it over fake-indexeddb, an
 implementation of the specification passed as `factory`; Chromium runs it on the real thing in
 the browser check, an account's session included.
+
+¹¹ Against a local proxy written for the test suite, in front of the mock datacenter; no real
+MTProxy is reached. A proxy is reached over TCP: in a browser `mtproxy()` refuses with
+`ConfigError`.
 
 ---
 

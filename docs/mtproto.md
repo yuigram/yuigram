@@ -1239,8 +1239,76 @@ positions.
 
 Transports sit behind an interface, so TCP, WebSocket and test transports are interchangeable;
 an account's `open` option supplies the byte stream, which is how a SOCKS or HTTP proxy is put in
-the path. The obfuscation step accepts a proxy secret, but no public option sets one, and the
-fake-TLS form of MTProxy is not implemented: MTProxy is not offered.
+the path. MTProxy is the account's `proxy` option, below.
+
+### MTProxy
+
+`mtproxy()`, from `yuigram/mtproxy`, makes a route an account's connections take:
+
+```ts
+import { mtproxy } from 'yuigram/mtproxy'
+
+const account = Account.fromSession('./me', {
+  ...options,
+  proxy: mtproxy({ host: 'proxy.example.org', port: 443, secret }),
+})
+```
+
+It also takes a `tg://proxy` or `t.me/proxy` link as `readLink` returns it. The secret says which
+of three kinds the proxy is:
+
+| Secret | Kind | Envelope |
+|---|---|---|
+| 16 bytes | obfuscated | intermediate, obfuscated with the secret |
+| `dd` + 16 bytes | padded | padded intermediate, obfuscated with the secret |
+| `ee` + 16 bytes + domain | fake TLS | padded intermediate, obfuscated, inside a TLS-looking session with the domain as its server name |
+
+Secrets are read as hexadecimal first, then as base64 or base64url, as they are shared. A domain
+is printable ASCII of at most 182 bytes. A secret that is none of these, or of a kind not listed,
+is refused by `mtproxy()` itself rather than by the first connection; the refusal never repeats
+the secret.
+
+**Every connection goes to the proxy, and nothing goes around it.** Each connection the account
+opens — its own datacenter, another one's for a file, the test environment's — is obfuscated
+with the proxy's secret and carries the datacenter it is meant for in bytes 60–61 of the init
+packet: the number, plus 10 000 in the test environment, negative for a media-only connection.
+A proxy that cannot be reached, closes the connection, or answers like something other than the
+proxy is a failed connection, retried as any other; the account never falls back to a direct
+connection or to another kind of proxy. A proxy is always obfuscated, so `obfuscated: false`
+together with `proxy` is refused. The account's `open` option still supplies the socket, so an
+MTProxy can be reached through a SOCKS or HTTP tunnel of the application's.
+
+`initConnection` names the proxy (`inputClientProxy` with its address and port), as Telegram's
+own clients do.
+
+**Fake TLS** opens with a TLS 1.3-shaped ClientHello whose random field is an HMAC-SHA256 of the
+hello under the secret, its last four bytes XORed with the local Unix time. The proxy answers
+with a ServerHello, a ChangeCipherSpec and an application-data record; the answer's own random
+field must be the HMAC of the client's random followed by the answer, or the connection fails
+with `FakeTlsError` — a TLS-looking prefix alone is not accepted. The client then sends a
+ChangeCipherSpec, and from there everything travels in application-data records of at most
+2878 bytes, the first carrying the init packet with the first frame. The greeting is bounded by
+`greetingTimeout` (by default the account's connect timeout, else ten seconds) and by the
+connection's signal; whatever it opened is closed when it fails.
+
+What fake TLS does not claim:
+
+- **The hello is valid TLS, not a browser's.** It offers GREASE, X25519 with a real curve point,
+  and the extensions a browser sends, but not the newest ones (post-quantum key shares,
+  encrypted ClientHello). Whether it passes for a browser under traffic analysis is not
+  established.
+- **The clock is local.** A proxy refuses a greeting whose time is too far from its own; Yuigram
+  does not correct for a skewed clock.
+- **Bun, Deno and Node only.** A proxy is reached over TCP. In a browser `mtproxy()` throws
+  `ConfigError`; an edge worker has no TCP connector of its own.
+
+What it was checked against: the obfuscation bytes for production, test and media-only
+datacenters match an independent implementation's byte for byte; a local proxy written for the
+test suite on `node:net` and `node:crypto`, sharing no code with the client, checks the hello's
+HMAC, time and structure — key shares only for offered groups, as RFC 8446 requires — and
+forwards to a mock datacenter, which an account reaches through all three kinds; OpenSSL
+answers the hello with a ServerHello that agrees on X25519. Connecting to a real MTProxy, and through one to
+Telegram, has not been done.
 
 ### The link
 

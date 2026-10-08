@@ -84,6 +84,11 @@
       "types": "./dist/indexeddb.d.ts",
       "import": "./dist/indexeddb.js",
       "default": "./dist/indexeddb.js"
+    },
+    "./mtproxy": {
+      "types": "./dist/mtproxy.d.ts",
+      "import": "./dist/mtproxy.js",
+      "default": "./dist/mtproxy.js"
     }
   },
   "main": "./dist/index.js",

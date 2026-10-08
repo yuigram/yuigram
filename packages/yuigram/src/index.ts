@@ -141,6 +141,7 @@ export {
   type CommandsTarget,
   type CommunityLinkRequestView,
   type CommunityPeerView,
+  type ConnectionRoute,
   type CopyOptions,
   CursorError,
   callbackButton,

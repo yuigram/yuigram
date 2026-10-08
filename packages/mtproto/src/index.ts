@@ -290,6 +290,7 @@ export {
   toInputUser,
 } from './network/peers.js'
 export type { QrOptions, QrSteps } from './network/qr.js'
+export type { ConnectionRoute, RoutedConnection, RoutedDatacenter } from './network/route.js'
 export type { LoginTokenState, SignInState } from './network/signin.js'
 export type { MediaDownloadOptions } from './normalize/actions.js'
 export {

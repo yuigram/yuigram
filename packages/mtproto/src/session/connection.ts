@@ -88,6 +88,11 @@ export interface ClientInfo {
   readonly systemLangCode: string
   readonly langPack: string
   readonly langCode: string
+  /**
+   * The proxy this connection reaches Telegram through, which it is told of
+   * as `initConnection` asks.
+   */
+  readonly proxy?: { readonly address: string; readonly port: number }
 }
 
 /** How a connection is built. */
@@ -770,6 +775,15 @@ export class Connection {
         system_lang_code: this.#client.systemLangCode,
         lang_pack: this.#client.langPack,
         lang_code: this.#client.langCode,
+        ...(this.#client.proxy === undefined
+          ? {}
+          : {
+              proxy: {
+                _: 'inputClientProxy',
+                address: this.#client.proxy.address,
+                port: this.#client.proxy.port,
+              },
+            }),
         query,
       },
     }
