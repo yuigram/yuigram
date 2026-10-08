@@ -222,21 +222,27 @@ adapter is the few lines that translate one framework's objects into it:
 
 ```ts
 import { createServer } from 'node:http'
-import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
+import { expressWebhook, fastifyWebhook, koaWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const handler = bot.webhook({ secretToken })
 
 createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
 app.use('/hook', expressWebhook(handler))        // express
 app.post('/hook', fastifyWebhook(handler))       // fastify
+koa.use(koaWebhook(handler, { path: '/hook' }))  // koa
 ```
 
 **No adapter is a dependency.** Each describes the shape it needs structurally — a `headers`
 bag, a `body`, a way to send a status — so no framework has to be installed for the types to
 resolve, and no version is pinned. `webWebhook` serves the Web `Request`/`Response` pair, which
-is what hono, elysia, h3 and the edge runtimes hand a route. Koa has no adapter of its own. Its
-`ctx.req` and `ctx.res` are Node's request and response, which is what `nodeWebhook` takes, with
-`ctx.respond = false` so that Koa leaves the response alone; that pairing has no test here.
+is what hono, elysia, h3 and the edge runtimes hand a route.
+
+`koaWebhook` is Koa middleware. It uses `ctx.request.body` when a body parser has run before it,
+and otherwise reads `ctx.req` itself under the same size limit as `nodeWebhook`, so it works with
+or without one. It sets the status, content type and body on the context and leaves sending them
+to Koa — it never writes to the socket, so nothing else can answer the same request twice. With
+`path`, other requests go on to the next middleware. A handler that throws is left to Koa's error
+handling. The adapter is tested inside a real Koa application over HTTP.
 
 Non-negotiable webhook behaviours, all pinned by tests:
 

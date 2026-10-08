@@ -73,9 +73,11 @@ const handler = bot.webhook({ secretToken: process.env.WEBHOOK_SECRET })
 createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
 ```
 
-В `yuigram/webhook` есть адаптеры `nodeWebhook`, `expressWebhook`, `fastifyWebhook` и
-`webWebhook`; последний принимает `Request` и возвращает `Response` — это то, что ждут
-серверы на Fetch API и edge-платформы. Сам адрес вебхука регистрируется вызовом
+В `yuigram/webhook` есть адаптеры `nodeWebhook`, `expressWebhook`, `fastifyWebhook`,
+`koaWebhook` и `webWebhook`. `webWebhook` принимает `Request` и возвращает `Response` — это то,
+что ждут серверы на Fetch API и edge-платформы. `koaWebhook` — middleware для Koa: берёт
+`ctx.request.body`, если до него отработал парсер тела, иначе сам читает запрос с тем же
+ограничением размера; адаптер только заполняет контекст, а ответ отправляет Koa. Сам адрес вебхука регистрируется вызовом
 `bot.api.setWebhook({ url, secret_token })`. Повторно доставленные обновления отбрасываются по
 `update_id`.
 

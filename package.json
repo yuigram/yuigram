@@ -40,7 +40,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.9",
     "@changesets/cli": "^3.0.1",
+    "@types/koa": "3.0.3",
     "@types/node": "^26.2.0",
+    "fake-indexeddb": "6.2.5",
+    "koa": "3.2.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

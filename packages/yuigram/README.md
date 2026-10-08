@@ -105,7 +105,7 @@ walks through it. The session directory is a signed-in account: keep it secret.
 - **Polling that survives production.** Backs off on transient failure, honours `retry_after`,
   stops on errors retrying cannot fix, cancels its in-flight request on shutdown, and drains the
   handlers it already started.
-- **Webhooks without a framework dependency.** Adapters for `node:http`, Express and Fastify, and
+- **Webhooks without a framework dependency.** Adapters for `node:http`, Express, Fastify and Koa, and
   one for servers that take a `Request` and return a `Response` — none of which you have to
   install.
 - **Secrets stay out of logs.** Structural redaction you cannot switch off.
@@ -137,11 +137,21 @@ const handler = bot.webhook({ secretToken: process.env.WEBHOOK_SECRET })
 createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
 ```
 
-`expressWebhook`, `fastifyWebhook` and `webWebhook` are in the same subpath. The last one takes
-a `Request` and returns a `Response`:
+`expressWebhook`, `fastifyWebhook`, `koaWebhook` and `webWebhook` are in the same subpath. `webWebhook`
+takes a `Request` and returns a `Response`:
 
 ```ts
 export default { fetch: webWebhook(handler) }
+```
+
+`koaWebhook` is Koa middleware. It reads the request itself unless a body parser already has, and
+leaves sending the response to Koa:
+
+```ts
+import Koa from 'koa'
+import { koaWebhook } from 'yuigram/webhook'
+
+new Koa().use(koaWebhook(handler, { path: '/hook' })).listen(8080)
 ```
 
 ## Entry points
