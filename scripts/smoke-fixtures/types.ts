@@ -15,6 +15,7 @@ import { type RedisClient, redisCounter, redisStore } from '@yuigram/redis'
 import { type SqliteDatabase, sqliteCounter, sqliteStore } from '@yuigram/sqlite'
 import {
   type Account,
+  type AccountOptions,
   type AnyEventContext,
   App,
   Bot,
@@ -33,9 +34,10 @@ import {
 } from 'yuigram'
 import { type SlotMachineReels, slotMachineReels } from 'yuigram/dice'
 import { type IndexedDbStore, indexedDb } from 'yuigram/indexeddb'
+import { mtproxy } from 'yuigram/mtproxy'
 import { mockBot } from 'yuigram/testing'
 import { type InitData, InitDataKey, verifyInitData } from 'yuigram/web-app'
-import { nodeWebhook } from 'yuigram/webhook'
+import { koaWebhook, nodeWebhook } from 'yuigram/webhook'
 
 interface Cart {
   items: string[]
@@ -148,6 +150,7 @@ declare const mtproto: MtprotoContext
 export const fromEvent: Promise<TlValue> = mtproto.api.call({ _: 'help.getConfig' })
 
 export const listener = nodeWebhook(bot.webhook())
+export const koaMiddleware = koaWebhook(bot.webhook(), { path: '/hook' })
 export const harness = mockBot()
 
 // The reels of a slot machine are a tuple of three named symbols.
@@ -182,3 +185,10 @@ export const written: Promise<void> = downloadToFile(bot.files, './out.bin', 'fi
 export const browserState: IndexedDbStore<{ readonly theme: string }> = indexedDb<{
   readonly theme: string
 }>({ factory: indexedDB, keyRange: IDBKeyRange })
+
+// An MTProxy is what an account takes as its proxy.
+export const proxy: AccountOptions['proxy'] = mtproxy({
+  host: '127.0.0.1',
+  port: 443,
+  secret: '00112233445566778899aabbccddeeff',
+})
