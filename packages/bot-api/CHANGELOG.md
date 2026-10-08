@@ -1,5 +1,592 @@
 # @yuigram/bot-api
 
+## 0.2.0
+
+### Minor Changes
+
+- 8f62c9d: `schemaInfo.botApi` reports the Bot API release the surface was generated from. It was written
+  by hand and went on reporting `10.2` after the surface was regenerated from 10.3; it is now read
+  from `BOT_API_VERSION`, which the schema generator emits beside the surface and `@yuigram/bot-api`
+  exports, so the two cannot disagree again.
+- 94ca29f: `Bot` downloads through its own transport: `bot.download(target)` returns the bytes, and
+  `bot.downloadStream` and `bot.getFileUrl` complete the set. A message context's `download()` and
+  `downloadStream()` fetch the file that message carries — a document, video, audio, voice note,
+  video note or animation, a photo at its largest size, a sticker when nothing else is there — and
+  refuse a message with no file. `bot.files` hands the bot's transport to the functions for the
+  forms that need a filesystem: `downloadToFile(bot.files, path, target)`, and `download(bot.files,
+  target)` against a local Bot API server, whose files are paths on its disk.
+- ddb4b19: The six paged Bot API lists read as async sequences that fetch a page only when the loop asks:
+  `bot.profilePhotos()`, `bot.profileAudios()` and `bot.starTransactions()` by position, and
+  `bot.userGifts()`, `bot.chatGifts()` and `bot.businessGifts()` by cursor, with `limit`,
+  `pageSize`, a starting `offset` or `cursor`, and an abort `signal`. `.collect()` reads the rest
+  with Telegram's total, and `offsetPages` / `cursorPages` read any other paged source the same way.
+  
+  `pager()` shows a list a screen at a time: the ‹ · › buttons, slicing, and reading a press back,
+  with the person the list was shown to carried in the button so a press by anyone else is
+  reported as refused.
+- 789dfa4: `testMode: true` on a bot, or on `fetchClient`, talks to Telegram's test environment: calls go to
+  `/bot<token>/test/<method>` and files come from `/file/bot<token>/test/<path>`. A test-environment
+  bot has a token from that environment's @BotFather, and can share chats only with test accounts.
+- fd1fc06: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
+  `account.emit` dispatch it through the client's plugins, middleware, sessions and error handlers,
+  tracked so that `stop()` waits for it. `bot.on(definition, handler)` and `account.on(definition,
+  handler)` receive a typed `event.payload`. An emitted event has `transport: 'custom'`, no update
+  identity, and no effect on polling offsets, update sequences or `allowed_updates`; it may carry the
+  `chat` and `sender` it concerns so that their session loads. A kind Telegram also sends is refused.
+- ff2e7e6: `koaWebhook(handler, { path?, bodyLimit? })` serves a bot's webhook from a Koa application. It
+  uses the body a parser left on `ctx.request.body`, or reads the request itself under the same
+  size limit as `nodeWebhook`; it fills in the status, content type and body and leaves sending
+  them to Koa. With `path`, other requests pass to the next middleware. Koa is not a dependency.
+- 2d30b24: `mediaCache()` keeps the identifier Telegram returns for each upload and sends it instead of the
+  file next time, for photos, videos, animations, video notes, audio, documents, stickers and voice
+  messages. Entries are named by bot, media kind and source — a path, a URL, a digest of bytes, or
+  a `cacheKey` given to `media.*` — and kept in any `KV` store. A stale identifier is replaced by
+  one more upload, only when Telegram refused it as a bad identifier; nothing is cached from a
+  failed call; concurrent sends of one file upload it once; and a single-use stream is never read
+  to be named.
+- ad9b90f: A bot's `defaults` are layered: `'*'` sets common parameters for every method whose schema takes
+  them, a method's own key sets any of its parameters with the schema's types, and a call's own
+  values win over both — `false`, `null`, `''` and `undefined` included. Which methods take each
+  common parameter is generated from the schema, so a global `parse_mode` no longer reaches
+  `getMe`. Defaults are copied per bot and per call, and a defaulted `parse_mode` is left off
+  text that carries its own entities.
+  
+  `Bot`'s `defaults` option is now typed as `MethodDefaults`: move a top-level parameter under
+  `'*'`. The older flat form is still applied to every call at runtime.
+- 72c33e0: MTProto, and a client surface that says what a handler was given.
+  
+  `npm install yuigram` now builds bots and user accounts in one project, on an implementation
+  this repository owns end to end. The published packages still have zero runtime dependencies:
+  the cryptography Node does not provide — AES-IGE, Telegram's RSA padding, PQ factorization,
+  Miller-Rabin, SRP — is implemented here.
+  
+  **Accounts.** An `Account` client with its own lifecycle, signing in by phone and code, by
+  password, as a bot, or from a token another device approves. Sessions are portable strings or
+  an encrypted directory, and an account resumed from one never reaches a sign-in callback.
+  Signing out revokes the authorization and forgets what only made sense while it held: the keys,
+  the place in the update stream, and the peers whose access hashes were issued to it.
+  
+  **The protocol.** The full MTProto 2.0 stack: the authorization handshake with perfect forward
+  secrecy, the session layer, transport framing and obfuscation, connection pools per datacenter
+  and purpose, migration between datacenters, and the updates manager with gap recovery over the
+  common box and per-channel sequences. 813 typed methods generated from a committed TL schema,
+  with `call()` reaching anything newer.
+  
+  **Files.** Chunked parallel upload and download with the alignment rules the server enforces,
+  photos fetched at the largest size worth fetching, expired file references put right invisibly
+  from the message they arrived in, and delivery nodes behind an explicit opt-in — a node is
+  recognised by the address list rather than by whatever redirected to it, holds an authorization
+  good for nothing but ranges, and is asked for nothing else.
+  
+  **Reading a message.** A message arrives as three constructors behind one union — ordinary,
+  service, and an empty hole where one the account cannot see used to be — with most fields
+  optional behind that. `readMessage` returns a view that answers the questions directly, over the
+  value it was handed rather than a copy of it, so nothing is transformed on the way in and the
+  message stays reachable as `raw`. The view reaches no account and no network: everything it
+  answers is a function of the message alone, which is what makes it safe to build one from
+  anything that arrived, on any account.
+  
+  **Formatting.** MTProto has no `parse_mode`: a message is plain text plus a list of ranges, and
+  producing the ranges is the client's job. `fromHtml` and `fromMarkdown` read markup into text and
+  entities, `toHtml` and `toMarkdown` write it back, and both parsers are in the package rather than
+  in a dependency. Used as template tags they escape what is interpolated and leave the markup
+  alone, so a user called `<b>` cannot format the message they appear in. Block quotations are
+  supported in both forms, expandable included, in both dialects and both directions.
+  
+  **Runtimes.** The Bot API subsystem reaches no Node built-in at all: polling, webhooks, sending
+  and files-by-`Blob` need nothing but `fetch`. One import of `node:crypto`, for the single function
+  comparing a webhook secret, had been keeping every bundle containing a bot from loading on Bun,
+  Deno, Cloudflare Workers or Vercel Edge — the platforms the Fetch webhook adapter exists to serve.
+  
+  **And MTProto runs in a browser.** Every module that reached for `node:crypto` now names one
+  contract instead, and the `browser` field in each package chooses between two implementations of
+  it: the platform's, which Node, Bun and Deno all provide, and one over nothing at all. The second
+  needed AES-256, SHA-1, SHA-256, MD5, HMAC and DEFLATE written here, each checked against the
+  values published with the standards that define them before being compared with the platform. A
+  WebSocket connector stands in for the socket a browser does not have, `web()` is a store over
+  `localStorage`, and stretching a password goes to `crypto.subtle` — the one primitive worth
+  waiting for, and the reason the rest do not wait.
+  
+  A bundle that builds is not a program that runs, so `tools/browser` serves the framework to a real
+  browser and answers the WebSocket it opens with the datacenter the test suite uses. Seventeen
+  checks pass in Chrome: the key exchange completes, a temporary key is bound, an encrypted call is
+  answered, an update is dispatched, and the session survives in the page's own storage. Running it
+  found what the build could not — `process.version` read at module scope, `Buffer` on four live
+  paths, and a five-second prime validation that wants a worker.
+  
+  `docs/runtimes.md` has the matrix broken down step by step, says which cells were executed and
+  which were only reasoned about, and states plainly that Bun, Deno, the edge platforms and Telegram
+  itself are still inference.
+  
+  **Saying something.** An account can now start a conversation rather than only answer one.
+  `sendText`, `sendMedia`, `editMessage`, `deleteMessages`, `forwardMessages`, `react`,
+  `pinMessage`, `readHistory`, `setTyping` and `getMessages` sit on `Account`, take a name or a
+  reference, and accept formatted text as readily as plain — so a bold message is one call rather
+  than a string and a list of ranges kept in step by hand. The deduplication key every send needs
+  is drawn rather than left to the caller, and where Telegram splits a method in two for channels
+  the right one is chosen from the conversation.
+  
+  **Reading media.** `message.media` is a view rather than nineteen constructors. The one that
+  matters most is the least informative — a video, a voice note, a sticker, an animation, a music
+  track and a plain file all arrive as `messageMediaDocument`, and which one it is lives in the
+  document's attributes — so `kind` answers that in a word, and duration, size, dimensions and the
+  rest come off whichever attribute actually holds them.
+  
+  **The second factor.** Signing in with a password worked; managing one did not exist.
+  `passwordStatus`, `setPassword`, `removePassword`, the recovery-address calls and the recovery
+  flow are on `Account` now. The password never leaves the process: what goes to Telegram is a proof
+  of the old one and a verifier for the new, and neither can be turned back into what was typed.
+  
+  **Searching, and who is in a conversation.** `account.search` walks the messages in one
+  conversation that match a query; `account.searchGlobal` walks matches across every conversation;
+  `account.members` walks a channel's members. Three lists, three different ways of continuing —
+  by message number, by a rate the server returns with each page, and by how many have been seen —
+  and each is the one Telegram actually specifies rather than one policy forced onto all three. A
+  `MemberView` reads somebody's standing, where two of the six constructors name a conversation
+  rather than a person.
+  
+  **Membership changes arrive as events.** Somebody joining, leaving, being promoted or being
+  restricted now reaches a handler as `mtproto:membership` rather than as a raw update — all seven
+  constructors Telegram kept for the one question, naming the conversation it happened in and the
+  account that made the change rather than the one it was about. The seven disagree about which
+  field means what: the actor is `actor_id` on the two modern forms, `inviter_id` on the oldest of
+  the additions, and named nowhere on removal, promotion and renaming, where the event now says so
+  instead of blaming the person it happened to. The whole-list form keeps its chat inside the list
+  it wraps, and is read from there rather than reported as concerning no conversation.
+  
+  **A bot signed in over this transport gets its queries here.** A tapped button, an inline query,
+  a chosen result, the two payment steps and a request to join now reach a handler as
+  `mtproto:callback_query`, `mtproto:inline_query`, `mtproto:inline_chosen`,
+  `mtproto:shipping_query`, `mtproto:precheckout_query` and `mtproto:join_request`. They have to
+  be: a Bot API client is a different client on a different connection and cannot answer a query
+  that arrived on this one. So `answerCallback`, `answerInlineQuery`, `answerShipping`,
+  `answerPrecheckout` and `decideJoinRequest` sit on `Account`, each answering with the identifier
+  the query arrived with — every one of these stalls something visible until it is answered, and a
+  pre-checkout answer is the last point at which a charge can still be refused. A query is not a
+  conversation, either: an inline query names no chat, and the event no longer invents a private
+  one from whoever asked.
+  
+  **Walking a list.** Eighteen lists that arrive one page at a time now read as one sequence:
+  conversations, a conversation's messages, a search inside one and across all of them, members,
+  forum topics, a channel's administration log, invite links and the people who came through them,
+  who reacted to a message, profile photos, stories on a profile and across everyone an account
+  follows, who saw a story, boosts, star transactions and saved gifts. Each is an async generator,
+  so nothing is requested until the loop asks for the next item: breaking out stops the fetching and
+  `limit` means what it says.
+  
+  Continuing them is the part a caller writing the loop gets wrong, and it is not one rule. Eight
+  different ones are involved — a cursor only the server can produce, a count into a list that is
+  changing while it is read, several fields that have to agree, an identifier that has to keep
+  moving backwards, a state string sent back with a flag saying it is a continuation — and two of
+  them end in ways that are invisible in what a walk yields: a server that names a cursor and
+  returns nothing, and a last page that still carries a state. `docs/entities.md` §6 has the table.
+  
+  A walk yields a view where reading the value needs interpretation, and the value the schema
+  describes where it does not.
+  
+  **Every walk now has a page read beside it.** `account.historyPage`, `account.membersPage`,
+  `account.savedGiftsPage` and the rest answer with the items, the total Telegram reported and a
+  cursor to continue from — which is what a program needs when a list has to be shown with a
+  count, stopped now and carried on later. A total says whether it is exact, approximate or merely
+  reported, and is never the length of the page; a cursor is opaque but not secret, refused before
+  any request when handed to a different list or the same list with different filters, and carries
+  peer references rather than access hashes. An empty page with a moving cursor is a list that
+  paused, not a list that ended. Twenty lists ship, under nine continuation policies, because that
+  is how many Telegram actually specifies.
+  
+  **Sends that are several messages, or several steps.** `sendAlbum` hands each uploaded item to
+  Telegram first, because an album cannot carry bytes, then sends one request with a key per item
+  and answers in the order given. `copyMessage` and `copyAlbum` read a message and send what it
+  carries as a new one, which is what lets a caption change where a forward cannot — and what lets
+  a file reference that expired in between be put right, by reading the message again. A quote is
+  cut out of the message it quotes so the two cannot disagree; a comment finds the post's thread
+  and goes to the discussion group. Scheduled messages can be read, removed, and sent now, with
+  the pairing between each scheduled message and what it became read from the answer.
+  
+  **Acting on a message that exists.** Voting by option or position and closing a poll; paid
+  reactions under the time-based identifier Telegram requires, drawn again only when it aged;
+  checklists appended to and ticked; translation of messages or bare text; reading reactions and
+  unpinning everything, each applied to the sequence its position belongs to. An inline message is
+  edited on the datacenter its identifier names, given as an update's object or as the Bot API's
+  string. Rich messages go out as blocks or markup, and a streaming draft is a handle rather than a
+  background task: each write is one request, and stopping it is one more. The reads beside them —
+  an album from any of its messages, the message replied to, one named by a link, reactions in
+  bulk, a fact check, a link preview and the available effects — answer in the order asked.
+  
+  **The bot surface, and sticker sets.** Commands per scope and language, a bot's description read
+  and written by the bot or by the account that owns it, the menu button, and the rights a bot
+  asks for in a group or a channel. A person's side of a bot as well: pressing a button (with a
+  password proof where the button asks for one), a mini app opened in a conversation and prolonged
+  every minute until it is closed, Telegram forgets the query, or the account stops. Sticker sets
+  are created, extended, reordered and given thumbnails, each sticker's file handed to Telegram
+  first and checked for what Telegram would refuse before anything is uploaded; custom emoji are
+  read by identifier or gathered from the messages that use them.
+  
+  **Communities, which are not conversations.** A community holds chats and channels, keeps its
+  own participants, and decides which of the chats it holds each participant can see. Nothing is
+  said in one. It is addressed the way a channel is, which is all the two have in common, so
+  `ChatView.isCommunity` narrows and `isAddressedAsChannel` answers the addressing question that
+  `isChannel` used to answer by accident. Creating, listing, linking and unlinking chats,
+  approving the requests to be listed, banning participants and reading which chats one of them
+  has — eleven operations, with a page of link requests continued by Telegram's own opaque offset.
+  
+  **Ephemeral and welcome messages.** A message shown to one person in a chat and never added to
+  its history, so the address is the chat, the receiver and the number together — the number alone
+  means nothing outside that person's view. A guest chat has no conversation to name and carries a
+  query identifier instead. They arrive as four update kinds of their own, because the payload is
+  an `EphemeralMessage` rather than a `Message` and a handler registered for `message` would read
+  fields it does not have. Welcome templates are the only ones that can be read back.
+  
+  **Games, and the operations that concern the account itself.** A score set in a conversation
+  comes back as the edited board and one set inline comes back as nothing, which is Telegram's
+  distinction rather than a simplification. A takeout wraps each call rather than opening a second
+  connection, and ending one closes the export without signing the account out. `withParams` binds
+  only the call options the path actually honours. `isSelfPeer` answers from what the account
+  already knows. `resendCode` continues the attempt in hand instead of starting a fresh one, and
+  `startTest` signs in on a test datacenter with a reserved number whose code is known in advance.
+  
+  **QR sign-in is the whole flow**, not the token behind it: display, wait, ask again when the
+  token expires, and finish with the password where the account has one. Every exit cancels the
+  wait, and stopping the account aborts it.
+  
+  **A download wears either stream shape.** `downloadAsStream` hands back a `ReadableStream` and
+  `downloadAsNodeStream` a Node `Readable`, both adapting the existing iterable — so the ranges,
+  the retries and the reference refresh are the one transfer, and cancelling either waits for it to
+  unwind rather than walking away from it. The Node shape sits behind a module the `browser` field
+  substitutes, so no browser bundle reaches `node:stream`. `downloadChunk` asks for one precise
+  range at an arbitrary offset, which the grid-aligned transfers cannot do.
+  
+  **Conversations: scenes, prompts and typed buttons.** `conversation()` covers what is usually
+  four packages, on one idea — a conversation has an identity, and state belongs to it. The key
+  names the client first, so an application holding a bot and three accounts has four independent
+  sets of conversations; the scope is chat and user by default, with chat, user and topic scopes
+  for the cases where that is wrong. Updates for one conversation are serialised, so two answers
+  arriving together cannot both advance the same step, while different conversations still run in
+  parallel.
+  
+  A scene keeps a name, a step and the application's state, all of it plain data, so a restart
+  resumes a half-finished form. `conversation.wait(...)` is a suspended function in memory and does
+  not — that difference is stated rather than papered over, because it is the thing to know before
+  choosing between them. A waiter belongs to one conversation, so a pending prompt never consumes
+  another person's message; it can validate and re-ask, time out, be cancelled by a signal, and it
+  is cancelled when the conversation enters or leaves a scene, or when the application calls
+  `cancelAll` on stopping. A handler awaiting one hands the conversation's turn back while it waits
+  and takes it again before carrying on, so the answer can reach it and its continuation never
+  overlaps a later update.
+  
+  **Durable flows.** A conversation written as one function — ask, wait, act, ask again — that
+  resumes after a restart. What is kept is not the function but a journal of plain data: what each
+  step produced, and the wait the run is suspended at, with its deadline. On the next update, in
+  whatever process is running, the function runs again from the top; every recorded step returns
+  its recorded result without doing anything, and the pending wait is offered the update. Anything
+  that reaches outside is an effect whose result is recorded, and an effect interrupted between
+  starting and finishing is reported to the flow as uncertain rather than silently run twice —
+  unless it says repeating is safe, in which case it runs again under the same idempotency key.
+  Deadlines that pass while nothing runs are acted on at the next update or at startup; a
+  redelivered update is recognised and not used twice; a run whose definition is missing, of a
+  version the definition does not accept, or replayed down a different path than it recorded, is
+  reported and left untouched rather than reset. Stopping a process is not cancelling a run.
+  Updates for one conversation are serialised within a process; two processes over one store are
+  not coordinated, and the documentation says so. The machinery loads only when flows are
+  configured. `examples/16-durable-flows` finishes an order in a second process that the first
+  started.
+  
+  `defineCallbackData` gives a button's 64 bytes a shape and measures them in UTF-8 rather than
+  characters, so a schema does not build buttons Telegram rejects for applications whose users
+  write in anything but ASCII. Data from an older release reads as nothing rather than as a wrong
+  answer. Parsing is not authorisation, and the module says so.
+  
+  **An account in a worker.** `yuigram/worker` runs accounts on another thread — a Node
+  `worker_threads` worker, a browser `Worker`, or a `SharedWorker` that every tab of an origin
+  attaches to — and hands the thread that attached a proxy with the account's own methods.
+  The worker owns the account and makes each one once, however many callers ask at the same moment,
+  so two tabs share one connection rather than opening two. Handlers run where they were
+  registered; the update was decrypted in the worker and forwarded in the order the account
+  delivered it, each caller with its own acknowledged window, and a caller that falls too far
+  behind is told so and let go instead of silently missing updates. Leaving is not stopping: one
+  tab closing releases its calls, iterators and handles and leaves the others as they were.
+  
+  What crosses is a fixed table of methods checked by name on the host — never a walk over the
+  account's properties. Entity views cross as the value they read and are built again on arrival;
+  the framework's error classes arrive as themselves, `FloodError` with its wait; a function crosses
+  only where a method takes one, such as a sign-in prompt; a cancelled call is cancelled on the
+  host too; and a worker that goes away fails every call still waiting on it. Importing `yuigram`
+  loads none of this. `docs/runtimes.md` §6 has the contract and what has been run where.
+  
+  An account says where its link to Telegram stands — `offline`, `connecting`, `updating` while
+  it catches up, `connected` — through `connectionStatus` and `onConnectionStatus`, once per change
+  and in order, decided by the connection that carries its updates alone. A worker passes every
+  change to every caller as it happens. A tab that is closed without a word is let go at once: the
+  caller holds a Web Lock for as long as its page lives, and the host is granted the same lock when
+  the page is destroyed, which is also why a hidden, throttled page is never mistaken for a closed
+  one. A caller counts its host gone only when a ping it actually sent goes unanswered, and a
+  handle that has been ended is no longer held on the host.
+  
+  **Formatted text.** `yuigram/markup` builds a message's text and entities rather than markup
+  for Telegram to parse: builders for every entity, `format` for composing them, and `html` and
+  `md` template tags whose interpolated values are always text. Both readers follow Telegram's
+  rules for their dialect, refuse what it does not allow with an offset, and can read text that is
+  still arriving; both writers produce markup that reads back to the same formatting. With the
+  `markup()` plugin, any of the 119 formatted parameters takes a formatted value directly.
+  
+  **Rich messages.** `yuigram/rich` builds rich messages from blocks and rich text — the Bot API's
+  own data, so built and hand-written blocks mix — and refuses what Telegram would. `Rich` wraps a
+  message in any of its three forms. `parseRichMarkdown` and `parseRichHtml` read either dialect
+  into blocks, strictly by default and within Telegram's limits, and `toMarkdown` and `toHtml`
+  convert between every form.
+  
+  **Streaming.** `yuigram/stream` shows an answer while it is written: a draft that grows in a
+  private chat and a message each time a window fills or the answer ends, from any model SDK's
+  stream without depending on one. Drafts are paced and back off, flood waits are honoured, a final
+  message is retried only when Telegram said to wait, and every way of ending early has a stated
+  outcome. A reader's stop is honoured only for the stream that showed that draft. An account
+  streams through its own drafts with `streamTo`.
+  
+  **Layer 229.** The committed schema is TDLib's, at a pinned revision, because the
+  documentation page lags behind it; the constructors the TL language owns are the
+  documentation's. TDLib's notice ships with `@yuigram/mtproto`, whose code is generated from it. A conversation-list row may be a community, which has no peer
+  and no message, so `DialogView.peer` and `topMessageId` can be absent and `isCommunity` says why;
+  `ChatForm` gains `'community'`. The rights records express every right the layer defines,
+  checked against the generated tables so the next layer's additions fail a test rather than go
+  missing.
+  
+  **One application, several identities.** An `App` holds a bot and any number of accounts, each
+  with its own credentials, store and connections, under shared middleware and cross-client
+  handlers. Operations that mean the same thing on both transports are the same call; the ones
+  that do not stay on the client that has them.
+  
+  **Who an account is, and who it knows.** `me`, `users`, `profile`, `findByPhone`,
+  `commonChats`, `editProfile`, `setUsername`, `setOnline`, `setEmojiStatus`, `setBirthday`,
+  `setProfilePhoto`, `deleteProfilePhotos`, `messageTtl`/`setMessageTtl`, `contacts`,
+  `addContact`, `importContacts`, `deleteContacts`, `block`/`unblock`, `readBlocked`,
+  `peerSettings`, `setCloseFriends`, `savedMusic` and `saveMusic`. Each resolves the people it
+  names through the account's own peer store, so the answers are harvested on the way back and
+  everybody mentioned can be addressed afterwards without a second lookup.
+  
+  Naming a person is not naming a peer — several of these take a user rather than a conversation,
+  and passing a channel is refused here by name rather than by the server answering with something
+  about the request. The ones that edit a profile send only the fields they were given, because
+  the method reads an absent field as "leave it" and an empty string as "clear it".
+  
+  **Conversations can be operated on, not only read from.** Sixty operations: adding, banning,
+  restricting, kicking, promoting and ranking members; creating, editing, revoking and reading
+  invite links, and deciding who gets in through one; renaming, describing, photographing, naming
+  and colouring a conversation, and setting its slow mode, its message lifetime, its default
+  permissions and its join rules; making and deleting groups, supergroups and channels; reading
+  one or several, with everything Telegram will say; and folders, the archive, the unread mark and
+  drafts.
+  
+  Telegram keeps basic groups and channels apart, so most of these are two calls and choosing
+  between them is the operation's job — an operation that exists for only one kind says which it
+  needed. Rights are taken as booleans and written as the protocol's true-or-absent flags; banning,
+  restricting and unbanning are one call distinguished by what is in the set; a kick is two,
+  because the protocol has no single one. Creating something reads it back out of its own answer,
+  since the identifier and access hash arrive in the updates and there is no separate result.
+  
+  Answers carrying updates now reach the account, so a program that renames a channel sees the
+  rename through its own handlers.
+  
+  **Peers are read in bulk, and conversations can be found rather than only named.**
+  `account.peersOf([…])` reads who several peers are through the three bulk reads the protocol has
+  — people, basic groups, channels — which is one request per family rather than one per peer, and
+  the answer is positional, with a gap where a peer could not be named or Telegram would not
+  describe it. `account.peer` and `account.user` are the single forms. `account.findDialogs` asks
+  directly about whatever can already be addressed and walks the conversation list only for what is
+  left, stopping the moment the last one turns up; names are matched against what the walk itself
+  wrote down, so finding by name costs no extra request.
+  
+  **A channel can be watched.** Telegram does not push a channel's updates to an account that is
+  not looking at it. `account.watchChat(chat)` starts a subscription that asks for the channel's
+  difference at the interval each answer names, hands the updates to the ordinary handlers, and
+  returns the way to stop. It is counted, so two parts of a program may watch one channel, and it
+  ends by itself if the account turns out to no longer be in the channel.
+  
+  **Forums have topics.** Opening, renaming, closing, pinning, reordering, deleting a thread's
+  history, reading topics by number, and turning a supergroup into a forum. The General topic is
+  hidden through the same request that edits any other, so it has a name of its own rather than a
+  special case a caller has to know about; deleting a thread's history keeps the account's place in
+  the update stream, which a deletion it performed itself would otherwise gap.
+  
+  **Stories can be posted.** Posting, editing, deleting, pinning to a profile, archiving somebody
+  else's, reacting, reading, counting views, and hiding this account's own views for a while. Who
+  may see a story is sent explicitly even when it is everyone, because the field is required and a
+  story whose audience was never decided should not be posted; an edit that does not mention the
+  audience leaves it alone, which posting does not.
+  
+  **Gifts, boosts and a business profile.** Sending a gift, deciding what happens to one that
+  arrives, upgrading it into a collectible, transferring it, buying one on resale, pricing one,
+  prepaying an upgrade, pinning them, and the reads behind each. Everything that costs Stars
+  fetches a payment form and pays that form — two requests Telegram requires, kept together — and
+  takes the free-of-charge call where the server answers that nothing is owed. Prices keep their
+  nanostar part, and a fractional price given as a plain number is refused rather than truncated.
+  Boost slots say whether boosting would cost somebody else's boost, which is worth knowing before
+  doing it. A Premium account can publish an intro, opening hours and pre-filled links, and the
+  intro's sticker may be a file to hand over rather than only one Telegram already holds. Resale
+  listings can be narrowed to a model, a pattern or a backdrop, and the answer carries the
+  attribute index a marketplace filters by, with the hash that keeps it from being sent twice.
+  
+  **Files travel between clients as one string.** `readFileId` and `writeFileId` read and write the
+  opaque identifier Bot API clients hand files around as — TDLib's encoding of exactly the fields a
+  download needs — so a file a bot sends can be fetched here, and one fetched here can be handed to
+  a bot. `uniqueFileId` is the other identifier, which carries no access hash and no file reference,
+  never goes stale, and answers "is this the same file" the same way in every Telegram client.
+  
+  An identifier carrying a file reference does not make that reference valid: it is a record of one,
+  and a download built from a stale identifier is refused exactly as one built from a stale
+  reference held any other way. Version 4 is written and version 2 is read; a newer version is
+  refused by name rather than guessed at.
+  
+  **The Bot API's payloads are built, and its other updates can be filtered.** `attach`,
+  `newSticker`, `content`, `preview`, `replyTo`, `reaction`, `pollOption`, `price`, `invoice`,
+  `shipping`, `menuButton`, `botCommands`, `permissions` and `adminRights` build the payloads
+  methods take, each returning the object the schema declares and nothing more. They exist because
+  the rules are not in the types: an album is captioned once, on the item a client shows the
+  caption from; a permission set has to name all sixteen, because Telegram reads an absent
+  permission as a withheld one; an invoice in Stars is priced in exactly one line.
+  
+  `richMessage` builds a rich message in exactly one of its three forms, and `richMedia` the files
+  a written one names, with the `tg://` link each is named by written from the entry itself; a link
+  to nothing, a link of the wrong kind and a duplicated id are refused before the request is made.
+  `inline` now builds all twenty result shapes, the cached ones under `inline.cached`, and the
+  button above the results.
+  
+  Filters now cover the updates that are not messages — reactions on both sides of a change,
+  the three moments of a payment matched by the bot's own invoice payload, a standing change
+  derived from the statuses before and after, routing by kind including a plugin's own, a reply to
+  one particular message, boosts, business connections, game buttons and chosen inline results.
+  `when()` takes a filter as well as a predicate, so gated middleware is written against what
+  matching proved.
+  
+  **A peer can be named across the seam, and a link read or written.** `peerIdentity` reads a Bot
+  API chat id into a kind and a bare identifier, `botApiId` writes one back, and `markedKind` says
+  what a marked identifier is — including a secret chat, whose range sits below the channels and is
+  refused as a peer rather than read as one of them. The ranges are Telegram's, edges included; a
+  number that has lost precision is refused rather than rounded. An identity is the shape an
+  account resolves, and carries no access hash: `account.resolve` still supplies that.
+  
+  `readLink` and `writeLink` do the same for links: usernames, phone numbers, invitations, chat
+  folders, messages with their thread, comment and media timestamp, shares, video chats, sticker and
+  emoji sets, stories, boosts, bot starts, adding a bot as an administrator, mini apps, attachment
+  menus and games, in `t.me`, `<username>.t.me` and `tg:` form. Where Telegram's published syntax is
+  silent, a link is read the way its apps read one. Both live in `@yuigram/core`, so a bot uses them
+  without loading MTProto.
+  
+  **A file can be pulled as well as pushed.** `account.downloadIterable(request)` yields chunks in
+  file order, and `break` stops the transfer behind it. `downloadTo` could not express that: a sink
+  is called and cannot decline the next call, so a caller that had seen enough could only throw.
+  The loop is also the backpressure — nothing further is asked for until the chunk in hand has been
+  taken. The ranges, retries, reference refresh and migration are the same implementation.
+  
+  **And several accounts can share one store.** Everything an account keeps now lives under
+  `accounts:<name>:`, using the name it already takes — so two accounts pointed at one store no
+  longer write over each other's authorization keys, which is what they used to do silently and
+  what two default `web()` calls in a page did by construction. Areas separate two names. For the same name opened twice
+  — two tabs, one program started twice — the name is taken through whatever exclusive primitive
+  the runtime has: `navigator.locks` in a browser, which covers every page of the origin and so
+  covers everyone who can reach that origin's storage, and a registry over the process everywhere
+  else. The reach is reported rather than assumed, and the area stops accepting writes the moment
+  another run takes it, so a write begun before a takeover cannot land after one. Signing out holds
+  the area while it clears, and cannot reach another account's keys.
+  
+  This changes the on-store layout. A store written before areas existed carries nothing saying
+  which account it was, so it is refused rather than adopted under whichever name asks first, with
+  the prefix it found and where to move it. `docs/storage.md` §4 has the layout and the migration.
+  
+  **Only one connection may move an account through the update stream.** A client holds several and
+  they are indistinguishable on the wire; exactly one — the first main connection to the datacenter
+  the account belongs to — is the stream, and a transfer connection, a cache node, a second main
+  connection or one to another datacenter is not. Deduplication does not make them into update
+  sources: it makes a second copy of a legitimate update harmless, which is a different problem.
+  The same rule decides which `new_session_created` is worth chasing a gap for, so a download that
+  opened eight connections no longer risks eight catch-ups. `docs/mtproto.md` §9.8 has the
+  reasoning.
+  
+  **The client surface changed.** Registration now selects the context type, so a handler receives
+  what its registration proved rather than the weakest case across every update kind. The renames
+  are mechanical and nothing was removed without a replacement — `docs/migration.md` lists every
+  one.
+  
+  A bot that uses none of this pays nothing for it in a bundle: a Bot API bundle contains none of
+  the MTProto subsystem. Without a bundler, importing `yuigram` loads the account's surface, and its
+  connections and schema tables load when an account first connects.
+- 3908fc1: `parseCommand(text)` is exported: the parser `onCommand` and `message.command` already use, for
+  text read outside an update. It answers the same `ParsedCommand` a command handler receives, or
+  `undefined` when the text does not open with a command. Dispatch is unchanged.
+- f2674ad: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
+  alike. One counter backs a middleware that drops what is over the limit, a filter a handler can be
+  registered behind, a `check` a handler makes itself, and a `wait` that throttles rather than
+  refuses and gives up on an abort signal. Counts are kept in named buckets, so two limits do not
+  spend each other's allowance, and in any `KV` store, so instances sharing a store count one person
+  across all of them. An account's senders are counted by kind and number, so a user and a chat with
+  the same number stay apart.
+  
+  The Bot API's `rateLimit` is now the middleware form of the same counter and accepts `storage` and
+  `bucket`. Its behaviour is otherwise unchanged: the sender by default, every attempt counted, and
+  updates naming nobody let through uncounted.
+- ea4b45f: `yuigram/testing` tests accounts as well as bots. `mockAccount()` (also `@yuigram/mtproto/testing`) runs
+  the real account over a channel answered from a script: `send.message`, `send.service` and
+  `send.press` deliver updates, common calls are answered as Telegram would, `rpcError()` refuses one
+  as a real refusal is raised, and `calls`, `sent` and `errors` record what happened.
+  
+  `mockBot()` answers sending, editing and confirming methods without scripting, keeps the messages
+  the bot sent in `sent`, presses a real button on one with `send.press`, and collects handler errors
+  nothing caught in `errors`. New builders cover chosen inline results, reactions, pre-checkout
+  queries, poll answers and join requests.
+- 87f52b6: Mini App launch data, in a new entry point: `yuigram/web-app` (`@yuigram/bot-api/web-app`).
+  `readInitData` reads `Telegram.WebApp.initData` and proves nothing. `verifyInitData` checks
+  `hash` with the bot token, or with a key derived once by `InitDataKey.fromToken`;
+  `verifyInitDataSignature` checks Telegram's Ed25519 `signature` with the bot's id alone, against
+  the production key or, with `publicKey: 'test'`, the test environment's. Both follow Telegram's
+  published data-check-strings and take a required `maxAge`, so the window in which the same text
+  can be presented again is always stated.
+  `hashInitData` answers the `hash` a set of fields carries under a token, for writing launch data
+  in an application's own tests.
+  
+  Text that could be read two ways — a pair with no `=`, a field named twice, an escape that is not
+  UTF-8, a line feed — is refused rather than guessed at. A refusal is an `InitDataError` whose
+  `problem` is `'malformed'`, `'mismatch'`, `'unsigned'`, `'expired'`, `'future'` or
+  `'unsupported'`, and whose message repeats neither the data nor the token. The entry point uses
+  the Web Crypto API alone and imports nothing from Node; programs that do not import it do not
+  load it.
+
+### Patch Changes
+
+- 3d390a2: A callback query's context now carries `chat`: the chat of the message its button is on, absent
+  for a button on an inline message. Sessions keyed with `userChatKey` and conversation keys
+  previously missed it, so a person's button presses were kept apart from their messages and a
+  conversation waiting on a press never received one.
+- f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
+  once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
+  isolated builds. Exports, signatures and the core's runtime identity are unchanged.
+- c8fdd1a: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
+  `browser` substitutions and `sideEffects` rewritten relative to `dist/`, so Node stops looking for
+  a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
+  comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
+  esbuild, webpack and Rollup, and tree shaking are unchanged.
+- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
+  error as the cause. The plugins installed before it in the same round are disposed, newest first,
+  through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
+  `cleanup`. The client then stays failed — later updates and `start()` reject with the same error
+  — rather than installing again and registering middleware twice.
+- Updated dependencies [97ec9eb]
+- Updated dependencies [889ec5e]
+- Updated dependencies [fd1fc06]
+- Updated dependencies [3908fc1]
+- Updated dependencies [c8fdd1a]
+- Updated dependencies [47ae209]
+- Updated dependencies [c6cf63e]
+- Updated dependencies [dee75ae]
+- Updated dependencies [72c33e0]
+- Updated dependencies [19e3ba7]
+- Updated dependencies [b1f3008]
+- Updated dependencies [5306097]
+- Updated dependencies [2cefa8b]
+- Updated dependencies [f2674ad]
+- Updated dependencies [d17681a]
+- Updated dependencies [101e74f]
+- Updated dependencies [c19b3d0]
+  - @yuigram/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

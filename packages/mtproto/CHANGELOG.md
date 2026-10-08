@@ -1,4 +1,4 @@
-# yuigram
+# @yuigram/mtproto
 
 ## 0.2.0
 
@@ -70,49 +70,18 @@
   independent router with the same registrations, hooks, catchers and dependencies as they stand;
   `router.extend(other)` takes in another router as a snapshot, so what is registered on it
   afterwards is not taken in.
-- 889ec5e: `new App()` describes its clients' events as `BaseContext` when given no type argument, rather
-  than as an object with only a `kind`. Application-wide middleware and handlers can read
-  `event.log`, `event.client.name`, `event.transport` and `event.raw` without naming a type; naming
-  the union of the clients' contexts, `new App<AnyEventContext | MtprotoContext>()`, is still how a
-  handler narrows on `transport` to read what only one subsystem has.
-  
-  Compatibility: an application that holds a client of its own whose events lack those members, and
-  relied on the old default, names its event type: `new App<MyEvent>()`.
 - 1b7430b: `bootstrapAt({ dc, host, port, testMode? })` builds the address list an account starts from out of
   the one datacenter an application names, in place of a configuration literal with every flag
   spelled out. The address is checked where it is written: a hostname, a port out of range or a
   datacenter identifier that is not a positive integer is a `ValidationError` rather than a
   connection that later fails. `DcConfiguration`, `DcAddress` and `BootstrapAddress` are exported, so
   a configuration built some other way can be typed.
-- 94ca29f: `Bot` downloads through its own transport: `bot.download(target)` returns the bytes, and
-  `bot.downloadStream` and `bot.getFileUrl` complete the set. A message context's `download()` and
-  `downloadStream()` fetch the file that message carries — a document, video, audio, voice note,
-  video note or animation, a photo at its largest size, a sticker when nothing else is there — and
-  refuse a message with no file. `bot.files` hands the bot's transport to the functions for the
-  forms that need a filesystem: `downloadToFile(bot.files, path, target)`, and `download(bot.files,
-  target)` against a local Bot API server, whose files are paths on its disk.
-- ddb4b19: The six paged Bot API lists read as async sequences that fetch a page only when the loop asks:
-  `bot.profilePhotos()`, `bot.profileAudios()` and `bot.starTransactions()` by position, and
-  `bot.userGifts()`, `bot.chatGifts()` and `bot.businessGifts()` by cursor, with `limit`,
-  `pageSize`, a starting `offset` or `cursor`, and an abort `signal`. `.collect()` reads the rest
-  with Telegram's total, and `offsetPages` / `cursorPages` read any other paged source the same way.
-  
-  `pager()` shows a list a screen at a time: the ‹ · › buttons, slicing, and reading a press back,
-  with the person the list was shown to carried in the button so a press by anyone else is
-  reported as refused.
-- 789dfa4: `testMode: true` on a bot, or on `fetchClient`, talks to Telegram's test environment: calls go to
-  `/bot<token>/test/<method>` and files come from `/file/bot<token>/test/<path>`. A test-environment
-  bot has a token from that environment's @BotFather, and can share chats only with test accounts.
 - fd1fc06: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
   `account.emit` dispatch it through the client's plugins, middleware, sessions and error handlers,
   tracked so that `stop()` waits for it. `bot.on(definition, handler)` and `account.on(definition,
   handler)` receive a typed `event.payload`. An emitted event has `transport: 'custom'`, no update
   identity, and no effect on polling offsets, update sequences or `allowed_updates`; it may carry the
   `chat` and `sender` it concerns so that their session loads. A kind Telegram also sends is refused.
-- 3908fc1: `slotMachineReels(value)`, in a new entry point `yuigram/dice` (`@yuigram/core/dice`), reads the
-  three reels a 🎰 dice shows from its value: left, centre, right, each `'bar'`, `'grapes'`,
-  `'lemon'` or `'seven'`. A value that is not a whole number from 1 to 64 is a `ValidationError`.
-  Programs that do not import the entry point do not load it.
 - 6fc0fcc: `thumbnails`, `thumbnail` and `thumbnailFile` take a document as well as a photo. A document's
   `thumbs` and `video_thumbs` and a photo's `video_sizes` are listed beside its sizes, and each
   `Thumbnail` states its `availability`: `download` (`photoSize`, `photoSizeProgressive`,
@@ -138,24 +107,6 @@
   `schemas/tl/errors.json`, which records the database's codes, names and methods without its
   descriptions. Nothing is added to what an import loads, and how a refusal is classified — a wait
   as `FloodError`, a redirection as `MigrationError` — is unchanged.
-- c6cf63e: `indexedDb({ database?, store?, durability? })`, in `yuigram/indexeddb` (`@yuigram/core/indexeddb`),
-  is a store over a browser's IndexedDB for pages and workers that outgrow `localStorage`. Values are
-  the JSON envelope the other stores keep; a write resolves when its transaction completes, with
-  strict durability unless asked otherwise; a failed request or an aborted transaction rejects with
-  `StorageError`; a missing object store is added by a version upgrade; `close()` ends the
-  connection. An account over it is kept to one run per origin by the Web Locks guard, as over
-  `web()`; the store adds no exclusion of its own.
-- ff2e7e6: `koaWebhook(handler, { path?, bodyLimit? })` serves a bot's webhook from a Koa application. It
-  uses the body a parser left on `ctx.request.body`, or reads the request itself under the same
-  size limit as `nodeWebhook`; it fills in the status, content type and body and leaves sending
-  them to Koa. With `path`, other requests pass to the next middleware. Koa is not a dependency.
-- 2d30b24: `mediaCache()` keeps the identifier Telegram returns for each upload and sends it instead of the
-  file next time, for photos, videos, animations, video notes, audio, documents, stickers and voice
-  messages. Entries are named by bot, media kind and source — a path, a URL, a digest of bytes, or
-  a `cacheKey` given to `media.*` — and kept in any `KV` store. A stale identifier is replaced by
-  one more upload, only when Telegram refused it as a bad identifier; nothing is cached from a
-  failed call; concurrent sends of one file upload it once; and a single-use stream is never read
-  to be named.
 - bfcebe5: `MediaView` reads the media whose content is a structure: `pollDetails` joins a poll's tally to its
   answers (voters, this account's choice, the right answer, and whether the results are partial),
   `todoDetails` joins a checklist's completions to its tasks, and `webpageDetails`, `gameDetails`,
@@ -164,15 +115,6 @@
   `isSilentVideo` and `preloadPrefixSize` read the rest of a video's attribute. The functions behind
   them — `readPoll`, `readTodo`, `readWebPage`, `readGame`, `readSticker`, `readLocation` — are
   exported for values held without a view.
-- ad9b90f: A bot's `defaults` are layered: `'*'` sets common parameters for every method whose schema takes
-  them, a method's own key sets any of its parameters with the schema's types, and a call's own
-  values win over both — `false`, `null`, `''` and `undefined` included. Which methods take each
-  common parameter is generated from the schema, so a global `parse_mode` no longer reaches
-  `getMe`. Defaults are copied per bot and per call, and a defaulted `parse_mode` is left off
-  text that carries its own entities.
-  
-  `Bot`'s `defaults` option is now typed as `MethodDefaults`: move a top-level parameter under
-  `'*'`. The older flat form is still applied to every call at runtime.
 - 72c33e0: MTProto, and a client surface that says what a handler was given.
   
   `npm install yuigram` now builds bots and user accounts in one project, on an implementation
@@ -637,33 +579,16 @@
   `initConnection` names the proxy. A `tg://proxy` link read by `readLink` is accepted too. The secret
   is never written to a description, an error or a log. In a browser `mtproxy()` refuses with
   `ConfigError`, since a proxy is reached over TCP.
-- 3908fc1: `parseCommand(text)` is exported: the parser `onCommand` and `message.command` already use, for
-  text read outside an update. It answers the same `ParsedCommand` a command handler receives, or
-  `undefined` when the text does not open with a command. Dispatch is unchanged.
 - 4e4049c: `UserView.presence` reads a user's status into a state, `onlineUntil` or `lastSeen`, and whether it
   is hidden because this account hides its own; `UserView.mention()` builds text that mentions the
   account, with its access hash where known. Users gain `botManagesBots`, `botHasGuestChat`,
   `botIsGuard`, `linkedCommunityId` and `photoDcId`; chats gain `linkedCommunityId` and `photoDcId`.
-- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
-  error as the cause. The plugins installed before it in the same round are disposed, newest first,
-  through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
-  `cleanup`. The client then stays failed — later updates and `start()` reject with the same error
-  — rather than installing again and registering middleware twice.
 - 1ba61f9: A status update says what it brings. `event.presence` on a `mtproto:user_status` event is the
   update's status read as `UserView.presence` reads a user's — `state`, `onlineUntil` and
   `lastSeen` in Unix seconds, `hiddenByMe` — with the user in `event.target`; it is `undefined` on
   every other kind. `readPresence(status)` is the reader both use, exported for a status held on
   its own: it reads the six constructors of the schema, derives no time for a status that states
   none, and answers `undefined` for anything that is not a status.
-- b1f3008: `readLink` and `writeLink` describe MTProxy and SOCKS5 proxy links and temporary profile links,
-  in their `t.me` and `tg:` forms. A proxy link is read only when it has every part its syntax
-  requires — a server, a port from 1 to 65535 and, for MTProxy, a secret in hex or base64 text;
-  a SOCKS5 username or password is kept only when the link gives one. A temporary profile link
-  carries the token `contacts.importContactToken` takes.
-  
-  Behaviour a caller may notice: a `t.me/proxy`, `t.me/socks` or `t.me/contact/<token>` link that
-  was read as `undefined` is now described, so code switching on `kind` sees `'proxy'`, `'socks'`
-  or `'contact'` where it saw nothing.
 - d5eda2c: A request Telegram refuses is raised as `RpcError`, a `TelegramError` carrying `code`, `text` —
   Telegram's name for the failure, as sent — and `parameter`, the number a name like
   `PASSWORD_TOO_FRESH_3600` ends in, with the `rpc_error` as its cause. `error.is(pattern)` and
@@ -682,24 +607,6 @@
   camelCase fields, peers as `PeerRef`, notes as formatted text, and the constructor kept as `raw`.
   An action this build has no reading for is `'unsupported'`. `f.action(...kinds)` matches service
   messages by kind and narrows `event.action` to those variants.
-- 5306097: Sessions say when they are written. `commit: 'success'` leaves the stored value untouched when
-  a handler throws or is cancelled; the default, `'always'`, writes what changed either way, as
-  before. `sessionHandle.save()` writes at once and reports a refused write to the handler that
-  asked for it.
-  
-  `sessionHandle.merge(patch)` assigns fields over the value. Each write can carry its own time to
-  live — `set(value, { ttl })`, `merge(patch, { ttl })`, `save({ ttl })`, `expireIn(seconds)` —
-  and `expiring(value, ms)` makes a single field expire, with the expiry stored beside it so it
-  holds across updates and restarts.
-  
-  A stored `null` is now kept as the session's value rather than replaced by `initial()`, and
-  `sessionHandle.isNew` says whether the key held nothing. `clear()` makes the value read as
-  `initial()` at once, and a change made after it is written instead of deleted.
-- 2cefa8b: A session key given to `session()` reads the chat and the sender an update carries, so the usual
-  scopes need no context type named: `key: (event) => event.sender?.id` keeps one session per user
-  across chats, and `key: (event) => event.chat?.id` one per chat. A key may also be a `bigint`, which
-  is written out in full, so an account's 64-bit peer identifiers are never rounded. `userChatKey`
-  is unchanged.
 - f5130e2: Session strings in the version-3 TL layout other MTProto libraries write can be imported and
   exported: `Account.fromString(text, { ...options, format: 'tl-v3' })`, `account.exportSession({
   format: 'tl-v3' })`, and `readSession` / `writeSession` for converting between layouts. The layout
@@ -710,27 +617,6 @@
   Importing no longer replaces a different authorization the store already holds for the session's
   datacenter: that is refused unless `replace: true` is passed. The same key already stored is used
   as before.
-- f2674ad: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
-  alike. One counter backs a middleware that drops what is over the limit, a filter a handler can be
-  registered behind, a `check` a handler makes itself, and a `wait` that throttles rather than
-  refuses and gives up on an abort signal. Counts are kept in named buckets, so two limits do not
-  spend each other's allowance, and in any `KV` store, so instances sharing a store count one person
-  across all of them. An account's senders are counted by kind and number, so a user and a chat with
-  the same number stay apart.
-  
-  The Bot API's `rateLimit` is now the middleware form of the same counter and accepts `storage` and
-  `bucket`. Its behaviour is otherwise unchanged: the sender by default, every attempt counted, and
-  updates naming nobody let through uncounted.
-- d17681a: `@yuigram/sqlite` keeps the key-value contract in a SQLite table over a connection the
-  application supplies — `node:sqlite`, `better-sqlite3` or `bun:sqlite` — and `openDatabase()`
-  opens a file with the runtime's own SQLite, ready for several processes: write-ahead logging, a
-  busy timeout, and an owner-only file where the platform allows. It serves sessions,
-  conversation state and an MTProto account's own state; expired entries are invisible at once and
-  removed on read or by `sweep()`.
-  
-  `sqliteCounter()` counts rate-limit hits in one statement per hit, and core's `limiter()` takes
-  it — or any `WindowCounter` — as `counter`, in place of a store. Hits from any number of
-  processes on one key each get a count of their own, so a shared limit holds exactly.
 - bb0098f: Sticker sets are read through `StickerSetView`, which reads a set in every form Telegram sends it:
   brief in a list, with or without covers, and full when asked for by itself. It answers the set's
   kind, flags, installation date, link and input reference, pairs each sticker with every emoji the
@@ -768,33 +654,9 @@
   the bot sent in `sent`, presses a real button on one with `send.press`, and collects handler errors
   nothing caught in `errors`. New builders cover chosen inline results, reactions, pre-checkout
   queries, poll answers and join requests.
-- 87f52b6: Mini App launch data, in a new entry point: `yuigram/web-app` (`@yuigram/bot-api/web-app`).
-  `readInitData` reads `Telegram.WebApp.initData` and proves nothing. `verifyInitData` checks
-  `hash` with the bot token, or with a key derived once by `InitDataKey.fromToken`;
-  `verifyInitDataSignature` checks Telegram's Ed25519 `signature` with the bot's id alone, against
-  the production key or, with `publicKey: 'test'`, the test environment's. Both follow Telegram's
-  published data-check-strings and take a required `maxAge`, so the window in which the same text
-  can be presented again is always stated.
-  `hashInitData` answers the `hash` a set of fields carries under a token, for writing launch data
-  in an application's own tests.
-  
-  Text that could be read two ways — a pair with no `=`, a field named twice, an escape that is not
-  UTF-8, a line feed — is refused rather than guessed at. A refusal is an `InitDataError` whose
-  `problem` is `'malformed'`, `'mismatch'`, `'unsigned'`, `'expired'`, `'future'` or
-  `'unsupported'`, and whose message repeats neither the data nor the token. The entry point uses
-  the Web Crypto API alone and imports nothing from Node; programs that do not import it do not
-  load it.
 
 ### Patch Changes
 
-- 8f62c9d: `schemaInfo.botApi` reports the Bot API release the surface was generated from. It was written
-  by hand and went on reporting `10.2` after the surface was regenerated from 10.3; it is now read
-  from `BOT_API_VERSION`, which the schema generator emits beside the surface and `@yuigram/bot-api`
-  exports, so the two cannot disagree again.
-- 3d390a2: A callback query's context now carries `chat`: the chat of the message its button is on, absent
-  for a button on an inline message. Sessions keyed with `userChatKey` and conversation keys
-  previously missed it, so a person's button presses were kept apart from their messages and a
-  conversation waiting on a press never received one.
 - f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
   once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
   isolated builds. Exports, signatures and the core's runtime identity are unchanged.
@@ -803,16 +665,16 @@
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
   esbuild, webpack and Rollup, and tree shaking are unchanged.
-- 47ae209: `encrypted()` writes on Bun. Bun reports a successful key derivation to scrypt's callback with
-  `undefined` rather than `null`, which the store took for a failure, so every write was rejected
-  with nothing to say why.
 - 3ff86ec: Removing history finishes. `deleteHistory`, `deleteMemberHistory` and `deleteTopicHistory` repeat
   the request while Telegram says more is left, applying each stage's position, where they used to
   stop after the first batch and report success. `deleteHistory` on a channel or supergroup uses the
   channel call, and `previewChat` returns the conversation the name belongs to rather than the first
   one the answer carried.
-- dee75ae: `writeLink` refuses a mini app link whose `mode` is neither `'compact'` nor `'fullscreen'`,
-  instead of writing a link that reads back without the mode.
+- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
+  error as the cause. The plugins installed before it in the same round are disposed, newest first,
+  through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
+  `cleanup`. The client then stays failed — later updates and `start()` reject with the same error
+  — rather than installing again and registering middleware twice.
 - 0447cd5: `RpcError.parameter` reads the number a name carries wherever it is — `FILE_REFERENCE_5_EXPIRED`,
   `INTERDC_2_CALL_ERROR` — not only at the end, and `error.argument(pattern)` reads one written
   into a word, such as `…_WAIT_5MIN`. `2FA_CONFIRM_WAIT_N` is now raised as a `FloodError` like the
@@ -828,104 +690,21 @@
   before a sign-in attempt is spent. The ordinary sign-in steps are unchanged and never build a code.
 - b720494: `mockAccount` takes a list as a scripted answer, for methods such as `users.getUsers` that answer
   with one. The `Answer` type now says so, and `Answered` names what a method answers with.
-- c19b3d0: `when(filter, middleware)` hands the middleware the context the filter proves, as its
-  documentation shows. A filter is itself callable, so it matched the predicate form first and the
-  middleware's context was inferred as `unknown`. The filter form is now tried first; a bare
-  predicate is unaffected.
 - Updated dependencies [97ec9eb]
-- Updated dependencies [dfdf096]
-- Updated dependencies [eab2c4b]
 - Updated dependencies [889ec5e]
-- Updated dependencies [1b7430b]
-- Updated dependencies [8f62c9d]
-- Updated dependencies [94ca29f]
-- Updated dependencies [ddb4b19]
-- Updated dependencies [789dfa4]
-- Updated dependencies [3d390a2]
-- Updated dependencies [f8a7556]
 - Updated dependencies [fd1fc06]
 - Updated dependencies [3908fc1]
 - Updated dependencies [c8fdd1a]
-- Updated dependencies [6fc0fcc]
-- Updated dependencies [9dbecdf]
 - Updated dependencies [47ae209]
-- Updated dependencies [3ff86ec]
 - Updated dependencies [c6cf63e]
-- Updated dependencies [ff2e7e6]
-- Updated dependencies [2d30b24]
-- Updated dependencies [bfcebe5]
-- Updated dependencies [ad9b90f]
 - Updated dependencies [dee75ae]
 - Updated dependencies [72c33e0]
-- Updated dependencies [596f9de]
-- Updated dependencies [3908fc1]
-- Updated dependencies [4e4049c]
 - Updated dependencies [19e3ba7]
-- Updated dependencies [1ba61f9]
 - Updated dependencies [b1f3008]
-- Updated dependencies [0447cd5]
-- Updated dependencies [d5eda2c]
-- Updated dependencies [942c68e]
-- Updated dependencies [0a3ad43]
-- Updated dependencies [db145fe]
 - Updated dependencies [5306097]
 - Updated dependencies [2cefa8b]
-- Updated dependencies [f5130e2]
 - Updated dependencies [f2674ad]
 - Updated dependencies [d17681a]
-- Updated dependencies [bb0098f]
 - Updated dependencies [101e74f]
-- Updated dependencies [4358326]
-- Updated dependencies [ea4b45f]
-- Updated dependencies [b720494]
-- Updated dependencies [87f52b6]
 - Updated dependencies [c19b3d0]
   - @yuigram/core@0.2.0
-  - @yuigram/mtproto@0.2.0
-  - @yuigram/bot-api@0.2.0
-
-## 0.1.0
-
-### Minor Changes
-
-- e9381ff: First release: the Telegram Bot API subsystem.
-  
-  `npm install yuigram` gives an independent Bot API framework. Every Bot API capability is
-  reachable — all 185 methods and 388 objects are generated and typed — nothing in it is a stub,
-  and the published packages have zero runtime dependencies.
-  
-  **Clients and transport.** A `Bot` client with an independent lifecycle. Long polling that
-  backs off on transient failures, honours `retry_after`, stops on errors that retrying cannot
-  fix, and cancels its in-flight request on shutdown. A framework-agnostic webhook handler with
-  adapters for `node:http`, Express and Fastify — none of which is a dependency, since each
-  describes the shape it needs structurally.
-  
-  **Dispatch.** Onion middleware with priority bands, handlers selected by update kind, command,
-  text or composed filter, and service messages promoted to first-class kinds so applications
-  stop branching inside a message handler. Every matching handler runs, so independent concerns
-  compose without knowing about each other.
-  
-  **State.** Sessions with lazy loading, dirty tracking and per-key serialization, over a
-  three-method storage contract with in-memory and filesystem adapters. Context extensions are
-  carried on a type parameter, so two bots in one program can hold different state.
-  
-  **Types.** The full Bot API 10.2 surface, generated from a committed schema snapshot, with
-  every method cancellable. `call()` reaches anything newer than
-  the installed schema, so a Telegram release never blocks anyone.
-  
-  **Diagnostics.** An error taxonomy that preserves Telegram's own code, description and retry
-  information, and structural log redaction that cannot be turned off.
-  
-  **Testing.** `yuigram/testing` drives the real pipeline with only the network replaced, so an
-  application tests its bot the same way Yuigram tests itself.
-  
-  **Not yet, and planned for v0.x:** keyboard builders (pass the typed markup object meanwhile)
-  and streaming upload (buffer the file meanwhile; bot uploads cap at 50 MB).
-  
-  MTProto is next and is being built bottom-up. See `docs/roadmap.md`.
-
-### Patch Changes
-
-- Updated dependencies [e9381ff]
-  - @yuigram/bot-api@0.1.0
-  - @yuigram/core@0.1.0
