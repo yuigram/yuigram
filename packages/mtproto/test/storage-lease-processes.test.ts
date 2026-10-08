@@ -37,8 +37,13 @@ interface Holder {
 
 const running: Holder[] = []
 
-afterEach(() => {
-  for (const holder of running.splice(0)) holder.child.kill()
+// Wait for each holder to be gone, not only told to go: on Windows a process
+// that is still exiting holds its SQLite files open, and removing the
+// directory under it fails with EBUSY.
+afterEach(async () => {
+  const holders = running.splice(0)
+  for (const holder of holders) holder.child.kill()
+  await Promise.all(holders.map((holder) => holder.exited))
 })
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
