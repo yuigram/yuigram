@@ -8,6 +8,9 @@ counter for rate limits shared between processes and machines.
 npm install @yuigram/redis
 ```
 
+> Published from `0.2.0` on. Until that release is on npm, the package is built from a
+> [checkout of the repository](https://github.com/yuigram/yuigram#install).
+
 The package opens no connection and installs no client. It sends commands through the client the
 application already has — node-redis's `sendCommand`, ioredis's `call`, or a function that sends
 one command.

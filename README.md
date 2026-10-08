@@ -81,8 +81,10 @@ do is offered only there.
 npm install yuigram
 ```
 
-`Account`, `App` and the example above are in this repository and not on npm yet. Until the
-next release they are used from a checkout:
+`Account`, `App` and the example above are in this repository and not on npm yet. They are
+prepared as `0.2.0` — every package at that version, `@yuigram/mtproto`, `@yuigram/sqlite` and
+`@yuigram/redis` for the first time — and that release is not published. Until it is, they are
+used from a checkout:
 
 ```bash
 git clone https://github.com/yuigram/yuigram

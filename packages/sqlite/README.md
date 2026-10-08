@@ -8,6 +8,9 @@ limits shared between processes.
 npm install @yuigram/sqlite
 ```
 
+> Published from `0.2.0` on. Until that release is on npm, the package is built from a
+> [checkout of the repository](https://github.com/yuigram/yuigram#install).
+
 The package installs no database driver. It takes a connection the application opens —
 `node:sqlite`, `better-sqlite3` or `bun:sqlite` all fit — and `openDatabase()` opens a file with
 the runtime's own SQLite on Node.js 22.5 or later.
