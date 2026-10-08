@@ -9,6 +9,7 @@ export {
   type IndexedDbCursorLike,
   type IndexedDbDatabaseLike,
   type IndexedDbDurability,
+  type IndexedDbEventHandler,
   type IndexedDbFactoryLike,
   type IndexedDbObjectStoreLike,
   type IndexedDbOpenRequestLike,

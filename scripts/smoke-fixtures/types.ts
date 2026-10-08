@@ -32,6 +32,7 @@ import {
   userChatKey,
 } from 'yuigram'
 import { type SlotMachineReels, slotMachineReels } from 'yuigram/dice'
+import { type IndexedDbStore, indexedDb } from 'yuigram/indexeddb'
 import { mockBot } from 'yuigram/testing'
 import { type InitData, InitDataKey, verifyInitData } from 'yuigram/web-app'
 import { nodeWebhook } from 'yuigram/webhook'
@@ -176,3 +177,8 @@ export const redisLimits = limiter({ counter: redisCounter(redis) })
 // A download through the bot, and to disk through the function given the bot's transport.
 export const downloaded: Promise<Uint8Array> = bot.download('file-id')
 export const written: Promise<void> = downloadToFile(bot.files, './out.bin', 'file-id')
+
+// A browser's own IndexedDB, as the DOM types it, is a factory with no cast.
+export const browserState: IndexedDbStore<{ readonly theme: string }> = indexedDb<{
+  readonly theme: string
+}>({ factory: indexedDB, keyRange: IDBKeyRange })

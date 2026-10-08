@@ -20,7 +20,7 @@ import {
 } from '../src/indexeddb/indexeddb.js'
 
 /** A fresh, empty IndexedDB for one case. */
-const fresh = () => new IDBFactory() as unknown as IndexedDbFactoryLike
+const fresh = (): IndexedDbFactoryLike => new IDBFactory()
 
 const over = <V>(factory: IndexedDbFactoryLike, options: IndexedDbOptions = {}) =>
   indexedDb<V>({ factory, keyRange: IDBKeyRange, ...options })

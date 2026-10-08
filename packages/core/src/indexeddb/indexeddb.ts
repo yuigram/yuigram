@@ -32,18 +32,27 @@
 import { ConfigError, StorageError } from '../errors/errors.js'
 import type { DescribedKV, KVInfo, SetOptions } from '../storage/types.js'
 
+/**
+ * An event handler property, as this store sets it.
+ *
+ * The event is `never` so that any implementation's handler type — the DOM's,
+ * with its own event classes, or fake-indexeddb's — is accepted as it is typed.
+ * The one handler here that looks at its event reads it defensively.
+ */
+export type IndexedDbEventHandler = (event: never) => void
+
 /** A request, in the part of `IDBRequest` this store uses. */
 export interface IndexedDbRequestLike<T = unknown> {
   readonly result: T
   readonly error: unknown
-  onsuccess: ((event: unknown) => void) | null
-  onerror: ((event: unknown) => void) | null
+  onsuccess: IndexedDbEventHandler | null
+  onerror: IndexedDbEventHandler | null
 }
 
 /** Opening a database, in the part of `IDBOpenDBRequest` this store uses. */
 export interface IndexedDbOpenRequestLike extends IndexedDbRequestLike<IndexedDbDatabaseLike> {
-  onupgradeneeded: ((event: unknown) => void) | null
-  onblocked: ((event: unknown) => void) | null
+  onupgradeneeded: IndexedDbEventHandler | null
+  onblocked: IndexedDbEventHandler | null
 }
 
 /** A cursor, in the part of `IDBCursorWithValue` this store uses. */
@@ -68,9 +77,9 @@ export interface IndexedDbTransactionLike {
   readonly error: unknown
   objectStore(name: string): IndexedDbObjectStoreLike
   abort(): void
-  oncomplete: ((event: unknown) => void) | null
-  onabort: ((event: unknown) => void) | null
-  onerror: ((event: unknown) => void) | null
+  oncomplete: IndexedDbEventHandler | null
+  onabort: IndexedDbEventHandler | null
+  onerror: IndexedDbEventHandler | null
 }
 
 /** A connection, in the part of `IDBDatabase` this store uses. */
@@ -84,7 +93,7 @@ export interface IndexedDbDatabaseLike {
     options?: { readonly durability?: IndexedDbDurability },
   ): IndexedDbTransactionLike
   close(): void
-  onversionchange: ((event: unknown) => void) | null
+  onversionchange: IndexedDbEventHandler | null
 }
 
 /** The browser's `indexedDB`, or anything shaped like it. */
