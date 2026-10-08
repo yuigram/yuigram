@@ -266,6 +266,49 @@ describe('an account through each kind of proxy', () => {
     })
   }
 
+  it('greets the proxy again when a connection drops, and carries on through it', async () => {
+    const { peer, datacenter } = await proxyFor('fake-tls')
+    const account = new Account({
+      apiId: 12345,
+      apiHash: 'mtproxy',
+      keys: [serverRsaKey(KEY)],
+      storage: memory(),
+      storageGuard: processGuard(),
+      bootstrap: { thisDc: 2, testMode: false, options: [ADDRESS] },
+      now: clock(),
+      proxy: mtproxy({ host: '127.0.0.1', port: peer.port, secret: SECRETS['fake-tls'] }),
+    })
+
+    let before = 0
+    try {
+      await account.connect()
+      await account.api.call({ _: 'help.getConfig' })
+      before = peer.connections.length
+
+      // The datacenter drops every connection, and the proxy hangs up on the
+      // client in turn, as a real one does when its upstream goes.
+      for (const connection of datacenter.connections) connection.fail(new Error('dropped'))
+      await until(
+        () => peer.connections.slice(0, before).every((seen) => !seen.open),
+        'the proxied connections to close',
+      )
+
+      const answer = await account.api.call({ _: 'help.getConfig' })
+      expect(answer._).toBe('boolTrue')
+    } finally {
+      await account.stop()
+    }
+
+    // A new connection, with a greeting of its own, through the same proxy.
+    expect(peer.connections.length).toBeGreaterThan(before)
+    for (const seen of peer.connections) {
+      expect(seen.refused).toBeUndefined()
+      expect(seen.serverName).toBe(DOMAIN)
+      expect(seen.greetingTime).toBeDefined()
+      expect(seen.dcId).toBe(2)
+    }
+  })
+
   it('names a test-environment datacenter to the proxy as the test one', async () => {
     const { peer } = await proxyFor('padded')
     const account = new Account({
