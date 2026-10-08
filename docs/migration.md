@@ -186,9 +186,12 @@ Bot API's `f` reads fields they do not carry, and an account refuses it at compi
 An account is a client like a bot: its own lifecycle, its own store, its own handlers. An `App`
 holds any number of them alongside a bot, each with its own credentials and connections.
 
-**What it costs a bot that never uses it: nothing.** The subsystem is loaded when something
-first needs it, so a Bot API bundle contains none of it — a budget CI measures at zero bytes on
-every build, not a claim. Installing `yuigram` is the same install it was.
+**What it costs a bot that never uses it: nothing in a bundle.** A bundler leaves the whole
+subsystem out of a Bot API program — a budget CI measures at zero bytes on every build, not a
+claim. Without a bundler, importing `yuigram` loads the account's own surface, while its
+connections and schema tables wait until an account first connects;
+[performance.md](performance.md) §2 measures what that import costs. Installing `yuigram` is
+the same command it was.
 
 **An account is not a bot, and the difference is not cosmetic.** It signs in with an
 application's credentials rather than a token, it acts as the person who owns it, and Telegram

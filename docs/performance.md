@@ -135,6 +135,22 @@ What is left, if the margin has to grow, is fewer modules or fewer bytes to comp
 build of each entry point, or a second emit without comments. Both are build pipelines rather
 than changes to the code, and neither is made here.
 
+**At the 0.2.0 candidate: over, and not because of what 0.2.0 added last.** The Koa adapter, the
+IndexedDB store and MTProxy each have an entry point of their own, and none of them is on the
+eager path: the graph is the same 131 modules before and after them, 490 bytes larger, all in
+the account's check of its `proxy` option. Twelve alternating rounds against an isolated build
+of the tree before them gave a paired median of +0.3 ms, the later tree slower in 7 of 12 —
+no difference the comparison can see — with both trees between 107 and 113 ms in every round.
+The gate's own run on the candidate read 109 ms (106–113).
+
+How much of that is the number of modules, measured on the same machine: 131 empty modules cost
+46 ms to import, and the same eager code bundled into one file — 1.8 MB, nothing removed —
+imports in about 40 ms against about 114 ms as 131 files. The framework's code is not what the
+budget is waiting on; the loader's work per file is. That points at the bundled build above,
+with what it has to preserve — one copy of each class across entry points, the browser
+substitutions, source maps — and that is a change to how the packages are built, not one to make
+inside a release. Until it is made, the budget is not met on this machine.
+
 **Earlier: at the line, and the line moved with the machine.** Nine runs of the
 benchmark's own procedure on the same tree, in the order they were taken, when
 the graph was about a hundred modules:
