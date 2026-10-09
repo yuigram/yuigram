@@ -672,6 +672,19 @@
   which the server answers with a transport `404`. A temporary key stored before this change
   carries no record of its clock and is not reused: a new one is obtained and bound, and the
   permanent key is left in place.
+- A connection opened under a stored key hears the server whichever way its clock is off. The
+  acceptance window was judged against this machine's clock before the server's had been
+  measured, so with the server more than 30 s ahead, or 300 s behind, every answer — and the
+  notification that would correct the clock — was refused and no call was answered. The window
+  now applies once the session knows the server's clock, which the first message under it
+  supplies.
+- A container's own identifier is checked like any message's, so a replayed or out-of-window
+  container is refused whole before anything in it acts, and one carrying an element not older
+  than itself is refused as malformed. The record of identifiers already seen orders them
+  unsigned, so from January 2038 a new message is not refused as older than everything retained.
+- `serverKeysFromPem` refuses what is not an encoding of an RSA public key — bytes after the key,
+  a third number in it, a negative, empty or padded number, an algorithm that is not a sequence
+  or that names parameters RSA does not take — instead of reading something close to a key.
 - f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
   once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
   isolated builds. Exports, signatures and the core's runtime identity are unchanged.

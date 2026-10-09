@@ -159,6 +159,15 @@ cost. `p` is 256 bytes; `g_b` is at most 256.
 
 Supplied by the application as PEM, matched by fingerprint at runtime. None is compiled in.
 
+`serverKeysFromPem` reads a key exactly or refuses it: the `RSAPublicKey` of RFC 8017 — two
+positive integers in their minimal two's-complement form, nothing after them — bare or inside a
+`SubjectPublicKeyInfo` whose algorithm is `rsaEncryption` with NULL parameters or none. Read
+leniently, a file with bytes after the key, a third number in it, or a modulus missing its sign
+byte comes out as a key anyway — the intended one, in every such case tried — and a damaged file
+would only be noticed at the first connection, as a key no datacenter offers. The one allowance
+is a length written in more bytes than it needs, which BER permits and RFC 7468 accepts for a
+`PUBLIC KEY`.
+
 Telegram's MTProto documentation names the production key by its fingerprint — its worked
 example of creating an authorization key chooses `85FD64DE851D9DD0`, the key's fingerprint in
 wire order — but does not print the key. The source the project uses is TDLib, Telegram's own
@@ -1030,7 +1039,30 @@ single message cannot supply:
 - **duplication** — the server resends what it believes was not acknowledged, so a repeated
   identifier is ordinary; acting on it twice is not. The record is bounded, and an identifier
   older than everything retained is refused rather than admitted, because the record cannot
-  prove it is new
+  prove it is new. It is ordered by the time an identifier carries, read unsigned, so the
+  identifiers made after January 2038 — negative as signed longs — do not sort below the rest
+
+**The window is judged only against a clock this session knows.** The protocol asks a client to
+apply it only when certain of its time. A session opened after a key exchange is: the exchange
+measured the server's clock. One opened under a stored key is not, because the offset a key was
+negotiated with is true only against the clock it was measured on and is not kept. Judged
+against the local clock, such a session would refuse every message from a server more than 30 s
+ahead of this machine, or 300 s behind it — including the notification that would correct the
+clock — and no call on it would ever be answered. So until the server is heard from, the window
+is not applied, and the first message that passes the other rules sets the clock: it carries
+this session's identifier, drawn at random when the connection opened, and has verified under
+the key, so it was made after the session began and its identifier is the server's clock.
+
+**A container is a message too.** Its own identifier — the envelope's — is checked by the same
+rules before anything in it is looked at, and a container refused by them is refused whole: a
+replay of a whole container is refused once, as itself, and one dated outside the window has no
+element act. Its elements are then checked one by one, because the server resends what was not
+acknowledged combined with whatever else is due, and refusing a container for an element already
+delivered would lose the others. **Every element's identifier must be lower than the
+container's**, because a container is made after its contents; one that is not makes the
+container malformed, and it is refused whole. Sequence numbers are not checked on arrival: the
+protocol's checks for a client do not include them, and the container's own is not compared
+with its elements'.
 
 A fourth applies to the envelope rather than to each message: **the session identifier must be
 the active one**. A message naming another session is refused rather than raised — replacing the
