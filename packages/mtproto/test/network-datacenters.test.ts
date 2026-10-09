@@ -683,6 +683,131 @@ describe('one key for every purpose a datacenter serves', () => {
   })
 })
 
+describe('a temporary key written by an earlier build', () => {
+  it('is replaced, with the same permanent key vouching for the new one', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const store = authorizationStore(stores.auth.kv)
+    await store.setKey(2, material(7))
+    // The shape an earlier build wrote: the expiry on the server's clock, and
+    // nothing saying so. Far in the future, so only the marker can refuse it.
+    await stores.auth.kv.set('dc2:temp0', {
+      key: Buffer.from(material(8)).toString('base64'),
+      expires: NOW_SECONDS + 86_400,
+    })
+
+    const { layer, bound, forLifetimes } = await datacenters({}, stores)
+    const channel = await layer.connect()
+
+    expect(forLifetimes()).toHaveLength(1)
+    expect(bound).toHaveLength(1)
+    expect(bound[0]?.permanent).toEqual(AuthKey.from(material(7)).id)
+    expect(channel.authorization.key.toBytes()).not.toEqual(material(8))
+    expect(await store.key(2)).toEqual(material(7))
+    expect(await stores.auth.kv.get('dc2:temp0')).toMatchObject({ clock: 'local' })
+  })
+})
+
+describe('a stored temporary key across a restart', () => {
+  /** A layer whose clock reads `seconds`, over stores that outlive it. */
+  const at = (
+    seconds: number,
+    stores: { auth: ReturnType<typeof memory>; dcs: ReturnType<typeof memory> },
+  ) => datacenters({ now: () => seconds * 1000 }, stores)
+
+  it('is reused while it is live on this clock', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const store = authorizationStore(stores.auth.kv)
+    await store.setKey(2, material(7))
+    await store.setTemporaryKey(2, 0, material(8), NOW_SECONDS + 3600)
+
+    const { layer, forLifetimes } = await at(NOW_SECONDS, stores)
+    const channel = await layer.connect()
+
+    expect(forLifetimes()).toHaveLength(0)
+    expect(channel.authorization.key.toBytes()).toEqual(material(8))
+  })
+
+  it('is replaced once this clock reaches its margin, without touching the permanent key', async () => {
+    // A clock that moved forward — a correction, or time passing — retires the
+    // key early at worst. A clock that moved back keeps it longer than the
+    // server does; the server then refuses it, and the refusal discards it.
+    const stores = { auth: memory(), dcs: memory() }
+    const store = authorizationStore(stores.auth.kv)
+    await store.setKey(2, material(7))
+    await store.setTemporaryKey(2, 0, material(8), NOW_SECONDS + 3600)
+
+    const { layer, forLifetimes, bound } = await at(NOW_SECONDS + 3600 - 30, stores)
+    const channel = await layer.connect()
+
+    expect(forLifetimes()).toHaveLength(1)
+    expect(bound[0]?.permanent).toEqual(AuthKey.from(material(7)).id)
+    expect(channel.authorization.key.toBytes()).not.toEqual(material(8))
+    expect(await store.key(2)).toEqual(material(7))
+  })
+})
+
+describe('what a refusal can reach', () => {
+  const stored = (auth: ReturnType<typeof memory>) => authorizationStore(auth.kv)
+
+  it('names a key with a lifetime on every connection to a Telegram datacenter', async () => {
+    // A transport refusal carries no key identifier: it is attributed to the key
+    // the refused connection presented. So what a forged one can remove is
+    // bounded by what connections present, and here none presents the
+    // permanent key — for any purpose, or for another datacenter.
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters({}, stores)
+
+    const channels = [
+      await layer.connect(),
+      await layer.connect({ purpose: 'media' }),
+      await layer.connect({ id: 1 }),
+    ]
+
+    for (const channel of channels) {
+      expect(channel.authorization.expiresAt).toBeDefined()
+      expect(channel.authorization.key.toBytes()).not.toEqual(
+        await stored(stores.auth).key(channel.dcId),
+      )
+    }
+    // Ordinary and file connections to one datacenter share its temporary key.
+    expect(channels[1]?.authorization.key.id).toEqual(channels[0]?.authorization.key.id)
+
+    const permanents = [await stored(stores.auth).key(2), await stored(stores.auth).key(1)]
+    await expect(
+      layer.forget(2, channels[0]?.authorization.key.id ?? new Uint8Array(8)),
+    ).resolves.toBe('temporary')
+    await expect(
+      layer.forget(1, channels[2]?.authorization.key.id ?? new Uint8Array(8)),
+    ).resolves.toBe('temporary')
+    expect([await stored(stores.auth).key(2), await stored(stores.auth).key(1)]).toEqual(permanents)
+  })
+
+  it('reaches a delivery node’s own key, and nothing the account is authorized with', async () => {
+    const stores = { auth: memory(), dcs: memory() }
+    const { layer } = await datacenters(
+      {
+        bootstrap: {
+          ...BOOTSTRAP,
+          options: [...BOOTSTRAP.options, address({ id: 203, host: '10.0.0.203', cdn: true })],
+        },
+      },
+      stores,
+    )
+    await layer.connect()
+    const account = await stored(stores.auth).key(2)
+
+    const node = await layer.connect({ id: 203, purpose: 'cdn' })
+
+    // A node gets a key of its own and no lifetime: it is the one long-lived key
+    // a connection presents. Refusing it costs an exchange with that node.
+    expect(node.authorization.expiresAt).toBeUndefined()
+    await expect(layer.forget(203, node.authorization.key.id)).resolves.toBe('permanent')
+    expect(await stored(stores.auth).key(203)).toBeUndefined()
+    expect(await stored(stores.auth).key(2)).toEqual(account)
+    expect((await stored(stores.auth).temporaryKey(2, 0, 0))?.key).toBeDefined()
+  })
+})
+
 describe('discarding a key the datacenter refused', () => {
   /** The identifier of the nth key a stub negotiates. */
   const idOf = (seed: number) => AuthKey.from(material(seed)).id

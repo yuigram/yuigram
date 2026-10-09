@@ -57,6 +57,8 @@ function keyOf(dc: number, what: string): string {
 interface StoredTemporaryKey {
   readonly key: string
   readonly expires: number
+  /** The clock `expires` is on: this machine's. Absent on records from earlier builds. */
+  readonly clock: 'local'
 }
 
 /** A temporary key and the second it stops being valid. */
@@ -138,6 +140,14 @@ export function authorizationStore(kv: KV<unknown>): AuthorizationStore {
         throw new StorageError(`dc${dc} temporary key ${index} has no usable expiry`)
       }
 
+      // A record without the marker was written by an earlier build, which put
+      // the expiry on the server's clock. The offset it converted with was not
+      // kept, so the moment cannot be recovered from the number, and reading it
+      // on this clock would repeat that build's error. The key is not used: the
+      // caller obtains another and has the permanent key vouch for it, and the
+      // permanent key is left exactly where it is.
+      if (record['clock'] !== 'local') return undefined
+
       // Expiry is checked on the way out rather than on a timer: a stored key
       // outlives the process that wrote it, so the only moment its lifetime can
       // be judged against is the one it is asked for.
@@ -158,6 +168,7 @@ export function authorizationStore(kv: KV<unknown>): AuthorizationStore {
       const record: StoredTemporaryKey = {
         key: encodeKey(key, `dc${dc} temporary key ${index}`),
         expires,
+        clock: 'local',
       }
       await kv.set(at, record)
     },

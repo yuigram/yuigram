@@ -380,6 +380,13 @@ because the server reads `expires_at` on its own clock. Written on the server's 
 compared with the local one, an expiry fell due late by however far the server was ahead, and a
 key the server had already dropped was presented to it, which it answers with a transport `404`.
 
+A stored temporary key records which clock its expiry is on. One written before this rule has no
+such mark, and its number cannot be converted: the offset it was written with was not kept. Such
+a key is not used. The account obtains another and has the permanent key vouch for it, once per
+datacenter, and the permanent key stays where it is. A clock that later moves forward retires a
+key early at worst; one that moves back keeps it past the server's expiry, and the refusal that
+follows discards the temporary key and nothing else.
+
 Three of the obligations around a binding are met by how the exchange is arranged rather than
 by anything that watches for them:
 

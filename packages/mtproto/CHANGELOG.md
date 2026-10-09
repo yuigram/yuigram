@@ -672,7 +672,9 @@
 - A temporary key's expiry is kept on this machine's clock, and converted to the server's only
   for the binding. It was written on the server's clock and compared with this one, so with the
   server more than a minute ahead a key was still presented after the server had dropped it,
-  which the server answers with a transport `404`.
+  which the server answers with a transport `404`. A temporary key stored before this change
+  carries no record of its clock and is not reused: a new one is obtained and bound, and the
+  permanent key is left in place.
 - f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
   once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
   isolated builds. Exports, signatures and the core's runtime identity are unchanged.

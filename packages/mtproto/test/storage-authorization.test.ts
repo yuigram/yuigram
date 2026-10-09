@@ -154,6 +154,27 @@ describe('temporary keys', () => {
 
     expect(await subject.temporaryKey(2, 0, 0)).toBeUndefined()
   })
+
+  it('are written with the clock their expiry is on', async () => {
+    const { kv, store: subject } = store()
+    await subject.setTemporaryKey(2, 0, keyBytes(4), 5000)
+
+    expect(await kv.get('dc2:temp0')).toMatchObject({ expires: 5000, clock: 'local' })
+  })
+
+  it('are not used when an earlier build wrote them, whatever their expiry says', async () => {
+    // An earlier build put the expiry on the server's clock and kept no record
+    // of the offset, so the number cannot be read on this clock. The key is
+    // withheld rather than guessed at; the record itself is left for the next
+    // key to replace.
+    const { kv, store: subject } = store()
+    const legacy = { key: Buffer.from(keyBytes(4)).toString('base64'), expires: 9_999_999_999 }
+    await kv.set('dc2:temp0', legacy)
+
+    expect(await subject.temporaryKey(2, 0, 0)).toBeUndefined()
+    expect(await subject.temporaryKey(2, 0, 5000)).toBeUndefined()
+    expect(await kv.get('dc2:temp0')).toEqual(legacy)
+  })
 })
 
 describe('state that will not decode', () => {
