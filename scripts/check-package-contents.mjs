@@ -118,6 +118,19 @@ try {
       }
     }
 
+    // Every built file comes from a source the package ships. The compiler
+    // does not remove what a deleted source once produced, so a tree built
+    // before a deletion still holds that output, and packing it would publish
+    // code with no source beside it and no licence notice of its own.
+    const sources = new Set(
+      files.filter((file) => /^src\/.*\.ts$/.test(file)).map((file) => file.slice(4, -3)),
+    )
+    for (const file of files) {
+      if (!file.startsWith('dist/') || file === 'dist/package.json') continue
+      const stem = file.slice(5).replace(/(\.d\.ts\.map|\.js\.map|\.d\.ts|\.js)$/, '')
+      if (!sources.has(stem)) fail(`ships ${file}, which no source in src/ produces`)
+    }
+
     // Code generated from the TL schema — the core, service and API tables —
     // is produced from a copy of TDLib's schema file, and goes out with TDLib's
     // notice: the one kept beside the schema, not a version of it. The Bot API's
