@@ -1,6 +1,13 @@
 # @yuigram/mtproto
 
-## 0.2.0
+## 1.0.0
+
+### Major Changes
+
+- `1.0.0` is the release after `0.1.0`. It was prepared first as `0.2.0`, which was never published;
+  the changes listed below were made for it and are part of this release. From `1.0.0` on, a change that breaks
+  the public API needs a major version. Upgrading from `0.1.0` is described, rename by rename, in
+  `docs/migration.md`.
 
 ### Minor Changes
 
@@ -690,21 +697,6 @@
   before a sign-in attempt is spent. The ordinary sign-in steps are unchanged and never build a code.
 - b720494: `mockAccount` takes a list as a scripted answer, for methods such as `users.getUsers` that answer
   with one. The `Answer` type now says so, and `Answered` names what a method answers with.
-- Updated dependencies [97ec9eb]
-- Updated dependencies [889ec5e]
-- Updated dependencies [fd1fc06]
-- Updated dependencies [3908fc1]
-- Updated dependencies [c8fdd1a]
-- Updated dependencies [47ae209]
-- Updated dependencies [c6cf63e]
-- Updated dependencies [dee75ae]
-- Updated dependencies [72c33e0]
-- Updated dependencies [19e3ba7]
-- Updated dependencies [b1f3008]
-- Updated dependencies [5306097]
-- Updated dependencies [2cefa8b]
-- Updated dependencies [f2674ad]
-- Updated dependencies [d17681a]
-- Updated dependencies [101e74f]
-- Updated dependencies [c19b3d0]
-  - @yuigram/core@0.2.0
+
+- Updated dependencies
+  - @yuigram/core@1.0.0

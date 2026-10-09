@@ -1,6 +1,13 @@
 # @yuigram/redis
 
-## 0.2.0
+## 1.0.0
+
+### Major Changes
+
+- `1.0.0` is the release after `0.1.0`. It was prepared first as `0.2.0`, which was never published;
+  the changes listed below were made for it and are part of this release. From `1.0.0` on, a change that breaks
+  the public API needs a major version. Upgrading from `0.1.0` is described, rename by rename, in
+  `docs/migration.md`.
 
 ### Minor Changes
 
@@ -37,21 +44,6 @@
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
   esbuild, webpack and Rollup, and tree shaking are unchanged.
-- Updated dependencies [97ec9eb]
-- Updated dependencies [889ec5e]
-- Updated dependencies [fd1fc06]
-- Updated dependencies [3908fc1]
-- Updated dependencies [c8fdd1a]
-- Updated dependencies [47ae209]
-- Updated dependencies [c6cf63e]
-- Updated dependencies [dee75ae]
-- Updated dependencies [72c33e0]
-- Updated dependencies [19e3ba7]
-- Updated dependencies [b1f3008]
-- Updated dependencies [5306097]
-- Updated dependencies [2cefa8b]
-- Updated dependencies [f2674ad]
-- Updated dependencies [d17681a]
-- Updated dependencies [101e74f]
-- Updated dependencies [c19b3d0]
-  - @yuigram/core@0.2.0
+
+- Updated dependencies
+  - @yuigram/core@1.0.0

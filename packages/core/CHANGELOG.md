@@ -1,6 +1,13 @@
 # @yuigram/core
 
-## 0.2.0
+## 1.0.0
+
+### Major Changes
+
+- `1.0.0` is the release after `0.1.0`. It was prepared first as `0.2.0`, which was never published;
+  the changes listed below were made for it and are part of this release. From `1.0.0` on, a change that breaks
+  the public API needs a major version. Upgrading from `0.1.0` is described, rename by rename, in
+  `docs/migration.md`.
 
 ### Minor Changes
 

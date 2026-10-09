@@ -1,6 +1,6 @@
 {
   "name": "yuigram",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Independent TypeScript framework for the Telegram Bot API and MTProto",
   "keywords": [
     "telegram",

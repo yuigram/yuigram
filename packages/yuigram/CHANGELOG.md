@@ -1,6 +1,13 @@
 # yuigram
 
-## 0.2.0
+## 1.0.0
+
+### Major Changes
+
+- `1.0.0` is the release after `0.1.0`. It was prepared first as `0.2.0`, which was never published;
+  the changes listed below were made for it and are part of this release. From `1.0.0` on, a change that breaks
+  the public API needs a major version. Upgrading from `0.1.0` is described, rename by rename, in
+  `docs/migration.md`.
 
 ### Minor Changes
 
@@ -832,57 +839,11 @@
   documentation shows. A filter is itself callable, so it matched the predicate form first and the
   middleware's context was inferred as `unknown`. The filter form is now tried first; a bare
   predicate is unaffected.
-- Updated dependencies [97ec9eb]
-- Updated dependencies [dfdf096]
-- Updated dependencies [eab2c4b]
-- Updated dependencies [889ec5e]
-- Updated dependencies [1b7430b]
-- Updated dependencies [8f62c9d]
-- Updated dependencies [94ca29f]
-- Updated dependencies [ddb4b19]
-- Updated dependencies [789dfa4]
-- Updated dependencies [3d390a2]
-- Updated dependencies [f8a7556]
-- Updated dependencies [fd1fc06]
-- Updated dependencies [3908fc1]
-- Updated dependencies [c8fdd1a]
-- Updated dependencies [6fc0fcc]
-- Updated dependencies [9dbecdf]
-- Updated dependencies [47ae209]
-- Updated dependencies [3ff86ec]
-- Updated dependencies [c6cf63e]
-- Updated dependencies [ff2e7e6]
-- Updated dependencies [2d30b24]
-- Updated dependencies [bfcebe5]
-- Updated dependencies [ad9b90f]
-- Updated dependencies [dee75ae]
-- Updated dependencies [72c33e0]
-- Updated dependencies [596f9de]
-- Updated dependencies [3908fc1]
-- Updated dependencies [4e4049c]
-- Updated dependencies [19e3ba7]
-- Updated dependencies [1ba61f9]
-- Updated dependencies [b1f3008]
-- Updated dependencies [0447cd5]
-- Updated dependencies [d5eda2c]
-- Updated dependencies [942c68e]
-- Updated dependencies [0a3ad43]
-- Updated dependencies [db145fe]
-- Updated dependencies [5306097]
-- Updated dependencies [2cefa8b]
-- Updated dependencies [f5130e2]
-- Updated dependencies [f2674ad]
-- Updated dependencies [d17681a]
-- Updated dependencies [bb0098f]
-- Updated dependencies [101e74f]
-- Updated dependencies [4358326]
-- Updated dependencies [ea4b45f]
-- Updated dependencies [b720494]
-- Updated dependencies [87f52b6]
-- Updated dependencies [c19b3d0]
-  - @yuigram/core@0.2.0
-  - @yuigram/mtproto@0.2.0
-  - @yuigram/bot-api@0.2.0
+
+- Updated dependencies
+  - @yuigram/core@1.0.0
+  - @yuigram/bot-api@1.0.0
+  - @yuigram/mtproto@1.0.0
 
 ## 0.1.0
 
