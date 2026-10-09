@@ -469,6 +469,29 @@ describe('a session that has been replaced', () => {
     expect(composed.seqNo).toBe(1)
   })
 
+  it('starts identifiers from the clock again only when restarted from it', () => {
+    // Issued a minute ahead, as on a clock stepped forward before the server
+    // corrected it. A reset keeps rising from there; a restart from the clock
+    // is a new session, where identifiers may start lower.
+    const session = alone()
+    clock += 60_000
+    const ahead = session.nextMsgId()
+    clock -= 60_000
+    expect(session.issuedAhead()).toBe(true)
+
+    session.reset()
+    expect(BigInt.asUintN(64, session.nextMsgId())).toBeGreaterThan(BigInt.asUintN(64, ahead))
+
+    const before = session.id
+    session.restartFromClock()
+    const after = session.nextMsgId()
+
+    expect(session.id).not.toBe(before)
+    expect(BigInt.asUintN(64, after)).toBeLessThan(BigInt.asUintN(64, ahead))
+    expect(Number(BigInt.asUintN(64, after) >> 32n)).toBe(Math.floor(clock / 1000))
+    expect(session.issuedAhead()).toBe(false)
+  })
+
   it('keeps advancing the message identifier across the reset', () => {
     const session = alone()
     const before = compose({ session, scope: SCOPE, bodies: [ping(1n)] })

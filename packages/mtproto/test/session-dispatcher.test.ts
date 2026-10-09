@@ -820,6 +820,82 @@ describe('a refused message', () => {
   }
 })
 
+describe('a clock corrected below what the session already issued', () => {
+  // A wall clock stepped forward after the exchange: identifiers go out a
+  // minute ahead, the server refuses them with code 17 and states its time.
+  // Identifiers only rise within a session, so on this one every later message
+  // would be refused too, for as long as the clock was wrong.
+  const stepped = () => {
+    const connection = connected()
+    const trueSecond = connection.session.serverNow()
+    clock += 60_000
+    const issued = connection.session.nextMsgId()
+    const refusal = connection.peer.seal(
+      { _: 'bad_msg_notification', bad_msg_id: issued, bad_msg_seqno: 1, error_code: 17 },
+      { msgId: (BigInt(trueSecond) << 32n) | 1n },
+    )
+
+    return { ...connection, trueSecond, issued, refusal }
+  }
+
+  it('starts a new session and sends the refused message again under it', () => {
+    const { dispatcher, session, trueSecond, issued, refusal } = stepped()
+    const before = session.id
+
+    const result = dispatcher.receive(refusal)
+
+    expect(kinds(result.events)).toEqual(['reset', 'resend'])
+    expect(only(result.events, 'resend').msgId).toBe(issued)
+    expect(session.id).not.toBe(before)
+    const next = session.nextMsgId()
+    expect(Number(BigInt.asUintN(64, next) >> 32n)).toBe(trueSecond)
+    expect(BigInt.asUintN(64, next)).toBeLessThan(BigInt.asUintN(64, issued))
+  })
+
+  it('corrects the clock without a new session when nothing issued is ahead of it', () => {
+    // The server ten seconds ahead and saying so: the correction moves the
+    // clock forward, and what was issued is behind it, not ahead.
+    const { peer, dispatcher, session } = connected()
+    const issued = session.nextMsgId()
+    const before = session.id
+
+    const result = dispatcher.receive(
+      peer.seal(
+        { _: 'bad_msg_notification', bad_msg_id: issued, bad_msg_seqno: 1, error_code: 17 },
+        { msgId: (BigInt(session.serverNow() + 10) << 32n) | 1n },
+      ),
+    )
+
+    expect(kinds(result.events)).toEqual(['resend'])
+    expect(session.id).toBe(before)
+  })
+
+  it('reports the session the server opens next as a replacement, so missed updates are fetched', () => {
+    const { peer, dispatcher, session, refusal } = stepped()
+    dispatcher.receive(
+      peer.seal({
+        _: 'new_session_created',
+        first_msg_id: 4n,
+        unique_id: 1n,
+        server_salt: session.salt,
+      }),
+    )
+
+    dispatcher.receive(refusal)
+    peer.expectSession(session.id)
+    const announced = dispatcher.receive(
+      peer.seal({
+        _: 'new_session_created',
+        first_msg_id: 8n,
+        unique_id: 2n,
+        server_salt: session.salt,
+      }),
+    )
+
+    expect(only(announced.events, 'new-session').gap).toBe(true)
+  })
+})
+
 describe('a session the server started', () => {
   const announcement = (uniqueId: bigint, salt = 0x7777_7777_7777_7777n): TlValue => ({
     _: 'new_session_created',

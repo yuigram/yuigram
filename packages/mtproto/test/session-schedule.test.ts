@@ -379,6 +379,32 @@ describe('flushing', () => {
 })
 
 describe('liveness', () => {
+  it('counts the pings sent since one was last answered', () => {
+    const created = running()
+    created.pingSent(1n, START)
+    created.pingSent(2n, START + 1000)
+    expect(created.unansweredPings).toBe(2)
+
+    // An answer to either ends the run, however many were outstanding.
+    created.pongReceived(1n, START + 1001)
+    expect(created.unansweredPings).toBe(0)
+
+    created.pingSent(3n, START + 2000)
+    expect(created.unansweredPings).toBe(1)
+  })
+
+  it('is not reset by a pong for a ping it never sent, and is by stopping', () => {
+    const created = running()
+    created.pingSent(1n, START)
+    created.pingSent(2n, START + 1000)
+
+    created.pongReceived(99n, START + 1001)
+    expect(created.unansweredPings).toBe(2)
+
+    created.stop()
+    expect(created.unansweredPings).toBe(0)
+  })
+
   it('gives each ping an identifier of its own', () => {
     const created = running()
 

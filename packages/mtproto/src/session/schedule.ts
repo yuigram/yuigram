@@ -156,6 +156,7 @@ export class ConnectionSchedule {
   #running = false
   #nextPingId = 1n
   #lastRtt: number | undefined
+  #unanswered = 0
 
   constructor(options: ScheduleOptions = {}) {
     this.#interval = new Map<Duty, number>([
@@ -196,6 +197,17 @@ export class ConnectionSchedule {
     return this.#pings.size
   }
 
+  /**
+   * How many pings in a row have gone out since one was last answered.
+   *
+   * Not the same as {@link outstandingPings}: one ping lost on the way, with
+   * those after it answered, is a ping that will never be answered and a
+   * connection that is fine.
+   */
+  get unansweredPings(): number {
+    return this.#unanswered
+  }
+
   /** Whether work decided in `epoch` still belongs to the connection running now. */
   current(epoch: number): boolean {
     return this.#running && epoch === this.#epoch
@@ -234,6 +246,7 @@ export class ConnectionSchedule {
     this.#dueAt.clear()
     this.#pings.clear()
     this.#lastRtt = undefined
+    this.#unanswered = 0
   }
 
   /**
@@ -370,6 +383,7 @@ export class ConnectionSchedule {
     }
 
     this.#pings.set(pingId, at)
+    this.#unanswered += 1
   }
 
   /**
@@ -393,6 +407,7 @@ export class ConnectionSchedule {
     if (sent === undefined) return undefined
 
     this.#pings.delete(pingId)
+    this.#unanswered = 0
     if (at < sent) return undefined
 
     this.#lastRtt = at - sent

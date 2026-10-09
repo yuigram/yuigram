@@ -62,6 +62,18 @@ const DEFAULT_TIMEOUT = 60_000
 const SALTS_REQUESTED = 32
 
 /**
+ * Pings in a row that may go unanswered before the connection is given up.
+ *
+ * Two intervals of silence, at the default of one a minute. A server answers a
+ * ping within a round trip, so a connection past this either goes nowhere or can
+ * no longer hear what comes back — which a local clock stepped past the
+ * acceptance window does, while the socket stays open and every call times out.
+ * Neither mends on this connection. A new one does: it opens a new session and
+ * learns the server's clock from the first message under it.
+ */
+const MAX_UNANSWERED_PINGS = 2
+
+/**
  * Identifiers one acknowledgement may name.
  *
  * The protocol's bound, applied where the batch is divided so that a backlog
@@ -111,6 +123,14 @@ export interface ConnectionOptions {
   readonly send: (bytes: Uint8Array) => void
   /** Anything the connection does not answer itself, for the layer above. */
   readonly onEvent?: (event: SessionEvent) => void
+  /**
+   * The server has stopped answering, as far as this connection can tell.
+   *
+   * Called in place of a ping that would follow two gone unanswered, for as
+   * long as the connection is left running. The connection cannot end the link
+   * it runs over; whoever owns the link should, so that another is opened.
+   */
+  readonly onUnresponsive?: (error: Error) => void
   /** Milliseconds since the epoch. Replaced only to make a test deterministic. */
   readonly now?: () => number
   /** Randomness for the session identifier. */
@@ -159,6 +179,7 @@ export class Connection {
   readonly #client: ClientInfo
   readonly #send: (bytes: Uint8Array) => void
   readonly #onEvent: (event: SessionEvent) => void
+  readonly #onUnresponsive: (error: Error) => void
   readonly #now: () => number
   readonly #timeout: number
 
@@ -170,6 +191,10 @@ export class Connection {
   readonly #schedule: ConnectionSchedule
 
   readonly #pending = new Map<number, Pending>()
+
+  /** The last wall-clock reading, and how far it has gone back in all. */
+  #lastWall: number | undefined
+  #setBack = 0
 
   /**
    * The calls each container carried.
@@ -198,6 +223,7 @@ export class Connection {
     this.#client = options.client
     this.#send = options.send
     this.#onEvent = options.onEvent ?? (() => {})
+    this.#onUnresponsive = options.onUnresponsive ?? (() => {})
     this.#now = options.now ?? Date.now
     this.#timeout = options.timeout ?? DEFAULT_TIMEOUT
 
@@ -244,7 +270,7 @@ export class Connection {
 
   /** Begin, on a link that has been established and authenticated. */
   start(): void {
-    this.#schedule.start(this.#now())
+    this.#schedule.start(this.#timeline())
   }
 
   /**
@@ -295,7 +321,7 @@ export class Connection {
       }
 
       const id = this.#registry.create({
-        deadline: this.#now() + (options.timeout ?? this.#timeout),
+        deadline: this.#timeline() + (options.timeout ?? this.#timeout),
       })
 
       this.#pending.set(id, { id, method, answers: innermost(query), body, resolve, reject })
@@ -339,7 +365,7 @@ export class Connection {
       const body = build(msgId)
 
       const id = this.#registry.create({
-        deadline: this.#now() + (options.timeout ?? this.#timeout),
+        deadline: this.#timeline() + (options.timeout ?? this.#timeout),
       })
 
       this.#pending.set(id, { id, method, answers: method, body, resolve, reject })
@@ -374,7 +400,7 @@ export class Connection {
 
     if (result.acks.length > 0) {
       this.#acks.push(...result.acks)
-      this.#schedule.queued(this.#now())
+      this.#schedule.queued(this.#timeline())
     }
 
     for (const msgId of result.answered) this.#tracker.acknowledge(msgId)
@@ -390,16 +416,45 @@ export class Connection {
    */
   tick(): void {
     for (;;) {
-      const work = this.#schedule.due(this.#now())
+      const work = this.#schedule.due(this.#timeline())
       if (work.duties.length === 0) return
 
       for (const duty of work.duties) this.#act(duty)
     }
   }
 
-  /** The moment the caller's timer should next wake this connection. */
+  /** The moment the caller's timer should next wake this connection, on its own timeline. */
   nextWakeup(): number | undefined {
     return this.#schedule.nextWakeup()
+  }
+
+  /** Milliseconds until the caller's timer should next wake this connection. */
+  wakeupIn(): number | undefined {
+    const wakeup = this.#schedule.nextWakeup()
+
+    return wakeup === undefined ? undefined : Math.max(0, wakeup - this.#timeline())
+  }
+
+  /**
+   * Time as this connection's deadlines and duties count it.
+   *
+   * The wall clock, except that it never runs backwards. Every deadline and
+   * every periodic duty is a moment on this line, and a timer is set for the
+   * distance to it. Set back, the wall clock would put each of those moments
+   * further off by however far it went back — a call would wait that much longer
+   * before it was given up, and the pings that notice a connection that has
+   * stopped answering would not be sent — so a step back is taken as no time
+   * passing. A step forward is taken as time passing: what falls due, falls due.
+   * Message identifiers are not on this line; they are the session's, and carry
+   * the wall clock as it is.
+   */
+  #timeline(): number {
+    const wall = this.#now()
+    if (this.#lastWall !== undefined && wall < this.#lastWall)
+      this.#setBack += this.#lastWall - wall
+    this.#lastWall = wall
+
+    return wall + this.#setBack
   }
 
   /** Do one thing the schedule said was due. */
@@ -425,6 +480,15 @@ export class Connection {
         break
 
       case 'ping': {
+        if (this.#schedule.unansweredPings >= MAX_UNANSWERED_PINGS) {
+          this.#onUnresponsive(
+            new NetworkError(
+              `the datacenter answered none of the last ${MAX_UNANSWERED_PINGS} pings`,
+            ),
+          )
+          break
+        }
+
         const pingId = this.#schedule.nextPingId()
         this.#enqueue({ body: writeObject({ _: 'ping', ping_id: pingId }, this.#scope), pingId })
         break
@@ -438,7 +502,7 @@ export class Connection {
 
   /** Give up on the calls whose deadline has passed. */
   #expire(): void {
-    for (const request of this.#registry.expire(this.#now())) {
+    for (const request of this.#registry.expire(this.#timeline())) {
       const pending = this.#pending.get(request.id)
       if (pending === undefined) continue
 
@@ -453,7 +517,7 @@ export class Connection {
   /** Put something in the next batch. */
   #enqueue(entry: Queued): void {
     this.#queue.push(entry)
-    this.#schedule.queued(this.#now())
+    this.#schedule.queued(this.#timeline())
   }
 
   /**
@@ -475,7 +539,7 @@ export class Connection {
     this.#schedule.flushed()
 
     if (batch.length === 0 && acks.length === 0) return
-    if (this.#queue.length > 0 || this.#acks.length > 0) this.#schedule.queued(this.#now())
+    if (this.#queue.length > 0 || this.#acks.length > 0) this.#schedule.queued(this.#timeline())
 
     let composed: ComposedMessage
     try {
@@ -506,7 +570,7 @@ export class Connection {
       const entry = batch[index]
       if (entry === undefined) continue
 
-      if (entry.pingId !== undefined) this.#schedule.pingSent(entry.pingId, this.#now())
+      if (entry.pingId !== undefined) this.#schedule.pingSent(entry.pingId, this.#timeline())
       if (entry.id === undefined) continue
 
       this.#tracker.track({
@@ -575,7 +639,7 @@ export class Connection {
         break
 
       case 'pong':
-        this.#schedule.pongReceived(event.pingId, this.#now())
+        this.#schedule.pongReceived(event.pingId, this.#timeline())
         break
 
       case 'reset':

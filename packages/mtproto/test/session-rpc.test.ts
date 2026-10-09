@@ -114,6 +114,7 @@ function connected(schedule = {}, seed = 11) {
   /** Every sealed message the connection produced, oldest first. */
   const sent: Uint8Array[] = []
   const events: SessionEvent[] = []
+  const unresponsive: Error[] = []
 
   const connection = new Connection({
     key: result.authKey,
@@ -126,6 +127,7 @@ function connected(schedule = {}, seed = 11) {
     schedule: { pingInterval: 5000, saltInterval: 9000, stateInterval: 7000, ...schedule },
     send: (bytes) => sent.push(bytes),
     onEvent: (event) => events.push(event),
+    onUnresponsive: (error) => unresponsive.push(error),
   })
 
   connection.start()
@@ -158,6 +160,7 @@ function connected(schedule = {}, seed = 11) {
     peer,
     connection,
     events,
+    unresponsive,
     sent,
     flush,
     flushAll,
@@ -1196,6 +1199,78 @@ describe('what the schedule drives', () => {
     live.connection.tick()
 
     expect(live.sent).toHaveLength(0)
+  })
+})
+
+describe('a connection that stops being answered', () => {
+  /** The pings a pass sent. */
+  const pings = <T extends { value: TlValue }>(elements: readonly T[]): T[] =>
+    elements.filter((element) => element.value._ === 'ping')
+
+  it('says so in place of a third ping when two went unanswered', () => {
+    const live = connected()
+
+    live.at(START + 5000)
+    expect(pings(live.flush())).toHaveLength(1)
+    live.at(START + 10_000)
+    expect(pings(live.flush())).toHaveLength(1)
+    expect(live.unresponsive).toEqual([])
+
+    live.at(START + 15_000)
+    expect(pings(live.flush())).toHaveLength(0)
+    expect(live.unresponsive).toHaveLength(1)
+    expect(live.unresponsive[0]).toBeInstanceOf(NetworkError)
+    expect(live.unresponsive[0]?.message).toMatch(/answered none of the last 2 pings/)
+  })
+
+  it('counts from the last answer, so one ping lost among answered ones is not silence', () => {
+    const live = connected()
+    const answer = (ping: { msgId: bigint; value: TlValue } | undefined) => {
+      if (ping === undefined) throw new Error('no ping was sent')
+      live.connection.receive(
+        live.peer.seal({ _: 'pong', msg_id: ping.msgId, ping_id: ping.value['ping_id'] }),
+      )
+    }
+
+    live.at(START + 5000)
+    live.flush()
+    live.at(START + 10_000)
+    answer(pings(live.flush())[0])
+    live.at(START + 15_000)
+    live.flush()
+    live.at(START + 20_000)
+
+    expect(pings(live.flush())).toHaveLength(1)
+    expect(live.unresponsive).toEqual([])
+  })
+
+  it('does not put off a deadline when the wall clock is set back', async () => {
+    // Set back an hour, the wall clock would have the call wait an hour more
+    // than its caller allowed, and the pings that notice silence would stop.
+    const live = connected()
+    const answer = live.connection.invoke(query(), { timeout: 1000 })
+    live.flush()
+
+    live.at(START - 3_600_000)
+    live.connection.tick()
+    await settle()
+    expect(live.connection.pending).toBe(1)
+    expect(live.connection.wakeupIn()).toBe(1000)
+
+    live.at(START - 3_600_000 + 1000)
+    live.connection.tick()
+    await expect(answer).rejects.toThrow(/was not answered in time/)
+  })
+
+  it('keeps pinging on its interval when the wall clock is set back', () => {
+    // The hour back is no time passing; the five seconds after it are.
+    const live = connected()
+
+    live.at(START - 3_600_000)
+    expect(pings(live.flush())).toHaveLength(0)
+
+    live.at(START - 3_600_000 + 5000)
+    expect(pings(live.flush())).toHaveLength(1)
   })
 })
 

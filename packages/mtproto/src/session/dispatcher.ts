@@ -444,7 +444,15 @@ export class SessionDispatcher {
     const code = readInt(message.value, 'error_code')
     const badMsgId = readLong(message.value, 'bad_msg_id')
 
-    if (CORRECTS_THE_CLOCK.has(code)) this.#session.adoptServerTime(secondsOf(message.msgId))
+    if (CORRECTS_THE_CLOCK.has(code)) {
+      this.#session.adoptServerTime(secondsOf(message.msgId))
+
+      // The corrected clock may sit below identifiers this session already
+      // issued, and each one after them would be refused the same way until the
+      // clock caught up. A new session starts its identifiers from the clock as
+      // it now is; the message named is sent again under it.
+      if (this.#session.issuedAhead()) this.#restart(`bad_msg_notification ${code}`, events)
+    }
 
     if (REPAIRABLE_BY_RESEND.has(code)) {
       events.push({ kind: 'resend', msgId: badMsgId, reason: `bad_msg_notification ${code}` })
@@ -486,6 +494,20 @@ export class SessionDispatcher {
       // replacement mid-connection means something may have been missed.
       gap: !first,
     })
+  }
+
+  /**
+   * Start a new session for this connection, because the clock moved under it.
+   *
+   * Unlike a reset for a disagreement, the session the server last announced is
+   * remembered: the one it announces next replaces it mid-connection, and what
+   * was pushed under the old one in between is reported as possibly missed.
+   */
+  #restart(reason: string, events: SessionEvent[]): void {
+    this.#session.restartFromClock()
+    this.#history.clear()
+
+    events.push({ kind: 'reset', reason })
   }
 
   #reset(reason: string, events: SessionEvent[]): void {

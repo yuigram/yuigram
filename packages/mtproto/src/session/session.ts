@@ -66,15 +66,23 @@ export function isContentRelated(combinator: string): boolean {
   return !NEVER_CONTENT_RELATED.has(combinator)
 }
 
+/**
+ * Seconds past its own clock the server accepts a client identifier.
+ *
+ * One dated further ahead is refused with `bad_msg_notification` code 17.
+ */
+const SERVER_FUTURE_TOLERANCE = 30
+
 export class Session {
   #id: bigint
   #salt: bigint
   #seqNo = 0
   #timeOffset: number
   #clockMeasured: boolean
+  #lastMsgId: bigint | undefined
   readonly #random: (length: number) => Uint8Array
   readonly #now: () => number
-  readonly #nextMsgId: () => bigint
+  #nextMsgId: () => bigint
 
   constructor(options: SessionOptions) {
     this.#random = options.random ?? defaultRandom
@@ -83,8 +91,12 @@ export class Session {
     this.#timeOffset = options.timeOffset ?? 0
     this.#clockMeasured = options.timeOffset !== undefined
     this.#id = drawSessionId(this.#random)
+    this.#nextMsgId = this.#identifiers()
+  }
 
-    this.#nextMsgId = createMessageIdGenerator({
+  /** A fresh run of identifiers, each above the last within it. */
+  #identifiers(): () => bigint {
+    return createMessageIdGenerator({
       origin: 'client',
       now: this.#now,
       timeOffset: () => this.#timeOffset,
@@ -144,11 +156,44 @@ export class Session {
    * by resending — a sequence number it will not accept, or a container it
    * could not read. Continuing under the same identifier would repeat whatever
    * produced that, so the connection is given a new one and the counter that
-   * numbers its messages returns to the beginning.
+   * numbers its messages returns to the beginning. Message identifiers go on
+   * rising across it.
    */
   reset(): void {
     this.#id = drawSessionId(this.#random)
     this.#seqNo = 0
+  }
+
+  /**
+   * Start again under a new identifier, with identifiers from the clock as it is.
+   *
+   * For the one case an ordinary reset cannot mend: the clock was corrected to
+   * below identifiers this session already issued. Identifiers only rise within
+   * a session, so every one after those would be dated ahead of the server and
+   * refused until the clock caught up — as long as the clock was wrong. The
+   * protocol asks identifiers to rise within a session; a new session is where
+   * they may start lower, and nowhere else.
+   */
+  restartFromClock(): void {
+    this.reset()
+    this.#lastMsgId = undefined
+    this.#nextMsgId = this.#identifiers()
+  }
+
+  /**
+   * Whether an identifier this session issued is dated further ahead of the
+   * server's clock than the server accepts.
+   *
+   * Identifiers only rise within a session, so once one has been issued ahead
+   * of the clock — before the clock was corrected — every identifier after it is
+   * ahead too, and refused, until the clock catches up with it. That is as long
+   * as the clock was wrong, which is how long nothing sent would be answered.
+   */
+  issuedAhead(): boolean {
+    if (this.#lastMsgId === undefined) return false
+
+    const issued = Number(BigInt.asUintN(64, this.#lastMsgId) >> 32n)
+    return issued > this.serverNow() + SERVER_FUTURE_TOLERANCE
   }
 
   /**
@@ -168,7 +213,10 @@ export class Session {
 
   /** The next message identifier. */
   nextMsgId(): bigint {
-    return this.#nextMsgId()
+    const msgId = this.#nextMsgId()
+    this.#lastMsgId = msgId
+
+    return msgId
   }
 
   /**

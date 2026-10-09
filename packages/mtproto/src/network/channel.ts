@@ -413,7 +413,6 @@ export async function openChannel(options: ChannelOptions): Promise<Channel> {
       link,
       stream,
       authorization,
-      now,
       later,
       shutdown,
       isClosed: () => closed,
@@ -546,7 +545,6 @@ function live(context: {
   link: Link
   stream: ByteStream
   authorization: KnownAuthorization
-  now: () => number
   later: (run: () => void, delayMs: number) => () => void
   shutdown: () => void
   isClosed: () => boolean
@@ -554,7 +552,7 @@ function live(context: {
   /** What the server is told this client is, the route included. */
   client: ChannelOptions['client']
 }): Channel {
-  const { options, link, authorization, now, later } = context
+  const { options, link, authorization, later } = context
   let cancelTimer: (() => void) | undefined
   let state: ChannelState = 'ready'
 
@@ -564,6 +562,14 @@ function live(context: {
     salt: authorization.salt,
     client: context.client,
     send: (bytes) => link.send(bytes),
+    // Ended like a link that dropped, and reported the same way, so whatever
+    // holds the channel opens another — on which a new session learns the
+    // server's clock again.
+    onUnresponsive: (error) => {
+      if (state === 'closed') return
+      end(error)
+      options.onClosed?.(error)
+    },
     ...(options.onEvent === undefined ? {} : { onEvent: options.onEvent }),
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.random === undefined ? {} : { random: options.random }),
@@ -578,19 +584,16 @@ function live(context: {
     cancelTimer = undefined
     if (state !== 'ready') return
 
-    const wakeup = connection.nextWakeup()
-    if (wakeup === undefined) return
+    const delay = connection.wakeupIn()
+    if (delay === undefined) return
 
-    cancelTimer = later(
-      () => {
-        cancelTimer = undefined
-        if (state !== 'ready') return
+    cancelTimer = later(() => {
+      cancelTimer = undefined
+      if (state !== 'ready') return
 
-        connection.tick()
-        rearm()
-      },
-      Math.max(0, wakeup - now()),
-    )
+      connection.tick()
+      rearm()
+    }, delay)
   }
 
   /**
