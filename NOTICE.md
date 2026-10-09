@@ -64,8 +64,8 @@ plainly even though it carries no licence obligation.
 
 | Project | Licence | What was learned from it |
 |---|---|---|
-| [mtcute](https://github.com/mtcute/mtcute) | MIT | The scale and layering a serious MTProto client requires; where the protocol's difficulty actually concentrates |
-| [puregram](https://github.com/puregram/puregram) | MPL-2.0 | Schema-driven Bot API generation; promoting service messages to first-class update kinds; dual-parameter filter narrowing |
+| [mtcute](https://github.com/mtcute/mtcute) | MIT | The scale and layering a serious MTProto client requires; where the protocol's difficulty actually concentrates. The account's high-level methods were checked against its method list for coverage |
+| [puregram](https://github.com/puregram/puregram) | MPL-2.0 | Schema-driven Bot API generation; promoting service messages to first-class update kinds; dual-parameter filter narrowing. Several companion utilities — formatting and rich-message builders, streaming, media caching, rate limits, test helpers — take the public names its companion packages use, so its users find them where they expect; the implementations are this repository's own |
 | [Telethon](https://github.com/LonamiWebs/Telethon) | MIT | Reference behaviour for protocol edge cases |
 | [TDLib](https://github.com/tdlib/td) | Boost 1.0 | Reference behaviour for protocol edge cases |
 | [grammY](https://github.com/grammyjs/grammY) | MIT | Middleware and plugin ergonomics in the Bot API space |
