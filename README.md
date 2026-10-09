@@ -108,7 +108,7 @@ session string **is** a signed-in account — keep it out of repositories, logs 
 - **A framework layer** — filters, middleware, routers, sessions, conversations that survive a
   restart, rate limits, and plugins, shared by both clients.
 - **Storage** — memory, files, encrypted files and browser storage built in; SQLite and Redis as
-  separate packages; a four-method interface for anything else.
+  separate packages; an interface of three required methods for anything else.
 - **Messages as they are** — formatting from HTML, Markdown or builders, rich messages, answers
   streamed as drafts, uploads and downloads on both transports.
 - **An escape hatch** — `bot.api.call` and `account.api` reach whatever the framework has not

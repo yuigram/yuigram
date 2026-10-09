@@ -784,6 +784,10 @@ one interface rather than a union of the things bytes can arrive in, and what th
 look like for bytes already in memory. The source stays the caller's — nothing retains it, and
 it holds no reference to the account.
 
+An upload reports no progress: it takes no callback. Each part is read from the source once, so
+a caller that wants a figure can count what its `read` hands over — bytes read to be sent, not
+bytes Telegram has confirmed.
+
 The result carries the reference that names the file, which is what a method taking an
 `InputFile` wants. Uploads go to the account's own datacenter; unlike a download, there is no
 location naming one. `name` is a hint Telegram records, never a path, and nothing here reads a

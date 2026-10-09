@@ -34,7 +34,10 @@ interface KV<V = unknown> {
 }
 ```
 
-Four required methods; the rest optional with framework-provided fallbacks. `ttl` is in
+Three required methods; the other three are optional. Without `has`, a `get` answers instead.
+Without `clear`, nothing can be removed by prefix — an account signing out through such a store
+removes its authorization key by key but warns that its peers and update position stay — and
+without `keys`, nothing is listed. `ttl` is in
 seconds, and a driver that cannot express TTL natively may implement it with a stored expiry
 and lazy eviction — the framework detects which by feature-probing the driver.
 
@@ -48,7 +51,7 @@ and lazy eviction — the framework detects which by feature-probing the driver.
 | `indexedDb()` | core, `yuigram/indexeddb` | IndexedDB | A browser page or worker, larger state |
 | `sqliteStore(db)` | `@yuigram/sqlite` | single file | Single-host production, several processes on one file |
 | `redisStore(client)` | `@yuigram/redis` | external | Multi-process, horizontal scale |
-| — | — | external | Existing Postgres/MySQL: an adapter is four methods against the application's own client |
+| — | — | external | Existing Postgres/MySQL: an adapter is three required methods against the application's own client |
 
 The SQLite and Redis packages take a connection the application opens — `node:sqlite`,
 `better-sqlite3` or `bun:sqlite`; `ioredis` or `redis` — so neither installs a driver, and core
@@ -521,6 +524,6 @@ Full threat model in [security.md](security.md).
 |---|---|
 | Shipped | `memory()`, `file()`, `namespaced()`, `tiered()`, `encrypted()`, the `KV` contract; `@yuigram/sqlite` and `@yuigram/redis`, each a store and an atomic counter over an injected client |
 | v0.x | The conformance suite |
-| Userland | `sql` — four methods against a client the application already has |
+| Userland | `sql` — three required methods against a client the application already has |
 
 Nothing beyond memory and filesystem enters core's dependency tree at any phase.
