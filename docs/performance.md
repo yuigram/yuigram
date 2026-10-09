@@ -158,9 +158,10 @@ imports in about 40 ms against about 114 ms as 131 files. The framework's code i
 budget is waiting on; the loader's work per file is. That points at the bundled build above,
 with what it has to preserve — one copy of each class across entry points, the browser
 substitutions, source maps — and that is a change to how the packages are built, not one to make
-inside a release. Until it is made, the target is not met on this machine. Against the gate
-— failing above 120 ms — the candidate's runs, with medians from 104 to 109 ms, pass, over the
-target.
+inside a release. Until it is made, the target is not reliably met on this machine. Against the
+gate — failing above 120 ms — every run at the candidate passes: medians from 104 to 109 ms,
+over the target, and 99.2 ms (97–102) in the final run on the release tree at `474b3cf`, under
+it. The code those runs loaded is the same; the spread is the one §2.1 describes.
 
 **Earlier: at the line, and the line moved with the machine.** Nine runs of the
 benchmark's own procedure on the same tree, in the order they were taken, when
