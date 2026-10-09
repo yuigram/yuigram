@@ -101,11 +101,13 @@ export interface KnownAuthorization {
   /** Seconds to add to the local clock to reach the server's. */
   readonly timeOffset?: number
   /**
-   * The Unix second a temporary key stops being valid.
+   * The Unix second, on this machine's clock, a temporary key stops being valid.
    *
    * Absent for a permanent key, which does not expire. Present for one that
    * was asked to, so the layer that decides when to obtain another can tell
-   * without asking the server again.
+   * without asking the server again. On this clock because every decision
+   * about the key is made against this clock; the binding, which the server
+   * reads on its own, adds `timeOffset`.
    */
   readonly expiresAt?: number
 }
@@ -506,15 +508,15 @@ function negotiate(options: {
               key: result.authKey,
               salt: result.serverSalt,
               timeOffset: result.timeOffset,
-              // Measured against the server's clock rather than this one. The
-              // lifetime the server granted is relative to when it granted it,
-              // and the offset is what the exchange just established.
+              // The lifetime is a duration the server counts from this exchange,
+              // so it ends the same number of seconds from now on either clock.
+              // Kept on this one, which is the clock every later decision about
+              // the key is made on: written on the server's, it fell due late
+              // by however far the server was ahead, and a key the server had
+              // already let go was still presented to it.
               ...(result.expiresIn === undefined
                 ? {}
-                : {
-                    expiresAt:
-                      Math.floor(options.now() / 1000) + result.timeOffset + result.expiresIn,
-                  }),
+                : { expiresAt: Math.floor(options.now() / 1000) + result.expiresIn }),
             }),
           )
         } catch (error) {
@@ -652,6 +654,9 @@ function live(context: {
       if (expiresAt === undefined) {
         throw new ValidationError('only a key with a lifetime is worth vouching for')
       }
+      // The binding states the expiry as an instant the server reads on its own
+      // clock, which is the one the exchange measured the offset to.
+      const serverExpiresAt = expiresAt + (authorization.timeOffset ?? 0)
 
       const answer = await connection.invokeNaming(
         'auth.bindTempAuthKey',
@@ -661,7 +666,7 @@ function live(context: {
             temporary: authorization.key,
             sessionId: connection.sessionId,
             msgId,
-            expiresAt,
+            expiresAt: serverExpiresAt,
             scope: options.scope,
             ...(options.random === undefined ? {} : { random: options.random }),
           }).body,

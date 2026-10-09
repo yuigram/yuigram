@@ -25,6 +25,8 @@ import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
 import { AuthKey } from '../src/message/auth-key.js'
 import {
   AUTH_KEY_NOT_FOUND,
+  KEY_MARGIN_SECONDS,
+  keySpent,
   openChannel,
   type StreamRequest,
   TransportError,
@@ -332,22 +334,24 @@ describe('a key with a lifetime', () => {
     const { opened } = await channel({ expiresIn: 3600 })
     const live = await opened
 
-    // Measured against the server's clock, which the exchange has just
-    // established; the lifetime the server granted is relative to its own.
-    const offset = live.authorization.timeOffset ?? 0
-    expect(live.authorization.expiresAt).toBe(1_700_000_000 + offset + 3600)
+    expect(live.authorization.expiresAt).toBe(1_700_000_000 + 3600)
 
     live.close()
   })
 
-  it('is measured against the server clock rather than this one', async () => {
-    // The far end is a minute ahead. A lifetime it granted is relative to its
-    // own clock, so an expiry read off this one would fall due a minute early.
-    const { opened } = await channel({ expiresIn: 3600 }, 11, { serverTime: 1_700_000_060 })
+  it('falls due on this clock when the server is ahead of it', async () => {
+    // The far end is ten minutes ahead. It counts the lifetime from the
+    // exchange, so the key ends 3600 seconds from now on either clock. Written
+    // on the server's clock and compared with this one, it fell due ten
+    // minutes late, and the key was presented after the server had dropped it.
+    const { opened } = await channel({ expiresIn: 3600 }, 11, { serverTime: 1_700_000_600 })
     const live = await opened
 
-    expect(live.authorization.timeOffset).toBe(60)
-    expect(live.authorization.expiresAt).toBe(1_700_000_060 + 3600)
+    expect(live.authorization.timeOffset).toBe(600)
+    expect(live.authorization.expiresAt).toBe(1_700_000_000 + 3600)
+    // Retired a margin before the server lets it go, counted on this clock.
+    expect(keySpent(live.authorization, 1_700_000_000 + 3600 - 30)).toBe(true)
+    expect(keySpent(live.authorization, 1_700_000_000 + 3600 - KEY_MARGIN_SECONDS - 1)).toBe(false)
 
     live.close()
   })
@@ -397,6 +401,26 @@ describe('vouching for a key with a lifetime', () => {
     const [binding] = peer.bindings
     expect(binding?.expiresAt).toBe(live.authorization.expiresAt)
     expect(live.state).toBe('ready')
+
+    live.close()
+  })
+
+  it('states the expiry on the server clock, which is how the server reads it', async () => {
+    const key = permanent()
+    const opened = await channel({ expiresIn: 3600 }, 11, {
+      permanentKey: key.toBytes(),
+      // Its clock, consistently: the time it reports and the identifiers it
+      // stamps on what it sends.
+      serverTime: 1_700_000_600,
+      now: () => 1_700_000_600_000,
+    })
+    const live = await opened.opened
+
+    await live.bind(key)
+
+    const [binding] = opened.peer.bindings
+    expect(binding?.expiresAt).toBe(1_700_000_600 + 3600)
+    expect(live.authorization.expiresAt).toBe(1_700_000_000 + 3600)
 
     live.close()
   })

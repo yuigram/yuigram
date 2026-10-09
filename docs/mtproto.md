@@ -372,6 +372,14 @@ to prevent — and nothing later would notice. That refusal is Yuigram's, not th
 Per DC, indexed, with expiry stored; the authorization store already holds temporary keys
 against their expiry.
 
+**The expiry is kept on the local clock.** The server counts `expires_in` from the exchange, so
+the key ends the same number of seconds later on either clock, and every decision about retiring
+it — the minute's margin before it lapses, whether a stored one is still worth loading — is made
+on the local clock. Only the binding converts it, adding the offset the exchange measured,
+because the server reads `expires_at` on its own clock. Written on the server's clock and
+compared with the local one, an expiry fell due late by however far the server was ahead, and a
+key the server had already dropped was presented to it, which it answers with a transport `404`.
+
 Three of the obligations around a binding are met by how the exchange is arranged rather than
 by anything that watches for them:
 
