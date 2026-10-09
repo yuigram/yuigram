@@ -78,12 +78,13 @@ export class MessageHistory {
    * "unseen" would make a replay succeed by being old enough.
    */
   admit(msgId: bigint): Admission {
-    const at = this.#locate(msgId)
-    if (at < this.#seen.length && this.#seen[at] === msgId) return 'duplicate'
+    const value = ordered(msgId)
+    const at = this.#locate(value)
+    if (at < this.#seen.length && this.#seen[at] === value) return 'duplicate'
 
     if (this.#seen.length >= this.#capacity && at === 0) return 'too-old'
 
-    this.#seen.splice(at, 0, msgId)
+    this.#seen.splice(at, 0, value)
     if (this.#seen.length > this.#capacity) this.#seen.shift()
 
     return 'accepted'
@@ -91,8 +92,9 @@ export class MessageHistory {
 
   /** Whether an identifier is currently retained. */
   has(msgId: bigint): boolean {
-    const at = this.#locate(msgId)
-    return at < this.#seen.length && this.#seen[at] === msgId
+    const value = ordered(msgId)
+    const at = this.#locate(value)
+    return at < this.#seen.length && this.#seen[at] === value
   }
 
   /** Forget everything, as a new session must. */
@@ -113,6 +115,17 @@ export class MessageHistory {
 
     return low
   }
+}
+
+/**
+ * An identifier as the number that orders it.
+ *
+ * Identifiers are carried as signed longs, and one made after January 2038 reads
+ * as negative: ordered that way, the newest message would sort below every
+ * other and look older than anything retained.
+ */
+function ordered(msgId: bigint): bigint {
+  return BigInt.asUintN(64, msgId)
 }
 
 /**

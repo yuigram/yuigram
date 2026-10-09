@@ -53,6 +53,22 @@ describe('the record of what has been seen', () => {
     expect(history.has(at(1000, 13))).toBe(true)
   })
 
+  it('orders identifiers by the time they carry, across January 2038', () => {
+    // From then on an identifier is carried as a negative long. Ordered signed,
+    // the newest message would sort below everything retained, and a full
+    // record would refuse each one as too old to tell apart from a replay.
+    const signed = (seconds: number, low = 1) => BigInt.asIntN(64, at(seconds, low))
+    const before = 2 ** 31 - 2
+    const history = new MessageHistory({ capacity: 3 })
+    for (const low of [11, 13, 15]) history.admit(signed(before, low))
+
+    expect(signed(before + 2)).toBeLessThan(0n)
+    expect(history.admit(signed(before + 2))).toBe('accepted')
+    expect(history.has(signed(before, 11))).toBe(false)
+    expect(history.admit(signed(before + 2))).toBe('duplicate')
+    expect(history.admit(signed(before, 5))).toBe('too-old')
+  })
+
   it('refuses an identifier older than everything it retains', () => {
     // The record cannot prove such an identifier is new. Treating "forgotten"
     // as "unseen" would let a replay succeed by being old enough.
