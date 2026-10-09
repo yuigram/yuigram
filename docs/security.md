@@ -165,6 +165,29 @@ What does reach a node is the Diffie-Hellman handshake, the description every MT
 opens with, and requests for byte ranges. What comes back is checked against the hashes published
 for it before a single byte is handed to the caller — `mtproto.md` §11.
 
+### What a forged refusal can remove
+
+A transport error is four bytes with no authentication, so anything on the path — a proxy, a
+middlebox — can send one. A refusal does not name a key. The account attributes it to the key
+the refused connection presented and discards that key, in one step per datacenter that compares
+identifiers, so a refusal cannot remove a key obtained after it.
+
+| A refusal on | The connection presented | Discarded | Cost |
+| --- | --- | --- | --- |
+| Any connection to a Telegram datacenter: main or media, any datacenter, at start or after a migration | That datacenter's temporary key | That temporary key | One key exchange and one binding, vouched for by the permanent key, which stays stored |
+| A connection to a delivery node | The node's own key, which has no lifetime | That key, stored under the node | One key exchange with that node |
+
+The account's permanent key is never presented on a connection that carries requests. It is used
+on the channel that negotiates it, which is closed once the key is stored, and inside the
+binding message, encrypted. The code that removes a stored permanent key when a refusal names it
+remains, and today a delivery node's key is the only one it reaches. `network-datacenters.test.ts`
+holds this under "what a refusal can reach", and the concurrent cases under "discarding a key the
+datacenter refused".
+
+What this does not cover: a party that refuses every attempt keeps the account from staying
+connected. That is denial of service, which anything on the path can also cause by dropping the
+connection.
+
 ---
 
 ## 6. The cipher a browser gets, and what it does not promise
@@ -197,7 +220,7 @@ What is and is not claimed:
 | The platform backend's comparison | `node:crypto`'s `timingSafeEqual`, which is the platform's own claim rather than this repository's. |
 | The portable AES | **Not constant-time, and not claimed to be.** Stated in the module and here. |
 | The portable digests | No key-dependent table indices; a digest has no key. Nothing to leak. |
-| `modPow` | Square-and-multiply on JavaScript's `BigInt`, on every runtime rather than only in a browser, branching on exponent bits — and `BigInt` arithmetic itself takes time that depends on its operands. The exponents it is used with — DH secrets, the SRP exponent, which carries the hash of the password, and RSA public exponents — make this worth naming, and §6.3 says what follows. |
+| `modPow` | Square-and-multiply on JavaScript's `BigInt`, on every runtime rather than only in a browser, branching on exponent bits — and `BigInt` arithmetic itself takes time that depends on its operands. The exponents it is used with — DH secrets, the SRP exponent, which carries the hash of the password, and RSA public exponents — make this worth naming, and §6.4 says who could time it. |
 
 ### 6.2 Who can see the timing
 
@@ -245,6 +268,28 @@ module, here, and in `docs/runtimes.md`. It is not a blocker for a page whose
 scripts are all the developer's own. A deployment that cannot make that
 statement about its page should run the account on a server and talk to it, and
 that is the recommendation rather than a footnote.
+
+### 6.4 Exponentiation, on every runtime
+
+`modPow` is the one timing question not confined to browsers: Node, Bun and Deno run it too.
+What it exponentiates:
+
+| Use | Secret in the exponent | How often one secret is used |
+| --- | --- | --- |
+| Key exchange (`g^b`, `g_a^b`) | A fresh 2,048-bit secret; recovering it yields that exchange's key | Twice, then discarded |
+| Two-step password (SRP) | `a + u·x` with a fresh `a`, and `x` alone in `g^x`; `x` is derived from the password and its salts | `g^x` repeats the same `x` at every sign-in with that password; such sign-ins are rare |
+| RSA, in the key exchange | None: the exponent is public. The data being protected is the base | Once per exchange |
+
+Who could time it: on a server, code sharing the machine — another tenant, another process on
+the same cores. Over the network, an observer sees only when an answer leaves, after the
+exponentiation and everything around it.
+
+**Neither exploitable nor harmless has been shown.** No timing measurement of this code was made,
+and none of these exponentiations repeats a secret often enough to make a remote measurement
+obviously practical. Equally, JavaScript offers no constant-time big-integer arithmetic, and a
+process sharing a machine with code that can time it finely is the case nothing above rules out;
+there the password's `x`, which repeats, is the most exposed. For 1.0.0 the position is the
+cipher's: stated rather than fixed, and a question for the independent review (§9).
 
 ---
 
@@ -338,10 +383,13 @@ only defensible with the controls it requires:
   configuration switch.
 - **Constant-time comparison** for every secret-derived value.
 - **Independent security review** of the crypto and protocol layers before 1.0, treated as a
-  release gate rather than a nice-to-have.
+  release gate rather than a nice-to-have. **For 1.0.0 the owner has deferred it, and it has
+  not taken place.** The reviews done so far were internal: they found and fixed defects, and
+  the release checklist lists them with their limits. None of them is the independent review.
 
 Owning the implementation means owning its correctness. That is the point, and the review gate
-is what makes it a responsible position rather than an assertion.
+is what makes it a responsible position rather than an assertion. Deferring it leaves 1.0.0
+without that, and the release notes say so rather than implying otherwise.
 
 ---
 
