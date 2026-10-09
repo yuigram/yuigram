@@ -31,6 +31,10 @@ export interface SessionOptions {
    * Learned from the handshake. A message more than 30 seconds ahead of the
    * server's clock or 300 behind is rejected, and a wrong local clock is an
    * ordinary condition rather than an exceptional one.
+   *
+   * Omitted for a session opened under a stored key, which has no handshake to
+   * learn it from. The local clock stands in for the server's until the server
+   * sends something under this session, which is when the clock is learned.
    */
   readonly timeOffset?: number
 }
@@ -67,6 +71,7 @@ export class Session {
   #salt: bigint
   #seqNo = 0
   #timeOffset: number
+  #clockMeasured: boolean
   readonly #random: (length: number) => Uint8Array
   readonly #now: () => number
   readonly #nextMsgId: () => bigint
@@ -76,6 +81,7 @@ export class Session {
     this.#now = options.now ?? Date.now
     this.#salt = options.salt
     this.#timeOffset = options.timeOffset ?? 0
+    this.#clockMeasured = options.timeOffset !== undefined
     this.#id = drawSessionId(this.#random)
 
     this.#nextMsgId = createMessageIdGenerator({
@@ -100,6 +106,19 @@ export class Session {
     return this.#timeOffset
   }
 
+  /**
+   * Whether the server's clock is known here, rather than assumed.
+   *
+   * True when a handshake measured it or the server has since stated it. A
+   * session opened under a stored key starts without either: the offset that
+   * key was negotiated with is only true against the clock it was measured on,
+   * so it is not kept, and until the server is heard from the local clock is a
+   * guess.
+   */
+  get clockMeasured(): boolean {
+    return this.#clockMeasured
+  }
+
   /** The server's clock, in whole seconds. */
   serverNow(): number {
     return Math.floor(this.#now() / 1000) + this.#timeOffset
@@ -115,6 +134,7 @@ export class Session {
    */
   adoptServerTime(seconds: number): void {
     this.#timeOffset = Math.trunc(seconds) - Math.floor(this.#now() / 1000)
+    this.#clockMeasured = true
   }
 
   /**

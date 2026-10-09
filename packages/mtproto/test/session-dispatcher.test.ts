@@ -57,8 +57,13 @@ function scripted(seed: number): (length: number) => Uint8Array {
   }
 }
 
-/** A connection that has completed a handshake and opened a session. */
-function connected(seed = 11) {
+/**
+ * A connection that has completed a handshake and opened a session.
+ *
+ * `measured` is whether the session was given the clock the handshake measured,
+ * as one opened after an exchange is. One opened under a stored key is not.
+ */
+function connected(seed = 11, measured = true) {
   clock = 1_700_000_000_000
 
   const framing = new IntermediateFraming()
@@ -101,7 +106,7 @@ function connected(seed = 11) {
     salt: result.serverSalt,
     random: scripted(seed + 50),
     now: () => clock,
-    timeOffset: result.timeOffset,
+    ...(measured ? { timeOffset: result.timeOffset } : {}),
   })
 
   const dispatcher = new SessionDispatcher({ session, key: result.authKey, scope: SCOPE })
@@ -965,6 +970,81 @@ describe('a container', () => {
     expect(kinds(result.events)).toEqual(['dropped'])
     expect(only(result.events, 'dropped').reason).toBe('outside-window')
     expect(session.salt).toBe(salt)
+  })
+})
+
+describe('a session opened under a stored key', () => {
+  // No exchange measured the server's clock, so the local one stands in until
+  // the server is heard from. Judged against it, the window would refuse
+  // everything from a server more than thirty seconds ahead of this machine —
+  // the notification that would correct the clock included.
+
+  /** An identifier dated `seconds` from this machine's clock. */
+  const dated = (seconds: number, low = 1) =>
+    (BigInt(Math.floor(clock / 1000) + seconds) << 32n) | BigInt(low)
+
+  it('starts without a measured clock', () => {
+    expect(connected(11, false).session.clockMeasured).toBe(false)
+    expect(connected(11, true).session.clockMeasured).toBe(true)
+  })
+
+  it('learns the server clock from the first message under it', () => {
+    const { peer, dispatcher, session } = connected(11, false)
+
+    const result = dispatcher.receive(
+      peer.seal({ _: 'pong', msg_id: 4n, ping_id: 1n }, { msgId: dated(60) }),
+    )
+
+    expect(kinds(result.events)).toEqual(['pong'])
+    expect(session.clockMeasured).toBe(true)
+    expect(session.serverNow()).toBe(Math.floor(clock / 1000) + 60)
+  })
+
+  it('judges the window against the clock it learned', () => {
+    const { peer, dispatcher } = connected(11, false)
+    dispatcher.receive(peer.seal({ _: 'pong', msg_id: 4n, ping_id: 1n }, { msgId: dated(60) }))
+
+    const later = dispatcher.receive(
+      peer.seal({ _: 'pong', msg_id: 4n, ping_id: 2n }, { msgId: dated(60 + 31, 5) }),
+    )
+
+    expect(only(later.events, 'dropped').reason).toBe('outside-window')
+  })
+
+  it('acts on a notification that the clock is wrong, however far off it is', () => {
+    // Code 16 from a server 400 seconds ahead: outside the window this machine
+    // would have judged by, and the only way the client hears of it.
+    const { peer, dispatcher, session } = connected(11, false)
+
+    const result = dispatcher.receive(
+      peer.seal(
+        { _: 'bad_msg_notification', bad_msg_id: 8n, bad_msg_seqno: 1, error_code: 16 },
+        { msgId: dated(400) },
+      ),
+    )
+
+    expect(only(result.events, 'resend').msgId).toBe(8n)
+    expect(session.serverNow()).toBe(Math.floor(clock / 1000) + 400)
+  })
+
+  it('learns from a container by its own identifier, then judges what it carries', () => {
+    const { peer, dispatcher, session } = connected(11, false)
+
+    const result = dispatcher.receive(
+      peer.sealContainer(
+        [
+          { value: { _: 'destroy_session_ok', session_id: 4n }, msgId: dated(-400, 5) },
+          { value: { _: 'destroy_session_ok', session_id: 8n }, msgId: dated(-2, 9) },
+        ],
+        { msgId: dated(0, 13) },
+      ),
+    )
+
+    // The first element is older than the window the container's time
+    // establishes, which is how an element resent long after it was made looks.
+    expect(kinds(result.events)).toEqual(['dropped', 'message'])
+    expect(only(result.events, 'dropped').reason).toBe('outside-window')
+    expect(session.clockMeasured).toBe(true)
   })
 })
 

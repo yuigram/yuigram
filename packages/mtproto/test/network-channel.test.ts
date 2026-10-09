@@ -209,6 +209,31 @@ describe('opening a channel', () => {
     resumed.close()
   })
 
+  it('is answered after resuming, whichever way the server clock differs from this one', async () => {
+    // A key loaded from a store carries no clock offset: it is only true
+    // against the clock it was measured on. The server's answers must still be
+    // heard, both from a server sixty seconds ahead and from one five minutes
+    // behind.
+    for (const offset of [60, -301]) {
+      const { opened, peer } = await channel()
+      const first = await opened
+      const held = peer.result
+      if (held === undefined) throw new Error('the peer established no key')
+      const stored = { key: first.authorization.key, salt: first.authorization.salt }
+      first.close()
+
+      const second = await channel({ authorization: stored, keys: [] }, 11, {
+        authorizations: [held],
+        now: () => 1_700_000_000_000 + offset * 1000,
+      })
+      const resumed = await second.opened
+
+      await expect(resumed.invoke({ _: 'help.getNearestDc' })).resolves.toEqual({ _: 'boolTrue' })
+
+      resumed.close()
+    }
+  })
+
   it('refuses to open with neither an authorization nor keys to obtain one', async () => {
     const { opened } = await channel({ keys: [] })
 

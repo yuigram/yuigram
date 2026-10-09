@@ -372,10 +372,27 @@ export class SessionDispatcher {
     // whatever else about the message verified.
     if (((msgId % 2n) + 2n) % 2n !== 1n) return 'wrong-parity'
 
-    if (!withinAcceptanceWindow(msgId, this.#session.serverNow())) return 'outside-window'
+    // The window is the server's clock, and is judged against it only once that
+    // clock is known. The protocol asks a client to apply it only when it is
+    // certain of its time: a session under a stored key is not, and judging
+    // against the local clock would refuse every message from a server more
+    // than thirty seconds ahead of it — including the notification that would
+    // correct the clock.
+    const measured = this.#session.clockMeasured
+    if (measured && !withinAcceptanceWindow(msgId, this.#session.serverNow())) {
+      return 'outside-window'
+    }
 
     const admission = this.#history.admit(msgId)
-    return admission === 'accepted' ? undefined : admission
+    if (admission !== 'accepted') return admission
+
+    // What arrives under this session was made after the session began: its
+    // identifier is new, drawn when this connection opened, and the message has
+    // already verified under the key. So the time it carries is the server's
+    // clock, as a handshake would have measured it.
+    if (!measured) this.#session.adoptServerTime(secondsOf(msgId))
+
+    return undefined
   }
 
   /**
@@ -427,9 +444,7 @@ export class SessionDispatcher {
     const code = readInt(message.value, 'error_code')
     const badMsgId = readLong(message.value, 'bad_msg_id')
 
-    if (CORRECTS_THE_CLOCK.has(code)) {
-      this.#session.adoptServerTime(Number(BigInt.asUintN(64, message.msgId) >> 32n))
-    }
+    if (CORRECTS_THE_CLOCK.has(code)) this.#session.adoptServerTime(secondsOf(message.msgId))
 
     if (REPAIRABLE_BY_RESEND.has(code)) {
       events.push({ kind: 'resend', msgId: badMsgId, reason: `bad_msg_notification ${code}` })
@@ -480,6 +495,11 @@ export class SessionDispatcher {
 
     events.push({ kind: 'reset', reason })
   }
+}
+
+/** The second a message identifier was made in, on its sender's clock. */
+function secondsOf(msgId: bigint): number {
+  return Number(BigInt.asUintN(64, msgId) >> 32n)
 }
 
 function readLong(value: TlValue, field: string): bigint {
