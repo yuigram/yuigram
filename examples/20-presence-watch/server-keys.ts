@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Telegram's server public keys, taken from where Telegram publishes them.

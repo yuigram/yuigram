@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Opt-in checks against live Telegram, run by hand with credentials the operator supplies",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },

@@ -38,7 +38,7 @@ Repository, tooling, and the invariants that keep the architecture honest.
 - CI: test, typecheck, build
 - **Architecture invariants as CI gates** ([architecture.md](architecture.md) §10) — dependency
   rules, licence gate, forbidden-identifier scan on public `.d.ts`
-- `LICENSE` (MIT at first; MPL-2.0 from 1.0.0), `NOTICE.md`, `SECURITY.md`, `CONTRIBUTING.md`
+- `LICENSE` (MIT), `NOTICE.md`, `SECURITY.md`, `CONTRIBUTING.md`
 - Release automation: changesets, npm provenance
 - Documentation site skeleton, published from day one
 - `docs/protocol-notes/` established for recording observed server behaviour

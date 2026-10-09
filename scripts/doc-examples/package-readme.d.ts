@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /** packages/yuigram/README.md shows the Fetch adapter on the handler its webhook section built. */
 declare const webWebhook: typeof import('yuigram/webhook').webWebhook

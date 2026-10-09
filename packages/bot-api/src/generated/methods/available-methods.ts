@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Available methods
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
-// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { AcceptedGiftTypes, BotCommand, BotCommandScope, ChatAdministratorRights, ChatPermissions, EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, InlineQueryResult, InputChecklist, InputMediaAudio, InputMediaDocument, InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo, InputPaidMedia, InputPollMedia, InputPollOption, InputProfilePhoto, InputStoryContent, KeyboardButton, LinkPreviewOptions, MenuButton, MessageEntity, ReactionType, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, StoryArea, SuggestedPostParameters } from '../types/index.js'

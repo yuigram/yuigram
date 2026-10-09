@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * docs/ru/state.md continues one example across blocks: the waiting example runs on the bot

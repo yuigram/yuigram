@@ -54,4 +54,4 @@ It does **not** stop two processes from running one MTProto account from the sam
 reports itself as persistent, which is what tells the account layer that its in-process guard
 does not reach other processes.
 
-Node.js 22 or newer. ESM only. Licensed under MPL-2.0.
+Node.js 22 or newer. ESM only. MIT licensed.

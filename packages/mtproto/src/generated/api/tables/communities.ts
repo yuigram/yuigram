@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit.
 // Wire layout for communities
 // Source: Telegram TL layer 229, schemas/tl/api.229.tl
-// SPDX-License-Identifier: MPL-2.0 AND BSL-1.0
+// SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
 import type { TlEntry } from '../../../tl/schema.js'

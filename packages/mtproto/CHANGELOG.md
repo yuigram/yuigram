@@ -4,9 +4,6 @@
 
 ### Major Changes
 
-- Licensed under the Mozilla Public License 2.0 (`MPL-2.0`) from this release. `0.1.0` was
-  released under the MIT License, which still applies to it. The package ships the MPL-2.0 text
-  as `LICENSE`, and its source files carry an SPDX identifier.
 - `1.0.0` is the release after `0.1.0`. It was prepared first as `0.2.0`, which was never published;
   the changes listed below were made for it and are part of this release. From `1.0.0` on, a change that breaks
   the public API needs a major version. Upgrading from `0.1.0` is described, rename by rename, in

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Independent TypeScript framework for the Telegram Bot API and MTProto",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "homepage": "https://github.com/yuigram/yuigram",
   "repository": {
     "type": "git",

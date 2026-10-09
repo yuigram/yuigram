@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit.
 // Documented RPC error names
 // Source: schemas/tl/errors.json, Telegram's error database at layer 227: codes, names and methods only
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Every error name Telegram's error database lists, as it writes them: `%d`

@@ -29,5 +29,4 @@ Node.js 22 or newer. ESM only. Zero runtime dependencies.
 
 ## Licence
 
-[MPL-2.0](https://github.com/yuigram/yuigram/blob/master/LICENSE). Releases up to `0.1.0` were
-MIT-licensed.
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

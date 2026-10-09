@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Runs the framework in a real browser and reports what worked",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },

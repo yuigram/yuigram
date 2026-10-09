@@ -1,10 +1,6 @@
 # Notices
 
-Yuigram's own code and documentation are licensed under the
-[Mozilla Public License 2.0](LICENSE) (`MPL-2.0`) from version 1.0.0 on. Releases up to and
-including 0.1.0 were published under the MIT License, and remain available under it.
-
-Copyright (c) 2026 Yuigram.
+Yuigram is licensed under the [MIT License](LICENSE).
 
 Material taken from others keeps its own licence and is not relicensed: the TL schema and the
 server keys from TDLib, under the Boost Software License 1.0 (below), and the schemas and

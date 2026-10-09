@@ -54,11 +54,10 @@ What MPL-2.0 *does* permit, via §3.3:
 > You may create and distribute a Larger Work under terms of Your choice, provided that You
 > also comply with the requirements of this License for the Covered Software.
 
-So a mixed codebase is legal. Yuigram's own code is MPL-2.0 itself from 1.0.0, so a copied
-puregram file would not even change the package's licence field. It would still bring
-puregram's copyright into the tree, make that file's provenance something to track forever, and
-end the independence the project is built on. The licence is not what rules it out; the policy
-below is.
+So a mixed codebase is legal. An MIT-licensed Yuigram containing a handful of clearly
+demarcated MPL files is a valid Larger Work. But it produces a package whose licence field
+cannot honestly read `MIT`, whose per-file provenance must be tracked forever, and which
+every downstream corporate legal review will stop on.
 
 ### What this means concretely
 
@@ -236,41 +235,36 @@ project holds itself to: third-party provenance is disclosed, never hidden.
 
 ## 7. Yuigram's own licence
 
-**MPL-2.0, from 1.0.0.** Releases up to and including `0.1.0` were published under the MIT
-License and remain available under it: a licence that was granted is not withdrawn by a later
-release choosing another one.
+**Recommendation: MIT.**
 
-What MPL-2.0 asks, and of whom:
+Rationale:
 
-- **It is file-level copyleft** (§1.10, §3.1). A distributed modification of a Yuigram file stays
-  under MPL-2.0, with its source available. Code that only uses Yuigram, in files of its own, is
-  a Larger Work and can be under any licence (§3.3).
-- **An executable form names its source** (§3.2(a)). A bundle or a minified build that contains
-  Yuigram has to tell its recipients where Yuigram's source is. The npm packages ship their
-  source in `src/`, beside the build in `dist/`.
-- **The per-file notice is an SPDX identifier.** Every first-party source file starts with
-  `SPDX-License-Identifier: MPL-2.0`, the form Mozilla's FAQ accepts in ecosystems that use SPDX
-  identifiers, and every package carries the licence text as `LICENSE`. Documentation is covered
-  by the repository's `LICENSE`.
-- **No "Incompatible With Secondary Licenses" notice.** Exhibit B is not attached to any file, so
-  the secondary-licence provisions of §3.3 apply as written.
+- It is what the entire competitive set uses — grammY, Telegraf, mtcute, GramJS, GramIO are
+  all MIT. Corporate adoption is frictionless.
+- puregram's MPL-2.0 is a genuine, if modest, adoption tax; matching it would import a
+  disadvantage for no benefit.
+- It keeps the plugin ecosystem unencumbered, which matters if `@yuigram/*` is to attract
+  third-party contributions.
+- With no third-party Telegram code in the tree, MIT is unconditionally clean — there is no
+  inherited obligation to reconcile it against.
 
-What it does not cover: material from others keeps its own terms. TDLib's schema and keys are
-under the Boost Software License 1.0, whose notice ships as `TDLIB-LICENSE.txt`; Telegram's own
-schemas and documentation text carry no licence (§5). Generated files say which applies: those
-derived from TDLib's schema carry `SPDX-License-Identifier: MPL-2.0 AND BSL-1.0`, and the
-generated Bot API files say in words that the descriptions quoted from Telegram's documentation
-are not covered. The snapshots in `schemas/` are third-party inputs and are not relabelled.
+The only argument for MPL would be to prevent proprietary forks of Yuigram itself. For a
+library whose value is in its ecosystem and maintenance cadence rather than its source, that
+protection is not worth the adoption cost.
 
-The cost is the one the comparison with puregram names: some corporate reviews treat any
-copyleft, file-level included, as a step of its own.
+**Notices.** Every first-party source file opens with `SPDX-License-Identifier: MIT`, and every
+package carries the licence text as `LICENSE`. Material from others keeps its own terms, and the
+generated files say which applies: those derived from TDLib's schema carry
+`SPDX-License-Identifier: MIT AND BSL-1.0` and point to `TDLIB-LICENSE.txt`, and the generated
+Bot API files say in words that the descriptions they quote from Telegram's documentation are
+not covered by Yuigram's licence (§5). The snapshots in `schemas/` are third-party inputs and are
+not relabelled.
 
 ---
 
 ## 8. Compliance checklist before first publish
 
-- [ ] `LICENSE` at the repository root and in each package: the MPL-2.0 text; `NOTICE.md` names
-      the copyright holder and year, and says that `0.1.0` was released under MIT.
+- [ ] `LICENSE` at repository root: MIT, correct copyright holder and year.
 - [ ] `NOTICE.md` listing every third-party component, its licence, and its role, plus an
       acknowledgements section crediting puregram, mtcute, Telethon and TDLib as reference
       works — no code taken, engineering debt stated.

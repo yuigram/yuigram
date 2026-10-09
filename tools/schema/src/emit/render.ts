@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared rendering helpers for the emitters.
@@ -141,7 +141,7 @@ export function renderParameter(field: Field, indent = '  '): string {
 /**
  * Standard header for every generated file.
  *
- * The code is Yuigram's, under MPL-2.0. The descriptions in it are Telegram's
+ * The code is Yuigram's, under MIT. The descriptions in it are Telegram's
  * own documentation text, which Yuigram's licence does not cover, so the header
  * says so in words rather than with a single licence identifier.
  */
@@ -150,7 +150,7 @@ export function header(sourceVersion: string, description: string): string {
     '// GENERATED FILE — do not edit.',
     `// ${description}`,
     `// Source: Telegram Bot API ${sourceVersion}, schemas/bot-api/${sourceVersion}.json`,
-    '// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from',
+    '// The code is licensed under MIT (see LICENSE). Descriptions are quoted from',
     "// Telegram's Bot API documentation, which that licence does not cover.",
     '',
     '',

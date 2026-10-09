@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "TL schema parser and code generator for the MTProto subsystem",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },

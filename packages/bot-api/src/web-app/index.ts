@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Mini App launch data: reading `Telegram.WebApp.initData`, and checking that

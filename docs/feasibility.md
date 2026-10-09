@@ -363,8 +363,7 @@ puregram is MPL-2.0 — file-level copyleft; copying any fragment permanently bi
 file. Policy: zero reuse, reference only. mtcute is MIT and may be read freely; it is used for
 disambiguation, not transcription, so no attribution obligation is triggered — but the
 specification-first method is what keeps the work genuinely independent. Server RSA keys come
-from Telegram's published documentation, never from its GPL client source. Yuigram is MPL-2.0
-from 1.0.0 (`0.1.0` was MIT).
+from Telegram's published documentation, never from its GPL client source. Yuigram ships MIT.
 Two items are flagged for legal review: verbatim Telegram documentation text in generated
 JSDoc, and the unstated licence status of the TL schema. See [licensing.md](licensing.md).
 

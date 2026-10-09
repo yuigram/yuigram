@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Rich messages
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
-// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { Animation, Audio, CopyTextButton, DisabledButton, Document, InputMediaAnimation, InputMediaAudio, InputMediaDocument, InputMediaPhoto, InputMediaVideo, InputMediaVoiceNote, Location, LoginUrl, PhotoSize, SwitchInlineQueryChosenChat, User, Video, Voice, WebAppInfo } from './available-types.js'

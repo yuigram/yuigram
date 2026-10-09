@@ -51,4 +51,4 @@ bot.use(limits.middleware({ limit: 20, windowMs: 60_000 }))
 
 It does **not** stop two processes from running one MTProto account against the same server.
 
-Node.js 22 or newer. ESM only. Licensed under MPL-2.0.
+Node.js 22 or newer. ESM only. MIT licensed.

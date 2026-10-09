@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 // The checks one runtime runs, unchanged under Node, Bun and Deno, from an
 // installation of the packed packages. One line per check. Everything goes

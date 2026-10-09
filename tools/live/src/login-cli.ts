@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * `pnpm --filter @yuigram/live login` and `pnpm --filter @yuigram/live logout`

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Proves each architecture invariant both accepts a conforming workspace and
@@ -347,17 +347,14 @@ describe('licence-notices', () => {
   it('accepts a hand-written file with an identifier, and generated files with theirs', () => {
     const result = licenceNotices(
       workspaceOf(
-        source(
-          'packages/core/src/a.ts',
-          '// SPDX-License-Identifier: MPL-2.0\n\nexport const a = 1\n',
-        ),
+        source('packages/core/src/a.ts', '// SPDX-License-Identifier: MIT\n\nexport const a = 1\n'),
         source(
           'packages/core/src/generated/b.ts',
-          '// GENERATED FILE — do not edit.\n// b\n// Source: x\n// SPDX-License-Identifier: MPL-2.0 AND BSL-1.0\n',
+          '// GENERATED FILE — do not edit.\n// b\n// Source: x\n// SPDX-License-Identifier: MIT AND BSL-1.0\n',
         ),
         source(
           'packages/core/src/generated/c.ts',
-          '// GENERATED FILE — do not edit.\n// c\n// Source: y\n// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted\n',
+          '// GENERATED FILE — do not edit.\n// c\n// Source: y\n// The code is licensed under MIT (see LICENSE). Descriptions are quoted\n',
         ),
       ),
     )
@@ -374,10 +371,10 @@ describe('licence-notices', () => {
   })
 
   it('does not take another licence, or an identifier far down the file, for this one', () => {
-    const late = `${'\n'.repeat(20)}// SPDX-License-Identifier: MPL-2.0\n`
+    const late = `${'\n'.repeat(20)}// SPDX-License-Identifier: MIT\n`
     const result = licenceNotices(
       workspaceOf(
-        source('packages/core/src/e.ts', '// SPDX-License-Identifier: MIT\n'),
+        source('packages/core/src/e.ts', '// SPDX-License-Identifier: MPL-2.0\n'),
         source('packages/core/src/f.ts', late),
       ),
     )

@@ -196,5 +196,4 @@ streaming and a production setup.
 
 ## Licence
 
-[MPL-2.0](https://github.com/yuigram/yuigram/blob/master/LICENSE). Releases up to `0.1.0` were
-MIT-licensed.
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

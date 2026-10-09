@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared rendering for the generated modules.
@@ -21,19 +21,19 @@ export interface EmittedFile {
  * The licence of a file generated from `source`.
  *
  * A file generated from the API schema is derived from TDLib's copy of it, so
- * TDLib's Boost licence applies beside Yuigram's own; the package ships that
+ * TDLib's Boost licence applies beside Yuigram's own MIT; the package ships that
  * notice as `TDLIB-LICENSE.txt`. The service schema and the error database come
  * from Telegram's documentation and carry no licence of their own.
  */
 function licence(source: string): readonly string[] {
   if (source.includes('schemas/tl/api.')) {
     return [
-      '// SPDX-License-Identifier: MPL-2.0 AND BSL-1.0',
+      '// SPDX-License-Identifier: MIT AND BSL-1.0',
       "// Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.",
     ]
   }
 
-  return ['// SPDX-License-Identifier: MPL-2.0']
+  return ['// SPDX-License-Identifier: MIT']
 }
 
 /** The banner every generated file opens with. */

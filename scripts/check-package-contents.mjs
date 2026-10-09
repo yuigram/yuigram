@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 /**
  * What the published tarballs actually contain.
@@ -177,12 +177,12 @@ try {
       fail('manifest still carries workspace: specifiers — publish through pnpm')
     }
     if (manifest.private === true) fail('a private package was packed')
-    if (manifest.license !== 'MPL-2.0') fail(`unexpected licence ${manifest.license}`)
+    if (manifest.license !== 'MIT') fail(`unexpected licence ${manifest.license}`)
     // The licence text itself, not only its name: a package whose LICENSE file
-    // still says something else ships two licences that disagree.
+    // says something else ships two licences that disagree.
     const licence = execSync(`tar -xzOf "${archive}" package/LICENSE`, { encoding: 'utf8', cwd: dir })
-    if (!licence.startsWith('Mozilla Public License Version 2.0\n')) {
-      fail('LICENSE is not the Mozilla Public License 2.0 text')
+    if (licence !== readFileSync('LICENSE', 'utf8')) {
+      fail("LICENSE is not the repository's MIT licence")
     }
     if (typeof manifest.author !== 'string') fail('no author')
     if (!Array.isArray(manifest.files)) fail('no files allowlist')

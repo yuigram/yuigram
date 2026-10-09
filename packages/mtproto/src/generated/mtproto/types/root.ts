@@ -1,7 +1,7 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
 // Source: Telegram MTProto schema, schemas/tl/mtproto.tl
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 import type { TlObject } from '../../../tl/object.js'
 

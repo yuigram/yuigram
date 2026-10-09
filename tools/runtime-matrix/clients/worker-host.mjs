@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 
 // A worker thread hosting an account, written as an application would write
 // one: the installed packages only, nothing from this repository's sources.
