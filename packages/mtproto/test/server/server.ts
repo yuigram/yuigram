@@ -157,6 +157,15 @@ export interface MockServerOptions {
   readonly authorizations?: readonly HandshakeResult[]
   /** Milliseconds since the epoch, for the peer's message identifiers. */
   readonly now?: () => number
+  /**
+   * Judge the time in each client message's identifier, as a datacenter does.
+   *
+   * One dated more than 300 seconds before this peer's clock is refused with
+   * `bad_msg_notification` code 16, and one more than 30 seconds after it with
+   * code 17, and nothing in it is answered. Off unless a case asks, because
+   * most cases are about something other than clocks.
+   */
+  readonly checksClientTime?: boolean
   /** Padding and other filler. */
   readonly random?: (length: number) => Uint8Array
   /**
@@ -237,6 +246,8 @@ export class MockServer {
 
   /** The session the client opened, and how many answers have been sent. */
   #session: bigint | undefined
+  /** Sessions a client moved to after its first, on this connection. */
+  #sessionsOpened = 0
 
   /** Every binding this peer has accepted, oldest first. */
   readonly #bindings: Binding[] = []
@@ -263,6 +274,8 @@ export class MockServer {
    */
   readonly seen: Array<{ msgId: bigint; seqNo: number; value: TlValue; body: Uint8Array }> = []
 
+  readonly #now: () => number
+  readonly #checksClientTime: boolean
   readonly #frames = new FrameBuffer()
   #decryptor: ReturnType<typeof createCipheriv> | undefined
   #encryptor: ReturnType<typeof createCipheriv> | undefined
@@ -287,10 +300,9 @@ export class MockServer {
       random: options.random ?? ((length) => filled(length, 0x2b)),
     }
 
-    this.#nextMsgId = createMessageIdGenerator({
-      origin: 'server-response',
-      now: options.now ?? (() => 1_700_000_000_000),
-    })
+    this.#now = options.now ?? (() => 1_700_000_000_000)
+    this.#checksClientTime = options.checksClientTime === true
+    this.#nextMsgId = createMessageIdGenerator({ origin: 'server-response', now: this.#now })
   }
 
   /**
@@ -797,17 +809,35 @@ export class MockServer {
   #authenticated(frame: Uint8Array, result: HandshakeResult): Uint8Array | undefined {
     const message = openMessage(result.authKey, frame, 'client')
 
+    const expectedSalt = readInt64LE(result.serverSalt)
+
+    // A client may move to a new session on the connection it has, and a server
+    // opens it: the session is announced before anything sent under it is
+    // answered.
+    const announced: TlValue[] = []
     if (this.#session === undefined) this.#session = message.sessionId
     else if (this.#session !== message.sessionId) {
-      throw new MockServerError('the message names a session this peer has not seen')
+      this.#session = message.sessionId
+      this.#sessionsOpened += 1
+      announced.push({
+        _: 'new_session_created',
+        first_msg_id: message.msgId,
+        unique_id: BigInt(this.#sessionsOpened) * 0x1_0000_0001n,
+        server_salt: expectedSalt,
+      })
     }
 
-    const expectedSalt = readInt64LE(result.serverSalt)
     if (message.salt !== expectedSalt) {
       throw new MockServerError('the message carries a salt this peer did not agree to')
     }
 
-    const answers: TlValue[] = []
+    const refused = this.#refuseClientTime(message)
+    if (refused !== undefined) {
+      if (announced.length === 0) return this.seal(refused)
+      return this.sealContainer([...announced, refused].map((value) => ({ value })))
+    }
+
+    const answers: TlValue[] = [...announced]
     for (const element of this.#unpack(message)) {
       this.seen.push(element)
 
@@ -858,6 +888,29 @@ export class MockServer {
     }
 
     return sealed
+  }
+
+  /**
+   * The refusal a datacenter sends for a client message dated outside its window.
+   *
+   * Code 16 for an identifier more than 300 seconds before this peer's clock, 17
+   * for one more than 30 seconds after it. Nothing when the check is off or the
+   * time is acceptable.
+   */
+  #refuseClientTime(message: { msgId: bigint; seqNo: number }): TlValue | undefined {
+    if (!this.#checksClientTime) return undefined
+
+    const created = Number(BigInt.asUintN(64, message.msgId) >> 32n)
+    const now = Math.floor(this.#now() / 1000)
+    const code = created < now - 300 ? 16 : created > now + 30 ? 17 : undefined
+    if (code === undefined) return undefined
+
+    return {
+      _: 'bad_msg_notification',
+      bad_msg_id: message.msgId,
+      bad_msg_seqno: message.seqNo,
+      error_code: code,
+    }
   }
 
   /**

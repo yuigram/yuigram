@@ -45,6 +45,10 @@ export interface MockDatacenterOptions {
   readonly scope?: TlScope
   /** Seconds since the epoch, as its peers report during an exchange. */
   readonly serverTime?: number
+  /** Milliseconds since the epoch, for its peers' message identifiers. */
+  readonly now?: () => number
+  /** Whether its peers judge the time in a client's message identifiers. */
+  readonly checksClientTime?: boolean
   /** Deliberate misbehaviour, applied to every connection it answers. */
   readonly faults?: ReadonlySet<Fault>
   /**
@@ -142,6 +146,10 @@ export class MockDatacenter {
       key: this.key,
       ...(this.#options.scope === undefined ? {} : { scope: this.#options.scope }),
       ...(this.#options.serverTime === undefined ? {} : { serverTime: this.#options.serverTime }),
+      ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
+      ...(this.#options.checksClientTime === undefined
+        ? {}
+        : { checksClientTime: this.#options.checksClientTime }),
       ...(this.#options.faults === undefined ? {} : { faults: this.#options.faults }),
       ...(api === undefined ? {} : { api: (query: TlValue) => api(query, this.id) }),
       // The long-lived key is what a binding is checked against, and a binding
