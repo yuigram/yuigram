@@ -66,7 +66,10 @@ MTProto session material is the highest-value asset in the system.
 | Never in `git` | Documented + a `.gitignore` in every template, held by the `templates-ignore-secrets` invariant | The realistic leak path. A template is copied whole, so the root ignore file protects nothing once it has been copied |
 
 When enabled, encryption is AES-256-GCM with scrypt key derivation — authenticated, so
-tampering fails cleanly instead of producing confusing protocol errors.
+tampering fails cleanly instead of producing confusing protocol errors. Each value is bound to
+the key it is stored under, so one cannot be moved to another key unnoticed either. It is not
+bound to a version: whoever can write the store can put back a value it held earlier, and that
+value reads as genuine.
 
 ### 3.1 Ownership of an account's area
 
@@ -122,7 +125,7 @@ real accounts in this ecosystem.
 |---|---|
 | TLS verification | Always on. No option to disable — a flag that disables certificate checking is a flag that will be found in production. |
 | `apiBaseUrl` override | Permitted for local Bot API servers; warn loudly when it is not `api.telegram.org` and not `localhost` |
-| Proxies | Never picked up from ambient environment variables. A Bot API proxy is a `fetch` given to `fetchClient`, and an account's connections can be routed through a SOCKS or HTTP proxy by its `open` option, which supplies the byte stream. An MTProxy is the account's `proxy` option (`yuigram/mtproxy`): its secret is a credential, and is never written to a description, an error, `JSON.stringify` or `util.inspect`. Nothing falls back to a direct connection when the proxy fails |
+| Proxies | Never picked up from ambient environment variables. A Bot API proxy is a `fetch` given to `fetchClient`, and an account's connections can be routed through a SOCKS or HTTP proxy by its `open` option, which supplies the byte stream. An MTProxy is the account's `proxy` option (`yuigram/mtproxy`): its secret is a credential, and is never written to a description, an error, `JSON.stringify` or `util.inspect`. Nothing falls back to a direct connection when the proxy fails. A proxy, like anything on the path, can end a connection or forge the four-byte transport errors, which carry no authentication: a forged `404` costs the account a new temporary key, never its authorization, and the messages themselves stay encrypted and authenticated between the account and the datacenter |
 | MTProto server keys | Supplied by the application (`serverKeysFromPem`) from Telegram's own source — TDLib, which example 20 retrieves at a pinned revision and checks by digest — never compiled in, and checked by fingerprint; a datacenter offering a key the account does not hold is refused |
 | DH parameter validation | Full safe-prime check on every handshake. Not optional, not skippable. |
 | `g_a`/`g_b` range checks | Enforced — omitting them is a known MTProto weakness |
@@ -194,7 +197,7 @@ What is and is not claimed:
 | The platform backend's comparison | `node:crypto`'s `timingSafeEqual`, which is the platform's own claim rather than this repository's. |
 | The portable AES | **Not constant-time, and not claimed to be.** Stated in the module and here. |
 | The portable digests | No key-dependent table indices; a digest has no key. Nothing to leak. |
-| `modPow` | Square-and-multiply, branching on exponent bits. The exponents it is used with — DH secrets, RSA public exponents — make this worth naming, and §6.3 says what follows. |
+| `modPow` | Square-and-multiply on JavaScript's `BigInt`, on every runtime rather than only in a browser, branching on exponent bits — and `BigInt` arithmetic itself takes time that depends on its operands. The exponents it is used with — DH secrets, the SRP exponent, which carries the hash of the password, and RSA public exponents — make this worth naming, and §6.3 says what follows. |
 
 ### 6.2 Who can see the timing
 
