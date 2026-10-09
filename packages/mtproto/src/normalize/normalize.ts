@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Turning a TL update into the shape dispatch consumes.
  *

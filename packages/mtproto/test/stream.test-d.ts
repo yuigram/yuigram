@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What `streamTo` takes, as the account a caller already has.
  *

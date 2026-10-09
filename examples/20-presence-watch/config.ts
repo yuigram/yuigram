@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What the presence watch is configured with, read from the environment.
  *

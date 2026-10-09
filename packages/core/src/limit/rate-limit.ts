@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Counting what somebody does, and refusing past an allowance.
  *

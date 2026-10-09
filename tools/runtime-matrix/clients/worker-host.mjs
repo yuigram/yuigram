@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // A worker thread hosting an account, written as an application would write
 // one: the installed packages only, nothing from this repository's sources.
 import { parentPort, workerData } from 'node:worker_threads'

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Boosts, and the business surface a Premium account can publish.
  *

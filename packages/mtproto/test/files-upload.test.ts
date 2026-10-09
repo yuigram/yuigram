@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Sending a file, judged by what the datacenter ended up holding.
  *

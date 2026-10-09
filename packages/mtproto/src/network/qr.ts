@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Signing in by showing a code to a device that is already signed in.
  *

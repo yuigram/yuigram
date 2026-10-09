@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What a filesystem-backed store is, where there is no filesystem.
  *

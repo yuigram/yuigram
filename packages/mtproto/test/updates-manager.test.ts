@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Staying in step with Telegram when the stream stops being enough.
  *

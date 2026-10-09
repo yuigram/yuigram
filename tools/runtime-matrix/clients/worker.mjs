@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // The checks an edge worker runs.
 //
 // A Cloudflare Worker module, bundled from the installed packages with the

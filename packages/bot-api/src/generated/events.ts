@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API event taxonomy
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
 

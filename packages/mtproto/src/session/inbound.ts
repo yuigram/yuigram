@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Turning one decrypted message into the messages it actually carries.
  *

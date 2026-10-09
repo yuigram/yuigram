@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Filters for an account's events, read against the contexts the normalizer
  * builds from real update shapes — the whole-message form and the compact one

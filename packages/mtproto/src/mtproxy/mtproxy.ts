@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * An MTProxy, as a route an account's connections take.
  *

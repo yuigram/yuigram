@@ -11,6 +11,12 @@ to conflict with foundational work.
 
 For anything beyond a small fix, open an issue first.
 
+## Licence of contributions
+
+Yuigram is licensed under MPL-2.0. A contribution is made under the same licence, and a new
+source file starts with `// SPDX-License-Identifier: MPL-2.0`. Code taken from another project
+is not accepted, whatever its licence; see the rules below.
+
 ## Setup
 
 ```bash

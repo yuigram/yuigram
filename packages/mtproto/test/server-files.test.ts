@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The datacenter that stores and serves files, tested before anything trusts it.
  *

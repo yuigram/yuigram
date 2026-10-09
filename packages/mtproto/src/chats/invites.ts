@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The links people join a conversation by, and the requests they produce.
  *

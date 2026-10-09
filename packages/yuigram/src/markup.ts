@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Formatted text: build it, read markup into it, write markup out, and let a
  * call carry it where the Bot API takes text and its ranges.

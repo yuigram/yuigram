@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Reading a list that arrives one page at a time, as one sequence or one page.
  *

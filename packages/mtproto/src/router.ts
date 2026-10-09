@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Where an account's handlers are registered, and how a set of them travels.
  *

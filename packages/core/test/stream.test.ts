@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The stream engine, against a clock and a transport driven by hand.
  *

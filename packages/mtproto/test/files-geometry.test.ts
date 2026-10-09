@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Dividing a transfer the way the datacenter will accept it.
  *

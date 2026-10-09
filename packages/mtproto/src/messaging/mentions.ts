@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Mentions in an outgoing request, in the form a send takes.
  *

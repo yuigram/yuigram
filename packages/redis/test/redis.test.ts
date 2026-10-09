@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The Redis store and counter, against a stand-in server.
  *

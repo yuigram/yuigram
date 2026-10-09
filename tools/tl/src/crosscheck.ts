@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Validation against Telegram's own JSON rendering of the schema.
  *

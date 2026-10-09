@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * How a bot presents itself, and the mini apps and buttons around it.
  *

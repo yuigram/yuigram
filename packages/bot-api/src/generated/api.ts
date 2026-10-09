@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API callable surface
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallOptions } from '../api-options.js'
 import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, Gifts, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'

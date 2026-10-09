@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The lifecycle of a request, as distinct from the messages carrying it.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * An MTProxy, for tests, written from the protocol rather than from the client.
  *

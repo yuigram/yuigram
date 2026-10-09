@@ -10,7 +10,7 @@
     "typescript",
     "yuigram"
   ],
-  "license": "MIT",
+  "license": "MPL-2.0",
   "author": "coupdev <193032786+coupdev@users.noreply.github.com>",
   "homepage": "https://github.com/yuigram/yuigram",
   "repository": {

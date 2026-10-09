@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Reading rich Markdown and rich HTML into blocks.
  *

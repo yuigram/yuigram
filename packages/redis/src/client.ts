@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What this package needs of a Redis client: a way to send one command.
  *

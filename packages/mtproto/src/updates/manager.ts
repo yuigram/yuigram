@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Keeping an account's view of what has happened in step with Telegram's.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Primality testing and Diffie-Hellman parameter validation.
  *

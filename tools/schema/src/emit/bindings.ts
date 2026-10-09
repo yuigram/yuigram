@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Method bindings: which API methods a context can pre-address.
  *

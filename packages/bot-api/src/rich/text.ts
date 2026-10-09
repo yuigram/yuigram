@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Rich text: the formatted runs inside a rich message's blocks.
  *

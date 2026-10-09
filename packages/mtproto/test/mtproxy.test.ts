@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * MTProxy, against a peer that shares none of the client's helpers.
  *

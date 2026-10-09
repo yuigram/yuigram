@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Operations on the account itself, rather than on anything it can see.
  *

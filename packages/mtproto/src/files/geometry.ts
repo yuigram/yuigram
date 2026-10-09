@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * How a transfer is divided, and which divisions Telegram will accept.
  *

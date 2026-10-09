@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The presence watch: a bot its operator talks to, and an account that looks.
  *

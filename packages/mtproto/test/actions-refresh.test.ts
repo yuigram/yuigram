@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Putting a file reference right after the datacenter has refused it.
  *

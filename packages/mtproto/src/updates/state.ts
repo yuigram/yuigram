@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Where an account's update stream has got to, and what to do with the next one.
  *

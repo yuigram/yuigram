@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * 18 — An account's handlers: filters, groups, a router, a dependency and a
  * form that survives a restart.

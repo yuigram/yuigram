@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Streaming from an account, and the mapping between shared ranges and
  * MTProto's constructors.

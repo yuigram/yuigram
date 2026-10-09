@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Giving an account the keys it verifies a datacenter with, through the
  * published entry point alone.

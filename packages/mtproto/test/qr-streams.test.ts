@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The QR sign-in loop, and a download wearing a stream's shape.
  *

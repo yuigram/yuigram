@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Topics in a forum, which is a supergroup whose messages are filed by thread.
  *

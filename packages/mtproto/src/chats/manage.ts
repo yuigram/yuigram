@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Changing what a conversation is, rather than who is in it.
  *

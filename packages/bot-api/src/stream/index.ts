@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Streaming a model's answer into a private chat, as it is written.
  *

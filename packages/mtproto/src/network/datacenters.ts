@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Reaching a datacenter, from an identifier to a usable connection.
  *

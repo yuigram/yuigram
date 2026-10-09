@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Which conversation a piece of state belongs to, and who may advance it.
  *

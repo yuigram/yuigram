@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * One authorized connection to one datacenter, assembled.
  *

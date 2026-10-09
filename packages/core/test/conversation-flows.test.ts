@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Durable flows, and the in-memory wait handing its turn back.
  *

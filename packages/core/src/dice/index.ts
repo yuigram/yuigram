@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What a rolled dice shows, where its value alone does not say.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The two ends of a worker boundary, whatever platform provides them.
  *

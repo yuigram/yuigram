@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A stand-in for a model: an answer that arrives a few words at a time.
  *

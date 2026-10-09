@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Proves each architecture invariant both accepts a conforming workspace and
  * rejects a violating one.
@@ -12,6 +14,7 @@ import {
   declaredImports,
   isForbiddenTelegramPackage,
   layerBoundaries,
+  licenceNotices,
   noTelegramDependencies,
   packageOfSpecifier,
   publicSurfaceIsClean,
@@ -332,5 +335,53 @@ import type { X } from "@mtcute/core"
     ])
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.line).toBe(4)
+  })
+})
+
+describe('licence-notices', () => {
+  const workspaceOf = (...sources: SourceFile[]): Workspace => ({
+    root: '.',
+    packages: [pkg('@yuigram/core', { sources })],
+  })
+
+  it('accepts a hand-written file with an identifier, and generated files with theirs', () => {
+    const result = licenceNotices(
+      workspaceOf(
+        source(
+          'packages/core/src/a.ts',
+          '// SPDX-License-Identifier: MPL-2.0\n\nexport const a = 1\n',
+        ),
+        source(
+          'packages/core/src/generated/b.ts',
+          '// GENERATED FILE — do not edit.\n// b\n// Source: x\n// SPDX-License-Identifier: MPL-2.0 AND BSL-1.0\n',
+        ),
+        source(
+          'packages/core/src/generated/c.ts',
+          '// GENERATED FILE — do not edit.\n// c\n// Source: y\n// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted\n',
+        ),
+      ),
+    )
+
+    expect(result.violations).toEqual([])
+  })
+
+  it('names a file that states no licence', () => {
+    const result = licenceNotices(
+      workspaceOf(source('packages/core/src/d.ts', 'export const d = 1\n')),
+    )
+
+    expect(result.violations.map((violation) => violation.file)).toEqual(['packages/core/src/d.ts'])
+  })
+
+  it('does not take another licence, or an identifier far down the file, for this one', () => {
+    const late = `${'\n'.repeat(20)}// SPDX-License-Identifier: MPL-2.0\n`
+    const result = licenceNotices(
+      workspaceOf(
+        source('packages/core/src/e.ts', '// SPDX-License-Identifier: MIT\n'),
+        source('packages/core/src/f.ts', late),
+      ),
+    )
+
+    expect(result.violations).toHaveLength(2)
   })
 })

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A handler that fails, on an account nobody gave an error handler.
  *

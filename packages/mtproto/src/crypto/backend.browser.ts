@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The cryptography a runtime without `node:crypto` leaves to be supplied.
  *

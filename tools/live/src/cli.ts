@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * `pnpm --filter @yuigram/live live [--list]`
  *

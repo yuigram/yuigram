@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The second factor: reading its state, setting it, changing it, taking it off.
  *

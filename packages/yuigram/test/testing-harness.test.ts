@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Testing an application the way its author would, through the published
  * entry points.

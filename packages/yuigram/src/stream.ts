@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Streaming a model's answer into a chat as it is written: the Bot API plugin,
  * the account form, and the sources and engine both share.

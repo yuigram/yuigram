@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Rich message blocks: headings, paragraphs, lists, tables, media and the rest.
  *

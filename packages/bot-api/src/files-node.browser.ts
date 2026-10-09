@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What reading and writing a file on disk is, where there is no disk.
  *

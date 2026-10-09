@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * One page of a list, and everything the answer said about the rest of it.
  *

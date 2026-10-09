@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The architecture invariants.
  *
@@ -749,6 +751,47 @@ export function templatesIgnoreSecrets(templates: readonly Template[]): Invarian
   return { name: 'templates-ignore-secrets', violations }
 }
 
+/**
+ * The words a generated Bot API file carries instead of a licence identifier:
+ * its code is MPL-2.0, but the descriptions it quotes are Telegram's.
+ */
+export const QUOTED_DOCUMENTATION_NOTICE = 'The code is licensed under MPL-2.0 (see LICENSE).'
+
+/** How many lines from the top a licence notice may sit. */
+const NOTICE_LINES = 8
+
+/**
+ * Every source file says which licence covers it.
+ *
+ * MPL-2.0 attaches to a file through its notice, and files travel on their own:
+ * one copied out of the repository keeps its licence only if it says so itself.
+ * A hand-written file opens with `SPDX-License-Identifier: MPL-2.0`. A generated
+ * one carries what its generator writes: the identifier, with TDLib's Boost
+ * licence beside it where the file derives from TDLib's schema, or, where it
+ * quotes Telegram's documentation, the same in words.
+ */
+export const licenceNotices: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    for (const file of pkg.sources) {
+      const head = file.text.split('\n', NOTICE_LINES).join('\n')
+      if (/SPDX-License-Identifier: MPL-2\.0\b/.test(head)) continue
+      if (head.includes(QUOTED_DOCUMENTATION_NOTICE)) continue
+
+      violations.push({
+        file: file.path,
+        line: 1,
+        message: `${file.path} does not say which licence covers it`,
+        rationale:
+          'MPL-2.0 attaches to each file through its notice. A file copied on its own keeps its licence only if it states it; a hand-written file opens with an SPDX identifier, and a generated one with what its generator writes.',
+      })
+    }
+  }
+
+  return { name: 'licence-notices', violations }
+}
+
 /** All invariants that operate purely on the workspace description. */
 export const workspaceInvariants: readonly Invariant[] = [
   noTelegramDependencies,
@@ -758,6 +801,7 @@ export const workspaceInvariants: readonly Invariant[] = [
   eagerSurfaces,
   coreRoute,
   noSelfImport,
+  licenceNotices,
 ]
 
 /** Run every workspace invariant and collect the results. */

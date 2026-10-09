@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * docs/ru/state.md continues one example across blocks: the waiting example runs on the bot
  * the scenes example built, which carries the conversation plugin's flavour.

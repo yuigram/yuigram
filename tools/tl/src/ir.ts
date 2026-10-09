@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The intermediate representation a TL schema is parsed into.
  *

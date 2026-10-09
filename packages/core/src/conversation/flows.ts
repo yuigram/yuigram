@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Durable flows: a conversation written as one function, resumed after a restart.
  *

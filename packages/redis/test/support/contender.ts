@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * One contender: its own connection to the server, the agreed start, its hits
  * on the shared bucket, and what each was told.

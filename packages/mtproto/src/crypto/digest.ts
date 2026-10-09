@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * SHA-1, SHA-256 and MD5, without the platform.
  *

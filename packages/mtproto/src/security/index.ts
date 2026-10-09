@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Managing a two-factor password, loaded when one is managed.
  *

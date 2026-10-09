@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Running work concurrently without reordering what must stay ordered, and
  * without accepting more than can be finished.

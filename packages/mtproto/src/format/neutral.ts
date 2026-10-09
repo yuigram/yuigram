@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Formatting ranges between the shared shape and MTProto's constructors.
  *

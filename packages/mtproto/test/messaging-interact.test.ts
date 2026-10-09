@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Acting on messages that exist, and finding messages and what hangs off them.
  *

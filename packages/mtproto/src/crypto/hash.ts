@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Hashes, from whichever backend this runtime resolved to.
  *

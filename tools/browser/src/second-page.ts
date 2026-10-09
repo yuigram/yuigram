@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A second page of the same origin, for the one question a single page cannot ask.
  *

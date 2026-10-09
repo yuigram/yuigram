@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Type-level assertions for the payload builders and the new filters.
  *

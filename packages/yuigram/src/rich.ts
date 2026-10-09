@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Rich messages: blocks, rich text, and the two markup dialects.
  *

@@ -1,6 +1,7 @@
 // GENERATED FILE — do not edit.
 // mtproto registry (47 combinators)
 // Source: Telegram MTProto schema, schemas/tl/mtproto.tl
+// SPDX-License-Identifier: MPL-2.0
 
 import { type TlRegistry, createRegistry } from '../../tl/registry.js'
 import { ENTRIES } from './tables/index.js'

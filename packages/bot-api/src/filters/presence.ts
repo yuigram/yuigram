@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * "Does this update carry X?" — one filter per optional field.
  *

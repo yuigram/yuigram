@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Keeping a file addressable for longer than its reference lasts.
  *

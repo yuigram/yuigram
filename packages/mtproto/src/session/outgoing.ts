@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Turning what the client wants to send into one message the server will read.
  *

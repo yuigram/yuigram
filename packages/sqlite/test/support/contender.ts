@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * One contender: opens its own connection to the shared file, waits for the
  * agreed moment so every process starts together, counts its hits on the same

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The small previews that arrive inside a message rather than as files.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Saying something, to a conversation of the caller's choosing.
  *

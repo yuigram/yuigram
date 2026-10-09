@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * MTProto secrets must not be reachable from any public object.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Albums, copies, quotes, comments and the schedule.
  *

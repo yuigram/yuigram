@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * How a Telegram peer, message or bot feature is written down outside a session.
  *

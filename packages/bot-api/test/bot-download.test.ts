@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Downloading through a bot, and through a message the bot received.
  *

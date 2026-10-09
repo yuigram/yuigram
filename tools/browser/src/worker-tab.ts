@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A second tab, attached to the same `SharedWorker` as the check page.
  *

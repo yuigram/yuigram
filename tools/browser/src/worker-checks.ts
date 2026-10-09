@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The worker checks: an account hosted in a real `Worker` and a real
  * `SharedWorker`, reached from this page and from a second one.

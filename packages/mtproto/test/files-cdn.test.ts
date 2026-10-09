@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Fetching a file from a machine Telegram does not operate.
  *

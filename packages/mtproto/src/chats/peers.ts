@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Reading who peers are in bulk, and finding ones an account has not named yet.
  *

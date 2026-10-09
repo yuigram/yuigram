@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Available types
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallbackGame, Game } from './games.js'
 import type { Invoice, RefundedPayment, SuccessfulPayment } from './payments.js'

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Cutting a stream of markup into messages that each fit.
  *

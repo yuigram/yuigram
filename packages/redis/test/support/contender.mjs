@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 // A separate process counting hits on one bucket through its own client. A
 // child process does not inherit the test runner's TypeScript loader, so it
 // registers one first.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What encryption at rest is, where the derivation it uses does not exist.
  *

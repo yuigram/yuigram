@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Leasing an area of a SQLite store, against real SQLite.
  *

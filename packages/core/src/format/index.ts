@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Formatted text: building it, reading markup into it, writing markup out.
  *

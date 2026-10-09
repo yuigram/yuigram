@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Whether a bot actually runs somewhere that is not Node.
  *

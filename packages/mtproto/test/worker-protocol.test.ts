@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The worker protocol, across a real structured-clone boundary.
  *

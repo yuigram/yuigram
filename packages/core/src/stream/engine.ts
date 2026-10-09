@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Streaming a growing text into a chat: drafts while it grows, messages as it
  * fills them.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Readings of the media whose content is a structure rather than a file.
  *

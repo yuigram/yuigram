@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /** The bot a page's fragments talk to, for pages that do not say otherwise. */
 declare const bot: import('yuigram').Bot
 

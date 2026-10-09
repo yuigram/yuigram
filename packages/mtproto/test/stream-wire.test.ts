@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A stream from a real account, with the reader's stop arriving the way a
  * datacenter sends it: sealed, decrypted, sequenced and dispatched as a typing

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Rich messages: builders, the two dialects written from blocks, templates
  * and media.

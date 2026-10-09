@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Mini App launch data, checked by the built package in a real browser.
  *

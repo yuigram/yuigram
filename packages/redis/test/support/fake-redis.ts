@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A stand-in Redis server for the adapter's contract tests.
  *

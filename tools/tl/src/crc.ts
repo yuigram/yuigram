@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * CRC32, and the canonical form a TL combinator's identifier is computed from.
  *

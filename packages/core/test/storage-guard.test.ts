@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Holding a name, and what happens when it is taken from you.
  *

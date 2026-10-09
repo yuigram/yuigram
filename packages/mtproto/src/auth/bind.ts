@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Binding a temporary authorization key to a permanent one.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Turning what a message carried into what a transfer can fetch, and back.
  *

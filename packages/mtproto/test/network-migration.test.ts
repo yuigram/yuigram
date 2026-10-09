@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Introducing an account to a datacenter that does not know it yet.
  *

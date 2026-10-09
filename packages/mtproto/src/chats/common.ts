@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What every operation on a conversation needs before it can do anything.
  *

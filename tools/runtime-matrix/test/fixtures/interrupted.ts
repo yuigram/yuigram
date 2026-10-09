@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A matrix run interrupted part-way, as a process of its own.
  *

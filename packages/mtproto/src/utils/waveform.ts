@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A voice note's waveform, between the bytes Telegram keeps and the values
  * they stand for.

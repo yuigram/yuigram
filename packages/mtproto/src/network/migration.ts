@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Carrying an account's authorization from one datacenter to another.
  *

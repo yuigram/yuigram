@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Running the checks an operator named, and reporting what was seen.
  *

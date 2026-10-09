@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Utilities for an account's data that need no account: waveforms, inline
  * previews, Instant View pages and rich text, and inline message identifiers.

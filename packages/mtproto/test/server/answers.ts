@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Writing what the stand-in datacenter sends, against the right tables.
  *

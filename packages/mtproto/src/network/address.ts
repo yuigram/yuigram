@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The address an application names for an account's first connection, and the
  * checks every address passes before it is kept.

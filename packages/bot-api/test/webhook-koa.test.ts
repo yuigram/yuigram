@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The Koa adapter, inside a real Koa application over local HTTP.
  *

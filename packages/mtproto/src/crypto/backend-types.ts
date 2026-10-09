@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * What the protocol needs from a runtime, stated as one contract.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The update kinds an account handles beyond messages, and what a handler can
  * do about them.

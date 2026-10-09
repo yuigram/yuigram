@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Yuigram — an independent TypeScript framework for the Telegram Bot API
  * and MTProto.

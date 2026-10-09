@@ -52,7 +52,7 @@ already the less-clean of the two mature options.
 | **Runtime deps** | Few | Several | 3 | Several | Several | Several | Few | Target: 0 for Bot API |
 | **Docs** | Excellent | Good | Good | Fair | Fair | Good | Good | Must be excellent |
 | **Community** | Large | Large | Small | Large | Growing | Moderate | Small | None |
-| **Licence** | MIT | MIT | MPL-2.0 | MIT | MIT | MIT | MIT | MIT |
+| **Licence** | MIT | MIT | MPL-2.0 | MIT | MIT | MIT | MIT | MPL-2.0 from 1.0.0 (MIT before) |
 | **Maintenance** | Active | Active | Active | **Archived** | Active | Active | Active | — |
 
 ### Notes on individual projects

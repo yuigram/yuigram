@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * `@yuigram/core`, resolved once for everything the main entry point loads.
  *

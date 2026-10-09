@@ -25,5 +25,14 @@ They are committed deliberately, for four reasons:
 3. **A documentation restructure breaks a scheduled job**, not everyone's build.
 4. **History is preserved** — diffing two layers answers "what changed" precisely.
 
+## Licences
+
+The files here are inputs taken from others, kept as they were retrieved, and the repository's
+licence does not relabel them. `tl/api.229.tl` and the IR read from it are TDLib's schema,
+under the Boost Software License 1.0; its notice is `tl/TDLIB-LICENSE.txt`. The other TL files,
+`tl/errors.json` and the Bot API snapshots are read from Telegram's documentation, which states
+no licence ([../docs/licensing.md](../docs/licensing.md) §5). `tl/sources.json` records where
+each came from.
+
 The Bot API generator is in `tools/schema`; the TL generator lands in `tools/tl`. See
 [../docs/codegen.md](../docs/codegen.md) for both, and §3.3 there for the TL layer policy.

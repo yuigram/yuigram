@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Formatted-text slots (119 across 39 methods)
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MPL-2.0 (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 /**
  * Where each method takes text with its ranges as a pair of fields.

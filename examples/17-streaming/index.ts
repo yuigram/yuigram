@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * 17 — Streaming: an answer shown while it is being written.
  *

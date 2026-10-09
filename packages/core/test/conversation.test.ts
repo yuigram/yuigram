@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Conversations: identity, scenes, waiters and prompts.
  *

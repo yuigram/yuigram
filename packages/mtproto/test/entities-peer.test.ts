@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Reading the people and conversations an answer names, and joining them to
  * what a message says.

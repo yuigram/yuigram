@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The encrypted store under a runtime that reports success differently.
  *

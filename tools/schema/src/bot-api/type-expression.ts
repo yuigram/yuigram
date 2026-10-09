@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Parses Telegram's prose type expressions into the IR.
  *

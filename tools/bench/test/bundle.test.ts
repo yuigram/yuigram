@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Deciding which of a bundle's inputs belong to the MTProto subsystem.
  *

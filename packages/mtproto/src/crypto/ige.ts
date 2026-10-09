@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * AES-256 in Infinite Garble Extension mode.
  *

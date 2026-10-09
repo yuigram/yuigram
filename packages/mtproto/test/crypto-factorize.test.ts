@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Factorization of the handshake's proof-of-work value.
  *

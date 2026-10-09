@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The API schema of a layer the documentation does not yet describe, read from TDLib.
  *

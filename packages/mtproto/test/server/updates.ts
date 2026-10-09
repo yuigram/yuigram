@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * A datacenter that produces update streams a client cannot survive by luck.
  *

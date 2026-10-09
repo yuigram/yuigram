@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * docs/api-design.md shows the surface section by section, so its fragments use names an
  * earlier block defined or imported. Each is declared as what that block made it.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Formatting ranges, in the shape both Telegram transports agree on.
  *

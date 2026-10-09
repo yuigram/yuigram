@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * How a runtime without `node:zlib` decompresses.
  *

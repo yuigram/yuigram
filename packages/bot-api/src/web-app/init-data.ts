@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Mini App launch data: reading it, and checking that Telegram issued it.
  *

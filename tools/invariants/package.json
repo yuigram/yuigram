@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Architecture invariant checks enforced in CI",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "engines": {
     "node": ">=22.0.0"
   },

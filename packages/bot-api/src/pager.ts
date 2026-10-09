@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Showing a list a screen at a time, with buttons to move between screens.
  *

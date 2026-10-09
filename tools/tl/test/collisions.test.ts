@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Names both schemas declare, and whether a client could ever have to write one.
  *

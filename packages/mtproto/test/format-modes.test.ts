@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The account formatters beyond the basic dialects: tag spellings, dates,
  * interpolated formatted values, link forms, whitespace, parse modes and

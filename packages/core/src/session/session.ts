@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Framework sessions: per-user, per-chat or per-conversation application state.
  *

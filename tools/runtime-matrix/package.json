@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Runs the published packages on Node, Bun, Deno and an edge worker, and reports what worked",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "engines": {
     "node": ">=22.0.0"
   },

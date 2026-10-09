@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * One run of an account, as far as its storage is concerned, in a process of
  * its own.

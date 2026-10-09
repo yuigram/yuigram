@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Utilities that need no account, and the ones sending relies on.
  *

@@ -162,7 +162,7 @@ pnpm smoke       # pack the packages, install them, and use them as an applicati
 
 ## Licence and credits
 
-[MIT](LICENSE). Yuigram ships no third-party code and has no runtime dependencies; both
+[MPL-2.0](LICENSE) from 1.0.0; `0.1.0` was released under MIT. Yuigram ships no third-party code and has no runtime dependencies; both
 protocols are written from Telegram's published specifications.
 
 [mtcute](https://github.com/mtcute/mtcute), [puregram](https://github.com/puregram/puregram),

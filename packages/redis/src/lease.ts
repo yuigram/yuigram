@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Leasing an area of a Redis store to one holder at a time.
  *

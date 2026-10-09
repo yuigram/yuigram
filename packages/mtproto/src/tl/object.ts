@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The type a generated declaration uses where TL does not name a shape.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * The one thing a Node stream needs that a browser has no answer for.
  *

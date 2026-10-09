@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Just enough of a WebSocket server to answer a browser.
  *

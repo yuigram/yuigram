@@ -1,6 +1,7 @@
 // GENERATED FILE — do not edit.
 // Wire layout for the root namespace
 // Source: Telegram MTProto schema, schemas/tl/mtproto.tl
+// SPDX-License-Identifier: MPL-2.0
 
 import type { TlEntry } from '../../../tl/schema.js'
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+
 /**
  * Prepare the file of Telegram's server public keys, once.
  *
