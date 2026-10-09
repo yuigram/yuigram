@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Context method bindings (18 message, 79 chat, 4 source)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Context method bindings (17 message, 69 chat, 4 source)
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 /**
  * Methods addressed to the message that arrived. `chat_id` and `message_id`
@@ -10,7 +10,6 @@ export const MESSAGE_BOUND = {
   approveSuggestedPost: ['chat_id', 'message_id'],
   declineSuggestedPost: ['chat_id', 'message_id'],
   deleteMessage: ['chat_id', 'message_id'],
-  deleteMessageReaction: ['chat_id', 'message_id'],
   editMessageCaption: ['chat_id', 'message_id', 'business_connection_id'],
   editMessageChecklist: ['chat_id', 'message_id', 'business_connection_id'],
   editMessageLiveLocation: ['chat_id', 'message_id', 'business_connection_id'],
@@ -42,18 +41,12 @@ export const CHAT_BOUND = {
   createChatSubscriptionInviteLink: ['chat_id'],
   createForumTopic: ['chat_id'],
   declineChatJoinRequest: ['chat_id'],
-  deleteAllMessageReactions: ['chat_id'],
   deleteChatPhoto: ['chat_id'],
   deleteChatStickerSet: ['chat_id'],
-  deleteEphemeralMessage: ['chat_id'],
   deleteForumTopic: ['chat_id', 'message_thread_id'],
   deleteMessages: ['chat_id'],
   editChatInviteLink: ['chat_id'],
   editChatSubscriptionInviteLink: ['chat_id'],
-  editEphemeralMessageCaption: ['chat_id'],
-  editEphemeralMessageMedia: ['chat_id'],
-  editEphemeralMessageReplyMarkup: ['chat_id'],
-  editEphemeralMessageText: ['chat_id'],
   editForumTopic: ['chat_id', 'message_thread_id'],
   editGeneralForumTopic: ['chat_id'],
   exportChatInviteLink: ['chat_id'],
@@ -82,7 +75,6 @@ export const CHAT_BOUND = {
   sendGame: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendGift: ['chat_id'],
   sendInvoice: ['chat_id', 'message_thread_id'],
-  sendLivePhoto: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendLocation: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendMediaGroup: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendMessage: ['chat_id', 'message_thread_id', 'business_connection_id'],
@@ -90,8 +82,6 @@ export const CHAT_BOUND = {
   sendPaidMedia: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendPhoto: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendPoll: ['chat_id', 'message_thread_id', 'business_connection_id'],
-  sendRichMessage: ['chat_id', 'message_thread_id', 'business_connection_id'],
-  sendRichMessageDraft: ['chat_id', 'message_thread_id'],
   sendSticker: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVenue: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVideo: ['chat_id', 'message_thread_id', 'business_connection_id'],
@@ -99,7 +89,6 @@ export const CHAT_BOUND = {
   sendVoice: ['chat_id', 'message_thread_id', 'business_connection_id'],
   setChatAdministratorCustomTitle: ['chat_id'],
   setChatDescription: ['chat_id'],
-  setChatMemberTag: ['chat_id'],
   setChatMenuButton: ['chat_id'],
   setChatPermissions: ['chat_id'],
   setChatPhoto: ['chat_id'],

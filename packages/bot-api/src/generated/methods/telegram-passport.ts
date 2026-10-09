@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Telegram Passport
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { PassportElementError } from '../types/index.js'
 
@@ -16,7 +16,7 @@ export interface SetPassportDataErrorsParams {
   user_id: number
 
   /**
-   * A JSON-serialized Array describing the errors
+   * A JSON-serialized array describing the errors
    */
   errors: PassportElementError[]
 }

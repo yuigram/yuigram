@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
-// Optional field lists (122 fields)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Optional field lists (108 fields)
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 /**
- * Optional fields of `Message`, for the presence filters. 116 of them,
- * covering 7 event kinds.
+ * Optional fields of `Message`, for the presence filters. 102 of them,
+ * covering 6 event kinds.
  */
 export const MESSAGE_FIELDS = [
   'animation',
@@ -22,8 +22,6 @@ export const MESSAGE_FIELDS = [
   'checklist',
   'checklist_tasks_added',
   'checklist_tasks_done',
-  'community_chat_added',
-  'community_chat_removed',
   'connected_website',
   'contact',
   'delete_chat_photo',
@@ -34,7 +32,6 @@ export const MESSAGE_FIELDS = [
   'edit_date',
   'effect_id',
   'entities',
-  'ephemeral_message_id',
   'external_reply',
   'forum_topic_closed',
   'forum_topic_created',
@@ -51,9 +48,6 @@ export const MESSAGE_FIELDS = [
   'giveaway_created',
   'giveaway_winners',
   'group_chat_created',
-  'guest_bot_caller_chat',
-  'guest_bot_caller_user',
-  'guest_query_id',
   'has_media_spoiler',
   'has_protected_content',
   'invoice',
@@ -63,9 +57,7 @@ export const MESSAGE_FIELDS = [
   'is_topic_message',
   'left_chat_member',
   'link_preview_options',
-  'live_photo',
   'location',
-  'managed_bot_created',
   'media_group_id',
   'message_auto_delete_timer_changed',
   'message_thread_id',
@@ -81,23 +73,17 @@ export const MESSAGE_FIELDS = [
   'photo',
   'pinned_message',
   'poll',
-  'poll_option_added',
-  'poll_option_deleted',
   'proximity_alert_triggered',
   'quote',
-  'receiver_user',
   'refunded_payment',
   'reply_markup',
   'reply_to_checklist_task_id',
   'reply_to_message',
-  'reply_to_poll_option_id',
   'reply_to_story',
-  'rich_message',
   'sender',
   'sender_boost_count',
   'sender_business_bot',
   'sender_chat',
-  'sender_tag',
   'show_caption_above_media',
   'sticker',
   'story',

@@ -6,8 +6,7 @@ The recommendation is **not one of the three proposals unchanged**. Proposal A i
 because it reads best and is the most predictable, but two of its weaknesses — client surface
 size and rigidity — are solved by borrowing from B and C rather than accepting them.
 
-Every decision below is marked **Decided** where the reasoning is conclusive, or **Needs your
-approval** where it is a genuine judgement call that changes what the framework feels like.
+Each decision below is marked **Decided** and carries the reasoning that settled it.
 
 ---
 
@@ -411,7 +410,7 @@ bot.onError((error, event) => event.log.error('handler failed', { error }))
 await bot.poll()
 ```
 
-Against the test from the review — *can a first-time reader tell what kind of client this is,
+Against the readability test — *can a first-time reader tell what kind of client this is,
 how it authenticated, what it listens to, and how it is running?*
 
 - **What kind of client**: `Bot` ✓
@@ -510,58 +509,37 @@ problem, answered by the capability matrix in `unified-model.md` and by §10 abo
 
 ---
 
-## Previously open, now closed
-
-All three questions are answered above:
+## The three structural questions
 
 | Question | Answer | Basis |
 |---|---|---|
 | Break the API now? | **Yes** | Reasoning below; nothing in the reference argues otherwise |
 | Factories or functions? | **Static factories, plus a constructor** | Evidence 1 |
-| How far to wrap? | **Broadly, by generation** | Evidence 3 — reverses the earlier recommendation |
+| How far to wrap? | **Broadly, by generation** | Evidence 3 |
 
 ### On breaking now
 
-`0.1.0` was published hours before this review. The two critical defects are structural, there
+`0.1.0` is newly published. The two critical defects are structural, there
 are no dependents, and the cost of a breaking change is at its historic minimum — it only rises.
 A compatibility shim for an API with no users is pure cost. The alternative is freezing
 `ctx.text ?? ''` into every example on the front page, permanently.
 
 ---
 
-## Superseded
+## Positions the evidence overturned
 
-Three questions were left open in the first draft of this document, with recommendations
-attached. All three are now closed above, and one recommendation was reversed.
+Two of the three questions had an obvious answer that the working reference contradicted.
 
-| Question | First recommendation | Final decision | Why it changed |
+| Question | Obvious answer | Decision | Why it differs |
 |---|---|---|---|
-| A. Break the API now? | Yes | **Yes** | Unchanged |
+| A. Break the API now? | Yes | **Yes** | No difference |
 | B. Factories or functions? | Static factories | **Static factories, plus a constructor** | A working reference keeps both: a factory for the common case, a constructor for full configuration |
-| C. How far to wrap the domain? | Narrowly — reply, edit, delete, forward, react, pin | **Broadly, by generation** | **Reversed.** The argument for restraint was that each wrapper is a hand-maintained commitment. Generated from the schema, that cost is zero, and the argument goes with it |
+| C. How far to wrap the domain? | Narrowly — reply, edit, delete, forward, react, pin | **Broadly, by generation** | The argument for restraint is that each wrapper is a hand-maintained commitment. Generated from the schema, that cost is zero, and the argument goes with it |
 
-Recording C explicitly because the reversal matters: the original reasoning was sound *given its
-premise*, and the premise was wrong. "Every wrapper is a liability" holds for wrappers someone
-has to write and keep writing. It does not hold for wrappers emitted from the same schema that
-already produces the method surface, and which regenerate the day Telegram changes something.
+C is worth recording explicitly, because the restraint argument is sound *given its premise* and
+the premise does not hold here. "Every wrapper is a liability" is true of wrappers someone has
+to write and keep writing. It is not true of wrappers emitted from the same schema that already
+produces the method surface, and which regenerate the day Telegram changes something.
 
-The lesson generalises beyond this decision. Several of the constraints that felt binding during
-the first design pass were assumptions about what is expensive, not facts about what is
-possible.
-
----
-
-## What happens after approval
-
-Nothing is implemented yet, and nothing should be until A is answered. If you approve, the
-sequence is:
-
-1. Freeze this API on paper — worked examples for all three client kinds
-2. Type-level prototype: context types and `on()` narrowing, compiled but not wired
-3. Rewrite `Bot` against it; keep dispatch, filters, sessions, storage and errors as they are
-4. Regenerate context types from the schema
-5. Update examples, README and docs
-6. Publish `0.2.0` with a migration note
-
-Steps 1 and 2 are where the design is genuinely validated — if the types do not come out clean,
-the API is wrong and it is cheap to find out there.
+That generalises past this one decision: several constraints that read as binding are
+assumptions about what is expensive rather than facts about what is possible.

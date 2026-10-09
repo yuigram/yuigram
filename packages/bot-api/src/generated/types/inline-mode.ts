@@ -1,10 +1,9 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Inline mode
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { InlineKeyboardMarkup, LinkPreviewOptions, Location, MessageEntity, User, WebAppInfo } from './available-types.js'
 import type { LabeledPrice } from './payments.js'
-import type { InputRichMessage } from './rich-messages.js'
 
 /**
  * This object represents an incoming inline query. When the user sends an
@@ -35,10 +34,10 @@ export interface InlineQuery {
 
   /**
    * Type of the chat from which the inline query was sent. Can be either
-   * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
+   * "sender" for a private chat with the inline query sender, "private",
+   * "group", "supergroup", or "channel". The chat type should be always known
    * for requests sent from official clients and most third-party clients, unless
-   * the request was sent from a secret chat.
+   * the request was sent from a secret chat
    */
   readonly chat_type?: string | undefined
 
@@ -189,7 +188,7 @@ export interface InlineQueryResultPhoto {
 
   /**
    * A valid URL of the photo. Photo must be in JPEG format. Photo size must not
-   * exceed 5MB.
+   * exceed 5MB
    */
   readonly photo_url: string
 
@@ -236,7 +235,7 @@ export interface InlineQueryResultPhoto {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -296,8 +295,8 @@ export interface InlineQueryResultGif {
   readonly thumbnail_url: string
 
   /**
-   * MIME type of the thumbnail, must be one of “image/jpeg”, “image/gif”, or
-   * “video/mp4”. Defaults to “image/jpeg”.
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4". Defaults to "image/jpeg"
    */
   readonly thumbnail_mime_type?: string | undefined
 
@@ -324,7 +323,7 @@ export interface InlineQueryResultGif {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -384,8 +383,8 @@ export interface InlineQueryResultMpeg4Gif {
   readonly thumbnail_url: string
 
   /**
-   * MIME type of the thumbnail, must be one of “image/jpeg”, “image/gif”, or
-   * “video/mp4”. Defaults to “image/jpeg”.
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4". Defaults to "image/jpeg"
    */
   readonly thumbnail_mime_type?: string | undefined
 
@@ -413,7 +412,7 @@ export interface InlineQueryResultMpeg4Gif {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -455,7 +454,7 @@ export interface InlineQueryResultVideo {
   readonly video_url: string
 
   /**
-   * MIME type of the content of the video URL, “text/html” or “video/mp4”
+   * MIME type of the content of the video URL, "text/html" or "video/mp4"
    */
   readonly mime_type: string
 
@@ -487,7 +486,7 @@ export interface InlineQueryResultVideo {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -699,8 +698,8 @@ export interface InlineQueryResultDocument {
   readonly document_url: string
 
   /**
-   * MIME type of the content of the file, either “application/pdf” or
-   * “application/zip”
+   * MIME type of the content of the file, either "application/pdf" or
+   * "application/zip"
    */
   readonly mime_type: string
 
@@ -774,9 +773,9 @@ export interface InlineQueryResultLocation {
   readonly horizontal_accuracy?: number | undefined
 
   /**
-   * Period in seconds during which the location can be updated, must be between
-   * 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
-   * indefinitely
+   * Period in seconds during which the location can be updated, should be
+   * between 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
+   * indefinitely.
    */
   readonly live_period?: number | undefined
 
@@ -864,8 +863,8 @@ export interface InlineQueryResultVenue {
 
   /**
    * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -1048,7 +1047,7 @@ export interface InlineQueryResultCachedPhoto {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -1110,7 +1109,7 @@ export interface InlineQueryResultCachedGif {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -1174,7 +1173,7 @@ export interface InlineQueryResultCachedMpeg4Gif {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -1338,7 +1337,7 @@ export interface InlineQueryResultCachedVideo {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if the caption must be shown above the message media
+   * Pass True, if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
 
@@ -1464,7 +1463,7 @@ export interface InlineQueryResultCachedAudio {
 
 /**
  * This object represents the content of a message to be sent as a result of an
- * inline query. Telegram clients currently support the following types:
+ * inline query. Telegram clients currently support the following 5 types:
  *
  * @see https://corefork.telegram.org/bots/api#inputmessagecontent
  */
@@ -1472,7 +1471,6 @@ export type InputMessageContent =
   | InputContactMessageContent
   | InputInvoiceMessageContent
   | InputLocationMessageContent
-  | InputRichMessageContent
   | InputTextMessageContent
   | InputVenueMessageContent
 
@@ -1507,19 +1505,6 @@ export interface InputTextMessageContent {
 }
 
 /**
- * Represents the content of a rich message to be sent as the result of an
- * inline query.
- *
- * @see https://corefork.telegram.org/bots/api#inputrichmessagecontent
- */
-export interface InputRichMessageContent {
-  /**
-   * The message to be sent
-   */
-  readonly rich_message: InputRichMessage
-}
-
-/**
  * Represents the content of a location message to be sent as the result of an
  * inline query.
  *
@@ -1542,9 +1527,9 @@ export interface InputLocationMessageContent {
   readonly horizontal_accuracy?: number | undefined
 
   /**
-   * Period in seconds during which the location can be updated, must be between
-   * 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
-   * indefinitely
+   * Period in seconds during which the location can be updated, should be
+   * between 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
+   * indefinitely.
    */
   readonly live_period?: number | undefined
 
@@ -1596,8 +1581,8 @@ export interface InputVenueMessageContent {
 
   /**
    * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -1670,7 +1655,7 @@ export interface InputInvoiceMessageContent {
   readonly provider_token?: string | undefined
 
   /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
    * payments in Telegram Stars.
    */
   readonly currency: string
@@ -1693,7 +1678,7 @@ export interface InputInvoiceMessageContent {
   readonly max_tip_amount?: number | undefined
 
   /**
-   * A JSON-serialized Array of suggested amounts of tip in the smallest units of
+   * A JSON-serialized array of suggested amounts of tip in the smallest units of
    * the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
    * strictly increased order and must not exceed max_tip_amount.
@@ -1804,4 +1789,35 @@ export interface ChosenInlineResult {
    * The query that was used to obtain the result
    */
   readonly query: string
+}
+
+/**
+ * Describes an inline message sent by a Web App on behalf of a user.
+ *
+ * @see https://corefork.telegram.org/bots/api#sentwebappmessage
+ */
+export interface SentWebAppMessage {
+  /**
+   * Identifier of the sent inline message. Available only if there is an inline
+   * keyboard attached to the message.
+   */
+  readonly inline_message_id?: string | undefined
+}
+
+/**
+ * Describes an inline message to be sent by a user of a Mini App.
+ *
+ * @see https://corefork.telegram.org/bots/api#preparedinlinemessage
+ */
+export interface PreparedInlineMessage {
+  /**
+   * Unique identifier of the prepared message
+   */
+  readonly id: string
+
+  /**
+   * Expiration date of the prepared message, in Unix time. Expired prepared
+   * messages can no longer be used
+   */
+  readonly expiration_date: number
 }

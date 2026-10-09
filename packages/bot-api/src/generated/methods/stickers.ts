@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Stickers
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { ForceReply, InlineKeyboardMarkup, InputSticker, MaskPosition, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
 import type { InputFile } from '../../input-file.js'
@@ -18,8 +18,8 @@ export interface SendStickerParams {
   business_connection_id?: string | undefined
 
   /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * Unique identifier for the target chat or username of the target channel (in
+   * the format @channelusername)
    */
   chat_id: number | string
 
@@ -35,20 +35,6 @@ export interface SendStickerParams {
    * required if the message is sent to a direct messages chat
    */
   direct_messages_topic_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
-   */
-  receiver_user_id?: number | undefined
-
-  /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
-   */
-  callback_query_id?: string | undefined
 
   /**
    * Sticker to send. Pass a file_id as String to send a file that exists on the
@@ -77,7 +63,7 @@ export interface SendStickerParams {
   /**
    * Pass True to allow up to 1000 messages per second, ignoring broadcasting
    * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
-   * be withdrawn from the bot's balance.
+   * be withdrawn from the bot's balance
    */
   allow_paid_broadcast?: boolean | undefined
 
@@ -102,7 +88,7 @@ export interface SendStickerParams {
   /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
-   * to force a reply from the user.
+   * to force a reply from the user
    */
   reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
@@ -151,7 +137,7 @@ export interface UploadStickerFileParams {
   sticker: InputFile
 
   /**
-   * Format of the sticker, must be one of “static”, “animated”, “video”
+   * Format of the sticker, must be one of "static", "animated", "video"
    */
   sticker_format: string
 }
@@ -187,7 +173,7 @@ export interface CreateNewStickerSetParams {
   stickers: InputSticker[]
 
   /**
-   * Type of stickers in the set, pass “regular”, “mask”, or “custom_emoji”. By
+   * Type of stickers in the set, pass "regular", "mask", or "custom_emoji". By
    * default, a regular sticker set is created.
    */
   sticker_type?: string | undefined
@@ -387,8 +373,8 @@ export interface SetStickerSetThumbnailParams {
   thumbnail?: InputFile | string | undefined
 
   /**
-   * Format of the thumbnail, must be one of “static” for a .WEBP or .PNG image,
-   * “animated” for a .TGS animation, or “video” for a .WEBM video
+   * Format of the thumbnail, must be one of "static" for a .WEBP or .PNG image,
+   * "animated" for a .TGS animation, or "video" for a .WEBM video
    */
   format: string
 }
@@ -406,7 +392,7 @@ export interface SetCustomEmojiStickerSetThumbnailParams {
 
   /**
    * Custom emoji identifier of a sticker from the sticker set; pass an empty
-   * string to drop the thumbnail and use the first sticker as the thumbnail
+   * string to drop the thumbnail and use the first sticker as the thumbnail.
    */
   custom_emoji_id?: string | undefined
 }
