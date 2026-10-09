@@ -744,6 +744,29 @@ describe('a stored temporary key across a restart', () => {
     expect(channel.authorization.key.toBytes()).not.toEqual(material(8))
     expect(await store.key(2)).toEqual(material(7))
   })
+
+  it('costs only itself when a clock moved back keeps it past the server’s expiry', async () => {
+    // The key was stored while this clock was right. It has since been set
+    // back, so the key still looks live here after the server has dropped it:
+    // it is presented, refused, and discarded alone. The permanent key vouches
+    // for the next one, and nothing is authorized again.
+    const stores = { auth: memory(), dcs: memory() }
+    const store = authorizationStore(stores.auth.kv)
+    await store.setKey(2, material(7))
+    await store.setTemporaryKey(2, 0, material(8), NOW_SECONDS + 3600)
+
+    const { layer, forLifetimes, bound } = await at(NOW_SECONDS + 3000, stores)
+    const presented = await layer.connect()
+    expect(presented.authorization.key.toBytes()).toEqual(material(8))
+
+    await expect(layer.forget(2, presented.authorization.key.id)).resolves.toBe('temporary')
+    const next = await layer.connect()
+
+    expect(forLifetimes()).toHaveLength(1)
+    expect(bound[0]?.permanent).toEqual(AuthKey.from(material(7)).id)
+    expect(next.authorization.key.toBytes()).not.toEqual(material(8))
+    expect(await store.key(2)).toEqual(material(7))
+  })
 })
 
 describe('what a refusal can reach', () => {
