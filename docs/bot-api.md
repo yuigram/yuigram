@@ -560,14 +560,13 @@ What is not there yet, and what to do meanwhile:
 
 | Not yet | What to do instead | Planned |
 |---|---|---|
-| Redis / SQLite storage | `KV` is four methods — write an adapter against the client the application already configures. See [storage.md](storage.md) | userland |
-| Media caching | A hook plus a `KV`, both of which ship | userland |
+| A store not shipped | `KV` is three required methods — write an adapter against the client the application already configures. SQLite and Redis ship as `@yuigram/sqlite` and `@yuigram/redis`; see [storage.md](storage.md) | userland |
 
 ### v0.x
 
 - Business-account scoped API proxy
-- Rich messages (Bot API 10.2) as a first-class builder — built for the written forms and the
-  files they name; builders for the individual block types are still to come
+- Rich messages (Bot API 10.2) as a first-class builder — the written forms, the files they
+  name, and a builder for each block type
 
 ### v1.0
 
@@ -585,8 +584,8 @@ What is not there yet, and what to do meanwhile:
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Telegram restructures the documentation HTML | **High** | Committed schema means builds do not break; scheduled CI job fails loudly; ark0f cross-check gives a second signal; manual schema patch is always possible |
-| Prose type descriptions parsed wrongly | Medium | Golden tests over the emitted surface; ark0f diff; runtime `call()` escape hatch limits the blast radius |
+| Telegram restructures the documentation HTML | **High** | Committed schema means builds do not break; scheduled CI job fails loudly; manual schema patch is always possible. No independent parse gives a second signal yet ([codegen.md](codegen.md) §2.1) |
+| Prose type descriptions parsed wrongly | Medium | Golden tests over the emitted surface; runtime `call()` escape hatch limits the blast radius |
 | Undocumented behaviour (soft limits, absent "required" fields) | Medium | Treat documented-required as optional where evidence says otherwise; record deviations in a patch file applied after parsing |
 | Generated `.d.ts` degrades editor performance | Medium | Domain splitting; measured budget in [performance.md](performance.md) §5 |
 | Bot API release cadence outpaces maintenance | Low | Generation makes a release a review task, not an engineering task |

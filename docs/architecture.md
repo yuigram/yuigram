@@ -384,22 +384,29 @@ mistake.
 
 ## 10. Enforced invariants
 
-Architecture decays unless something checks it. These are CI gates, not conventions:
+Architecture decays unless something checks it. These are CI gates, not conventions, each
+named by what enforces it — `pnpm invariants` runs the rules in `tools/invariants`:
 
-1. **`core` imports nothing transport-specific.** Dependency-cruiser rule.
-2. **`bot-api` and `mtproto` never import each other.** Dependency-cruiser rule.
-3. **No mtcute or puregram type appears in any public `.d.ts`.** Enforced by scanning the
-   built declaration files for forbidden identifiers. This is the mechanical guarantee
-   behind long-term independence, and it holds regardless of what the implementation depends
-   on internally.
-4. **No puregram-derived source.** Similarity tripwire; see [licensing.md](licensing.md) §9.
-5. **Public API surface is snapshotted.** An API-extractor report is committed; any change to
-   the public surface shows up as a reviewable diff.
-6. **Generated code is never hand-edited.** A checksum in the header; CI regenerates and
-   fails on drift.
+1. **`core` imports nothing transport-specific.** The `layer-boundaries` rule, with
+   `declared-imports` and `module-boundaries` beside it.
+2. **`bot-api` and `mtproto` never import each other.** The same rule.
+3. **No mtcute or puregram type appears in any public `.d.ts`.** The `public-surface-is-clean`
+   rule scans the built declaration files for forbidden identifiers. This is the mechanical
+   guarantee behind long-term independence, and it holds regardless of what the implementation
+   depends on internally.
+4. **No Telegram library in the dependency tree, at any depth.** The
+   `no-telegram-dependencies` rule and CI's Independence job, which also holds runtime licences
+   to an allowlist ([licensing.md](licensing.md) §9).
+5. **Generated code is never hand-edited.** Each generated file names its source; CI
+   regenerates it from the committed schemas and fails on any difference.
 
 Invariant 3 is the one that decides whether the "not a wrapper" requirement is real or
 aspirational. It is a build failure, not a code-review preference.
+
+Two things are not enforced by a build. Nothing compares Yuigram's source with puregram's or
+mtcute's for copied text; "no code taken from either" rests on review. And the public surface
+is not snapshotted in a committed report: a change to it shows in the declarations a pull
+request changes, and `check:declarations` bounds their size, not their content.
 
 ---
 

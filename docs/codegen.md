@@ -63,10 +63,11 @@ Primary: `corefork.telegram.org/bots/api`. Fallback: `core.telegram.org/bots/api
 The corefork host publishes documentation ahead of the stable page, which gives generated
 clients lead time on unreleased features at no cost.
 
-Cross-check: [`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT),
-regenerated nightly. CI parses both and diffs the result. A divergence means either Telegram
-restructured the page or our parser regressed — both worth an alert, and neither detectable
-from our own output alone.
+A cross-check against an independent parse, such as
+[`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT), is not in place for
+the Bot API. A parser regression shows only through the generator's own tests and the review of
+each schema update's diff — our own output cannot reveal our own parser's blind spots, which is
+why the TL generator has one (§3.4).
 
 Explicitly **not** used: puregram's schema JSON, which is MPL-2.0. See
 [licensing.md](licensing.md) §4.
@@ -683,7 +684,7 @@ may deserve a first-class abstraction rather than just a type — stays with a p
 | Failure | Signal | Response |
 |---|---|---|
 | Telegram restructures the HTML | Parser throws, or the diff is implausibly large | Job fails loudly; existing builds unaffected; fix the parser |
-| Parser regression | ark0f cross-check diverges | Investigate before merging |
+| Parser regression | TL: the JSON crosscheck diverges (§3.4). Bot API: only the generator's tests and the review of the diff | Investigate before merging |
 | New TL layer | Round-trip tests fail on new constructors | Extend the parser; tests are generated, so coverage follows |
 | Silent semantic change | Not detectable by diff alone | Test-DC smoke tests; user reports |
 
@@ -753,11 +754,12 @@ mechanism hand-written and small.
    knows about the other.
 2. **Commit the schema.** Reproducible builds, reviewable diffs, and a documentation
    restructure that breaks a job rather than everyone's build.
-3. **Generated code is never hand-edited.** Enforced by checksum and CI regeneration.
+3. **Generated code is never hand-edited.** Enforced by CI regeneration: any difference fails
+   the build.
 4. **Deterministic output**, or drift detection becomes noise and stops being read.
 5. **Automate the mechanical work; keep the judgement.** The bot opens the pull request; a
    person decides whether the change needs design.
 6. **Cross-check against an independent parse.** Our own output cannot reveal our own parser's
-   blind spots.
+   blind spots. Done for TL (§3.4); not yet for the Bot API (§2.1).
 7. **Split the output.** A 2 MB declaration file is a cost paid by every user, every day.
 8. **Record deviations explicitly.** Patch files with stated reasons, not silent special cases.

@@ -282,7 +282,8 @@ not relabelled.
 ## 9. Enforcement
 
 Provenance is easy to lose accidentally once the codebase is large, and independence claimed in
-a document is worth less than independence a build can verify. Three CI guards:
+a document is worth less than independence a build can verify. Two CI guards, and one check
+that is not automated:
 
 1. **Dependency allowlist** — fail the build if any package resolves to a known Telegram
    library (`puregram`, `@puregram/*`, `mtcute`, `@mtcute/*`, `grammy`, `@grammyjs/*`,
@@ -291,10 +292,10 @@ a document is worth less than independence a build can verify. Three CI guards:
 2. **Licence gate** — fail the build if any production dependency resolves to a licence outside
    the approved set (MIT / ISC / BSD / Apache-2.0 / CC0). With a near-empty dependency tree this
    is close to trivially satisfied, which is itself the point.
-3. **Similarity tripwire** — a periodic job comparing Yuigram source against checkouts of
-   puregram and mtcute for suspiciously long matching token sequences. Not a plagiarism
-   detector; a tripwire that catches a copy-paste made under pressure. Its real function is to
-   make "written from the specification" verifiable rather than asserted.
+3. **Similarity** — comparing Yuigram source with puregram and mtcute for long matching token
+   sequences would catch a copy-paste made under pressure. It is not a CI job: nothing in the
+   build looks for copied text, and "written from the specification" rests on review rather
+   than on a check.
 
 Guard 1 is the one that makes the difference between a policy and a property. A wrapper cannot
 pass it.
