@@ -140,3 +140,87 @@ describe('refusing what is not a server key', () => {
     expect(() => serverKeysFromPem(cut)).toThrow(ValidationError)
   })
 })
+
+describe('reading a key exactly', () => {
+  // Telegram's production key, re-encoded. Read leniently, every malformed form
+  // below came out as that key; each is refused, so a damaged file is named as
+  // damaged instead of read as something close to a key.
+  const der = Buffer.from(TELEGRAM_PRODUCTION.split('\n').slice(1, -1).join(''), 'base64')
+  const modulus = der.subarray(9, 9 + 256)
+
+  const tlv = (tag: number, content: Buffer): Buffer => {
+    const n = content.length
+    const length =
+      n < 128 ? Buffer.of(n) : n < 256 ? Buffer.of(0x81, n) : Buffer.of(0x82, n >> 8, n & 0xff)
+    return Buffer.concat([Buffer.of(tag), length, content])
+  }
+  const int = (bytes: Buffer) => tlv(0x02, bytes)
+  const seq = (...parts: Buffer[]) => tlv(0x30, Buffer.concat(parts))
+  const pkcs1 = (bytes: Buffer) =>
+    `-----BEGIN RSA PUBLIC KEY-----\n${bytes.toString('base64')}\n-----END RSA PUBLIC KEY-----`
+  const spki = (bytes: Buffer) =>
+    `-----BEGIN PUBLIC KEY-----\n${bytes.toString('base64')}\n-----END PUBLIC KEY-----`
+
+  const N = int(Buffer.concat([Buffer.of(0), modulus]))
+  const E = int(Buffer.of(1, 0, 1))
+  const canonical = seq(N, E)
+  const RSA = Buffer.from('06092a864886f70d010101', 'hex')
+  const NULL = Buffer.of(0x05, 0x00)
+  const info = (algorithm: Buffer, key = canonical) =>
+    seq(algorithm, tlv(0x03, Buffer.concat([Buffer.of(0), key])))
+
+  const production = (text: string) =>
+    BigInt.asUintN(64, serverKeysFromPem(text)[0]?.fingerprint ?? 0n).toString(16)
+
+  it('reads the canonical encodings as the production key', () => {
+    expect(der.equals(canonical)).toBe(true)
+    expect(production(pkcs1(canonical))).toBe('d09d1d85de64fd85')
+    expect(production(spki(info(seq(RSA, NULL))))).toBe('d09d1d85de64fd85')
+  })
+
+  it('refuses anything after the key, or a third number inside it', () => {
+    const trailing = Buffer.concat([canonical, Buffer.of(0, 0)])
+
+    expect(() => serverKeysFromPem(pkcs1(trailing))).toThrow(/more in it than a key holds/)
+    expect(() => serverKeysFromPem(pkcs1(seq(N, E, int(Buffer.of(0)))))).toThrow(
+      /more in it than a key holds/,
+    )
+    expect(() =>
+      serverKeysFromPem(spki(Buffer.concat([info(seq(RSA, NULL)), Buffer.of(0)]))),
+    ).toThrow(/more in it than a key holds/)
+    expect(() =>
+      serverKeysFromPem(spki(info(seq(RSA, NULL), Buffer.concat([canonical, Buffer.of(0)])))),
+    ).toThrow(/more in it than a key holds/)
+  })
+
+  it('refuses a number that is negative, empty or padded', () => {
+    // Without its zero byte the modulus is a negative number in DER, and reading
+    // it as positive would be reading a different value from the one written.
+    expect(() => serverKeysFromPem(pkcs1(seq(int(modulus), E)))).toThrow(/negative number/)
+    expect(() => serverKeysFromPem(pkcs1(seq(N, int(Buffer.alloc(0)))))).toThrow(/no digits/)
+    expect(() => serverKeysFromPem(pkcs1(seq(N, int(Buffer.of(0, 1, 0, 1)))))).toThrow(
+      /more bytes than it needs/,
+    )
+  })
+
+  it('refuses an algorithm that is not a sequence, or RSA with parameters it does not take', () => {
+    const set = tlv(0x31, Buffer.concat([RSA, NULL]))
+
+    expect(() => serverKeysFromPem(spki(info(set)))).toThrow(/not a public key/)
+    expect(() => serverKeysFromPem(spki(info(seq(RSA, int(Buffer.of(0))))))).toThrow(
+      /parameters RSA does not take/,
+    )
+  })
+
+  it('reads a length written long, and RSA named without its NULL', () => {
+    // BER allows a length in more bytes than it needs, and RFC 7468 takes BER
+    // for a public key; encoders that leave out the NULL describe the same key.
+    const longLength = Buffer.concat([
+      Buffer.of(0x30, 0x83, 0x00, 0x01, 0x0a),
+      canonical.subarray(4),
+    ])
+
+    expect(production(pkcs1(longLength))).toBe('d09d1d85de64fd85')
+    expect(production(spki(info(seq(RSA))))).toBe('d09d1d85de64fd85')
+  })
+})

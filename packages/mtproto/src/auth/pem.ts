@@ -18,6 +18,12 @@
  * algorithm it is for. Several keys may be in one text. Each comes back with
  * the fingerprint a datacenter will name it by, for comparing against the
  * fingerprints Telegram publishes beside them.
+ *
+ * A key is read exactly or not at all: anything that is not an encoding of an
+ * RSA public key is refused here, where the file is named, rather than read
+ * as something close to one and found wanting at the first connection. The one
+ * allowance is a length written in more bytes than it needs, which BER permits
+ * and RFC 7468 accepts for a `PUBLIC KEY`.
  */
 
 import { ValidationError } from '../core.js'
@@ -57,12 +63,34 @@ function readDer(bytes: Uint8Array, at: number): Der {
   return { tag, content: bytes.subarray(offset, offset + length), next: offset + length }
 }
 
+/**
+ * A positive DER integer.
+ *
+ * Two's complement, in as few bytes as hold it: a value whose top bit is set
+ * is written with a zero byte in front, and only then. One without that byte
+ * is negative, and one with it when it is not needed is not DER — a modulus
+ * missing its zero byte is not the modulus it looks like.
+ */
 function integer(value: Der): bigint {
   if (value.tag !== 0x02)
     throw new ValidationError('the key has something other than a number where one belongs')
+
+  const [first, second] = value.content
+  if (first === undefined) throw new ValidationError('the key has a number with no digits')
+  if (first & 0x80) throw new ValidationError('the key has a negative number where one belongs')
+  if (first === 0 && second !== undefined && !(second & 0x80)) {
+    throw new ValidationError('the key has a number written with more bytes than it needs')
+  }
+
   let result = 0n
   for (const byte of value.content) result = (result << 8n) | BigInt(byte)
   return result
+}
+
+/** Refuse anything after a value that should have been the last in `bytes`. */
+function last(value: Der, bytes: Uint8Array): void {
+  if (value.next !== bytes.length)
+    throw new ValidationError('the key has more in it than a key holds')
 }
 
 const hex = (bytes: Uint8Array) =>
@@ -72,24 +100,42 @@ const hex = (bytes: Uint8Array) =>
 function rsaPublicKey(der: Uint8Array): { n: bigint; e: bigint } {
   const sequence = readDer(der, 0)
   if (sequence.tag !== 0x30) throw new ValidationError('the key is not an RSA public key')
+  last(sequence, der)
   const modulus = readDer(sequence.content, 0)
   const exponent = readDer(sequence.content, modulus.next)
+  last(exponent, sequence.content)
   return { n: integer(modulus), e: integer(exponent) }
 }
 
-/** The RSA key inside a `SubjectPublicKeyInfo`, refusing any other algorithm. */
+/**
+ * The RSA key inside a `SubjectPublicKeyInfo`, refusing any other algorithm.
+ *
+ * RFC 3279 gives this algorithm no parameters but a NULL. One with none at all
+ * is read too, because encoders that leave the NULL out exist and the key they
+ * describe is the same; any other parameter belongs to some other scheme.
+ */
 function subjectPublicKey(der: Uint8Array): { n: bigint; e: bigint } {
   const info = readDer(der, 0)
   if (info.tag !== 0x30) throw new ValidationError('the key is not a public key')
+  last(info, der)
   const algorithm = readDer(info.content, 0)
+  if (algorithm.tag !== 0x30) throw new ValidationError('the key is not a public key')
   const identifier = readDer(algorithm.content, 0)
   if (identifier.tag !== 0x06 || hex(identifier.content) !== RSA_ENCRYPTION) {
     throw new ValidationError('the key is not an RSA key')
+  }
+  if (identifier.next !== algorithm.content.length) {
+    const parameters = readDer(algorithm.content, identifier.next)
+    if (parameters.tag !== 0x05 || parameters.content.length !== 0) {
+      throw new ValidationError('the key names RSA with parameters RSA does not take')
+    }
+    last(parameters, algorithm.content)
   }
   const bits = readDer(info.content, algorithm.next)
   if (bits.tag !== 0x03 || bits.content[0] !== 0) {
     throw new ValidationError('the key is not an RSA public key')
   }
+  last(bits, info.content)
   return rsaPublicKey(bits.content.subarray(1))
 }
 
