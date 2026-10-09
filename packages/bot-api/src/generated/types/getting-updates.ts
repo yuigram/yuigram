@@ -1,14 +1,14 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Getting updates
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
+import type { BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
 import type { ChosenInlineResult, InlineQuery } from './inline-mode.js'
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './payments.js'
 
 /**
  * This object represents an incoming update. At most one of the optional
- * fields can be present in any given update.
+ * parameters can be present in any given update.
  *
  * @see https://corefork.telegram.org/bots/api#update
  */
@@ -70,12 +70,6 @@ export interface Update {
   readonly deleted_business_messages?: BusinessMessagesDeleted | undefined
 
   /**
-   * New guest message. The bot can use the field Message.guest_query_id and the
-   * method answerGuestQuery to send a message in response.
-   */
-  readonly guest_message?: Message | undefined
-
-  /**
    * A reaction to a message was changed by a user. The bot must be an
    * administrator in the chat and must explicitly specify "message_reaction" in
    * the list of allowed_updates to receive these updates. The update isn't
@@ -110,12 +104,12 @@ export interface Update {
   readonly callback_query?: CallbackQuery | undefined
 
   /**
-   * New incoming shipping query. Only for invoices with flexible price.
+   * New incoming shipping query. Only for invoices with flexible price
    */
   readonly shipping_query?: ShippingQuery | undefined
 
   /**
-   * New incoming pre-checkout query. Contains full information about checkout.
+   * New incoming pre-checkout query. Contains full information about checkout
    */
   readonly pre_checkout_query?: PreCheckoutQuery | undefined
 
@@ -127,7 +121,7 @@ export interface Update {
 
   /**
    * New poll state. Bots receive only updates about manually stopped polls and
-   * polls, which are sent by the bot.
+   * polls, which are sent by the bot
    */
   readonly poll?: Poll | undefined
 
@@ -167,17 +161,6 @@ export interface Update {
    * chat to receive these updates.
    */
   readonly removed_chat_boost?: ChatBoostRemoved | undefined
-
-  /**
-   * A new bot was created to be managed by the bot, or token or owner of a
-   * managed bot was changed
-   */
-  readonly managed_bot?: ManagedBotUpdated | undefined
-
-  /**
-   * User payment subscription has changed
-   */
-  readonly subscription?: BotSubscriptionUpdated | undefined
 }
 
 /**
@@ -232,7 +215,7 @@ export interface WebhookInfo {
 
   /**
    * A list of update types the bot is subscribed to. Defaults to all update
-   * types except chat_member, message_reaction, and message_reaction_count.
+   * types except chat_member
    */
   readonly allowed_updates?: string[] | undefined
 }

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Games
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { Animation, MessageEntity, PhotoSize, User } from './available-types.js'
 
@@ -22,7 +22,7 @@ export interface Game {
   readonly description: string
 
   /**
-   * Photo that will be displayed in the game message in chats
+   * Photo that will be displayed in the game message in chats.
    */
   readonly photo: PhotoSize[]
 
@@ -42,7 +42,7 @@ export interface Game {
 
   /**
    * Animation that will be displayed in the game message in chats. Upload via
-   * BotFather.
+   * BotFather
    */
   readonly animation?: Animation | undefined
 }

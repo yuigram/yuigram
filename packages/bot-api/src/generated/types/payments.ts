@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Payments
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { Chat, Gift, PaidMedia, User } from './available-types.js'
 
@@ -46,7 +46,7 @@ export interface Invoice {
   readonly start_parameter: string
 
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -155,7 +155,7 @@ export interface ShippingOption {
  */
 export interface SuccessfulPayment {
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -216,8 +216,8 @@ export interface SuccessfulPayment {
  */
 export interface RefundedPayment {
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram
-   * Stars. Currently, always “XTR”.
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram
+   * Stars. Currently, always "XTR"
    */
   readonly currency: string
 
@@ -289,7 +289,7 @@ export interface PreCheckoutQuery {
   readonly from: User
 
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -352,7 +352,7 @@ export type RevenueWithdrawalState =
  */
 export interface RevenueWithdrawalStatePending {
   /**
-   * Type of the state, always “pending”
+   * Type of the state, always "pending"
    */
   readonly type: string
 }
@@ -364,7 +364,7 @@ export interface RevenueWithdrawalStatePending {
  */
 export interface RevenueWithdrawalStateSucceeded {
   /**
-   * Type of the state, always “succeeded”
+   * Type of the state, always "succeeded"
    */
   readonly type: string
 
@@ -386,7 +386,7 @@ export interface RevenueWithdrawalStateSucceeded {
  */
 export interface RevenueWithdrawalStateFailed {
   /**
-   * Type of the state, always “failed”
+   * Type of the state, always "failed"
    */
   readonly type: string
 }
@@ -450,15 +450,15 @@ export type TransactionPartner =
  */
 export interface TransactionPartnerUser {
   /**
-   * Type of the transaction partner, always “user”
+   * Type of the transaction partner, always "user"
    */
   readonly type: string
 
   /**
-   * Type of the transaction, currently one of “invoice_payment” for payments via
-   * invoices, “paid_media_payment” for payments for paid media, “gift_purchase”
-   * for gifts sent by the bot, “premium_purchase” for Telegram Premium
-   * subscriptions gifted by the bot, “business_account_transfer” for direct
+   * Type of the transaction, currently one of "invoice_payment" for payments via
+   * invoices, "paid_media_payment" for payments for paid media, "gift_purchase"
+   * for gifts sent by the bot, "premium_purchase" for Telegram Premium
+   * subscriptions gifted by the bot, "business_account_transfer" for direct
    * transfers from managed business accounts
    */
   readonly transaction_type: string
@@ -470,43 +470,43 @@ export interface TransactionPartnerUser {
 
   /**
    * Information about the affiliate that received a commission via this
-   * transaction. Can be available only for “invoice_payment” and
-   * “paid_media_payment” transactions.
+   * transaction. Can be available only for "invoice_payment" and
+   * "paid_media_payment" transactions.
    */
   readonly affiliate?: AffiliateInfo | undefined
 
   /**
-   * Bot-specified invoice payload. Can be available only for “invoice_payment”
+   * Bot-specified invoice payload. Can be available only for "invoice_payment"
    * transactions.
    */
   readonly invoice_payload?: string | undefined
 
   /**
    * The duration of the paid subscription. Can be available only for
-   * “invoice_payment” transactions.
+   * "invoice_payment" transactions.
    */
   readonly subscription_period?: number | undefined
 
   /**
    * Information about the paid media bought by the user; for
-   * “paid_media_payment” transactions only
+   * "paid_media_payment" transactions only
    */
   readonly paid_media?: PaidMedia[] | undefined
 
   /**
    * Bot-specified paid media payload. Can be available only for
-   * “paid_media_payment” transactions.
+   * "paid_media_payment" transactions.
    */
   readonly paid_media_payload?: string | undefined
 
   /**
-   * The gift sent to the user by the bot; for “gift_purchase” transactions only
+   * The gift sent to the user by the bot; for "gift_purchase" transactions only
    */
   readonly gift?: Gift | undefined
 
   /**
    * Number of months the gifted Telegram Premium subscription will be active
-   * for; for “premium_purchase” transactions only
+   * for; for "premium_purchase" transactions only
    */
   readonly premium_subscription_duration?: number | undefined
 }
@@ -518,7 +518,7 @@ export interface TransactionPartnerUser {
  */
 export interface TransactionPartnerChat {
   /**
-   * Type of the transaction partner, always “chat”
+   * Type of the transaction partner, always "chat"
    */
   readonly type: string
 
@@ -541,7 +541,7 @@ export interface TransactionPartnerChat {
  */
 export interface TransactionPartnerAffiliateProgram {
   /**
-   * Type of the transaction partner, always “affiliate_program”
+   * Type of the transaction partner, always "affiliate_program"
    */
   readonly type: string
 
@@ -564,7 +564,7 @@ export interface TransactionPartnerAffiliateProgram {
  */
 export interface TransactionPartnerFragment {
   /**
-   * Type of the transaction partner, always “fragment”
+   * Type of the transaction partner, always "fragment"
    */
   readonly type: string
 
@@ -581,7 +581,7 @@ export interface TransactionPartnerFragment {
  */
 export interface TransactionPartnerTelegramAds {
   /**
-   * Type of the transaction partner, always “telegram_ads”
+   * Type of the transaction partner, always "telegram_ads"
    */
   readonly type: string
 }
@@ -593,7 +593,7 @@ export interface TransactionPartnerTelegramAds {
  */
 export interface TransactionPartnerTelegramApi {
   /**
-   * Type of the transaction partner, always “telegram_api”
+   * Type of the transaction partner, always "telegram_api"
    */
   readonly type: string
 
@@ -611,7 +611,7 @@ export interface TransactionPartnerTelegramApi {
  */
 export interface TransactionPartnerOther {
   /**
-   * Type of the transaction partner, always “other”
+   * Type of the transaction partner, always "other"
    */
   readonly type: string
 }
@@ -652,13 +652,13 @@ export interface StarTransaction {
   /**
    * Source of an incoming transaction (e.g., a user purchasing goods or
    * services, Fragment refunding a failed withdrawal). Only for incoming
-   * transactions.
+   * transactions
    */
   readonly source?: TransactionPartner | undefined
 
   /**
    * Receiver of an outgoing transaction (e.g., a user for a purchase refund,
-   * Fragment for a withdrawal). Only for outgoing transactions.
+   * Fragment for a withdrawal). Only for outgoing transactions
    */
   readonly receiver?: TransactionPartner | undefined
 }

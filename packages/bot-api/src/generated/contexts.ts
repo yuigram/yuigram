@@ -1,33 +1,9 @@
 // GENERATED FILE — do not edit.
 // Per-event context field shapes
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { UpdateEventKind } from './events.js'
-import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
-
-/**
- * Fields carried by `BotSubscriptionUpdated`, projected onto the context for
- * the `subscription` event: `subscription`.
- */
-export interface BotSubscriptionUpdatedEventFields {
-  /** The whole payload, under a domain name. */
-  readonly subscription: BotSubscriptionUpdated
-
-  /** Who caused this. Telegram spells it `user` on this payload. */
-  readonly sender: User
-
-  /**
-   * Bot-specified invoice payload
-   */
-  readonly invoice_payload: string
-  /**
-   * The new state of the subscription. Currently, it can be one of “canceled” if
-   * the user canceled the subscription, “active” if the user re-enabled a
-   * previously canceled subscription, or “failed” if payment for the
-   * subscription failed.
-   */
-  readonly state: string
-}
+import type { Animation, Audio, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, Location, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollOption, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
 
 /**
  * Fields carried by `BusinessConnection`, projected onto the context for the
@@ -111,7 +87,7 @@ export interface CallbackQueryEventFields {
   readonly message?: MaybeInaccessibleMessage | undefined
   /**
    * Identifier of the message sent via the bot in inline mode, that originated
-   * the query
+   * the query.
    */
   readonly inline_message_id?: string | undefined
   /**
@@ -205,19 +181,13 @@ export interface ChatJoinRequestEventFields {
    */
   readonly date: number
   /**
-   * Bio of the user
+   * Bio of the user.
    */
   readonly bio?: string | undefined
   /**
    * Chat invite link that was used by the user to send the join request
    */
   readonly invite_link?: ChatInviteLink | undefined
-  /**
-   * Identifier of the join request query; for bots assigned to process join
-   * requests only. If present, then the bot must call sendChatJoinRequestWebApp
-   * or directly call answerChatJoinRequestQuery within 10 seconds.
-   */
-  readonly query_id?: string | undefined
 }
 
 /**
@@ -249,7 +219,7 @@ export interface ChatMemberUpdatedEventFields {
   readonly new_chat_member: ChatMember
   /**
    * Chat invite link, which was used by the user to join the chat; for joining
-   * by invite link events only
+   * by invite link events only.
    */
   readonly invite_link?: ChatInviteLink | undefined
   /**
@@ -319,10 +289,10 @@ export interface InlineQueryEventFields {
   readonly offset: string
   /**
    * Type of the chat from which the inline query was sent. Can be either
-   * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
+   * "sender" for a private chat with the inline query sender, "private",
+   * "group", "supergroup", or "channel". The chat type should be always known
    * for requests sent from official clients and most third-party clients, unless
-   * the request was sent from a secret chat.
+   * the request was sent from a secret chat
    */
   readonly chat_type?: string | undefined
   /**
@@ -332,27 +302,9 @@ export interface InlineQueryEventFields {
 }
 
 /**
- * Fields carried by `ManagedBotUpdated`, projected onto the context for the
- * `managed_bot` event: `managed_bot`.
- */
-export interface ManagedBotUpdatedEventFields {
-  /** The whole payload, under a domain name. */
-  readonly update: ManagedBotUpdated
-
-  /** Who caused this. Telegram spells it `user` on this payload. */
-  readonly sender: User
-
-  /**
-   * Information about the bot. Token of the bot can be fetched using the method
-   * getManagedBotToken.
-   */
-  readonly bot: User
-}
-
-/**
- * Fields carried by `Message`, projected onto the context for 7 event kinds:
+ * Fields carried by `Message`, projected onto the context for 6 event kinds:
  * `business_message`, `business_message_edited`, `channel_post`,
- * `channel_post_edited`, `guest_message`, `message`, `message_edited`.
+ * `channel_post_edited`, `message`, `message_edited`.
  */
 export interface MessageEventFields {
   /** The whole payload, under a domain name. */
@@ -362,11 +314,11 @@ export interface MessageEventFields {
   readonly sender: User | undefined
 
   /**
-   * Unique message identifier inside this chat; 0 for ephemeral messages. In
-   * specific instances (e.g., a message containing a video sent to a big chat),
-   * the server might automatically schedule a message instead of sending it
-   * immediately. In such cases, this field will be 0 and the relevant message
-   * will be unusable until it is actually sent.
+   * Unique message identifier inside this chat. In specific instances (e.g.,
+   * message containing a video sent to a big chat), the server might
+   * automatically schedule a message instead of sending it immediately. In such
+   * cases, this field will be 0 and the relevant message will be unusable until
+   * it is actually sent
    */
   readonly message_id: number
   /**
@@ -399,31 +351,10 @@ export interface MessageEventFields {
    */
   readonly sender_business_bot?: User | undefined
   /**
-   * Tag or custom title of the sender of the message; for supergroups only
-   */
-  readonly sender_tag?: string | undefined
-  /**
-   * For ephemeral messages, the user who received the message
-   */
-  readonly receiver_user?: User | undefined
-  /**
-   * For ephemeral messages, identifier of the ephemeral message inside this
-   * chat. The identifier may be reused for another ephemeral message after the
-   * message is deleted or expires.
-   */
-  readonly ephemeral_message_id?: number | undefined
-  /**
    * Date the message was sent in Unix time. It is always a positive number,
    * representing a valid date.
    */
   readonly date: number
-  /**
-   * The unique identifier for the guest query. Use this identifier with the
-   * method answerGuestQuery to send a response message. If non-empty, the
-   * message belongs to the chat where the guest bot was summoned, which may not
-   * coincide with other existing bot chats sharing the same identifier.
-   */
-  readonly guest_query_id?: string | undefined
   /**
    * Unique identifier of the business connection from which the message was
    * received. If non-empty, the message belongs to a chat of the corresponding
@@ -452,8 +383,7 @@ export interface MessageEventFields {
   /**
    * For replies in the same chat and message thread, the original message. Note
    * that the Message object in this field will not contain further
-   * reply_to_message fields even if it itself is a reply. If the message is a
-   * reply to an ephemeral message, then this field may be omitted.
+   * reply_to_message fields even if it itself is a reply.
    */
   readonly reply_to_message?: Message | undefined
   /**
@@ -475,23 +405,9 @@ export interface MessageEventFields {
    */
   readonly reply_to_checklist_task_id?: number | undefined
   /**
-   * Persistent identifier of the specific poll option that is being replied to
-   */
-  readonly reply_to_poll_option_id?: string | undefined
-  /**
    * Bot through which the message was sent
    */
   readonly via_bot?: User | undefined
-  /**
-   * For a message sent by a guest bot, this is the user whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_user?: User | undefined
-  /**
-   * For a message sent by a guest bot, this is the chat whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_chat?: Chat | undefined
   /**
    * Date the message was last edited in Unix time
    */
@@ -511,8 +427,7 @@ export interface MessageEventFields {
    */
   readonly is_paid_post?: true | undefined
   /**
-   * The unique identifier inside this chat of a media message group this message
-   * belongs to
+   * The unique identifier of a media message group this message belongs to
    */
   readonly media_group_id?: string | undefined
   /**
@@ -550,12 +465,8 @@ export interface MessageEventFields {
    */
   readonly effect_id?: string | undefined
   /**
-   * Message is a rich formatted message
-   */
-  readonly rich_message?: RichMessage | undefined
-  /**
    * Message is an animation, information about the animation. For backward
-   * compatibility, when this field is set, the document field will also be set.
+   * compatibility, when this field is set, the document field will also be set
    */
   readonly animation?: Animation | undefined
   /**
@@ -566,11 +477,6 @@ export interface MessageEventFields {
    * Message is a general file, information about the file
    */
   readonly document?: Document | undefined
-  /**
-   * Message is a live photo, information about the live photo. For backward
-   * compatibility, when this field is set, the photo field will also be set.
-   */
-  readonly live_photo?: LivePhoto | undefined
   /**
    * Message contains paid media; information about the paid media
    */
@@ -639,7 +545,7 @@ export interface MessageEventFields {
   readonly poll?: Poll | undefined
   /**
    * Message is a venue, information about the venue. For backward compatibility,
-   * when this field is set, the location field will also be set.
+   * when this field is set, the location field will also be set
    */
   readonly venue?: Venue | undefined
   /**
@@ -772,8 +678,8 @@ export interface MessageEventFields {
    */
   readonly passport_data?: PassportData | undefined
   /**
-   * Service message: a user in the chat triggered another user's proximity alert
-   * while sharing Live Location
+   * Service message. A user in the chat triggered another user's proximity alert
+   * while sharing Live Location.
    */
   readonly proximity_alert_triggered?: ProximityAlertTriggered | undefined
   /**
@@ -792,14 +698,6 @@ export interface MessageEventFields {
    * Service message: tasks were added to a checklist
    */
   readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
-  /**
-   * Service message: chat added to a Community
-   */
-  readonly community_chat_added?: CommunityChatAdded | undefined
-  /**
-   * Service message: chat removed from a Community
-   */
-  readonly community_chat_removed?: CommunityChatRemoved | undefined
   /**
    * Service message: the price for paid messages in the corresponding direct
    * messages chat of a channel has changed
@@ -846,21 +744,9 @@ export interface MessageEventFields {
    */
   readonly giveaway_completed?: GiveawayCompleted | undefined
   /**
-   * Service message: user created a bot that will be managed by the current bot
-   */
-  readonly managed_bot_created?: ManagedBotCreated | undefined
-  /**
    * Service message: the price for paid messages has changed in the chat
    */
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
-  /**
-   * Service message: answer option was added to a poll
-   */
-  readonly poll_option_added?: PollOptionAdded | undefined
-  /**
-   * Service message: answer option was deleted from a poll
-   */
-  readonly poll_option_deleted?: PollOptionDeleted | undefined
   /**
    * Service message: a suggested post was approved
    */
@@ -1013,11 +899,6 @@ export interface PollAnswerEventFields {
    * retracted.
    */
   readonly option_ids: number[]
-  /**
-   * Persistent identifiers of the chosen answer options. May be empty if the
-   * vote was retracted.
-   */
-  readonly option_persistent_ids: string[]
 }
 
 /**
@@ -1058,7 +939,7 @@ export interface PollEventFields {
    */
   readonly is_anonymous: boolean
   /**
-   * Poll type, currently can be “regular” or “quiz”
+   * Poll type, currently can be "regular" or "quiz"
    */
   readonly type: string
   /**
@@ -1066,27 +947,11 @@ export interface PollEventFields {
    */
   readonly allows_multiple_answers: boolean
   /**
-   * True, if the poll allows to change the chosen answer options
+   * 0-based identifier of the correct answer option. Available only for polls in
+   * the quiz mode, which are closed, or was sent (not forwarded) by the bot or
+   * to the private chat with the bot.
    */
-  readonly allows_revoting: boolean
-  /**
-   * True if voting is limited to users who have been members of the chat where
-   * the poll was originally sent for more than 24 hours
-   */
-  readonly members_only: boolean
-  /**
-   * A list of two-letter ISO 3166-1 alpha-2 country codes indicating the
-   * countries from which users can vote in the poll. The country code “FT” is
-   * used for users with anonymous numbers. If omitted, then users from any
-   * country can participate in the poll.
-   */
-  readonly country_codes?: string[] | undefined
-  /**
-   * Array of 0-based identifiers of the correct answer options. Available only
-   * for polls in quiz mode which are closed or were sent (not forwarded) by the
-   * bot or to the private chat with the bot.
-   */
-  readonly correct_option_ids?: number[] | undefined
+  readonly correct_option_id?: number | undefined
   /**
    * Text that is shown when a user chooses an incorrect answer or taps on the
    * lamp icon in a quiz-style poll, 0-200 characters
@@ -1098,10 +963,6 @@ export interface PollEventFields {
    */
   readonly explanation_entities?: MessageEntity[] | undefined
   /**
-   * Media added to the quiz explanation
-   */
-  readonly explanation_media?: PollMedia | undefined
-  /**
    * Amount of time in seconds the poll will be active after creation
    */
   readonly open_period?: number | undefined
@@ -1109,20 +970,6 @@ export interface PollEventFields {
    * Point in time (Unix timestamp) when the poll will be automatically closed
    */
   readonly close_date?: number | undefined
-  /**
-   * Description of the poll; for polls inside the Message object only
-   */
-  readonly description?: string | undefined
-  /**
-   * Special entities like usernames, URLs, bot commands, etc. that appear in the
-   * description
-   */
-  readonly description_entities?: MessageEntity[] | undefined
-  /**
-   * Media added to the poll description; for polls inside the Message object
-   * only
-   */
-  readonly media?: PollMedia | undefined
 }
 
 /**
@@ -1141,7 +988,7 @@ export interface PreCheckoutQueryEventFields {
    */
   readonly id: string
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
   /**
@@ -1206,10 +1053,8 @@ export interface EventFieldsByKind {
   'chat_boost_removed': ChatBoostRemovedEventFields
   'chat_join_request': ChatJoinRequestEventFields
   'chat_member': ChatMemberUpdatedEventFields
-  'guest_message': MessageEventFields
   'inline_query': InlineQueryEventFields
   'inline_result_chosen': ChosenInlineResultEventFields
-  'managed_bot': ManagedBotUpdatedEventFields
   'message': MessageEventFields
   'message_edited': MessageEventFields
   'message_reaction': MessageReactionUpdatedEventFields
@@ -1220,7 +1065,6 @@ export interface EventFieldsByKind {
   'pre_checkout_query': PreCheckoutQueryEventFields
   'purchased_paid_media': PaidMediaPurchasedEventFields
   'shipping_query': ShippingQueryEventFields
-  'subscription': BotSubscriptionUpdatedEventFields
 }
 
 /**
@@ -1239,10 +1083,8 @@ export const PAYLOAD_ALIASES = {
   'chat_boost_removed': 'removal',
   'chat_join_request': 'request',
   'chat_member': 'update',
-  'guest_message': 'message',
   'inline_query': 'inlineQuery',
   'inline_result_chosen': 'chosenResult',
-  'managed_bot': 'update',
   'message': 'message',
   'message_edited': 'message',
   'message_reaction': 'reaction',
@@ -1253,5 +1095,4 @@ export const PAYLOAD_ALIASES = {
   'pre_checkout_query': 'preCheckoutQuery',
   'purchased_paid_media': 'purchase',
   'shipping_query': 'shippingQuery',
-  'subscription': 'subscription',
 } as const satisfies Readonly<Record<UpdateEventKind, string>>

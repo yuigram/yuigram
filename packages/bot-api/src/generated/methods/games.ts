@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Games
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { InlineKeyboardMarkup, ReplyParameters } from '../types/index.js'
 
@@ -17,11 +17,10 @@ export interface SendGameParams {
   business_connection_id?: string | undefined
 
   /**
-   * Unique identifier for the target chat or username of the target bot in the
-   * format @username. Games can't be sent to channel direct messages chats and
-   * channel chats.
+   * Unique identifier for the target chat. Games can't be sent to channel direct
+   * messages chats and channel chats.
    */
-  chat_id: number | string
+  chat_id: number
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -49,7 +48,7 @@ export interface SendGameParams {
   /**
    * Pass True to allow up to 1000 messages per second, ignoring broadcasting
    * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
-   * be withdrawn from the bot's balance.
+   * be withdrawn from the bot's balance
    */
   allow_paid_broadcast?: boolean | undefined
 
@@ -90,7 +89,7 @@ export interface SetGameScoreParams {
 
   /**
    * Pass True if the high score is allowed to decrease. This can be useful when
-   * fixing mistakes or banning cheaters.
+   * fixing mistakes or banning cheaters
    */
   force?: boolean | undefined
 
@@ -102,19 +101,19 @@ export interface SetGameScoreParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat.
+   * target chat
    */
   chat_id?: number | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the sent
-   * message.
+   * message
    */
   message_id?: number | undefined
 
   /**
    * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
+   * inline message
    */
   inline_message_id?: string | undefined
 }
@@ -132,19 +131,19 @@ export interface GetGameHighScoresParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat.
+   * target chat
    */
   chat_id?: number | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the sent
-   * message.
+   * message
    */
   message_id?: number | undefined
 
   /**
    * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
+   * inline message
    */
   inline_message_id?: string | undefined
 }
