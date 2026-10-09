@@ -200,6 +200,9 @@ describe('refusing what is not a session', () => {
     refused(build({ flags: 0b001, main: MAIN, user: { id: 0, bot: BOOL_TRUE } }))
     refused(build({ flags: 0b001, main: MAIN, user: { id: 5, bot: [1, 2, 3, 4] } }))
     refused(build({ flags: 0b100, main: MAIN, media: addressBytes(2, 2, 0b110, '1.2.3.4', 443) }))
+    // A host whose bytes are not UTF-8: refused for what it is, like every other
+    // malformed field, rather than with the decoder's own error.
+    refused(build({ flags: 0, main: addressBytes(2, 2, 0, 'ÿþ', 443) }))
   })
 
   it('refuses text that is not base64, and an empty string, without quoting either', () => {

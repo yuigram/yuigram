@@ -233,6 +233,15 @@ function writeAddress(address: SessionAddress, testMode: boolean): Uint8Array {
   return out.finish()
 }
 
+/** Read UTF-8, refusing bytes that are not as a malformed session rather than with the decoder's error. */
+function text(bytes: Uint8Array, what: string): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    throw new SessionError(`the session string's ${what} is not text`)
+  }
+}
+
 function readAddress(bytes: Uint8Array, what: string): SessionAddress & { readonly test: boolean } {
   const input = new In(bytes)
   const version = input.byte(`${what} version`)
@@ -247,7 +256,7 @@ function readAddress(bytes: Uint8Array, what: string): SessionAddress & { readon
   if ((flags & ~(ADDRESS_IPV6 | ADDRESS_MEDIA_ONLY | ADDRESS_TEST)) !== 0) {
     throw new SessionError(`the session string's ${what} sets flags that cannot be read`)
   }
-  const host = new TextDecoder('utf-8', { fatal: true }).decode(input.bytes(`${what} host`))
+  const host = text(input.bytes(`${what} host`), `${what} host`)
   const port = input.int32(`${what} port`)
   if (host === '' || port < 1 || port > 65_535) {
     throw new SessionError(`the session string's ${what} is not an address that can be reached`)

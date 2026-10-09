@@ -667,6 +667,8 @@
 
 ### Patch Changes
 
+- A version-3 session string whose datacenter host is not valid UTF-8 is refused with
+  `SessionError`, as every other malformed string is; it raised the decoder's `TypeError`.
 - A temporary key's expiry is kept on this machine's clock, and converted to the server's only
   for the binding. It was written on the server's clock and compared with this one, so with the
   server more than a minute ahead a key was still presented after the server had dropped it,
