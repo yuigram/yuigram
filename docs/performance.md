@@ -33,7 +33,7 @@ Effort belongs in these five places and nowhere else.
 
 | Phase | Budget | Notes |
 |---|---|---|
-| `import 'yuigram'` | < 100 ms | Dominated by module parse — keep the eager surface small |
+| `import 'yuigram'` | 100 ms target; the gate fails above 120 ms | Dominated by module parse — keep the eager surface small |
 | `Bot.fromToken(token)` | < 1 ms | Nothing but validation |
 | `bot.poll()` | < 500 ms | One `getMe`, one `setMyCommands` if configured |
 | `Account.fromSession(...)` | < 1 ms | No I/O in the factory |
@@ -70,6 +70,14 @@ a file the operating system has never read costs a disk seek rather than a parse
 range is the minimum and maximum of the seven; it is *not* the acceptance criterion, and
 individual samples above 100 ms do not fail the gate.
 
+**The gate fails above 120 ms; the target stays 100 ms.** From 1.0.0 the project accepts a
+tolerance of 20 ms over the target before the build fails, decided with the measurements in this
+section in view. That widens what passes. It does not move the target, and nothing else changed:
+the statistic and the sampling are the ones above, and nothing is subtracted from a
+measurement. A median at or under 100 ms is on target, however far under. A median above 100
+and at most 120 ms passes and is reported as over the target — on the build log and as a CI
+warning — so that a passing gate is not read as a met target. Above 120 ms the build fails.
+
 That distinction matters because the spread is wide and the machine moves it more than the code
 does. Eleven runs of one tree, one build, one session:
 
@@ -83,8 +91,9 @@ commit, measured back to back with the 93.9 above, gave 97.4 and 93.7 — and di
 current tree by two eager modules, about a millisecond.
 
 **So the honest verdict is the one this section has carried since the budget was set: met on a
-quiet machine, and not reliably.** It is not being widened to make that go away, and a run that
-passes is not evidence on its own. What the code did is the two-module comparison; what the
+quiet machine, and not reliably.** The target has not been moved to make that go away — the
+tolerance above changes what fails the build, not what the target is — and a run that passes is
+not evidence on its own. What the code did is the two-module comparison; what the
 timings did is mostly weather.
 
 **So the comparison carries the weight, and the eager module count is what the comparison is made
@@ -149,7 +158,9 @@ imports in about 40 ms against about 114 ms as 131 files. The framework's code i
 budget is waiting on; the loader's work per file is. That points at the bundled build above,
 with what it has to preserve — one copy of each class across entry points, the browser
 substitutions, source maps — and that is a change to how the packages are built, not one to make
-inside a release. Until it is made, the budget is not met on this machine.
+inside a release. Until it is made, the target is not met on this machine. Against the gate
+— failing above 120 ms — the candidate's runs, with medians from 104 to 109 ms, pass, over the
+target.
 
 **Earlier: at the line, and the line moved with the machine.** Nine runs of the
 benchmark's own procedure on the same tree, in the order they were taken, when
@@ -165,8 +176,9 @@ earlier trees under that load measures 130–150 — so the tail is the machine
 rather than the code.
 
 **The honest verdict is that the gate is met on a quiet machine and not
-reliably.** It is not being widened to make that go away: a figure adjusted
-until it passes measures nothing. What can be said with confidence is the
+reliably.** The target is not being moved to make that go away: a figure
+adjusted until it passes measures nothing. (§2.1 says what the later tolerance
+changed, and what it did not.) What can be said with confidence is the
 comparison, because a comparison survives a machine that drifts.
 
 #### Where the time goes

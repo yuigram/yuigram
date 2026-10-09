@@ -23,7 +23,7 @@
  * measured and what was asked for stays visible.
  */
 
-import { type Benchmark, describe, judge, passed, type Verdict } from './budget.js'
+import { type Benchmark, describe, judge, onTarget, passed, type Verdict } from './budget.js'
 import { BUNDLE } from './cases/bundle.js'
 import { DISPATCH } from './cases/dispatch.js'
 import { STARTUP } from './cases/startup.js'
@@ -57,8 +57,16 @@ async function main(): Promise<void> {
   process.stdout.write('\nnot measured yet\n')
   for (const gap of NOT_YET) process.stdout.write(`  ${gap}\n`)
 
+  // Passing by the tolerance is still a missed target, and is annotated as one
+  // so that it stays visible on a green build.
+  for (const verdict of verdicts.filter((one) => one.within && !onTarget(one))) {
+    process.stderr.write(
+      `::warning::${verdict.measurement.name} is over its target, within the tolerance\n`,
+    )
+  }
+
   if (passed(verdicts)) {
-    process.stdout.write(`\nall ${verdicts.length} within budget\n`)
+    process.stdout.write(`\nall ${verdicts.length} within their limits\n`)
 
     return
   }

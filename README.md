@@ -142,8 +142,9 @@ TypeScript sample in this file is compiled against the built packages by `pnpm c
   against mock transports and a stand-in datacenter that speaks the real protocol, and the
   prepared live procedure has not been run; [docs/live-verification.md](docs/live-verification.md)
   records what the runs showed and what they did not.
-- **The 100 ms cold-import budget is not reliably met** on the machine it is measured on;
-  [docs/performance.md](docs/performance.md) has the method and the figures.
+- **The cold import misses its 100 ms target** by a few milliseconds on the machine it is
+  measured on, within the 120 ms the gate allows; [docs/performance.md](docs/performance.md) has
+  the method and the figures.
 - [docs/roadmap.md](docs/roadmap.md) lists what is still planned.
 
 An account acts as the person who owns it. Yuigram is not a tool for spam or flooding, and

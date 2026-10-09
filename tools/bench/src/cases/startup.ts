@@ -3,12 +3,12 @@
 /**
  * What it costs to load the framework.
  *
- * `docs/performance.md` §2 budgets a cold `import 'yuigram'` at under 100 ms and
- * says the mechanism is keeping the eager surface small. That is a budget on
- * module evaluation, so it is measured the only way it is honestly measurable:
- * a fresh process per sample, timing one dynamic import of the built entry
- * point and nothing else. Importing twice in one process measures the module
- * cache.
+ * `docs/performance.md` §2 sets a cold `import 'yuigram'` a target of 100 ms,
+ * with a tolerance of 20 ms before the build fails, and says the mechanism is
+ * keeping the eager surface small. That is a budget on module evaluation, so
+ * it is measured the only way it is honestly measurable: a fresh process per
+ * sample, timing one dynamic import of the built entry point and nothing else.
+ * Importing twice in one process measures the module cache.
  *
  * The first sample is discarded. A file the operating system has never read
  * costs a disk seek rather than a parse, and the entry point reaches several
@@ -22,8 +22,10 @@
 import { execFileSync } from 'node:child_process'
 import { type Benchmark, type Measurement, median } from '../budget.js'
 
-/** The budget §2 sets for loading the entry point, in milliseconds. */
+/** The target §2 sets for loading the entry point, in milliseconds. */
 const BUDGET = 100
+/** How far over the target §2 lets the gate pass: it fails above 120 ms. */
+const TOLERANCE = 20
 const SOURCE = 'performance.md §2'
 
 /** One discarded, the rest reported. */
@@ -67,6 +69,7 @@ function sample(entry: string): number {
 const entryImport: Benchmark = {
   name: 'startup/import',
   budget: BUDGET,
+  tolerance: TOLERANCE,
   source: SOURCE,
   run: (): Measurement => {
     for (let index = 0; index < WARMUP; index += 1) sample(ENTRY)

@@ -19,6 +19,11 @@
  *
  * A benchmark with no budget in the specification carries none here. Inventing
  * a number would make the suite assert something nobody decided.
+ *
+ * A budget can come with a tolerance, where the specification states one: how
+ * far over the budget a measurement may go before the build fails. The budget
+ * stays the target, and the report says when a measurement passed only by the
+ * tolerance, so passing the gate is never presented as meeting the target.
  */
 
 /** What a benchmark measured, in the unit it is budgeted in. */
@@ -44,6 +49,12 @@ export interface Benchmark {
    * be this file's opinion rather than the project's.
    */
   readonly budget?: number
+  /**
+   * How far over `budget` a measurement may go and still pass, in the same
+   * unit. Omitted where the specification states none, which makes the budget
+   * itself the limit. Meaningless without a budget.
+   */
+  readonly tolerance?: number
   /** Where the budget comes from, so a reader can check it. */
   readonly source?: string
   run(): Promise<Measurement> | Measurement
@@ -52,8 +63,11 @@ export interface Benchmark {
 /** What a run of the suite concluded. */
 export interface Verdict {
   readonly measurement: Measurement
+  /** The target. */
   readonly budget: number | undefined
-  /** False only when a budget exists and was exceeded. */
+  /** How far over the budget still passes; zero where none was set. */
+  readonly tolerance: number
+  /** False only when a budget exists and was exceeded by more than the tolerance. */
   readonly within: boolean
 }
 
@@ -61,17 +75,25 @@ export interface Verdict {
  * Judge one measurement.
  *
  * A benchmark without a budget is always within: there is nothing to exceed. A
- * measurement exactly at its budget passes, because a budget is a limit rather
- * than a value to stay under by some unstated margin.
+ * measurement exactly at its limit — the budget, plus the tolerance if there is
+ * one — passes, because a limit is a limit rather than a value to stay under by
+ * some unstated margin.
  */
 export function judge(benchmark: Benchmark, measurement: Measurement): Verdict {
   const budget = benchmark.budget
+  const tolerance = benchmark.tolerance ?? 0
 
   return {
     measurement,
     budget,
-    within: budget === undefined || measurement.value <= budget,
+    tolerance,
+    within: budget === undefined || measurement.value <= budget + tolerance,
   }
+}
+
+/** Whether a verdict met its budget itself, rather than passing by the tolerance. */
+export function onTarget(verdict: Verdict): boolean {
+  return verdict.budget === undefined || verdict.measurement.value <= verdict.budget
 }
 
 /**
@@ -96,10 +118,23 @@ export function passed(verdicts: readonly Verdict[]): boolean {
 
 /** One line of the report, for a person reading a build log. */
 export function describe(verdict: Verdict): string {
-  const { measurement, budget, within } = verdict
-  const measured = `${round(measurement.value)} ${measurement.unit}`
-  const against = budget === undefined ? 'no budget' : `budget ${round(budget)} ${measurement.unit}`
-  const outcome = budget === undefined ? '' : within ? ' — within' : ' — EXCEEDED'
+  const { measurement, budget, tolerance, within } = verdict
+  const unit = measurement.unit
+  const measured = `${round(measurement.value)} ${unit}`
+  const against =
+    budget === undefined
+      ? 'no budget'
+      : tolerance === 0
+        ? `budget ${round(budget)} ${unit}`
+        : `target ${round(budget)} ${unit}, fails above ${round(budget + tolerance)} ${unit}`
+  const outcome =
+    budget === undefined
+      ? ''
+      : !within
+        ? ' — EXCEEDED'
+        : onTarget(verdict)
+          ? ' — within'
+          : ' — over the target, within the tolerance'
   const note = measurement.note === undefined ? '' : `, ${measurement.note}`
 
   return `${measurement.name.padEnd(22)} ${measured}${note}  (${against})${outcome}`

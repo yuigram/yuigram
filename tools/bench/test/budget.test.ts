@@ -12,7 +12,14 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { type Benchmark, judge, median, passed, describe as report } from '../src/budget.js'
+import {
+  type Benchmark,
+  judge,
+  median,
+  onTarget,
+  passed,
+  describe as report,
+} from '../src/budget.js'
 
 /** A benchmark that reports whatever a case tells it to. */
 const benchmark = (budget: number | undefined, value: number): [Benchmark, number] => [
@@ -72,9 +79,60 @@ describe('judging one measurement', () => {
   })
 })
 
+describe('judging against a target with a tolerance', () => {
+  // The startup gate's shape: a 100 ms target, and 20 ms over it accepted
+  // before the build fails.
+  const gate = (value: number) =>
+    judge(
+      { name: 'startup/import', budget: 100, tolerance: 20, run: () => measured(value, 'ms') },
+      measured(value, 'ms'),
+    )
+
+  it('passes and is on target at or under the target', () => {
+    for (const value of [62, 80, 99.9, 100]) {
+      expect(gate(value).within).toBe(true)
+      expect(onTarget(gate(value))).toBe(true)
+    }
+  })
+
+  it('passes over the target up to and including the tolerance, and says it is over', () => {
+    for (const value of [100.01, 104, 119.99, 120]) {
+      expect(gate(value).within).toBe(true)
+      expect(onTarget(gate(value))).toBe(false)
+    }
+  })
+
+  it('fails anything above the target plus the tolerance', () => {
+    for (const value of [120.01, 121, 300]) expect(gate(value).within).toBe(false)
+  })
+
+  it('treats a missing tolerance as none', () => {
+    const verdict = judge(
+      { name: 'x', budget: 100, run: () => measured(100.5, 'ms') },
+      measured(100.5, 'ms'),
+    )
+
+    expect(verdict.tolerance).toBe(0)
+    expect(verdict.within).toBe(false)
+  })
+
+  it('reports the measurement, the target and the limit separately', () => {
+    const over = report(gate(104))
+    expect(over).toContain('104 ms')
+    expect(over).toContain('target 100 ms')
+    expect(over).toContain('fails above 120 ms')
+    expect(over).toContain('over the target, within the tolerance')
+    expect(over).not.toContain('EXCEEDED')
+
+    expect(report(gate(96))).toContain('— within')
+    expect(report(gate(96))).not.toContain('over the target')
+    expect(report(gate(121))).toContain('EXCEEDED')
+  })
+})
+
 describe('judging a whole run', () => {
-  const within = { measurement: measured(1), budget: 1000, within: true }
-  const over = { measurement: measured(2000), budget: 1000, within: false }
+  const within = { measurement: measured(1), budget: 1000, tolerance: 0, within: true }
+  const over = { measurement: measured(2000), budget: 1000, tolerance: 0, within: false }
 
   it('passes when every benchmark is within budget', () => {
     expect(passed([within, within])).toBe(true)
@@ -128,7 +186,7 @@ describe('reducing several samples to one', () => {
 
 describe('what the report says', () => {
   it('names the benchmark, what it measured, and what it was allowed', () => {
-    const line = report({ measurement: measured(6.5), budget: 1000, within: true })
+    const line = report({ measurement: measured(6.5), budget: 1000, tolerance: 0, within: true })
 
     expect(line).toContain('dispatch/simple')
     expect(line).toContain('6.50 µs/update')
@@ -137,14 +195,19 @@ describe('what the report says', () => {
   })
 
   it('says plainly when a budget was exceeded', () => {
-    const line = report({ measurement: measured(1200), budget: 1000, within: false })
+    const line = report({ measurement: measured(1200), budget: 1000, tolerance: 0, within: false })
 
     expect(line).toContain('EXCEEDED')
     expect(line).not.toContain('— within')
   })
 
   it('says there is no budget rather than inventing one', () => {
-    const line = report({ measurement: measured(6.5), budget: undefined, within: true })
+    const line = report({
+      measurement: measured(6.5),
+      budget: undefined,
+      tolerance: 0,
+      within: true,
+    })
 
     expect(line).toContain('no budget')
     expect(line).not.toContain('EXCEEDED')
@@ -155,6 +218,7 @@ describe('what the report says', () => {
     const line = report({
       measurement: measured(6.5, 'µs/update', '154,000 updates/sec'),
       budget: 1000,
+      tolerance: 0,
       within: true,
     })
 
@@ -164,8 +228,14 @@ describe('what the report says', () => {
   it('keeps enough digits to see a change at every scale', () => {
     // A run that printed `0` for six microseconds and `0` for sixty would hide
     // the regression between them.
-    expect(report({ measurement: measured(6.543), budget: 1000, within: true })).toContain('6.54')
-    expect(report({ measurement: measured(65.43), budget: 1000, within: true })).toContain('65.4')
-    expect(report({ measurement: measured(654.3), budget: 1000, within: true })).toContain('654')
+    expect(
+      report({ measurement: measured(6.543), budget: 1000, tolerance: 0, within: true }),
+    ).toContain('6.54')
+    expect(
+      report({ measurement: measured(65.43), budget: 1000, tolerance: 0, within: true }),
+    ).toContain('65.4')
+    expect(
+      report({ measurement: measured(654.3), budget: 1000, tolerance: 0, within: true }),
+    ).toContain('654')
   })
 })
