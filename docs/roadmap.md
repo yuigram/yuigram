@@ -249,8 +249,9 @@ Where the thesis becomes real.
 - Examples 03, 04, 09, 10 (bot + userbot, multiple clients, raw API, production)
 
 Exit: the first release that does what no other framework does, on an implementation Yuigram
-owns end to end. That is `0.2.0` — the release after `0.1.0`, since a 0.x line puts breaking
-change in the minor position and nothing between the two was published.
+owns end to end. That is `1.0.0`, the release after `0.1.0`: it was prepared first as `0.2.0`,
+which was never published. The commitments Phase 12 names for 1.0 that it does not yet meet are
+listed, with their state, in [releases/1.0.0-checklist.md](releases/1.0.0-checklist.md).
 
 ---
 

@@ -81,7 +81,7 @@ npm install yuigram
 ```
 
 `Account`, `App` и пример выше находятся в этом репозитории и в npm ещё не вышли. Они готовятся
-как `0.2.0` — все пакеты в этой версии, а `@yuigram/mtproto`, `@yuigram/sqlite` и `@yuigram/redis`
+как `1.0.0` — все пакеты в этой версии, а `@yuigram/mtproto`, `@yuigram/sqlite` и `@yuigram/redis`
 впервые, — и этот выпуск не опубликован. До его выхода ими пользуются из рабочей копии:
 
 ```bash

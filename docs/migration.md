@@ -4,9 +4,10 @@ What changes between releases, and what to do about it. Newest first.
 
 ---
 
-## 0.1 → 0.2
+## 0.1 → 1.0
 
-`0.2.0` replaces the client surface and adds the MTProto subsystem. Registration now selects
+`1.0.0` replaces the client surface and adds the MTProto subsystem. It is the release after
+`0.1.0`, prepared first as `0.2.0`, which was never published. Registration now selects
 the context type, so a handler receives what its registration proved rather than the weakest
 case across every update kind.
 
@@ -31,7 +32,7 @@ asserted that Telegram does not promise, and nothing it does promise thrown away
 
 ### Renames
 
-| `0.1` | `0.2` |
+| `0.1` | `1.0` |
 |---|---|
 | `new Bot(token)` | `Bot.fromToken(token)` — the constructor is kept for full configuration |
 | `bot.start()` | `bot.poll()` |
@@ -58,7 +59,7 @@ because draining is the same whatever was started.
 // 0.1
 bot.on('message', (ctx) => ctx.reply(ctx.text ?? 'Say something.'))
 
-// 0.2
+// 1.0
 bot.onText((message) => message.reply(message.text))
 ```
 
@@ -85,7 +86,7 @@ is written against.
 type MyContext = Context & SessionFlavor<Cart>
 const bot = new Bot<MyContext>(token)
 
-// 0.2
+// 1.0
 const bot = Bot.fromToken<SessionFlavor<Cart>>(token)
 ```
 
@@ -167,7 +168,7 @@ matches as well as selects.
 
 ### Accounts arrive
 
-`0.2.0` is the first release with the MTProto subsystem in it. Nothing here is a migration:
+`1.0.0` is the first release with the MTProto subsystem in it. Nothing here is a migration:
 there is no `0.1` equivalent to move off, and a bot that ignores it is unaffected.
 
 ```ts

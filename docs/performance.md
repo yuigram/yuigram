@@ -135,7 +135,7 @@ What is left, if the margin has to grow, is fewer modules or fewer bytes to comp
 build of each entry point, or a second emit without comments. Both are build pipelines rather
 than changes to the code, and neither is made here.
 
-**At the 0.2.0 candidate: over, and not because of what 0.2.0 added last.** The Koa adapter, the
+**At the 1.0.0 candidate: over, and not because of what the release added last.** The Koa adapter, the
 IndexedDB store and MTProxy each have an entry point of their own, and none of them is on the
 eager path: the graph is the same 131 modules before and after them, 490 bytes larger, all in
 the account's check of its `proxy` option. Twelve alternating rounds against an isolated build

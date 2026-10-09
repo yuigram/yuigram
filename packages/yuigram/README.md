@@ -12,7 +12,7 @@ One package. Bots and user accounts. One programming model.
 npm install yuigram
 ```
 
-> This README describes `0.2.0`. Until `0.2.0` is on npm, `npm install yuigram` installs `0.1.0`,
+> This README describes `1.0.0`. Until `1.0.0` is on npm, `npm install yuigram` installs `0.1.0`,
 > which is the Bot API client alone; `Account`, `App` and the entry points below are used from a
 > [checkout of the repository](https://github.com/yuigram/yuigram#install).
 
