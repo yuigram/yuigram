@@ -1002,6 +1002,24 @@ at the moment its timekeeping broke.
 **A pong acknowledges its ping.** Nothing else confirms one, so a ping left outstanding would be
 resent until its attempts ran out.
 
+**Two pings in a row without an answer end the channel.** A server answers a ping within a round
+trip, so a connection past that either reaches nothing or can no longer hear what comes back.
+The second is what a local clock stepped past the acceptance window does: the socket stays open,
+the server answers, and every answer is refused as dated in the future or the distant past —
+calls end at their deadlines, and nothing else would ever end the connection. Neither case mends
+on that connection. In place of the third ping the channel ends as a dropped link would, and the
+connection that replaces it opens a new session, which learns the server's clock from the first
+message under it. A ping lost among answered ones does not count: the run is of pings since the
+last answer. A party on the path that withholds pongs can cause a reconnection this way, which
+it could already cause by dropping the connection.
+
+**The schedule's clock never runs backwards.** Deadlines and periodic duties are moments on the
+connection's own timeline — the wall clock, except that a step back is taken as no time passing.
+Measured on the wall clock as it is, a clock set back by an hour would have a call wait an hour
+longer than its caller allowed, and the pings that notice silence would stop for that hour. A
+step forward is taken as time passing: what falls due then falls due. Message identifiers are
+not on this timeline; they carry the wall clock, corrected by the server's offset.
+
 #### What a reconnect means
 
 The schedule does not reconnect — no transport exists to reconnect with — but what a reconnect
@@ -1052,6 +1070,15 @@ clock — and no call on it would ever be answered. So until the server is heard
 is not applied, and the first message that passes the other rules sets the clock: it carries
 this session's identifier, drawn at random when the connection opened, and has verified under
 the key, so it was made after the session began and its identifier is the server's clock.
+
+**A correction below what was issued starts a new session.** Identifiers rise within a session,
+and across an ordinary reset of one. So when the server's code 16 or 17 corrects the clock to
+below identifiers this session has already issued — the clock had been ahead — every identifier
+after them would be dated ahead too, and refused, for as long as the clock had been wrong. In
+that case alone the session starts again under a new identifier, with identifiers from the
+corrected clock, and the refused message is sent again under it; the protocol asks identifiers
+to rise within a session, and a new one is where they may start lower. The session the server
+announces next is reported as a replacement, so updates sent to the old one are fetched.
 
 **A container is a message too.** Its own identifier — the envelope's — is checked by the same
 rules before anything in it is looked at, and a container refused by them is refused whole: a

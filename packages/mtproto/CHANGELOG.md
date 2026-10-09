@@ -682,6 +682,14 @@
   container is refused whole before anything in it acts, and one carrying an element not older
   than itself is refused as malformed. The record of identifiers already seen orders them
   unsigned, so from January 2038 a new message is not refused as older than everything retained.
+- A connection whose local clock is stepped while it is open recovers instead of staying open
+  and deaf. Set back, or forward past the acceptance window, the clock made every answer look
+  dated outside the window; calls ended at their deadlines and nothing ended the connection. Two
+  pings in a row without an answer now end the channel, and the new connection learns the
+  server's clock from its first message. Deadlines and pings run on a timeline the wall clock
+  cannot set back. A correction from the server that leaves issued identifiers ahead of its clock
+  starts a new session from the corrected clock and sends the refused message again, where it
+  used to be refused until the clock caught up.
 - `serverKeysFromPem` refuses what is not an encoding of an RSA public key — bytes after the key,
   a third number in it, a negative, empty or padded number, an algorithm that is not a sequence
   or that names parameters RSA does not take — instead of reading something close to a key.
