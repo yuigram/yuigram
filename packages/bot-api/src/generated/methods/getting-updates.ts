@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Getting updates
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { InputFile } from '../../input-file.js'
 
@@ -55,7 +55,7 @@ export interface GetUpdatesParams {
 export interface SetWebhookParams {
   /**
    * HTTPS URL to send updates to. Use an empty string to remove webhook
-   * integration.
+   * integration
    */
   url: string
 
@@ -97,7 +97,7 @@ export interface SetWebhookParams {
   drop_pending_updates?: boolean | undefined
 
   /**
-   * A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in
+   * A secret token to be sent in a header "X-Telegram-Bot-Api-Secret-Token" in
    * every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, _
    * and - are allowed. The header is useful to ensure that the request comes
    * from a webhook set by you.

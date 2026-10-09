@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Named event registrations (79)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Named event registrations (71)
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { ContextFor } from '../events/types.js'
 import type { EventHandler } from '../bot.js'
@@ -176,18 +176,6 @@ export interface GeneratedRegistrations<Ext> {
   onChecklistTasksDone(handler: EventHandler<ContextFor<'checklist_tasks_done'> & Ext>): this
 
   /**
-   * Service message: chat added to a Community. Equivalent to
-   * `on('community_chat_added', handler)`.
-   */
-  onCommunityChatAdded(handler: EventHandler<ContextFor<'community_chat_added'> & Ext>): this
-
-  /**
-   * Service message: chat removed from a Community. Equivalent to
-   * `on('community_chat_removed', handler)`.
-   */
-  onCommunityChatRemoved(handler: EventHandler<ContextFor<'community_chat_removed'> & Ext>): this
-
-  /**
    * The domain name of the website on which the user has logged in. Equivalent
    * to `on('connected_website', handler)`.
    */
@@ -261,11 +249,6 @@ export interface GeneratedRegistrations<Ext> {
   onGiveawayCreated(handler: EventHandler<ContextFor<'giveaway_created'> & Ext>): this
 
   /**
-   * New guest message. Equivalent to `on('guest_message', handler)`.
-   */
-  onGuestMessage(handler: EventHandler<ContextFor<'guest_message'> & Ext>): this
-
-  /**
    * New incoming inline query. Equivalent to `on('inline_query', handler)`.
    */
   onInlineQuery(handler: EventHandler<ContextFor<'inline_query'> & Ext>): this
@@ -275,18 +258,6 @@ export interface GeneratedRegistrations<Ext> {
    * chat partner. Equivalent to `on('inline_result_chosen', handler)`.
    */
   onInlineResultChosen(handler: EventHandler<ContextFor<'inline_result_chosen'> & Ext>): this
-
-  /**
-   * A new bot was created to be managed by the bot, or token or owner of a
-   * managed bot was changed. Equivalent to `on('managed_bot', handler)`.
-   */
-  onManagedBot(handler: EventHandler<ContextFor<'managed_bot'> & Ext>): this
-
-  /**
-   * Service message: user created a bot that will be managed by the current bot.
-   * Equivalent to `on('managed_bot_created', handler)`.
-   */
-  onManagedBotCreated(handler: EventHandler<ContextFor<'managed_bot_created'> & Ext>): this
 
   /**
    * New incoming message of any kind - text, photo, sticker, etc. Equivalent to
@@ -352,26 +323,13 @@ export interface GeneratedRegistrations<Ext> {
   onPollAnswer(handler: EventHandler<ContextFor<'poll_answer'> & Ext>): this
 
   /**
-   * Service message: answer option was added to a poll. Equivalent to
-   * `on('poll_option_added', handler)`.
-   */
-  onPollOptionAdded(handler: EventHandler<ContextFor<'poll_option_added'> & Ext>): this
-
-  /**
-   * Service message: answer option was deleted from a poll. Equivalent to
-   * `on('poll_option_deleted', handler)`.
-   */
-  onPollOptionDeleted(handler: EventHandler<ContextFor<'poll_option_deleted'> & Ext>): this
-
-  /**
    * New incoming pre-checkout query. Equivalent to `on('pre_checkout_query',
    * handler)`.
    */
   onPreCheckoutQuery(handler: EventHandler<ContextFor<'pre_checkout_query'> & Ext>): this
 
   /**
-   * Service message: a user in the chat triggered another user's proximity alert
-   * while sharing Live Location. Equivalent to `on('proximity_alert', handler)`.
+   * Service message. Equivalent to `on('proximity_alert', handler)`.
    */
   onProximityAlert(handler: EventHandler<ContextFor<'proximity_alert'> & Ext>): this
 
@@ -391,12 +349,6 @@ export interface GeneratedRegistrations<Ext> {
    * New incoming shipping query. Equivalent to `on('shipping_query', handler)`.
    */
   onShippingQuery(handler: EventHandler<ContextFor<'shipping_query'> & Ext>): this
-
-  /**
-   * User payment subscription has changed. Equivalent to `on('subscription',
-   * handler)`.
-   */
-  onSubscription(handler: EventHandler<ContextFor<'subscription'> & Ext>): this
 
   /**
    * Service message: approval of a suggested post has failed. Equivalent to
@@ -517,8 +469,6 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onChatTitleChanged', 'chat_title_changed'],
   ['onChecklistTasksAdded', 'checklist_tasks_added'],
   ['onChecklistTasksDone', 'checklist_tasks_done'],
-  ['onCommunityChatAdded', 'community_chat_added'],
-  ['onCommunityChatRemoved', 'community_chat_removed'],
   ['onConnectedWebsite', 'connected_website'],
   ['onDirectMessagePriceChanged', 'direct_message_price_changed'],
   ['onForumTopicClosed', 'forum_topic_closed'],
@@ -531,11 +481,8 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onGiftUpgradeSent', 'gift_upgrade_sent'],
   ['onGiveawayCompleted', 'giveaway_completed'],
   ['onGiveawayCreated', 'giveaway_created'],
-  ['onGuestMessage', 'guest_message'],
   ['onInlineQuery', 'inline_query'],
   ['onInlineResultChosen', 'inline_result_chosen'],
-  ['onManagedBot', 'managed_bot'],
-  ['onManagedBotCreated', 'managed_bot_created'],
   ['onMessage', 'message'],
   ['onMessageEdited', 'message_edited'],
   ['onMessagePinned', 'message_pinned'],
@@ -547,14 +494,11 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onPaymentSuccessful', 'payment_successful'],
   ['onPoll', 'poll'],
   ['onPollAnswer', 'poll_answer'],
-  ['onPollOptionAdded', 'poll_option_added'],
-  ['onPollOptionDeleted', 'poll_option_deleted'],
   ['onPreCheckoutQuery', 'pre_checkout_query'],
   ['onProximityAlert', 'proximity_alert'],
   ['onPurchasedPaidMedia', 'purchased_paid_media'],
   ['onRefundedPayment', 'refunded_payment'],
   ['onShippingQuery', 'shipping_query'],
-  ['onSubscription', 'subscription'],
   ['onSuggestedPostApprovalFailed', 'suggested_post_approval_failed'],
   ['onSuggestedPostApproved', 'suggested_post_approved'],
   ['onSuggestedPostDeclined', 'suggested_post_declined'],

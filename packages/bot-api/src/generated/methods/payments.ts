@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Payments
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOption, SuggestedPostParameters } from '../types/index.js'
 
@@ -11,8 +11,8 @@ import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOptio
  */
 export interface SendInvoiceParams {
   /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * Unique identifier for the target chat or username of the target channel (in
+   * the format @channelusername)
    */
   chat_id: number | string
 
@@ -52,7 +52,7 @@ export interface SendInvoiceParams {
   provider_token?: string | undefined
 
   /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
    * payments in Telegram Stars.
    */
   currency: string
@@ -75,7 +75,7 @@ export interface SendInvoiceParams {
   max_tip_amount?: number | undefined
 
   /**
-   * A JSON-serialized Array of suggested amounts of tips in the smallest units
+   * A JSON-serialized array of suggested amounts of tips in the smallest units
    * of the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
    * strictly increased order and must not exceed max_tip_amount.
@@ -87,7 +87,7 @@ export interface SendInvoiceParams {
    * message will have a Pay button, allowing multiple users to pay directly from
    * the forwarded message, using the same invoice. If non-empty, forwarded
    * copies of the sent message will have a URL button with a deep link to the
-   * bot (instead of a Pay button), with the value used as the start parameter.
+   * bot (instead of a Pay button), with the value used as the start parameter
    */
   start_parameter?: string | undefined
 
@@ -175,7 +175,7 @@ export interface SendInvoiceParams {
   /**
    * Pass True to allow up to 1000 messages per second, ignoring broadcasting
    * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
-   * be withdrawn from the bot's balance.
+   * be withdrawn from the bot's balance
    */
   allow_paid_broadcast?: boolean | undefined
 
@@ -240,7 +240,7 @@ export interface CreateInvoiceLinkParams {
   provider_token?: string | undefined
 
   /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
    * payments in Telegram Stars.
    */
   currency: string
@@ -254,7 +254,7 @@ export interface CreateInvoiceLinkParams {
 
   /**
    * The number of seconds the subscription will be active for before the next
-   * payment. The currency must be set to “XTR” (Telegram Stars) if the parameter
+   * payment. The currency must be set to "XTR" (Telegram Stars) if the parameter
    * is used. Currently, it must always be 2592000 (30 days) if specified. Any
    * number of subscriptions can be active for a given bot at the same time,
    * including multiple concurrent subscriptions from the same user. Subscription
@@ -273,7 +273,7 @@ export interface CreateInvoiceLinkParams {
   max_tip_amount?: number | undefined
 
   /**
-   * A JSON-serialized Array of suggested amounts of tips in the smallest units
+   * A JSON-serialized array of suggested amounts of tips in the smallest units
    * of the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
    * strictly increased order and must not exceed max_tip_amount.
@@ -370,15 +370,15 @@ export interface AnswerShippingQueryParams {
   ok: boolean
 
   /**
-   * Required if ok is True. A JSON-serialized Array of available shipping
+   * Required if ok is True. A JSON-serialized array of available shipping
    * options.
    */
   shipping_options?: ShippingOption[] | undefined
 
   /**
    * Required if ok is False. Error message in human readable form that explains
-   * why it is impossible to complete the order (e.g. “Sorry, delivery to your
-   * desired address is unavailable”). Telegram will display this message to the
+   * why it is impossible to complete the order (e.g. "Sorry, delivery to your
+   * desired address is unavailable"). Telegram will display this message to the
    * user.
    */
   error_message?: string | undefined

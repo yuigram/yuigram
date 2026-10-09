@@ -1,14 +1,12 @@
 // GENERATED FILE — do not edit.
 // Bot API callable surface
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { CallOptions } from '../api-options.js'
-import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
+import type { BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
 import type {
   AddStickerToSetParams,
   AnswerCallbackQueryParams,
-  AnswerChatJoinRequestQueryParams,
-  AnswerGuestQueryParams,
   AnswerInlineQueryParams,
   AnswerPreCheckoutQueryParams,
   AnswerShippingQueryParams,
@@ -30,14 +28,11 @@ import type {
   CreateNewStickerSetParams,
   DeclineChatJoinRequestParams,
   DeclineSuggestedPostParams,
-  DeleteAllMessageReactionsParams,
   DeleteBusinessMessagesParams,
   DeleteChatPhotoParams,
   DeleteChatStickerSetParams,
-  DeleteEphemeralMessageParams,
   DeleteForumTopicParams,
   DeleteMessageParams,
-  DeleteMessageReactionParams,
   DeleteMessagesParams,
   DeleteMyCommandsParams,
   DeleteStickerFromSetParams,
@@ -46,10 +41,6 @@ import type {
   DeleteWebhookParams,
   EditChatInviteLinkParams,
   EditChatSubscriptionInviteLinkParams,
-  EditEphemeralMessageCaptionParams,
-  EditEphemeralMessageMediaParams,
-  EditEphemeralMessageReplyMarkupParams,
-  EditEphemeralMessageTextParams,
   EditForumTopicParams,
   EditGeneralForumTopicParams,
   EditMessageCaptionParams,
@@ -77,8 +68,6 @@ import type {
   GetFileParams,
   GetForumTopicIconStickersParams,
   GetGameHighScoresParams,
-  GetManagedBotAccessSettingsParams,
-  GetManagedBotTokenParams,
   GetMeParams,
   GetMyCommandsParams,
   GetMyDefaultAdministratorRightsParams,
@@ -91,7 +80,6 @@ import type {
   GetUpdatesParams,
   GetUserChatBoostsParams,
   GetUserGiftsParams,
-  GetUserPersonalChatMessagesParams,
   GetUserProfileAudiosParams,
   GetUserProfilePhotosParams,
   GetWebhookInfoParams,
@@ -110,17 +98,14 @@ import type {
   RemoveUserVerificationParams,
   ReopenForumTopicParams,
   ReopenGeneralForumTopicParams,
-  ReplaceManagedBotTokenParams,
   ReplaceStickerInSetParams,
   RepostStoryParams,
   RestrictChatMemberParams,
   RevokeChatInviteLinkParams,
   SavePreparedInlineMessageParams,
-  SavePreparedKeyboardButtonParams,
   SendAnimationParams,
   SendAudioParams,
   SendChatActionParams,
-  SendChatJoinRequestWebAppParams,
   SendChecklistParams,
   SendContactParams,
   SendDiceParams,
@@ -128,7 +113,6 @@ import type {
   SendGameParams,
   SendGiftParams,
   SendInvoiceParams,
-  SendLivePhotoParams,
   SendLocationParams,
   SendMediaGroupParams,
   SendMessageDraftParams,
@@ -136,8 +120,6 @@ import type {
   SendPaidMediaParams,
   SendPhotoParams,
   SendPollParams,
-  SendRichMessageDraftParams,
-  SendRichMessageParams,
   SendStickerParams,
   SendVenueParams,
   SendVideoNoteParams,
@@ -150,7 +132,6 @@ import type {
   SetBusinessAccountUsernameParams,
   SetChatAdministratorCustomTitleParams,
   SetChatDescriptionParams,
-  SetChatMemberTagParams,
   SetChatMenuButtonParams,
   SetChatPermissionsParams,
   SetChatPhotoParams,
@@ -158,7 +139,6 @@ import type {
   SetChatTitleParams,
   SetCustomEmojiStickerSetThumbnailParams,
   SetGameScoreParams,
-  SetManagedBotAccessSettingsParams,
   SetMessageReactionParams,
   SetMyCommandsParams,
   SetMyDefaultAdministratorRightsParams,
@@ -215,7 +195,7 @@ export interface ApiMethods {
    * after a reasonable amount of attempts. Returns True on success. If you'd
    * like to make sure that the webhook was set by you, you can specify secret
    * data in the parameter secret_token. If specified, the request will contain a
-   * header “X-Telegram-Bot-Api-Secret-Token” with the secret token as content.
+   * header "X-Telegram-Bot-Api-Secret-Token" with the secret token as content.
    *
    * @see https://corefork.telegram.org/bots/api#setwebhook
    */
@@ -291,20 +271,20 @@ export interface ApiMethods {
    * Use this method to forward multiple messages of any kind. If some of the
    * specified messages can't be found or forwarded, they are skipped. Service
    * messages and messages with protected content can't be forwarded. Album
-   * grouping is kept for forwarded messages. On success, an Array of MessageId
+   * grouping is kept for forwarded messages. On success, an array of MessageId
    * of the sent messages is returned.
    *
    * @see https://corefork.telegram.org/bots/api#forwardmessages
    */
-  forwardMessages(params: ForwardMessagesParams, options?: CallOptions): Promise<MessageId[]>
+  forwardMessages(params: ForwardMessagesParams, options?: CallOptions): Promise<MessageId>
 
   /**
    * Use this method to copy messages of any kind. Service messages, paid media
    * messages, giveaway messages, giveaway winners messages, and invoice messages
    * can't be copied. A quiz poll can be copied only if the value of the field
-   * correct_option_ids is known to the bot. The method is analogous to the
-   * method forwardMessage, but the copied message doesn't have a link to the
-   * original message. Returns the MessageId of the sent message on success.
+   * correct_option_id is known to the bot. The method is analogous to the method
+   * forwardMessage, but the copied message doesn't have a link to the original
+   * message. Returns the MessageId of the sent message on success.
    *
    * @see https://corefork.telegram.org/bots/api#copymessage
    */
@@ -315,14 +295,14 @@ export interface ApiMethods {
    * messages can't be found or copied, they are skipped. Service messages, paid
    * media messages, giveaway messages, giveaway winners messages, and invoice
    * messages can't be copied. A quiz poll can be copied only if the value of the
-   * field correct_option_ids is known to the bot. The method is analogous to the
+   * field correct_option_id is known to the bot. The method is analogous to the
    * method forwardMessages, but the copied messages don't have a link to the
    * original message. Album grouping is kept for copied messages. On success, an
-   * Array of MessageId of the sent messages is returned.
+   * array of MessageId of the sent messages is returned.
    *
    * @see https://corefork.telegram.org/bots/api#copymessages
    */
-  copyMessages(params: CopyMessagesParams, options?: CallOptions): Promise<MessageId[]>
+  copyMessages(params: CopyMessagesParams, options?: CallOptions): Promise<MessageId>
 
   /**
    * Use this method to send photos. On success, the sent Message is returned.
@@ -330,14 +310,6 @@ export interface ApiMethods {
    * @see https://corefork.telegram.org/bots/api#sendphoto
    */
   sendPhoto(params: SendPhotoParams, options?: CallOptions): Promise<Message>
-
-  /**
-   * Use this method to send live photos. On success, the sent Message is
-   * returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#sendlivephoto
-   */
-  sendLivePhoto(params: SendLivePhotoParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send audio files, if you want Telegram clients to display
@@ -409,14 +381,14 @@ export interface ApiMethods {
   sendPaidMedia(params: SendPaidMediaParams, options?: CallOptions): Promise<Message>
 
   /**
-   * Use this method to send a group of photos, live photos, videos, documents or
-   * audios as an album. Documents and audio files can be only grouped in an
-   * album with messages of the same type. On success, an Array of Message
-   * objects that were sent is returned.
+   * Use this method to send a group of photos, videos, documents or audios as an
+   * album. Documents and audio files can be only grouped in an album with
+   * messages of the same type. On success, an array of Message objects that were
+   * sent is returned.
    *
    * @see https://corefork.telegram.org/bots/api#sendmediagroup
    */
-  sendMediaGroup(params: SendMediaGroupParams, options?: CallOptions): Promise<Message[]>
+  sendMediaGroup(params: SendMediaGroupParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send point on the map. On success, the sent Message is
@@ -468,9 +440,7 @@ export interface ApiMethods {
 
   /**
    * Use this method to stream a partial message to a user while the message is
-   * being generated. Note that the streamed draft is ephemeral and acts as a
-   * temporary 30-second preview - once the output is finalized, you must call
-   * sendMessage with the complete message to persist it in the user's chat.
+   * being generated; supported only for bots with forum topic mode enabled.
    * Returns True on success.
    *
    * @see https://corefork.telegram.org/bots/api#sendmessagedraft
@@ -483,10 +453,10 @@ export interface ApiMethods {
    * arrives from your bot, Telegram clients clear its typing status). Returns
    * True on success. Example: The ImageBot needs some time to process a request
    * and upload the image. Instead of sending a text message along the lines of
-   * “Retrieving image, please wait…”, the bot may use sendChatAction with action
-   * = upload_photo. The user will see a “sending photo” status for the bot. We
-   * only recommend using this method when a response from the bot will take a
-   * noticeable amount of time to arrive.
+   * "Retrieving image, please wait...", the bot may use sendChatAction with
+   * action = upload_photo. The user will see a "sending photo" status for the
+   * bot. We only recommend using this method when a response from the bot will
+   * take a noticeable amount of time to arrive.
    *
    * @see https://corefork.telegram.org/bots/api#sendchataction
    */
@@ -592,16 +562,6 @@ export interface ApiMethods {
    * @see https://corefork.telegram.org/bots/api#setchatadministratorcustomtitle
    */
   setChatAdministratorCustomTitle(params: SetChatAdministratorCustomTitleParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to set a tag for a regular member in a group or a
-   * supergroup. The bot must be an administrator in the chat for this to work
-   * and must have the can_manage_tags administrator right. Returns True on
-   * success.
-   *
-   * @see https://corefork.telegram.org/bots/api#setchatmembertag
-   */
-  setChatMemberTag(params: SetChatMemberTagParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to ban a channel chat in a supergroup or a channel. Until
@@ -713,24 +673,6 @@ export interface ApiMethods {
   declineChatJoinRequest(params: DeclineChatJoinRequestParams, options?: CallOptions): Promise<true>
 
   /**
-   * Use this method to process a received chat join request query. Returns True
-   * on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#answerchatjoinrequestquery
-   */
-  answerChatJoinRequestQuery(params: AnswerChatJoinRequestQueryParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to process a received chat join request query by showing a
-   * Mini App to the user before deciding the outcome. Call
-   * answerChatJoinRequestQuery to resolve the join request query based on the
-   * user interaction with the Mini App. Returns True on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#sendchatjoinrequestwebapp
-   */
-  sendChatJoinRequestWebApp(params: SendChatJoinRequestWebAppParams, options?: CallOptions): Promise<true>
-
-  /**
    * Use this method to set a new profile photo for the chat. Photos can't be
    * changed for private chats. The bot must be an administrator in the chat for
    * this to work and must have the appropriate administrator rights. Returns
@@ -818,20 +760,20 @@ export interface ApiMethods {
   getChat(params: GetChatParams, options?: CallOptions): Promise<ChatFullInfo>
 
   /**
-   * Use this method to get a list of administrators in a chat. Returns an Array
-   * of ChatMember objects.
+   * Use this method to get a list of administrators in a chat, which aren't
+   * bots. Returns an Array of ChatMember objects.
    *
    * @see https://corefork.telegram.org/bots/api#getchatadministrators
    */
   getChatAdministrators(params: GetChatAdministratorsParams, options?: CallOptions): Promise<ChatMember[]>
 
   /**
-   * Use this method to get the number of members in a chat. Returns Integer on
+   * Use this method to get the number of members in a chat. Returns Int on
    * success.
    *
    * @see https://corefork.telegram.org/bots/api#getchatmembercount
    */
-  getChatMemberCount(params: GetChatMemberCountParams, options?: CallOptions): Promise<number>
+  getChatMemberCount(params: GetChatMemberCountParams, options?: CallOptions): Promise<boolean>
 
   /**
    * Use this method to get information about a member of a chat. The method is
@@ -841,15 +783,6 @@ export interface ApiMethods {
    * @see https://corefork.telegram.org/bots/api#getchatmember
    */
   getChatMember(params: GetChatMemberParams, options?: CallOptions): Promise<ChatMember>
-
-  /**
-   * Use this method to get the last messages from the personal chat (i.e., the
-   * chat currently added to their profile) of a given user. On success, an Array
-   * of Message objects is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#getuserpersonalchatmessages
-   */
-  getUserPersonalChatMessages(params: GetUserPersonalChatMessagesParams, options?: CallOptions): Promise<Message[]>
 
   /**
    * Use this method to set a new group sticker set for a supergroup. The bot
@@ -1018,14 +951,6 @@ export interface ApiMethods {
   answerCallbackQuery(params: AnswerCallbackQueryParams, options?: CallOptions): Promise<true>
 
   /**
-   * Use this method to reply to a received guest message. On success, a
-   * SentGuestMessage object is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#answerguestquery
-   */
-  answerGuestQuery(params: AnswerGuestQueryParams, options?: CallOptions): Promise<SentGuestMessage>
-
-  /**
    * Use this method to get the list of boosts added to a chat by a user.
    * Requires administrator rights in the chat. Returns a UserChatBoosts object.
    *
@@ -1040,38 +965,6 @@ export interface ApiMethods {
    * @see https://corefork.telegram.org/bots/api#getbusinessconnection
    */
   getBusinessConnection(params: GetBusinessConnectionParams, options?: CallOptions): Promise<BusinessConnection>
-
-  /**
-   * Use this method to get the token of a managed bot. Returns the token as
-   * String on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#getmanagedbottoken
-   */
-  getManagedBotToken(params: GetManagedBotTokenParams, options?: CallOptions): Promise<string>
-
-  /**
-   * Use this method to revoke the current token of a managed bot and generate a
-   * new one. Returns the new token as String on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#replacemanagedbottoken
-   */
-  replaceManagedBotToken(params: ReplaceManagedBotTokenParams, options?: CallOptions): Promise<string>
-
-  /**
-   * Use this method to get the access settings of a managed bot. Returns a
-   * BotAccessSettings object on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#getmanagedbotaccesssettings
-   */
-  getManagedBotAccessSettings(params: GetManagedBotAccessSettingsParams, options?: CallOptions): Promise<BotAccessSettings>
-
-  /**
-   * Use this method to change the access settings of a managed bot. Returns True
-   * on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#setmanagedbotaccesssettings
-   */
-  setManagedBotAccessSettings(params: SetManagedBotAccessSettingsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to change the list of the bot's commands. See this manual
@@ -1426,40 +1319,15 @@ export interface ApiMethods {
   deleteStory(params: DeleteStoryParams, options?: CallOptions): Promise<true>
 
   /**
-   * Use this method to set the result of an interaction with a Web App and send
-   * a corresponding message on behalf of the user to the chat from which the
-   * query originated. On success, a SentWebAppMessage object is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#answerwebappquery
-   */
-  answerWebAppQuery(params: AnswerWebAppQueryParams, options?: CallOptions): Promise<SentWebAppMessage>
-
-  /**
-   * Stores a message that can be sent by a user of a Mini App. Returns a
-   * PreparedInlineMessage object.
-   *
-   * @see https://corefork.telegram.org/bots/api#savepreparedinlinemessage
-   */
-  savePreparedInlineMessage(params: SavePreparedInlineMessageParams, options?: CallOptions): Promise<PreparedInlineMessage>
-
-  /**
-   * Stores a keyboard button that can be used by a user within a Mini App.
-   * Returns a PreparedKeyboardButton object.
-   *
-   * @see https://corefork.telegram.org/bots/api#savepreparedkeyboardbutton
-   */
-  savePreparedKeyboardButton(params: SavePreparedKeyboardButtonParams, options?: CallOptions): Promise<PreparedKeyboardButton>
-
-  /**
-   * Use this method to edit text, rich and game messages. On success, if the
-   * edited message is not an inline message, the edited Message is returned,
-   * otherwise True is returned. Note that business messages that were not sent
-   * by the bot and do not contain an inline keyboard can only be edited within
-   * 48 hours from the time they were sent.
+   * Use this method to edit text and game messages. On success, if the edited
+   * message is not an inline message, the edited Message is returned, otherwise
+   * True is returned. Note that business messages that were not sent by the bot
+   * and do not contain an inline keyboard can only be edited within 48 hours
+   * from the time they were sent.
    *
    * @see https://corefork.telegram.org/bots/api#editmessagetext
    */
-  editMessageText(params?: EditMessageTextParams, options?: CallOptions): Promise<Message | true>
+  editMessageText(params: EditMessageTextParams, options?: CallOptions): Promise<Message | true>
 
   /**
    * Use this method to edit captions of messages. On success, if the edited
@@ -1473,16 +1341,16 @@ export interface ApiMethods {
   editMessageCaption(params?: EditMessageCaptionParams, options?: CallOptions): Promise<Message | true>
 
   /**
-   * Use this method to edit animation, audio, document, live photo, photo, or
-   * video messages, or to replace a text or a rich message with a media. If a
-   * message is part of a message album, then it can be edited only to an audio
-   * for audio albums, only to a document for document albums and to a photo, a
-   * live photo, or a video otherwise. When an inline message is edited, a new
-   * file can't be uploaded; use a previously uploaded file via its file_id or
-   * specify a URL. On success, if the edited message is not an inline message,
-   * the edited Message is returned, otherwise True is returned. Note that
-   * business messages that were not sent by the bot and do not contain an inline
-   * keyboard can only be edited within 48 hours from the time they were sent.
+   * Use this method to edit animation, audio, document, photo, or video
+   * messages, or to add media to text messages. If a message is part of a
+   * message album, then it can be edited only to an audio for audio albums, only
+   * to a document for document albums and to a photo or a video otherwise. When
+   * an inline message is edited, a new file can't be uploaded; use a previously
+   * uploaded file via its file_id or specify a URL. On success, if the edited
+   * message is not an inline message, the edited Message is returned, otherwise
+   * True is returned. Note that business messages that were not sent by the bot
+   * and do not contain an inline keyboard can only be edited within 48 hours
+   * from the time they were sent.
    *
    * @see https://corefork.telegram.org/bots/api#editmessagemedia
    */
@@ -1535,42 +1403,6 @@ export interface ApiMethods {
   stopPoll(params: StopPollParams, options?: CallOptions): Promise<Poll>
 
   /**
-   * Use this method to edit an ephemeral text message. Note that it is not
-   * guaranteed that the user will receive the message edit event, especially if
-   * they are offline. On success, True is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#editephemeralmessagetext
-   */
-  editEphemeralMessageText(params: EditEphemeralMessageTextParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to edit the media of an ephemeral message. Note that it is
-   * not guaranteed that the user will receive the message edit event, especially
-   * if they are offline. On success, True is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#editephemeralmessagemedia
-   */
-  editEphemeralMessageMedia(params: EditEphemeralMessageMediaParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to edit the caption of an ephemeral message. Note that it is
-   * not guaranteed that the user will receive the message edit event, especially
-   * if they are offline. On success, True is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#editephemeralmessagecaption
-   */
-  editEphemeralMessageCaption(params: EditEphemeralMessageCaptionParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to edit only the reply markup of an ephemeral message. Note
-   * that it is not guaranteed that the user will receive the message edit event,
-   * especially if they are offline. On success, True is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#editephemeralmessagereplymarkup
-   */
-  editEphemeralMessageReplyMarkup(params: EditEphemeralMessageReplyMarkupParams, options?: CallOptions): Promise<true>
-
-  /**
    * Use this method to approve a suggested post in a direct messages chat. The
    * bot must have the 'can_post_messages' administrator right in the
    * corresponding channel chat. Returns True on success.
@@ -1590,22 +1422,11 @@ export interface ApiMethods {
 
   /**
    * Use this method to delete a message, including service messages, with the
-   * following limitations: - A message can only be deleted if it was sent less
-   * than 48 hours ago. - Service messages about a supergroup, channel, or forum
-   * topic creation can't be deleted. - A dice message in a private chat can only
-   * be deleted if it was sent more than 24 hours ago. - Bots can delete outgoing
-   * messages in private chats, groups, and supergroups. - Bots can delete
-   * incoming messages in private chats. - Bots granted can_post_messages
-   * permissions can delete outgoing messages in channels. - If the bot is an
-   * administrator of a group, it can delete any message there. - If the bot has
-   * can_delete_messages administrator right in a supergroup or a channel, it can
-   * delete any message there. - If the bot has can_manage_direct_messages
-   * administrator right in a channel, it can delete any message in the
-   * corresponding direct messages chat. Returns True on success.
+   * following limitations:
    *
    * @see https://corefork.telegram.org/bots/api#deletemessage
    */
-  deleteMessage(params: DeleteMessageParams, options?: CallOptions): Promise<true>
+  deleteMessage(params: DeleteMessageParams, options?: CallOptions): Promise<boolean>
 
   /**
    * Use this method to delete multiple messages simultaneously. If some of the
@@ -1615,34 +1436,6 @@ export interface ApiMethods {
    * @see https://corefork.telegram.org/bots/api#deletemessages
    */
   deleteMessages(params: DeleteMessagesParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to delete an ephemeral message. Note that it is not
-   * guaranteed that the user will receive the message deletion event, especially
-   * if they are offline. Returns True on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#deleteephemeralmessage
-   */
-  deleteEphemeralMessage(params: DeleteEphemeralMessageParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to remove a reaction from a message in a group or a
-   * supergroup chat. The bot must have the 'can_delete_messages' administrator
-   * right in the chat. Returns True on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#deletemessagereaction
-   */
-  deleteMessageReaction(params: DeleteMessageReactionParams, options?: CallOptions): Promise<true>
-
-  /**
-   * Use this method to remove up to 10000 recent reactions in a group or a
-   * supergroup chat added by a given user or chat. The bot must have the
-   * 'can_delete_messages' administrator right in the chat. Returns True on
-   * success.
-   *
-   * @see https://corefork.telegram.org/bots/api#deleteallmessagereactions
-   */
-  deleteAllMessageReactions(params: DeleteAllMessageReactionsParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to send static .WEBP, animated .TGS, or video .WEBM
@@ -1780,32 +1573,29 @@ export interface ApiMethods {
   deleteStickerSet(params: DeleteStickerSetParams, options?: CallOptions): Promise<true>
 
   /**
-   * Use this method to send rich messages. If the message contains a block with
-   * a media element, then the bot must have the right to send the media to the
-   * chat. On success, the sent Message is returned.
-   *
-   * @see https://corefork.telegram.org/bots/api#sendrichmessage
-   */
-  sendRichMessage(params: SendRichMessageParams, options?: CallOptions): Promise<Message>
-
-  /**
-   * Use this method to stream a partial rich message to a user while the message
-   * is being generated. Note that the streamed draft is ephemeral and acts as a
-   * temporary 30-second preview - once the output is finalized, you must call
-   * sendRichMessage with the complete message to persist it in the user's chat.
-   * Returns True on success.
-   *
-   * @see https://corefork.telegram.org/bots/api#sendrichmessagedraft
-   */
-  sendRichMessageDraft(params: SendRichMessageDraftParams, options?: CallOptions): Promise<true>
-
-  /**
    * Use this method to send answers to an inline query. On success, True is
    * returned. No more than 50 results per query are allowed.
    *
    * @see https://corefork.telegram.org/bots/api#answerinlinequery
    */
   answerInlineQuery(params: AnswerInlineQueryParams, options?: CallOptions): Promise<true>
+
+  /**
+   * Use this method to set the result of an interaction with a Web App and send
+   * a corresponding message on behalf of the user to the chat from which the
+   * query originated. On success, a SentWebAppMessage object is returned.
+   *
+   * @see https://corefork.telegram.org/bots/api#answerwebappquery
+   */
+  answerWebAppQuery(params: AnswerWebAppQueryParams, options?: CallOptions): Promise<SentWebAppMessage>
+
+  /**
+   * Stores a message that can be sent by a user of a Mini App. Returns a
+   * PreparedInlineMessage object.
+   *
+   * @see https://corefork.telegram.org/bots/api#savepreparedinlinemessage
+   */
+  savePreparedInlineMessage(params: SavePreparedInlineMessageParams, options?: CallOptions): Promise<PreparedInlineMessage>
 
   /**
    * Use this method to send invoices. On success, the sent Message is returned.

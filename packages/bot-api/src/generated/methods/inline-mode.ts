@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Inline mode
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { InlineQueryResult, InlineQueryResultsButton } from '../types/index.js'
 
@@ -16,7 +16,7 @@ export interface AnswerInlineQueryParams {
   inline_query_id: string
 
   /**
-   * A JSON-serialized Array of results for the inline query
+   * A JSON-serialized array of results for the inline query
    */
   results: InlineQueryResult[]
 
@@ -46,4 +46,58 @@ export interface AnswerInlineQueryParams {
    * results
    */
   button?: InlineQueryResultsButton | undefined
+}
+
+/**
+ * Parameters for `answerWebAppQuery`.
+ *
+ * @see https://corefork.telegram.org/bots/api#answerwebappquery
+ */
+export interface AnswerWebAppQueryParams {
+  /**
+   * Unique identifier for the query to be answered
+   */
+  web_app_query_id: string
+
+  /**
+   * A JSON-serialized object describing the message to be sent
+   */
+  result: InlineQueryResult
+}
+
+/**
+ * Parameters for `savePreparedInlineMessage`.
+ *
+ * @see https://corefork.telegram.org/bots/api#savepreparedinlinemessage
+ */
+export interface SavePreparedInlineMessageParams {
+  /**
+   * Unique identifier of the target user that can use the prepared message
+   */
+  user_id: number
+
+  /**
+   * A JSON-serialized object describing the message to be sent
+   */
+  result: InlineQueryResult
+
+  /**
+   * Pass True if the message can be sent to private chats with users
+   */
+  allow_user_chats?: boolean | undefined
+
+  /**
+   * Pass True if the message can be sent to private chats with bots
+   */
+  allow_bot_chats?: boolean | undefined
+
+  /**
+   * Pass True if the message can be sent to group and supergroup chats
+   */
+  allow_group_chats?: boolean | undefined
+
+  /**
+   * Pass True if the message can be sent to channel chats
+   */
+  allow_channel_chats?: boolean | undefined
 }

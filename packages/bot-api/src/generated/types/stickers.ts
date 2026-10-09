@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Stickers
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
 import type { File, PhotoSize } from './available-types.js'
 
@@ -22,7 +22,7 @@ export interface Sticker {
   readonly file_unique_id: string
 
   /**
-   * Type of the sticker, currently one of “regular”, “mask”, “custom_emoji”. The
+   * Type of the sticker, currently one of "regular", "mask", "custom_emoji". The
    * type of the sticker is independent from its format, which is determined by
    * the fields is_animated and is_video.
    */
@@ -108,8 +108,8 @@ export interface StickerSet {
   readonly title: string
 
   /**
-   * Type of stickers in the set, currently one of “regular”, “mask”,
-   * “custom_emoji”
+   * Type of stickers in the set, currently one of "regular", "mask",
+   * "custom_emoji"
    */
   readonly sticker_type: string
 
@@ -133,7 +133,7 @@ export interface StickerSet {
 export interface MaskPosition {
   /**
    * The part of the face relative to which the mask should be placed. One of
-   * “forehead”, “eyes”, “mouth”, or “chin”.
+   * "forehead", "eyes", "mouth", or "chin".
    */
   readonly point: string
 
@@ -166,7 +166,7 @@ export interface InputSticker {
   /**
    * The added sticker. Pass a file_id as a String to send a file that already
    * exists on the Telegram servers, pass an HTTP URL as a String for Telegram to
-   * get a file from the Internet, or pass “attach://<file_attach_name>” to
+   * get a file from the Internet, or pass "attach://<file_attach_name>" to
    * upload a new file using multipart/form-data under <file_attach_name> name.
    * Animated and video stickers can't be uploaded via HTTP URL. More information
    * on Sending Files »
@@ -174,8 +174,8 @@ export interface InputSticker {
   readonly sticker: string
 
   /**
-   * Format of the added sticker, must be one of “static” for a .WEBP or .PNG
-   * image, “animated” for a .TGS animation, “video” for a .WEBM video
+   * Format of the added sticker, must be one of "static" for a .WEBP or .PNG
+   * image, "animated" for a .TGS animation, "video" for a .WEBM video
    */
   readonly format: string
 
@@ -185,13 +185,13 @@ export interface InputSticker {
   readonly emoji_list: string[]
 
   /**
-   * Position where the mask should be placed on faces. For “mask” stickers only.
+   * Position where the mask should be placed on faces. For "mask" stickers only.
    */
   readonly mask_position?: MaskPosition | undefined
 
   /**
    * List of 0-20 search keywords for the sticker with total length of up to 64
-   * characters. For “regular” and “custom_emoji” stickers only.
+   * characters. For "regular" and "custom_emoji" stickers only.
    */
   readonly keywords?: string[] | undefined
 }

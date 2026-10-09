@@ -1,8 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API event taxonomy
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 9.4, schemas/bot-api/9.4.json
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
+import type { BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, Message, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
 
 /**
  * Event kinds produced by a top-level `Update` field.
@@ -19,10 +19,8 @@ export type UpdateEventKind =
   | 'chat_boost_removed'
   | 'chat_join_request'
   | 'chat_member'
-  | 'guest_message'
   | 'inline_query'
   | 'inline_result_chosen'
-  | 'managed_bot'
   | 'message'
   | 'message_edited'
   | 'message_reaction'
@@ -33,7 +31,6 @@ export type UpdateEventKind =
   | 'pre_checkout_query'
   | 'purchased_paid_media'
   | 'shipping_query'
-  | 'subscription'
 
 /**
  * Event kinds promoted from a service message. The Bot API delivers each of
@@ -59,8 +56,6 @@ export type ServiceEventKind =
   | 'chat_title_changed'
   | 'checklist_tasks_added'
   | 'checklist_tasks_done'
-  | 'community_chat_added'
-  | 'community_chat_removed'
   | 'connected_website'
   | 'direct_message_price_changed'
   | 'forum_topic_closed'
@@ -73,13 +68,10 @@ export type ServiceEventKind =
   | 'gift_upgrade_sent'
   | 'giveaway_completed'
   | 'giveaway_created'
-  | 'managed_bot_created'
   | 'message_pinned'
   | 'paid_message_price_changed'
   | 'passport_data'
   | 'payment_successful'
-  | 'poll_option_added'
-  | 'poll_option_deleted'
   | 'proximity_alert'
   | 'refunded_payment'
   | 'suggested_post_approval_failed'
@@ -115,10 +107,8 @@ export const UPDATE_EVENTS = {
   "removed_chat_boost": 'chat_boost_removed',
   "chat_join_request": 'chat_join_request',
   "chat_member": 'chat_member',
-  "guest_message": 'guest_message',
   "inline_query": 'inline_query',
   "chosen_inline_result": 'inline_result_chosen',
-  "managed_bot": 'managed_bot',
   "message": 'message',
   "edited_message": 'message_edited',
   "message_reaction": 'message_reaction',
@@ -129,7 +119,6 @@ export const UPDATE_EVENTS = {
   "pre_checkout_query": 'pre_checkout_query',
   "purchased_paid_media": 'purchased_paid_media',
   "shipping_query": 'shipping_query',
-  "subscription": 'subscription',
 } as const satisfies Record<string, UpdateEventKind>
 
 /**
@@ -155,8 +144,6 @@ export const SERVICE_EVENTS = {
   "new_chat_title": 'chat_title_changed',
   "checklist_tasks_added": 'checklist_tasks_added',
   "checklist_tasks_done": 'checklist_tasks_done',
-  "community_chat_added": 'community_chat_added',
-  "community_chat_removed": 'community_chat_removed',
   "connected_website": 'connected_website',
   "direct_message_price_changed": 'direct_message_price_changed',
   "forum_topic_closed": 'forum_topic_closed',
@@ -169,13 +156,10 @@ export const SERVICE_EVENTS = {
   "gift_upgrade_sent": 'gift_upgrade_sent',
   "giveaway_completed": 'giveaway_completed',
   "giveaway_created": 'giveaway_created',
-  "managed_bot_created": 'managed_bot_created',
   "pinned_message": 'message_pinned',
   "paid_message_price_changed": 'paid_message_price_changed',
   "passport_data": 'passport_data',
   "successful_payment": 'payment_successful',
-  "poll_option_added": 'poll_option_added',
-  "poll_option_deleted": 'poll_option_deleted',
   "proximity_alert_triggered": 'proximity_alert',
   "refunded_payment": 'refunded_payment',
   "suggested_post_approval_failed": 'suggested_post_approval_failed',
@@ -209,10 +193,8 @@ export interface UpdatePayloads {
   "chat_boost_removed": ChatBoostRemoved
   "chat_join_request": ChatJoinRequest
   "chat_member": ChatMemberUpdated
-  "guest_message": Message
   "inline_query": InlineQuery
   "inline_result_chosen": ChosenInlineResult
-  "managed_bot": ManagedBotUpdated
   "message": Message
   "message_edited": Message
   "message_reaction": MessageReactionUpdated
@@ -223,7 +205,6 @@ export interface UpdatePayloads {
   "pre_checkout_query": PreCheckoutQuery
   "purchased_paid_media": PaidMediaPurchased
   "shipping_query": ShippingQuery
-  "subscription": BotSubscriptionUpdated
 }
 
 /**
@@ -236,7 +217,6 @@ export const MESSAGE_FIELDS: ReadonlySet<string> = new Set([
   'edited_business_message',
   'edited_channel_post',
   'edited_message',
-  'guest_message',
   'message',
 ])
 
@@ -250,7 +230,6 @@ export const MESSAGE_KINDS = [
   'business_message_edited',
   'channel_post',
   'channel_post_edited',
-  'guest_message',
   'message',
   'message_edited',
 ] as const satisfies readonly UpdateEventKind[]
@@ -262,86 +241,78 @@ export const MESSAGE_KINDS = [
  * a marker, so it maps to every field that can deliver one.
  */
 export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
-  'auto_delete_timer_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'boost_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'auto_delete_timer_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'boost_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'business_connection': ['business_connection'],
   'business_message': ['business_message'],
   'business_message_edited': ['edited_business_message'],
   'business_messages_deleted': ['deleted_business_messages'],
   'callback_query': ['callback_query'],
-  'channel_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'channel_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'channel_post': ['channel_post'],
   'channel_post_edited': ['edited_channel_post'],
-  'chat_background_set': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'chat_background_set': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'chat_boost': ['chat_boost'],
   'chat_boost_removed': ['removed_chat_boost'],
-  'chat_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'chat_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'chat_join_request': ['chat_join_request'],
   'chat_member': ['chat_member'],
-  'chat_member_joined': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_member_left': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_migrated_from': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_migrated_to': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_owner_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_owner_left': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_photo_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_photo_deleted': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_shared': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'chat_title_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'checklist_tasks_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'checklist_tasks_done': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'community_chat_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'community_chat_removed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'connected_website': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'direct_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'forum_topic_closed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'forum_topic_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'forum_topic_edited': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'forum_topic_reopened': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'general_forum_topic_hidden': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'general_forum_topic_unhidden': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'gift': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'gift_upgrade_sent': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'giveaway_completed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'giveaway_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'guest_message': ['guest_message'],
+  'chat_member_joined': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_member_left': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_migrated_from': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_migrated_to': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_owner_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_owner_left': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_photo_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_photo_deleted': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_shared': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'chat_title_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'checklist_tasks_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'checklist_tasks_done': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'connected_website': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'direct_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'forum_topic_closed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'forum_topic_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'forum_topic_edited': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'forum_topic_reopened': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'general_forum_topic_hidden': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'general_forum_topic_unhidden': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'gift': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'gift_upgrade_sent': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'giveaway_completed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'giveaway_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'inline_query': ['inline_query'],
   'inline_result_chosen': ['chosen_inline_result'],
-  'managed_bot': ['managed_bot'],
-  'managed_bot_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'message': ['message'],
   'message_edited': ['edited_message'],
-  'message_pinned': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'message_pinned': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'message_reaction': ['message_reaction'],
   'message_reaction_count': ['message_reaction_count'],
   'my_chat_member': ['my_chat_member'],
-  'paid_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'passport_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'payment_successful': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'paid_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'passport_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'payment_successful': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'poll': ['poll'],
   'poll_answer': ['poll_answer'],
-  'poll_option_added': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'poll_option_deleted': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'pre_checkout_query': ['pre_checkout_query'],
-  'proximity_alert': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'proximity_alert': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'purchased_paid_media': ['purchased_paid_media'],
-  'refunded_payment': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'refunded_payment': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
   'shipping_query': ['shipping_query'],
-  'subscription': ['subscription'],
-  'suggested_post_approval_failed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'suggested_post_approved': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'suggested_post_declined': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'suggested_post_paid': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'suggested_post_refunded': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'supergroup_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'unique_gift': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'users_shared': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'video_chat_ended': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'video_chat_participants_invited': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'video_chat_scheduled': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'video_chat_started': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'web_app_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
-  'write_access_allowed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'suggested_post_approval_failed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'suggested_post_approved': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'suggested_post_declined': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'suggested_post_paid': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'suggested_post_refunded': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'supergroup_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'unique_gift': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'users_shared': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'video_chat_ended': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'video_chat_participants_invited': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'video_chat_scheduled': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'video_chat_started': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'web_app_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
+  'write_access_allowed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'message'],
 }
 
 /**
@@ -362,10 +333,8 @@ export const ALL_UPDATE_TYPES: readonly string[] = [
   'removed_chat_boost',
   'chat_join_request',
   'chat_member',
-  'guest_message',
   'inline_query',
   'chosen_inline_result',
-  'managed_bot',
   'message',
   'edited_message',
   'message_reaction',
@@ -376,5 +345,4 @@ export const ALL_UPDATE_TYPES: readonly string[] = [
   'pre_checkout_query',
   'purchased_paid_media',
   'shipping_query',
-  'subscription',
 ]
