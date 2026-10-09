@@ -11,14 +11,14 @@
 
 ### Minor Changes
 
-- d17681a: `@yuigram/redis` keeps the key-value contract in Redis under a namespace, through the client the
+- a1a136e: `@yuigram/redis` keeps the key-value contract in Redis under a namespace, through the client the
   application already has — node-redis, ioredis, or a function that sends one command. Expiry is
   the server's, listing and clearing walk only the namespace with SCAN, and nothing connects,
   disconnects or flushes on the client's behalf.
   
   `redisCounter()` counts each rate-limit hit in one server-side script, so limits shared between
   processes and machines hold exactly and use the server's clock for their windows.
-- 101e74f: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
+- 62ebf2b: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
   `redisStore` lease an area of themselves to one holder at a time — `store.lease(prefix, { holder,
   ttlMs })` — and check the lease in the same atomic step as every write through it: a
   `BEGIN IMMEDIATE` transaction on SQLite, a script on Redis. Every grant is numbered above the
@@ -39,7 +39,7 @@
 
 ### Patch Changes
 
-- c8fdd1a: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
+- 80648a8: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
   `browser` substitutions and `sideEffects` rewritten relative to `dist/`, so Node stops looking for
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in

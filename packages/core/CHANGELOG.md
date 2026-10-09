@@ -11,7 +11,7 @@
 
 ### Minor Changes
 
-- 97ec9eb: An account's handlers, formatters and utilities, with the dispatcher features a bot already had.
+- 0811a29: An account's handlers, formatters and utilities, with the dispatcher features a bot already had.
   
   **Dispatch.** Core's dispatcher gains numbered handler groups where the first match wins,
   `Propagation.Continue`, `Stop` and `StopChildren`, `before` and `after` hooks, child dispatchers
@@ -64,7 +64,7 @@
   - `event.reply` resolves the conversation as `account.sendText` does, and is refused with the
     same `PeerError` for a peer the account has not seen.
   - `uploadedDocument` no longer requires a `mimeType`.
-- 889ec5e: `new App()` describes its clients' events as `BaseContext` when given no type argument, rather
+- 2c2dfca: `new App()` describes its clients' events as `BaseContext` when given no type argument, rather
   than as an object with only a `kind`. Application-wide middleware and handlers can read
   `event.log`, `event.client.name`, `event.transport` and `event.raw` without naming a type; naming
   the union of the clients' contexts, `new App<AnyEventContext | MtprotoContext>()`, is still how a
@@ -72,17 +72,17 @@
   
   Compatibility: an application that holds a client of its own whose events lack those members, and
   relied on the old default, names its event type: `new App<MyEvent>()`.
-- fd1fc06: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
+- a4b95f2: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
   `account.emit` dispatch it through the client's plugins, middleware, sessions and error handlers,
   tracked so that `stop()` waits for it. `bot.on(definition, handler)` and `account.on(definition,
   handler)` receive a typed `event.payload`. An emitted event has `transport: 'custom'`, no update
   identity, and no effect on polling offsets, update sequences or `allowed_updates`; it may carry the
   `chat` and `sender` it concerns so that their session loads. A kind Telegram also sends is refused.
-- 3908fc1: `slotMachineReels(value)`, in a new entry point `yuigram/dice` (`@yuigram/core/dice`), reads the
+- 91d3778: `slotMachineReels(value)`, in a new entry point `yuigram/dice` (`@yuigram/core/dice`), reads the
   three reels a 🎰 dice shows from its value: left, centre, right, each `'bar'`, `'grapes'`,
   `'lemon'` or `'seven'`. A value that is not a whole number from 1 to 64 is a `ValidationError`.
   Programs that do not import the entry point do not load it.
-- c6cf63e: `indexedDb({ database?, store?, durability? })`, in `yuigram/indexeddb` (`@yuigram/core/indexeddb`),
+- 1c1c4b3: `indexedDb({ database?, store?, durability? })`, in `yuigram/indexeddb` (`@yuigram/core/indexeddb`),
   is a store over a browser's IndexedDB for pages and workers that outgrow `localStorage`. Values are
   the JSON envelope the other stores keep; a write resolves when its transaction completes, with
   strict durability unless asked otherwise; a failed request or an aborted transaction rejects with
@@ -545,12 +545,12 @@
   A bot that uses none of this pays nothing for it in a bundle: a Bot API bundle contains none of
   the MTProto subsystem. Without a bundler, importing `yuigram` loads the account's surface, and its
   connections and schema tables load when an account first connects.
-- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
+- 4bcf308: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
   error as the cause. The plugins installed before it in the same round are disposed, newest first,
   through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
   `cleanup`. The client then stays failed — later updates and `start()` reject with the same error
   — rather than installing again and registering middleware twice.
-- b1f3008: `readLink` and `writeLink` describe MTProxy and SOCKS5 proxy links and temporary profile links,
+- 37c4337: `readLink` and `writeLink` describe MTProxy and SOCKS5 proxy links and temporary profile links,
   in their `t.me` and `tg:` forms. A proxy link is read only when it has every part its syntax
   requires — a server, a port from 1 to 65535 and, for MTProxy, a secret in hex or base64 text;
   a SOCKS5 username or password is kept only when the link gives one. A temporary profile link
@@ -559,7 +559,7 @@
   Behaviour a caller may notice: a `t.me/proxy`, `t.me/socks` or `t.me/contact/<token>` link that
   was read as `undefined` is now described, so code switching on `kind` sees `'proxy'`, `'socks'`
   or `'contact'` where it saw nothing.
-- 5306097: Sessions say when they are written. `commit: 'success'` leaves the stored value untouched when
+- 10cf074: Sessions say when they are written. `commit: 'success'` leaves the stored value untouched when
   a handler throws or is cancelled; the default, `'always'`, writes what changed either way, as
   before. `sessionHandle.save()` writes at once and reports a refused write to the handler that
   asked for it.
@@ -572,12 +572,12 @@
   A stored `null` is now kept as the session's value rather than replaced by `initial()`, and
   `sessionHandle.isNew` says whether the key held nothing. `clear()` makes the value read as
   `initial()` at once, and a change made after it is written instead of deleted.
-- 2cefa8b: A session key given to `session()` reads the chat and the sender an update carries, so the usual
+- d6daa43: A session key given to `session()` reads the chat and the sender an update carries, so the usual
   scopes need no context type named: `key: (event) => event.sender?.id` keeps one session per user
   across chats, and `key: (event) => event.chat?.id` one per chat. A key may also be a `bigint`, which
   is written out in full, so an account's 64-bit peer identifiers are never rounded. `userChatKey`
   is unchanged.
-- f2674ad: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
+- 9c2f67e: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
   alike. One counter backs a middleware that drops what is over the limit, a filter a handler can be
   registered behind, a `check` a handler makes itself, and a `wait` that throttles rather than
   refuses and gives up on an abort signal. Counts are kept in named buckets, so two limits do not
@@ -588,7 +588,7 @@
   The Bot API's `rateLimit` is now the middleware form of the same counter and accepts `storage` and
   `bucket`. Its behaviour is otherwise unchanged: the sender by default, every attempt counted, and
   updates naming nobody let through uncounted.
-- d17681a: `@yuigram/sqlite` keeps the key-value contract in a SQLite table over a connection the
+- a1a136e: `@yuigram/sqlite` keeps the key-value contract in a SQLite table over a connection the
   application supplies — `node:sqlite`, `better-sqlite3` or `bun:sqlite` — and `openDatabase()`
   opens a file with the runtime's own SQLite, ready for several processes: write-ahead logging, a
   busy timeout, and an owner-only file where the platform allows. It serves sessions,
@@ -598,7 +598,7 @@
   `sqliteCounter()` counts rate-limit hits in one statement per hit, and core's `limiter()` takes
   it — or any `WindowCounter` — as `counter`, in place of a store. Hits from any number of
   processes on one key each get a count of their own, so a shared limit holds exactly.
-- 101e74f: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
+- 62ebf2b: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
   `redisStore` lease an area of themselves to one holder at a time — `store.lease(prefix, { holder,
   ttlMs })` — and check the lease in the same atomic step as every write through it: a
   `BEGIN IMMEDIATE` transaction on SQLite, a script on Redis. Every grant is numbered above the
@@ -619,17 +619,17 @@
 
 ### Patch Changes
 
-- c8fdd1a: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
+- 80648a8: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
   `browser` substitutions and `sideEffects` rewritten relative to `dist/`, so Node stops looking for
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
   esbuild, webpack and Rollup, and tree shaking are unchanged.
-- 47ae209: `encrypted()` writes on Bun. Bun reports a successful key derivation to scrypt's callback with
+- fb5c0f9: `encrypted()` writes on Bun. Bun reports a successful key derivation to scrypt's callback with
   `undefined` rather than `null`, which the store took for a failure, so every write was rejected
   with nothing to say why.
-- dee75ae: `writeLink` refuses a mini app link whose `mode` is neither `'compact'` nor `'fullscreen'`,
+- c646ab9: `writeLink` refuses a mini app link whose `mode` is neither `'compact'` nor `'fullscreen'`,
   instead of writing a link that reads back without the mode.
-- c19b3d0: `when(filter, middleware)` hands the middleware the context the filter proves, as its
+- 65ec834: `when(filter, middleware)` hands the middleware the context the filter proves, as its
   documentation shows. A filter is itself callable, so it matched the predicate form first and the
   middleware's context was inferred as `unknown`. The filter form is now tried first; a bare
   predicate is unaffected.

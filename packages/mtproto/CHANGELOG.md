@@ -11,7 +11,7 @@
 
 ### Minor Changes
 
-- 97ec9eb: An account's handlers, formatters and utilities, with the dispatcher features a bot already had.
+- 0811a29: An account's handlers, formatters and utilities, with the dispatcher features a bot already had.
   
   **Dispatch.** Core's dispatcher gains numbered handler groups where the first match wins,
   `Propagation.Continue`, `Stop` and `StopChildren`, `before` and `after` hooks, child dispatchers
@@ -64,7 +64,7 @@
   - `event.reply` resolves the conversation as `account.sendText` does, and is refused with the
     same `PeerError` for a peer the account has not seen.
   - `uploadedDocument` no longer requires a `mimeType`.
-- dfdf096: An account refuses, at compile time, a filter written for the Bot API's events. `account.on`,
+- 42a1b35: An account refuses, at compile time, a filter written for the Bot API's events. `account.on`,
   `account.once` and the same methods on `AccountRouter` accepted the `f` exported from `yuigram`,
   whose filters read Bot API fields such as `chat.type`; an account's events do not carry them, so
   such a handler compiled and never ran. A filter written for an account's events, for a narrower
@@ -73,23 +73,23 @@
   Migration: filter an account with the account filters, `import { f } from 'yuigram/account-filters'`
   (`@yuigram/mtproto/filters`) — for example `f.chat('user')` where the Bot API filter was
   `f.chat.private`.
-- eab2c4b: `AccountRouter` can be copied and taken into another. `router.clone(children?)` returns an
+- 3caea42: `AccountRouter` can be copied and taken into another. `router.clone(children?)` returns an
   independent router with the same registrations, hooks, catchers and dependencies as they stand;
   `router.extend(other)` takes in another router as a snapshot, so what is registered on it
   afterwards is not taken in.
-- 1b7430b: `bootstrapAt({ dc, host, port, testMode? })` builds the address list an account starts from out of
+- 2178f5b: `bootstrapAt({ dc, host, port, testMode? })` builds the address list an account starts from out of
   the one datacenter an application names, in place of a configuration literal with every flag
   spelled out. The address is checked where it is written: a hostname, a port out of range or a
   datacenter identifier that is not a positive integer is a `ValidationError` rather than a
   connection that later fails. `DcConfiguration`, `DcAddress` and `BootstrapAddress` are exported, so
   a configuration built some other way can be typed.
-- fd1fc06: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
+- a4b95f2: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
   `account.emit` dispatch it through the client's plugins, middleware, sessions and error handlers,
   tracked so that `stop()` waits for it. `bot.on(definition, handler)` and `account.on(definition,
   handler)` receive a typed `event.payload`. An emitted event has `transport: 'custom'`, no update
   identity, and no effect on polling offsets, update sequences or `allowed_updates`; it may carry the
   `chat` and `sender` it concerns so that their session loads. A kind Telegram also sends is refused.
-- 6fc0fcc: `thumbnails`, `thumbnail` and `thumbnailFile` take a document as well as a photo. A document's
+- d515af0: `thumbnails`, `thumbnail` and `thumbnailFile` take a document as well as a photo. A document's
   `thumbs` and `video_thumbs` and a photo's `video_sizes` are listed beside its sizes, and each
   `Thumbnail` states its `availability`: `download` (`photoSize`, `photoSizeProgressive`,
   `videoSize`), `embedded` (stripped, cached and path sizes), `unsupported` (emoji and sticker
@@ -104,7 +104,7 @@
   
   `Thumbnail.raw` is now `TypePhotoSize | TypeVideoSize`; `PhotoThumbnail` remains as its former
   name.
-- 9dbecdf: The error names Telegram documents are typed. `RpcError.is`, `RpcError.argument` and `isRpcError`
+- 01b0b9f: The error names Telegram documents are typed. `RpcError.is`, `RpcError.argument` and `isRpcError`
   offer the names in Telegram's error database as completions (`'FLOOD_WAIT_%d'`,
   `'FILE_PART_%d_MISSING'`, `'CHANNEL_PRIVATE'`, …) and still accept any other string, and
   `error.is(pattern)` narrows `text` to the name matched. `RpcError.text` is `RpcErrorText`: the
@@ -114,7 +114,7 @@
   `schemas/tl/errors.json`, which records the database's codes, names and methods without its
   descriptions. Nothing is added to what an import loads, and how a refusal is classified — a wait
   as `FloodError`, a redirection as `MigrationError` — is unchanged.
-- bfcebe5: `MediaView` reads the media whose content is a structure: `pollDetails` joins a poll's tally to its
+- 48865a5: `MediaView` reads the media whose content is a structure: `pollDetails` joins a poll's tally to its
   answers (voters, this account's choice, the right answer, and whether the results are partial),
   `todoDetails` joins a checklist's completions to its tasks, and `webpageDetails`, `gameDetails`,
   `stickerDetails` (type, format, set, custom emoji id, mask position, premium effect) and `location`
@@ -578,7 +578,7 @@
   A bot that uses none of this pays nothing for it in a bundle: a Bot API bundle contains none of
   the MTProto subsystem. Without a bundler, importing `yuigram` loads the account's surface, and its
   connections and schema tables load when an account first connects.
-- 596f9de: `mtproxy({ host, port, secret, greetingTimeout? })`, in `yuigram/mtproxy` (`@yuigram/mtproto/mtproxy`),
+- 50a9c98: `mtproxy({ host, port, secret, greetingTimeout? })`, in `yuigram/mtproxy` (`@yuigram/mtproto/mtproxy`),
   is an MTProxy an account is given as its `proxy` option. The secret selects the kind: 16 bytes for
   an obfuscated connection, `dd` for padded frames, `ee` with a domain for fake TLS, whose greeting is
   checked against the secret before anything else is sent. Every connection goes through the proxy,
@@ -586,35 +586,35 @@
   `initConnection` names the proxy. A `tg://proxy` link read by `readLink` is accepted too. The secret
   is never written to a description, an error or a log. In a browser `mtproxy()` refuses with
   `ConfigError`, since a proxy is reached over TCP.
-- 4e4049c: `UserView.presence` reads a user's status into a state, `onlineUntil` or `lastSeen`, and whether it
+- f0cafff: `UserView.presence` reads a user's status into a state, `onlineUntil` or `lastSeen`, and whether it
   is hidden because this account hides its own; `UserView.mention()` builds text that mentions the
   account, with its access hash where known. Users gain `botManagesBots`, `botHasGuestChat`,
   `botIsGuard`, `linkedCommunityId` and `photoDcId`; chats gain `linkedCommunityId` and `photoDcId`.
-- 1ba61f9: A status update says what it brings. `event.presence` on a `mtproto:user_status` event is the
+- 198de1c: A status update says what it brings. `event.presence` on a `mtproto:user_status` event is the
   update's status read as `UserView.presence` reads a user's — `state`, `onlineUntil` and
   `lastSeen` in Unix seconds, `hiddenByMe` — with the user in `event.target`; it is `undefined` on
   every other kind. `readPresence(status)` is the reader both use, exported for a status held on
   its own: it reads the six constructors of the schema, derives no time for a status that states
   none, and answers `undefined` for anything that is not a status.
-- d5eda2c: A request Telegram refuses is raised as `RpcError`, a `TelegramError` carrying `code`, `text` —
+- e42b825: A request Telegram refuses is raised as `RpcError`, a `TelegramError` carrying `code`, `text` —
   Telegram's name for the failure, as sent — and `parameter`, the number a name like
   `PASSWORD_TOO_FRESH_3600` ends in, with the `rpc_error` as its cause. `error.is(pattern)` and
   `isRpcError(error, pattern)` match names exactly or with `%d` for the number; the latter also
   reads the names of waits, which are still raised as `FloodError`. `MigrationError` is now an
   `RpcError` and exported, and both cross a worker as the class they were.
-- 942c68e: `serverKeysFromPem(text)` reads the RSA keys Telegram publishes for its datacenters — in either
+- 6142f9e: `serverKeysFromPem(text)` reads the RSA keys Telegram publishes for its datacenters — in either
   PEM form, several to a text — into the `keys` an account needs, each with the fingerprint a
   datacenter names it by. `serverRsaKey({ n, e })` builds one from a modulus and exponent. Neither was
   public before, which left no supported way to give an account the keys it verifies a datacenter
   with.
-- db145fe: A service message says what happened in Yuigram's own terms. `readAction()` — also
+- 502f203: A service message says what happened in Yuigram's own terms. `readAction()` — also
   `MessageView.serviceAction` and `event.action` on an account's message events — reads each of the
   sixty-eight `messageAction*` constructors into a variant of `ServiceAction`: a `kind` to switch on
   (`'members-added'`, `'joined-by-link'`, `'payment-received'`, `'gift-received'` and the rest),
   camelCase fields, peers as `PeerRef`, notes as formatted text, and the constructor kept as `raw`.
   An action this build has no reading for is `'unsupported'`. `f.action(...kinds)` matches service
   messages by kind and narrows `event.action` to those variants.
-- f5130e2: Session strings in the version-3 TL layout other MTProto libraries write can be imported and
+- 7f20039: Session strings in the version-3 TL layout other MTProto libraries write can be imported and
   exported: `Account.fromString(text, { ...options, format: 'tl-v3' })`, `account.exportSession({
   format: 'tl-v3' })`, and `readSession` / `writeSession` for converting between layouts. The layout
   is always named; one given the wrong layout is refused with a message saying which it looks like.
@@ -624,7 +624,7 @@
   Importing no longer replaces a different authorization the store already holds for the session's
   datacenter: that is refused unless `replace: true` is passed. The same key already stored is used
   as before.
-- bb0098f: Sticker sets are read through `StickerSetView`, which reads a set in every form Telegram sends it:
+- 034b3dd: Sticker sets are read through `StickerSetView`, which reads a set in every form Telegram sends it:
   brief in a list, with or without covers, and full when asked for by itself. It answers the set's
   kind, flags, installation date, link and input reference, pairs each sticker with every emoji the
   set files it under and its keywords, finds stickers by emoji, and builds the download request for
@@ -634,7 +634,7 @@
   `documents`, `packs` and `keywords`. `getInstalledStickers` and `getMyStickerSets` now return
   views rather than raw `stickerSet` values; the raw value is on `raw`, and `stickerSet`'s snake_case
   fields read as `id`, `accessHash`, `shortName` and the rest.
-- 101e74f: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
+- 62ebf2b: One run per MTProto account across processes, over SQLite and Redis. `sqliteStore` and
   `redisStore` lease an area of themselves to one holder at a time — `store.lease(prefix, { holder,
   ttlMs })` — and check the lease in the same atomic step as every write through it: a
   `BEGIN IMMEDIATE` transaction on SQLite, a script on Redis. Every grant is numbered above the
@@ -652,7 +652,7 @@
   `StoreLease` and `LeaseOptions` types describe the capability for other adapters; `namespaced`
   passes it through, `tiered` and `encrypted` do not. `redisStore` takes a `leaseNamespace`,
   `yuigram:lease:` unless given, which must not overlap its `namespace`.
-- ea4b45f: `yuigram/testing` tests accounts as well as bots. `mockAccount()` (also `@yuigram/mtproto/testing`) runs
+- bf80605: `yuigram/testing` tests accounts as well as bots. `mockAccount()` (also `@yuigram/mtproto/testing`) runs
   the real account over a channel answered from a script: `send.message`, `send.service` and
   `send.press` deliver updates, common calls are answered as Telegram would, `rpcError()` refuses one
   as a real refusal is raised, and `calls`, `sent` and `errors` record what happened.
@@ -693,38 +693,38 @@
 - `serverKeysFromPem` refuses what is not an encoding of an RSA public key — bytes after the key,
   a third number in it, a negative, empty or padded number, an algorithm that is not a sequence
   or that names parameters RSA does not take — instead of reading something close to a key.
-- f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
+- ffb1ebf: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
   once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
   isolated builds. Exports, signatures and the core's runtime identity are unchanged.
-- c8fdd1a: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
+- 80648a8: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
   `browser` substitutions and `sideEffects` rewritten relative to `dist/`, so Node stops looking for
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
   esbuild, webpack and Rollup, and tree shaking are unchanged.
-- 3ff86ec: Removing history finishes. `deleteHistory`, `deleteMemberHistory` and `deleteTopicHistory` repeat
+- 275813f: Removing history finishes. `deleteHistory`, `deleteMemberHistory` and `deleteTopicHistory` repeat
   the request while Telegram says more is left, applying each stage's position, where they used to
   stop after the first batch and report success. `deleteHistory` on a channel or supergroup uses the
   channel call, and `previewChat` returns the conversation the name belongs to rather than the first
   one the answer carried.
-- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
+- 4bcf308: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
   error as the cause. The plugins installed before it in the same round are disposed, newest first,
   through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
   `cleanup`. The client then stays failed — later updates and `start()` reject with the same error
   — rather than installing again and registering middleware twice.
-- 0447cd5: `RpcError.parameter` reads the number a name carries wherever it is — `FILE_REFERENCE_5_EXPIRED`,
+- 9248958: `RpcError.parameter` reads the number a name carries wherever it is — `FILE_REFERENCE_5_EXPIRED`,
   `INTERDC_2_CALL_ERROR` — not only at the end, and `error.argument(pattern)` reads one written
   into a word, such as `…_WAIT_5MIN`. `2FA_CONFIRM_WAIT_N` is now raised as a `FloodError` like the
   other waits, `STATS_MIGRATE_N` as a `MigrationError` of kind `'stats'`, and `RpcError.BAD_REQUEST`,
   `FLOOD` and the rest name Telegram's codes.
-- 0a3ad43: An account built without the server keys a datacenter offers is told so on its first call, with a
+- 72dd1fb: An account built without the server keys a datacenter offers is told so on its first call, with a
   `ConfigError` naming the offered fingerprints and `serverKeysFromPem`, instead of retrying the key
   exchange forever while the call waits. The connection fails everyone waiting and arms no retry; the
   next call makes one fresh attempt.
-- 4358326: `account.startTest()` builds a test number's code to the length Telegram states when it sends
+- d3405b6: `account.startTest()` builds a test number's code to the length Telegram states when it sends
   the code, and uses the documented five digits only where the answer states no length. A stated
   length that no code could have, or an answer that does not say how the code was sent, is refused
   before a sign-in attempt is spent. The ordinary sign-in steps are unchanged and never build a code.
-- b720494: `mockAccount` takes a list as a scripted answer, for methods such as `users.getUsers` that answer
+- 2aafe14: `mockAccount` takes a list as a scripted answer, for methods such as `users.getUsers` that answer
   with one. The `Answer` type now says so, and `Answered` names what a method answers with.
 
 - Updated dependencies

@@ -11,18 +11,18 @@
 
 ### Minor Changes
 
-- 8f62c9d: `schemaInfo.botApi` reports the Bot API release the surface was generated from. It was written
+- cb94f70: `schemaInfo.botApi` reports the Bot API release the surface was generated from. It was written
   by hand and went on reporting `10.2` after the surface was regenerated from 10.3; it is now read
   from `BOT_API_VERSION`, which the schema generator emits beside the surface and `@yuigram/bot-api`
   exports, so the two cannot disagree again.
-- 94ca29f: `Bot` downloads through its own transport: `bot.download(target)` returns the bytes, and
+- ebd316d: `Bot` downloads through its own transport: `bot.download(target)` returns the bytes, and
   `bot.downloadStream` and `bot.getFileUrl` complete the set. A message context's `download()` and
   `downloadStream()` fetch the file that message carries — a document, video, audio, voice note,
   video note or animation, a photo at its largest size, a sticker when nothing else is there — and
   refuse a message with no file. `bot.files` hands the bot's transport to the functions for the
   forms that need a filesystem: `downloadToFile(bot.files, path, target)`, and `download(bot.files,
   target)` against a local Bot API server, whose files are paths on its disk.
-- ddb4b19: The six paged Bot API lists read as async sequences that fetch a page only when the loop asks:
+- 3c00dd6: The six paged Bot API lists read as async sequences that fetch a page only when the loop asks:
   `bot.profilePhotos()`, `bot.profileAudios()` and `bot.starTransactions()` by position, and
   `bot.userGifts()`, `bot.chatGifts()` and `bot.businessGifts()` by cursor, with `limit`,
   `pageSize`, a starting `offset` or `cursor`, and an abort `signal`. `.collect()` reads the rest
@@ -31,27 +31,27 @@
   `pager()` shows a list a screen at a time: the ‹ · › buttons, slicing, and reading a press back,
   with the person the list was shown to carried in the button so a press by anyone else is
   reported as refused.
-- 789dfa4: `testMode: true` on a bot, or on `fetchClient`, talks to Telegram's test environment: calls go to
+- c859c1a: `testMode: true` on a bot, or on `fetchClient`, talks to Telegram's test environment: calls go to
   `/bot<token>/test/<method>` and files come from `/file/bot<token>/test/<path>`. A test-environment
   bot has a token from that environment's @BotFather, and can share chats only with test accounts.
-- fd1fc06: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
+- a4b95f2: `defineEvent<Payload>(kind)` defines an event the application raises itself, and `bot.emit` /
   `account.emit` dispatch it through the client's plugins, middleware, sessions and error handlers,
   tracked so that `stop()` waits for it. `bot.on(definition, handler)` and `account.on(definition,
   handler)` receive a typed `event.payload`. An emitted event has `transport: 'custom'`, no update
   identity, and no effect on polling offsets, update sequences or `allowed_updates`; it may carry the
   `chat` and `sender` it concerns so that their session loads. A kind Telegram also sends is refused.
-- ff2e7e6: `koaWebhook(handler, { path?, bodyLimit? })` serves a bot's webhook from a Koa application. It
+- bca576a: `koaWebhook(handler, { path?, bodyLimit? })` serves a bot's webhook from a Koa application. It
   uses the body a parser left on `ctx.request.body`, or reads the request itself under the same
   size limit as `nodeWebhook`; it fills in the status, content type and body and leaves sending
   them to Koa. With `path`, other requests pass to the next middleware. Koa is not a dependency.
-- 2d30b24: `mediaCache()` keeps the identifier Telegram returns for each upload and sends it instead of the
+- 57aaf98: `mediaCache()` keeps the identifier Telegram returns for each upload and sends it instead of the
   file next time, for photos, videos, animations, video notes, audio, documents, stickers and voice
   messages. Entries are named by bot, media kind and source — a path, a URL, a digest of bytes, or
   a `cacheKey` given to `media.*` — and kept in any `KV` store. A stale identifier is replaced by
   one more upload, only when Telegram refused it as a bad identifier; nothing is cached from a
   failed call; concurrent sends of one file upload it once; and a single-use stream is never read
   to be named.
-- ad9b90f: A bot's `defaults` are layered: `'*'` sets common parameters for every method whose schema takes
+- 90c030a: A bot's `defaults` are layered: `'*'` sets common parameters for every method whose schema takes
   them, a method's own key sets any of its parameters with the schema's types, and a call's own
   values win over both — `false`, `null`, `''` and `undefined` included. Which methods take each
   common parameter is generated from the schema, so a global `parse_mode` no longer reaches
@@ -516,10 +516,10 @@
   A bot that uses none of this pays nothing for it in a bundle: a Bot API bundle contains none of
   the MTProto subsystem. Without a bundler, importing `yuigram` loads the account's surface, and its
   connections and schema tables load when an account first connects.
-- 3908fc1: `parseCommand(text)` is exported: the parser `onCommand` and `message.command` already use, for
+- 91d3778: `parseCommand(text)` is exported: the parser `onCommand` and `message.command` already use, for
   text read outside an update. It answers the same `ParsedCommand` a command handler receives, or
   `undefined` when the text does not open with a command. Dispatch is unchanged.
-- f2674ad: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
+- 9c2f67e: `limiter()` counts what one person asks for and refuses past an allowance, on a bot and an account
   alike. One counter backs a middleware that drops what is over the limit, a filter a handler can be
   registered behind, a `check` a handler makes itself, and a `wait` that throttles rather than
   refuses and gives up on an abort signal. Counts are kept in named buckets, so two limits do not
@@ -530,7 +530,7 @@
   The Bot API's `rateLimit` is now the middleware form of the same counter and accepts `storage` and
   `bucket`. Its behaviour is otherwise unchanged: the sender by default, every attempt counted, and
   updates naming nobody let through uncounted.
-- ea4b45f: `yuigram/testing` tests accounts as well as bots. `mockAccount()` (also `@yuigram/mtproto/testing`) runs
+- bf80605: `yuigram/testing` tests accounts as well as bots. `mockAccount()` (also `@yuigram/mtproto/testing`) runs
   the real account over a channel answered from a script: `send.message`, `send.service` and
   `send.press` deliver updates, common calls are answered as Telegram would, `rpcError()` refuses one
   as a real refusal is raised, and `calls`, `sent` and `errors` record what happened.
@@ -539,7 +539,7 @@
   the bot sent in `sent`, presses a real button on one with `send.press`, and collects handler errors
   nothing caught in `errors`. New builders cover chosen inline results, reactions, pre-checkout
   queries, poll answers and join requests.
-- 87f52b6: Mini App launch data, in a new entry point: `yuigram/web-app` (`@yuigram/bot-api/web-app`).
+- d40d63a: Mini App launch data, in a new entry point: `yuigram/web-app` (`@yuigram/bot-api/web-app`).
   `readInitData` reads `Telegram.WebApp.initData` and proves nothing. `verifyInitData` checks
   `hash` with the bot token, or with a key derived once by `InitDataKey.fromToken`;
   `verifyInitDataSignature` checks Telegram's Ed25519 `signature` with the bot's id alone, against
@@ -558,19 +558,19 @@
 
 ### Patch Changes
 
-- 3d390a2: A callback query's context now carries `chat`: the chat of the message its button is on, absent
+- 55041c9: A callback query's context now carries `chat`: the chat of the message its button is on, absent
   for a button on an inline message. Sessions keyed with `userChatKey` and conversation keys
   previously missed it, so a person's button presses were kept apart from their messages and a
   conversation waiting on a press never received one.
-- f8a7556: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
+- ffb1ebf: Importing the Bot API and MTProto packages resolves `@yuigram/core` once per package instead of
   once per module, which takes about 16 ms off a cold `import 'yuigram'` in a paired comparison of
   isolated builds. Exports, signatures and the core's runtime identity are unchanged.
-- c8fdd1a: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
+- 80648a8: Each package ships a small `package.json` in `dist/` saying its files are ES modules, with its
   `browser` substitutions and `sideEffects` rewritten relative to `dist/`, so Node stops looking for
   a module's package one directory up. A cold `import 'yuigram'` is about 13 ms faster in a paired
   comparison of isolated builds. Resolution by package name, export maps, browser substitutions in
   esbuild, webpack and Rollup, and tree shaking are unchanged.
-- 19e3ba7: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
+- 4bcf308: A plugin whose install throws now fails as `PluginInstallError`, naming the plugin and keeping its
   error as the cause. The plugins installed before it in the same round are disposed, newest first,
   through their new optional `dispose(value, target)`, and anything a disposal throws is kept in
   `cleanup`. The client then stays failed — later updates and `start()` reject with the same error

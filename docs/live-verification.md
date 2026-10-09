@@ -213,8 +213,8 @@ checks run, and the output as printed.
 | Date | Revision | Network | Steps and checks | Result |
 | --- | --- | --- | --- | --- |
 | — | — | — | `tools/live`: none | not yet run |
-| 2026-10-03 | `fcf7970` | production | Example 20 by hand: sign-in, watch, bot commands | works; four defects found, below |
-| 2026-10-07 | `7936a44` | production | Example 20 by hand, new data directory: sign-in, commands, pushed and read statuses, restart | works; one display defect in the example, below |
+| 2026-10-03 | `2fc44f7` | production | Example 20 by hand: sign-in, watch, bot commands | works; four defects found, below |
+| 2026-10-07 | `2248f7c` | production | Example 20 by hand, new data directory: sign-in, commands, pushed and read statuses, restart | works; one display defect in the example, below |
 
 ### Example 20, run by hand
 
@@ -229,7 +229,7 @@ What they showed:
   temporary key bound to the permanent one, which the calls succeeding implies rather than a
   logged step shows; `users.getUsers` and username resolution; `updateUserStatus` pushed down the
   session; periodic reads; a restart that reused the stored authorization without asking again.
-- **Updates, from `7936a44`.** A fresh authorization took its starting position from
+- **Updates, from `2248f7c`.** A fresh authorization took its starting position from
   `updates.getState` on its first update, and no catch-up followed.
 - **Bot.** `getMe`, long polling, commands answered with HTML `sendMessage`, and Ctrl+C stopping
   polling.
@@ -237,10 +237,10 @@ What they showed:
 What the first run found, each fixed or instrumented offline before the second:
 
 - the update stream began at an assumed position, so every start paged through history — fixed
-  in `f68ece1` (§9.3 of [mtproto.md](mtproto.md));
+  in `39a1f44` (§9.3 of [mtproto.md](mtproto.md));
 - a Windows `EPERM` on a file-store rename lost one write — in-process ordering and a retry added
-  in `fdbaced`; what held the file open was not identified;
-- three transport 404 answers, each recovered by discarding the key — cause unknown; `f7efdb6`
+  in `9cc8076`; what held the file open was not identified;
+- three transport 404 answers, each recovered by discarding the key — cause unknown; `80badf7`
   reports which connection, key and recovery, so a recurrence can be traced;
 - a failing bot handler was logged without the example saying so — fixed in the example.
 
