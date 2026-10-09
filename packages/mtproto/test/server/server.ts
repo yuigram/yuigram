@@ -516,6 +516,7 @@ export class MockServer {
    */
   sealContainer(
     entries: ReadonlyArray<{ value: TlValue; msgId?: bigint; seqNo?: number }>,
+    options: { msgId?: bigint } = {},
   ): Uint8Array {
     const { key, sessionId, salt } = this.#established()
 
@@ -544,7 +545,7 @@ export class MockServer {
       {
         salt,
         sessionId,
-        msgId: this.#nextMsgId(),
+        msgId: options.msgId ?? this.#nextMsgId(),
         seqNo: this.#nextServerSeqNo(),
         body,
       },

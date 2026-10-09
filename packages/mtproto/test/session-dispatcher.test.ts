@@ -915,6 +915,57 @@ describe('a container', () => {
     expect(kinds(result.events)).toEqual(['dropped', 'message'])
     expect(result.acks).toHaveLength(1)
   })
+
+  it('is refused whole when it arrives again, by its own identifier', () => {
+    // A replay of the whole container. Each element would be refused as a
+    // duplicate on its own; the container's identifier refuses it first, as
+    // one message, with nothing in it looked at.
+    const { peer, dispatcher, session } = connected()
+    const own = nowMsgId(session, 13)
+    const sealed = peer.sealContainer(
+      [
+        { value: { _: 'destroy_session_ok', session_id: 4n }, msgId: nowMsgId(session, 5) },
+        { value: { _: 'msgs_ack', msg_ids: [8n] }, msgId: nowMsgId(session, 9) },
+      ],
+      { msgId: own },
+    )
+    dispatcher.receive(sealed)
+
+    const again = dispatcher.receive(sealed)
+
+    expect(kinds(again.events)).toEqual(['dropped'])
+    expect(only(again.events, 'dropped')).toMatchObject({ msgId: own, reason: 'duplicate' })
+    expect(again.acks).toEqual([])
+  })
+
+  it('is refused whole when it is dated outside the window, before anything in it acts', () => {
+    // The element is dated now and would pass on its own. The container is the
+    // message the server sent, and its identifier is checked like any other.
+    const { peer, dispatcher, session } = connected()
+    const salt = session.salt
+
+    const result = dispatcher.receive(
+      peer.sealContainer(
+        [
+          {
+            value: {
+              _: 'bad_server_salt',
+              bad_msg_id: 4n,
+              bad_msg_seqno: 1,
+              error_code: 48,
+              new_server_salt: 0xdeadn,
+            },
+            msgId: nowMsgId(session, 5),
+          },
+        ],
+        { msgId: (BigInt(session.serverNow() + 31) << 32n) | 1n },
+      ),
+    )
+
+    expect(kinds(result.events)).toEqual(['dropped'])
+    expect(only(result.events, 'dropped').reason).toBe('outside-window')
+    expect(session.salt).toBe(salt)
+  })
 })
 
 describe('a compressed payload', () => {

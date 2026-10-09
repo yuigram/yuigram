@@ -13,7 +13,7 @@ import { gzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import { REGISTRY as CORE } from '../src/generated/core/registry.js'
 import { REGISTRY as MTPROTO } from '../src/generated/mtproto/registry.js'
-import { InboundError, unpackMessages } from '../src/session/inbound.js'
+import { InboundError, unpackEnvelope, unpackMessages } from '../src/session/inbound.js'
 import { TlScope, type TlValue, TlWriter, writeObject } from '../src/tl/index.js'
 
 const SCOPE = new TlScope('session', [CORE, MTPROTO])
@@ -107,6 +107,45 @@ describe('a container', () => {
     expect(messages).toHaveLength(1)
     expect(messages[0]?.value._).toBe('pong')
     expect(messages[0]?.msgId).toBe(11n)
+  })
+
+  it('refuses a container carrying an element not older than itself', () => {
+    // A container is made after everything in it, so each element's identifier
+    // is lower than the container's own. One that is not was not put there that
+    // way, and the container is refused whole.
+    const late = container([
+      { msgId: 11n, seqNo: 1, payload: body(PONG) },
+      { msgId: 99n, seqNo: 3, payload: body(PONG) },
+    ])
+
+    expect(() => unpackMessages(late, SCOPE, 99n, 0)).toThrow(/not older than the container/)
+  })
+
+  it('compares identifiers from either side of January 2038 by the time they carry', () => {
+    // From then on an identifier is carried as a negative long; read signed,
+    // every element of a container made then would look newer than it.
+    const element = BigInt.asIntN(64, ((2n ** 31n - 1n) << 32n) | 1n)
+    const envelope = BigInt.asIntN(64, ((2n ** 31n) << 32n) | 1n)
+    expect(envelope).toBeLessThan(0n)
+
+    const messages = unpackMessages(
+      container([{ msgId: element, seqNo: 1, payload: body(PONG) }]),
+      SCOPE,
+      envelope,
+      0,
+    )
+
+    expect(messages.map((message) => message.msgId)).toEqual([element])
+  })
+
+  it('says whether the envelope was a container, compressed or not', () => {
+    // The envelope's identifier is then the container's own, which none of the
+    // messages carries, so it is one more identifier to check.
+    const carried = container([{ msgId: 11n, seqNo: 1, payload: body(PONG) }])
+
+    expect(unpackEnvelope(body(PONG), SCOPE, 5n, 3).container).toBe(false)
+    expect(unpackEnvelope(carried, SCOPE, 99n, 0).container).toBe(true)
+    expect(unpackEnvelope(compressed(carried), SCOPE, 99n, 0).container).toBe(true)
   })
 
   it('refuses a container inside a container', () => {

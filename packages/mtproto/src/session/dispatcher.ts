@@ -24,7 +24,7 @@ import type { AuthKey } from '../message/auth-key.js'
 import { decodeEncryptedMessage } from '../message/encrypted.js'
 import { readObject, type TlScope, type TlValue } from '../tl/index.js'
 import { MessageHistory, withinAcceptanceWindow } from './history.js'
-import { type InboundMessage, inflatePacked, unpackMessages } from './inbound.js'
+import { type InboundMessage, inflatePacked, unpackEnvelope } from './inbound.js'
 import { decodeMessageStatuses, type MessageStatus } from './outbound.js'
 import { type FutureSalt, readFutureSalts } from './salts.js'
 import type { Session } from './session.js'
@@ -228,7 +228,14 @@ export class SessionDispatcher {
    *
    * A single message may carry many, and each carries its own identifier, so
    * acceptance is decided per message rather than per envelope: a container
-   * whose elements include a duplicate is not itself a duplicate.
+   * whose elements include a duplicate is not itself a duplicate. The server
+   * resends what was not acknowledged, combined with whatever else is due, so
+   * refusing a container for one element it already delivered would lose the
+   * others.
+   *
+   * The container is a message too, and its own identifier is checked first,
+   * by the same rules. A container refused by them is refused whole, before
+   * anything in it has had an effect.
    */
   receive(bytes: Uint8Array): DispatchResult {
     const decoded = decodeEncryptedMessage({ key: this.#key, bytes, from: 'server' })
@@ -246,13 +253,24 @@ export class SessionDispatcher {
       }
     }
 
+    const envelope = unpackEnvelope(decoded.body, this.#scope, decoded.msgId, decoded.seqNo)
+
+    if (envelope.container) {
+      const dropped = this.#refuse(decoded.msgId)
+      if (dropped !== undefined) {
+        return {
+          events: [{ kind: 'dropped', msgId: decoded.msgId, reason: dropped }],
+          acks: [],
+          answered: [],
+        }
+      }
+    }
+
     const events: SessionEvent[] = []
     const acks: bigint[] = []
     const answered: bigint[] = []
 
-    for (const message of unpackMessages(decoded.body, this.#scope, decoded.msgId, decoded.seqNo)) {
-      this.#handle(message, events, acks, answered)
-    }
+    for (const message of envelope.messages) this.#handle(message, events, acks, answered)
 
     return { events, acks, answered }
   }

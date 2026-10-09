@@ -64,6 +64,19 @@ export class InboundError extends YuigramError {
   override readonly name = 'InboundError'
 }
 
+/** What one decrypted message body carries. */
+export interface Envelope {
+  /** The messages, each under the identifier it was sent with. */
+  readonly messages: InboundMessage[]
+  /**
+   * Whether they arrived in a container.
+   *
+   * The envelope's identifier is then the container's own, which none of the
+   * messages carries, so whoever checks identifiers has one more to check.
+   */
+  readonly container: boolean
+}
+
 /**
  * Flatten one decrypted message body into the messages it carries.
  *
@@ -71,18 +84,29 @@ export class InboundError extends YuigramError {
  * A container's elements each carry their own and replace it, which is why an
  * acknowledgement names an element rather than the container that delivered it.
  */
+export function unpackEnvelope(
+  body: Uint8Array,
+  scope: TlScope,
+  msgId: bigint,
+  seqNo: number,
+): Envelope {
+  const out: InboundMessage[] = []
+  const container = unpack(body, scope, msgId, seqNo, 0, false, out)
+
+  return { messages: out, container }
+}
+
+/** The messages one decrypted message body carries; `unpackEnvelope` without the shape. */
 export function unpackMessages(
   body: Uint8Array,
   scope: TlScope,
   msgId: bigint,
   seqNo: number,
 ): InboundMessage[] {
-  const out: InboundMessage[] = []
-  unpack(body, scope, msgId, seqNo, 0, false, out)
-
-  return out
+  return unpackEnvelope(body, scope, msgId, seqNo).messages
 }
 
+/** Flatten one value into `out`, returning whether it was a container. */
 function unpack(
   body: Uint8Array,
   scope: TlScope,
@@ -91,7 +115,7 @@ function unpack(
   depth: number,
   nested: boolean,
   out: InboundMessage[],
-): void {
+): boolean {
   if (depth > MAX_DEPTH) {
     throw new InboundError(`message nests deeper than ${MAX_DEPTH}`)
   }
@@ -102,8 +126,7 @@ function unpack(
   const id = new DataView(body.buffer, body.byteOffset, body.byteLength).getUint32(0, true)
 
   if (id === GZIP_PACKED_ID) {
-    unpack(inflate(body, scope), scope, msgId, seqNo, depth + 1, nested, out)
-    return
+    return unpack(inflate(body, scope), scope, msgId, seqNo, depth + 1, nested, out)
   }
 
   if (id === MSG_CONTAINER_ID) {
@@ -114,11 +137,12 @@ function unpack(
       throw new InboundError('a container cannot carry another container')
     }
 
-    unpackContainer(body, scope, depth, out)
-    return
+    unpackContainer(body, scope, msgId, depth, out)
+    return true
   }
 
   out.push({ msgId, seqNo, value: readMessage(body, scope) })
+  return false
 }
 
 /**
@@ -150,10 +174,16 @@ function readMessage(body: Uint8Array, scope: TlScope): TlValue {
  * is read directly rather than through the codec. Each declares its own length,
  * and that length is checked against what remains before it is used — a
  * container is the one place where the sender chooses how a buffer is divided.
+ *
+ * A container is made after everything in it, so the protocol has each element's
+ * identifier lower than the container's own. An element that is not was not put
+ * there that way, and the container is refused whole — the only way the
+ * protocol lets one be refused.
  */
 function unpackContainer(
   body: Uint8Array,
   scope: TlScope,
+  containerMsgId: bigint,
   depth: number,
   out: InboundMessage[],
 ): void {
@@ -171,6 +201,12 @@ function unpackContainer(
     const elementMsgId = reader.long()
     const elementSeqNo = reader.int()
     const length = reader.int()
+
+    // Compared unsigned: an identifier is a time in its high half, and from 2038
+    // that half no longer fits a signed reading.
+    if (BigInt.asUintN(64, elementMsgId) >= BigInt.asUintN(64, containerMsgId)) {
+      throw new InboundError('a container element is not older than the container that carries it')
+    }
 
     if (length < 0 || length > reader.remaining) {
       throw new InboundError(`a container element declares ${length} bytes`)
