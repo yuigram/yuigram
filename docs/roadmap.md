@@ -343,7 +343,8 @@ reserved in advance.
   GramJS / mtcute
 - All ten planned examples
 - Plugin ecosystem foundations; stable extension points
-- Independent security review of the cryptographic and protocol layers
+- Independent security review of the cryptographic and protocol layers — deferred for `1.0.0`
+  by the owner, and not done
 
 Exit: `yuigram@1.0.0`.
 

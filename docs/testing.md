@@ -280,12 +280,15 @@ Honest accounting of the gaps:
 | Undocumented server behaviour | Test-DC experimentation; findings recorded in `docs/protocol-notes/` and turned into mock-server conditions |
 | Real-world flood-limit thresholds | Conservative defaults; documented as observed rather than specified |
 | Long-running peer-cache growth | Soak test with a synthetic high-volume update stream |
-| Cryptographic soundness of our own implementation | Known-answer vectors, plus an independent security review as a 1.0 release gate — testing shows presence of correctness on known inputs, not absence of weakness |
+| Cryptographic soundness of our own implementation | Known-answer vectors, plus an independent security review as a 1.0 release gate (deferred for 1.0.0, and not done: [security.md](security.md) §9) — testing shows presence of correctness on known inputs, not absence of weakness |
 | Telegram changing behaviour without notice | Scheduled test-DC smoke runs; schema drift detection ([codegen.md](codegen.md) §6) |
 
 The crypto row deserves emphasis. Test vectors prove the implementation matches the algorithm.
 They do not prove the implementation is free of side-channel or misuse weaknesses. That is what
 the external review is for, and it is why it is a release gate rather than an optional extra.
+For 1.0.0 it is deferred, so that gap is open. A functional test by an outside tester
+([releases/1.0.0-testing.md](releases/1.0.0-testing.md)) looks for wrong behaviour, and does not
+close it.
 
 ---
 
