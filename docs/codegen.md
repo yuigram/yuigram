@@ -419,7 +419,9 @@ now. **The pin moved to 229 because capabilities that only exist there could not
 implemented at all** — rich messages, communities, and ephemeral and welcome messages are
 constructors the 223 document does not contain. Layer 229 was first read from Telegram
 Desktop's schema file; reading it from TDLib instead produced an identical parsed schema and
-byte-identical generated code.
+byte-identical generated code. That copy was removed from the history before publication, so
+the revisions between the two hold no schema file for layer 229 and do not regenerate their TL
+code on their own.
 
 #### What the pin costs while the documentation is behind
 

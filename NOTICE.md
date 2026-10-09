@@ -50,8 +50,9 @@ documentation page serves an older layer. TDLib is distributed under the Boost S
 `@yuigram/mtproto` (`TDLIB-LICENSE.txt`), whose generated code is produced from that schema.
 Six definitions are not TDLib's: the constructors the TL language owns, `null` among them, are
 taken from Telegram's documentation schema. `schemas/tl/sources.json` records every input, and
-what TDLib declares before its schema proper that is left out. Earlier revisions of this
-repository took the same layer from Telegram Desktop's schema file; see
+what TDLib declares before its schema proper that is left out. The same layer was first taken
+from Telegram Desktop's schema file during development; that copy was removed from the
+repository's history before publication, and no revision holds it. See
 [docs/licensing.md](docs/licensing.md) §5.
 
 ## Acknowledgements
