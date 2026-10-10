@@ -36,7 +36,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { type Datacenter, startDatacenter } from './datacenter.js'
+import type { Datacenter } from './datacenter.js'
 import {
   createRunning,
   type Outcome,
@@ -49,6 +49,18 @@ import {
 const root = fileURLToPath(new URL('../../../', import.meta.url))
 const clients = fileURLToPath(new URL('../clients/', import.meta.url))
 const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram', 'sqlite', 'redis']
+
+/**
+ * Start a stand-in datacenter, loading it the first time one is wanted.
+ *
+ * It answers through the MTProto package's own sources, and those import the
+ * built core. Loaded with the rest of this file, a clean checkout would fail
+ * before `install` had built anything; by the time a runtime asks for a
+ * datacenter, it has.
+ */
+async function startDatacenter(): Promise<Datacenter> {
+  return await (await import('./datacenter.js')).startDatacenter()
+}
 
 function sh(command: string, args: readonly string[], cwd: string): string {
   return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: 'pipe', shell: true })
