@@ -55,6 +55,6 @@
   },
   "devDependencies": {
     "ioredis": "6.0.0",
-    "redis": "6.2.1"
+    "redis": "6.3.0"
   }
 }
