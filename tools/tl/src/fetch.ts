@@ -63,6 +63,23 @@ const ENTITIES: ReadonlyMap<string, string> = new Map([
 ])
 
 /**
+ * Markup with its tags taken out, until none is left.
+ *
+ * One pass can leave a tag behind when removing another joins its pieces, as
+ * `<<b>x>` would; the schema page has nothing of the sort, and what is read
+ * from it is TL text rather than anything rendered, but taking tags out until
+ * nothing changes is what "without tags" means.
+ */
+function withoutTags(markup: string): string {
+  let text = markup
+  for (;;) {
+    const next = text.replace(/<[^>]+>/g, '')
+    if (next === text) return text
+    text = next
+  }
+}
+
+/**
  * Recover TL text from a schema page.
  *
  * Both pages wrap the schema in a single `<pre>`; the API page decorates every
@@ -78,8 +95,7 @@ export function extractSchemaText(html: string, url: string): string {
   }
 
   const markup = blocks[0]?.[1] ?? ''
-  const withoutTags = markup.replace(/<[^>]+>/g, '')
-  const text = decodeEntities(withoutTags)
+  const text = decodeEntities(withoutTags(markup))
 
   if (!text.includes('=') || !text.includes(';')) {
     throw new TlFetchError(`no TL definitions found at ${url}`)

@@ -72,8 +72,14 @@ const page = globalThis as unknown as {
     createElement(tag: string): PageElement
     readonly body: PageElement
   }
-  addEventListener(kind: string, handler: (event: { data: unknown }) => void): void
-  removeEventListener(kind: string, handler: (event: { data: unknown }) => void): void
+  addEventListener(
+    kind: string,
+    handler: (event: { data: unknown; source?: unknown }) => void,
+  ): void
+  removeEventListener(
+    kind: string,
+    handler: (event: { data: unknown; source?: unknown }) => void,
+  ): void
 }
 
 /** A frame this page embedded, and the conversation it is having with it. */
@@ -123,7 +129,10 @@ async function embedSecondPage(): Promise<SecondPage> {
     ready = resolve
   })
 
-  const onMessage = (event: { data: unknown }): void => {
+  const onMessage = (event: { data: unknown; source?: unknown }): void => {
+    // Only the frame embedded here answers. Anything else that posts to this
+    // page is not it, whatever its message says.
+    if (event.source !== (frame as unknown as { contentWindow: unknown }).contentWindow) return
     const message = event.data as Record<string, unknown> | null
     if (message?.['yuigram'] !== 'second-page') return
 
@@ -134,7 +143,7 @@ async function embedSecondPage(): Promise<SecondPage> {
     }
 
     const settle = pending.get(message['id'] as number)
-    if (settle !== undefined) {
+    if (typeof settle === 'function') {
       pending.delete(message['id'] as number)
       settle(message)
     }
