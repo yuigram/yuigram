@@ -264,6 +264,11 @@ The remaining deficit becomes a *packaging* deficit rather than a capability one
 right shape: a developer can build all three in an afternoon against interfaces that exist,
 and none of them blocks starting.
 
+This table records where the two stood when this work finished, by capability. Storage
+drivers, scenes and media caching have shipped since ([bot-api.md](bot-api.md) §7). "Parity"
+here means the capability exists, not that every method takes the same options or behaves the
+same way as its puregram counterpart.
+
 ---
 
 ## 9. What is deliberately not implemented, and why

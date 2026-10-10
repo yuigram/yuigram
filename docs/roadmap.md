@@ -310,12 +310,20 @@ listed, with their state, in [releases/1.0.0-checklist.md](releases/1.0.0-checkl
   - A connection status on every account, carried across a worker, and a worker host that lets a
     closed tab go at once without mistaking a hidden one for it. See [runtimes.md](runtimes.md) §6
   - Still to come in this phase: the storage drivers below
-  - The gaps found against the libraries the surface was compared with, closed: an MTProxy
-    route with all three kinds of secret, fake TLS included (`yuigram/mtproxy`, see
+  - The missing capabilities found against the libraries the surface was compared with, built:
+    an MTProxy route with all three kinds of secret, fake TLS included (`yuigram/mtproxy`, see
     [mtproto.md](mtproto.md) §7); an IndexedDB store for browser accounts (`yuigram/indexeddb`,
     see [storage.md](storage.md) §2); and a Koa webhook adapter (`koaWebhook`, see
     [bot-api.md](bot-api.md), webhooks). MTProxy is checked against a local proxy and OpenSSL,
     not yet against a real proxy or through one to Telegram
+  - Still open at the level of single methods: options some account methods do not take that
+    mtcute's do — an upload progress callback, cancelling one sign-in step, a timeout on a
+    callback answer, acting through a business connection, code settings for `sendCode`,
+    rescheduling or rich content in `editMessage`, paid invite links, declining a gift offer,
+    clearing mentions, a contact's note, a web-app switch button on inline answers, answering a
+    content-protection request. Most of these calls can be made through `account.api`, which
+    makes the call and nothing more: the account method's peer resolution and reading of the
+    answer are not part of it
   - Outside the comparison: converting session strings from Telethon, Pyrogram, GramJS and
     MTKruto, which mtcute provides in a separate package (Yuigram reads and writes mtcute's own
     version-3 string), and a SOCKS or HTTP proxy helper — one can be put in an account's path
