@@ -375,7 +375,7 @@ describe('writing HTML back', () => {
     const value = fromHtml('<pre><code class="language-ts">a < b</code></pre> & <b>x</b>')
     const written = toHtml(value, {
       highlight: (code, language) =>
-        `<span class="${language}">${code.replace('<', '&lt;')}</span>`,
+        `<span class="${language}">${code.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</span>`,
     })
 
     expect(written).toBe(

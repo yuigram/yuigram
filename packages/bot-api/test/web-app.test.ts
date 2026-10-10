@@ -127,7 +127,7 @@ describe('reading launch data', () => {
 
   it.each([
     ['a pair with no "="', `${UNSIGNED}&orphan`],
-    ['an empty pair', UNSIGNED.replace('&', '&&')],
+    ['an empty pair', UNSIGNED.split('&').toSpliced(1, 0, '').join('&')],
     ['a field named twice', `${UNSIGNED}&query_id=again`],
     ['a field name Telegram does not write', `${UNSIGNED}&query-id=x`],
     ['an empty field name', `${UNSIGNED}&=x`],
