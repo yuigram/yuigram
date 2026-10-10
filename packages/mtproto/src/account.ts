@@ -5287,7 +5287,7 @@ export class Account<Ext = unknown> {
       // small its numbers. Only an account that has none asks for one.
       established: resumed !== undefined,
       onPosition: async () => await this.#remember(),
-      // A call naming the account as `inputPeerSelf` acts on this conversation.
+      // A call naming the account as `inputPeerSelf` acts on its own chat.
       self: () => this.#selfId,
       onProgress: (report) => {
         if (report.kind === 'retrying') this.#log.warn('updates: will try again', report)
