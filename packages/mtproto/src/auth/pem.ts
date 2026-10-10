@@ -149,17 +149,59 @@ function subjectPublicKey(der: Uint8Array): { n: bigint; e: bigint } {
  * has no authorization for, and would say so much later.
  */
 export function serverKeysFromPem(text: string): ServerRsaKey[] {
-  const blocks = [
-    ...text.matchAll(/-----BEGIN (RSA PUBLIC KEY|PUBLIC KEY)-----([\s\S]*?)-----END \1-----/g),
-  ]
+  const blocks = pemBlocks(text)
   if (blocks.length === 0) throw new ValidationError('the text holds no RSA public key in PEM form')
 
-  return blocks.map(([, kind, body]) => {
-    const der = fromBase64((body ?? '').replace(/\s+/g, ''))
+  return blocks.map(([kind, body]) => {
+    const der = fromBase64(body.replace(/\s+/g, ''))
     const key = kind === 'RSA PUBLIC KEY' ? rsaPublicKey(der) : subjectPublicKey(der)
     if (key.n.toString(2).length < 1024) {
       throw new ValidationError('the key is shorter than any key a datacenter holds')
     }
     return serverRsaKey(key)
   })
+}
+
+/** The two kinds of block a key can be written in, PKCS #1 first. */
+const PEM_KINDS = ['RSA PUBLIC KEY', 'PUBLIC KEY'] as const
+
+/**
+ * Every complete key block in a text, with its kind and the text inside.
+ *
+ * A block is a `BEGIN` line and the nearest `END` line of the same kind after
+ * it, read left to right and resumed after each block — what a lazy pattern
+ * with a backreference finds, but in one pass: such a pattern searches the
+ * rest of the text again from every `BEGIN` that has no `END`, and a text of
+ * many of those takes time that grows with its square. Once a kind has no
+ * `END` after some point it has none after any later one, so it is not looked
+ * for again.
+ */
+function pemBlocks(text: string): Array<readonly [string, string]> {
+  const blocks: Array<readonly [string, string]> = []
+  const unterminated = new Set<string>()
+  let from = 0
+
+  for (;;) {
+    const at = text.indexOf('-----BEGIN ', from)
+    if (at === -1) return blocks
+
+    const after = at + '-----BEGIN '.length
+    const kind = PEM_KINDS.find((one) => text.startsWith(`${one}-----`, after))
+    if (kind === undefined || unterminated.has(kind)) {
+      from = at + 1
+      continue
+    }
+
+    const body = after + kind.length + '-----'.length
+    const closing = `-----END ${kind}-----`
+    const end = text.indexOf(closing, body)
+    if (end === -1) {
+      unterminated.add(kind)
+      from = at + 1
+      continue
+    }
+
+    blocks.push([kind, text.slice(body, end)])
+    from = end + closing.length
+  }
 }

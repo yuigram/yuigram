@@ -210,7 +210,7 @@ export function fileNameOf(pathOrUrl: string): string | undefined {
   const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(path)
   if (scheme !== null) {
     // The host is not a name, so an address with no path has none.
-    const rest = path.slice(scheme[0].length).replace(/[?#].*$/, '')
+    const rest = cutLastLineAt(path.slice(scheme[0].length), '?#')
     const slash = rest.indexOf('/')
     path = slash === -1 ? '' : rest.slice(slash)
   }
@@ -251,4 +251,26 @@ export function inferMimeType(options: {
   if (options.head !== undefined && isProbablyText(options.head)) return 'text/plain'
 
   return 'application/octet-stream'
+}
+
+/**
+ * A text cut at the first of `marks` on its last line, as `/[marks].*$/` cuts
+ * it: `.` stops at a line break and `$` is the end of the text, so only a mark
+ * on the last line has nothing but that line after it. One pass, where the
+ * pattern would read the rest of the line again from every mark.
+ */
+function cutLastLineAt(text: string, marks: string): string {
+  let line = text.length
+  while (line > 0 && !isLineBreak(text.charCodeAt(line - 1))) line -= 1
+
+  for (let at = line; at < text.length; at += 1) {
+    if (marks.includes(text.charAt(at))) return text.slice(0, at)
+  }
+
+  return text
+}
+
+/** The characters `.` does not match: the four line terminators. */
+function isLineBreak(code: number): boolean {
+  return code === 0x0a || code === 0x0d || code === 0x2028 || code === 0x2029
 }

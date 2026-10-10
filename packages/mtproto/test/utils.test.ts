@@ -543,3 +543,38 @@ describe('peer conversions', () => {
     expect(() => peerOfInput({ _: 'inputPeerEmpty' })).toThrow(PeerError)
   })
 })
+
+describe('a file name, read in one pass', () => {
+  it('cuts an address where the pattern for its query and fragment cut it', () => {
+    // The pattern stopped at a line break, so only a mark on the last line was
+    // a cut; reading what it left must give the same name.
+    const pieces = ['?', '#', '\n', '\r', '\u2029', 'a', '.png', '/', '%20', 'x=1']
+    let state = 11
+    const next = () => {
+      state = (state * 1_103_515_245 + 12_345) % 2_147_483_648
+      return state / 2_147_483_648
+    }
+    const disagreements: string[] = []
+
+    for (let round = 0; round < 5_000; round += 1) {
+      let rest = ''
+      const length = Math.floor(next() * 10)
+      for (let piece = 0; piece < length; piece += 1) {
+        rest += pieces[Math.floor(next() * pieces.length)]
+      }
+      const address = `https://example.com/${rest}`
+      const cut = `https://${`example.com/${rest}`.replace(/[?#].*$/, '')}`
+      if (fileNameOf(address) !== fileNameOf(cut)) disagreements.push(JSON.stringify(address))
+    }
+
+    expect(disagreements).toEqual([])
+  })
+
+  it('takes time in proportion to the address, however many marks precede a line break', () => {
+    const started = performance.now()
+
+    fileNameOf(`https://example.com/a/b.png${'?'.repeat(100_000)}\nx`)
+
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
+})

@@ -1119,7 +1119,7 @@ function readShare(params: URLSearchParams): Reading {
   }
 
   const url = (params.get('url') ?? '').trim()
-  const text = (params.get('text') ?? '').replace(/\n+$/, '')
+  const text = withoutTrailingNewlines(params.get('text') ?? '')
 
   if (url === '') return text === '' ? null : { kind: 'share', url: text }
 
@@ -1445,9 +1445,45 @@ function readArguments(name: string, params: URLSearchParams, tg: boolean): Read
   return withDraft({ kind: 'username', username: name }, params)
 }
 
+/**
+ * A text without the line breaks at its end.
+ *
+ * A loop rather than `/\n+$/`: a pattern anchored at the end is tried from
+ * every break, and a long run of them followed by anything else is read again
+ * from each — time that grows with the square of what a link carries.
+ */
+export function withoutTrailingNewlines(text: string): string {
+  let end = text.length
+  while (end > 0 && text.charCodeAt(end - 1) === 0x0a) end -= 1
+
+  return text.slice(0, end)
+}
+
+/**
+ * A text cut at the first of `marks` on its last line, as `/[marks].*$/` cuts
+ * it: `.` stops at a line break and `$` is the end of the text, so only a mark
+ * on the last line has nothing but that line after it. One pass, where the
+ * pattern would read the rest of the line again from every mark.
+ */
+export function cutLastLineAt(text: string, marks: string): string {
+  let line = text.length
+  while (line > 0 && !isLineBreak(text.charCodeAt(line - 1))) line -= 1
+
+  for (let at = line; at < text.length; at += 1) {
+    if (marks.includes(text.charAt(at))) return text.slice(0, at)
+  }
+
+  return text
+}
+
+/** The characters `.` does not match: the four line terminators. */
+function isLineBreak(code: number): boolean {
+  return code === 0x0a || code === 0x0d || code === 0x2028 || code === 0x2029
+}
+
 /** A `tg:` link, read into the same descriptions as its web form. */
 function readTg(text: string): Reading {
-  const rest = text.replace(/^tg:(?:\/\/)?/i, '').replace(/#.*$/, '')
+  const rest = cutLastLineAt(text.replace(/^tg:(?:\/\/)?/i, ''), '#')
   const mark = rest.indexOf('?')
   const action = (mark === -1 ? rest : rest.slice(0, mark)).replace(/\/$/, '')
   const params = queryOf(mark === -1 ? '' : rest.slice(mark + 1))

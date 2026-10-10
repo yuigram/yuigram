@@ -108,8 +108,6 @@ const NAMED: Readonly<Record<string, string>> = Object.assign(Object.create(null
   quot: '"',
 })
 
-const TAG =
-  /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=>/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/y
 const REFERENCE = /&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]*);/y
 const ATTRIBUTE = /([^\s=>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g
 /** What an unfinished tag can look like, at the very end of the input. */
@@ -165,6 +163,167 @@ function readAttributes(
 }
 
 /**
+ * A tag as read: all of it, the `/` of a closing tag, the name, the attributes
+ * as written, and the `/` of a self-closing one.
+ */
+export type TagMatch = readonly [
+  whole: string,
+  slash: string,
+  name: string,
+  attributes: string,
+  selfClosing: string,
+]
+
+/**
+ * Read the tag at `at`, if one is there: `<`, an optional `/`, a name, then
+ * attributes — each after whitespace, a name and optionally `=` with a quoted
+ * or bare value — then optional whitespace, an optional `/`, and `>`.
+ *
+ * Written out rather than left to a regular expression. A tag is tried at
+ * every `<`, and a pattern that fails only at the end of a long run of
+ * attribute-like text reads that run again from every `<` inside it, which
+ * takes time growing with the square of the input. Every step here is forced,
+ * so whichever `<` reaches a given place in an attribute list, what follows
+ * from it is the same: `dead` keeps the places known to end in no tag, and a
+ * later attempt that reaches one stops there.
+ */
+export function matchTag(source: string, at: number, dead: Set<number>): TagMatch | undefined {
+  if (source[at] !== '<') return undefined
+
+  const slash = source[at + 1] === '/' ? '/' : ''
+  const nameStart = at + 1 + slash.length
+  if (!isLetter(source.charCodeAt(nameStart))) return undefined
+  let nameEnd = nameStart + 1
+  while (isNameChar(source.charCodeAt(nameEnd))) nameEnd += 1
+
+  const visited: number[] = []
+  let end = nameEnd
+  for (;;) {
+    if (dead.has(end)) return deadEnd(dead, visited)
+    visited.push(end)
+    const next = attributeEnd(source, end)
+    if (next === -1) break
+    end = next
+  }
+
+  let close = skipSpace(source, end)
+  const selfClosing = source[close] === '/' ? '/' : ''
+  close += selfClosing.length
+  if (source[close] !== '>') return deadEnd(dead, visited)
+
+  return [
+    source.slice(at, close + 1),
+    slash,
+    source.slice(nameStart, nameEnd),
+    source.slice(nameEnd, end),
+    selfClosing,
+  ]
+}
+
+/** Remember where an attempt passed on its way to no tag, and answer that there is none. */
+function deadEnd(dead: Set<number>, visited: readonly number[]): undefined {
+  for (const position of visited) dead.add(position)
+
+  return undefined
+}
+
+/**
+ * Where one attribute starting at `from` ends — whitespace, a name, and a
+ * value if `=` follows — or -1 when none starts there.
+ */
+function attributeEnd(source: string, from: number): number {
+  const name = skipSpace(source, from)
+  if (name === from) return -1
+
+  let at = name
+  while (at < source.length && isAttributeNameChar(source.charCodeAt(at))) at += 1
+  if (at === name) return -1
+
+  const equals = skipSpace(source, at)
+  if (source[equals] !== '=') return at
+
+  // A value that does not read leaves the attribute without one, and the `=`
+  // then ends the tag's chances where it stands.
+  const value = valueEnd(source, skipSpace(source, equals + 1))
+
+  return value === -1 ? at : value
+}
+
+/** Where a quoted or bare value starting at `from` ends, or -1 when none starts there. */
+function valueEnd(source: string, from: number): number {
+  const quote = source[from]
+  if (quote === '"' || quote === "'") {
+    const close = source.indexOf(quote, from + 1)
+
+    return close === -1 ? -1 : close + 1
+  }
+
+  let at = from
+  while (at < source.length && isBareValueChar(source.charCodeAt(at))) at += 1
+
+  return at === from ? -1 : at
+}
+
+function skipSpace(source: string, from: number): number {
+  let at = from
+  while (isSpace(source.charCodeAt(at))) at += 1
+
+  return at
+}
+
+/** Whether a code unit is one `\s` matches in a regular expression. */
+function isSpace(code: number): boolean {
+  return (
+    code === 0x20 ||
+    (code >= 0x09 && code <= 0x0d) ||
+    code === 0xa0 ||
+    code === 0x1680 ||
+    (code >= 0x2000 && code <= 0x200a) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    code === 0x202f ||
+    code === 0x205f ||
+    code === 0x3000 ||
+    code === 0xfeff
+  )
+}
+
+function isLetter(code: number): boolean {
+  return (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)
+}
+
+/** `[a-zA-Z0-9-]`, what a tag name continues with. */
+function isNameChar(code: number): boolean {
+  return isLetter(code) || (code >= 0x30 && code <= 0x39) || code === 0x2d
+}
+
+/** `[^\s=>/]`, what an attribute name is made of. */
+function isAttributeNameChar(code: number): boolean {
+  return !isSpace(code) && code !== 0x3d && code !== 0x3e && code !== 0x2f
+}
+
+/** `[^\s"'>]`, what a value without quotes is made of. */
+function isBareValueChar(code: number): boolean {
+  return !isSpace(code) && code !== 0x22 && code !== 0x27 && code !== 0x3e
+}
+
+/** Every tag in a source, left to right, as a search for one tag after another finds them. */
+function* tagsIn(source: string): Generator<{ readonly at: number; readonly match: TagMatch }> {
+  const dead = new Set<number>()
+  let at = source.indexOf('<')
+
+  while (at !== -1) {
+    const match = matchTag(source, at, dead)
+    if (match === undefined) {
+      at = source.indexOf('<', at + 1)
+      continue
+    }
+    yield { at, match }
+    at = source.indexOf('<', at + match[0].length)
+  }
+}
+
+/**
  * Sibling positions for every tag in the source, for custom tag handlers.
  *
  * Counted before parsing because a handler runs when its tag closes, and by
@@ -173,7 +332,6 @@ function readAttributes(
 function siblingPositions(source: string): Map<number, { index: number; count: number }> {
   const positions = new Map<number, { index: number; count: number }>()
   const frames: { name: string; children: number[] }[] = [{ name: '', children: [] }]
-  const pattern = new RegExp(TAG.source, 'g')
 
   const closeFrame = (frame: { children: number[] }): void => {
     frame.children.forEach((at, index) => {
@@ -181,10 +339,9 @@ function siblingPositions(source: string): Map<number, { index: number; count: n
     })
   }
 
-  for (const match of source.matchAll(pattern)) {
+  for (const { at, match } of tagsIn(source)) {
     const [, slash, rawName, , selfClosing] = match
-    const name = (rawName as string).toLowerCase()
-    const at = match.index as number
+    const name = rawName.toLowerCase()
 
     if (slash === '/') {
       for (let depth = frames.length - 1; depth > 0; depth -= 1) {
@@ -300,6 +457,8 @@ class HtmlScanner {
   readonly builder: Builder
   readonly positions: Map<number, { index: number; count: number }> | undefined
   readonly customStarts = new WeakMap<OpenRange, CustomStart>()
+  /** Places in the source known to lead to no tag; see {@link matchTag}. */
+  readonly dead = new Set<number>()
   index = 0
   heldBack = false
 
@@ -500,10 +659,9 @@ class HtmlScanner {
   /** A `<` at the scan position. Returns false to stop. */
   readTag(): boolean {
     const at = this.index
-    TAG.lastIndex = at
-    const match = TAG.exec(this.source)
+    const match = matchTag(this.source, at, this.dead)
 
-    if (match === null) {
+    if (match === undefined) {
       if (this.mode === 'partial' && TAG_PREFIX.test(this.source.slice(at))) {
         this.heldBack = true
 
@@ -516,7 +674,7 @@ class HtmlScanner {
     }
 
     const [whole, slash, rawName, rawAttributes, selfClosing] = match
-    const name = (rawName as string).toLowerCase()
+    const name = rawName.toLowerCase()
     const end = at + whole.length
 
     if (slash === '/') {

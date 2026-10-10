@@ -224,3 +224,36 @@ describe('reading a key exactly', () => {
     expect(production(spki(info(seq(RSA))))).toBe('d09d1d85de64fd85')
   })
 })
+
+describe('reading many key headers', () => {
+  it('reads past headers of the other kind that never end, in time in proportion to the text', () => {
+    // Each such header used to send the search to the end of the text for an
+    // END that is not there.
+    const unended = '-----BEGIN PUBLIC KEY-----\n'.repeat(20_000)
+    const started = performance.now()
+
+    const keys = serverKeysFromPem(`${unended}${TELEGRAM_PRODUCTION}`)
+
+    expect(performance.now() - started).toBeLessThan(1_000)
+    expect(keys).toHaveLength(1)
+  })
+
+  it('reads a header of one kind that never ends as reaching the next END of its kind', () => {
+    // The block runs from the header to the nearest END of the same kind,
+    // swallowing what lies between; what it swallowed is not a key.
+    const unended = '-----BEGIN RSA PUBLIC KEY-----\n'.repeat(20_000)
+    const started = performance.now()
+
+    expect(() => serverKeysFromPem(`${unended}${TELEGRAM_PRODUCTION}`)).toThrow(ValidationError)
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
+
+  it('still finds a block of the other kind after a header of one kind that never ends', () => {
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const spki = publicKey.export({ type: 'spki', format: 'pem' }).toString()
+
+    const keys = serverKeysFromPem(`-----BEGIN RSA PUBLIC KEY-----\nnot a key\n${spki}`)
+
+    expect(keys).toHaveLength(1)
+  })
+})
