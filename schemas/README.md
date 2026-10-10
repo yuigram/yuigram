@@ -3,9 +3,20 @@
 Committed, version-tagged snapshots of the Telegram schemas Yuigram generates from.
 
 ```
-bot-api/<version>.json   e.g. 10.2.json
-tl/<layer>.json          e.g. 223.json
+bot-api/<version>.json      e.g. 10.2.json
+
+tl/api.<layer>.tl           e.g. api.223.tl      raw text, verbatim
+tl/api.<layer>.json         e.g. api.223.json    parsed IR
+tl/mtproto.tl                                    raw text, verbatim
+tl/mtproto.json                                  parsed IR
 ```
+
+The TL side keeps the raw `.tl` alongside the IR because they answer different questions: the
+text says what Telegram changed, the IR says how the parser read it. A single artifact cannot
+separate a schema change from a parser change.
+
+`api.tl` is layer-numbered; `mtproto.tl` is not — Telegram publishes one current service schema
+with no layer attached.
 
 They are committed deliberately, for four reasons:
 
@@ -14,4 +25,14 @@ They are committed deliberately, for four reasons:
 3. **A documentation restructure breaks a scheduled job**, not everyone's build.
 4. **History is preserved** — diffing two layers answers "what changed" precisely.
 
-Generators land in Phase 3 (Bot API) and Phase 5 (TL). See [../docs/codegen.md](../docs/codegen.md).
+## Licences
+
+The files here are inputs taken from others, kept as they were retrieved, and the repository's
+licence does not relabel them. `tl/api.229.tl` and the IR read from it are TDLib's schema,
+under the Boost Software License 1.0; its notice is `tl/TDLIB-LICENSE.txt`. The other TL files,
+`tl/errors.json` and the Bot API snapshots are read from Telegram's documentation, which states
+no licence ([../docs/licensing.md](../docs/licensing.md) §5). `tl/sources.json` records where
+each came from.
+
+The Bot API generator is in `tools/schema`; the TL generator lands in `tools/tl`. See
+[../docs/codegen.md](../docs/codegen.md) for both, and §3.3 there for the TL layer policy.

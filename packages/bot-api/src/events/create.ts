@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Building a context from an update.
  *
@@ -21,6 +23,7 @@
 
 import type { Logger } from '@yuigram/core'
 import type { RawApi } from '../api.js'
+import type { DownloadDeps } from '../download.js'
 import { PAYLOAD_ALIASES } from '../generated/contexts.js'
 import { MESSAGE_KINDS } from '../generated/events.js'
 import type { CallbackQuery, Message } from '../generated/types/index.js'
@@ -33,7 +36,15 @@ import type { AnyEventContext, MessageEventKind } from './types.js'
 export interface CreateEventContextOptions {
   readonly normalized: NormalizedUpdate
   readonly api: RawApi
+  /** The client the update arrived on. */
+  readonly client: { readonly name: string }
   readonly log: Logger
+  /**
+   * What downloading a message's file needs, from the client it arrived on.
+   *
+   * Absent for a context built without a client, whose `download` then says so.
+   */
+  readonly files?: DownloadDeps
 }
 
 /** Fields Telegram uses for the sender, in the order they are checked. */
@@ -69,6 +80,8 @@ const HAND_WRITTEN = new Set([
   'pin',
   'unpin',
   'answer',
+  'download',
+  'downloadStream',
 ])
 
 /**
@@ -91,6 +104,7 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
     updateId: normalized.updateId,
     raw: normalized.raw,
     api,
+    client: options.client,
     log,
   }
 
@@ -112,8 +126,23 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
   const sender = senderOf(payload)
   if (sender !== undefined) context['sender'] = sender
 
+  // A button press carries its chat on the message the button is on, not on
+  // itself. Put where every other context has it, so what is keyed by chat and
+  // sender — a session, a conversation — keys a press the way it keys the
+  // messages around it. Only where the payload has no chat of its own.
+  if (context['chat'] === undefined && normalized.chat !== undefined) {
+    context['chat'] = normalized.chat
+  }
+
   if (carriesMessage) {
-    Object.assign(context, messageActions({ api, message: payload as unknown as Message }))
+    Object.assign(
+      context,
+      messageActions({
+        api,
+        message: payload as unknown as Message,
+        ...(options.files === undefined ? {} : { files: options.files }),
+      }),
+    )
   }
 
   if (kind === 'callback_query') {

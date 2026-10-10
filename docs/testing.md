@@ -139,8 +139,8 @@ records outgoing calls, and returns scripted responses.
 const { bot, send, calls } = mockBot()
 bot.onCommand('start', (message) => message.reply('hi'))
 
-await send.command('start', { from: { id: 1 } })
-expect(calls.last('sendMessage')).toMatchObject({ text: 'hi' })
+await send.command('/start')
+expect(calls.last('sendMessage')?.params).toMatchObject({ text: 'hi' })
 ```
 
 It drives the **real** dispatch pipeline, so tests exercise actual middleware, filters and
@@ -149,6 +149,50 @@ malformed JSON, network failure mid-request, duplicate `update_id`, and update t
 from the installed schema.
 
 This mock ships publicly as `yuigram/testing`, because users need it to test their own bots.
+
+What an application test needs beyond recording calls is provided without scripting:
+
+- **Common answers.** Sending, forwarding and editing are answered with the message as Telegram
+  would build it; confirmations — answering a button or an inline query, deleting, reacting,
+  pinning, chat actions, join-request decisions, member changes — with `true`. `on` and `once`
+  replace any of them, and anything else fails with a message naming the method.
+- **What a person sees.** `sent` holds the messages the bot sent, and an edit through the harness
+  changes the entry, so a test reads the current text and keyboard.
+- **Pressing a real button.** `send.press(data)` delivers a callback query on the latest sent
+  message with buttons, or a named one, and fails the test if no button on it sends `data`.
+- **What nobody caught.** `errors` collects handler errors that reached no handler, from the
+  bot's logger, so `bot.onError` still takes what it takes.
+- **The other updates a bot receives.** Builders for chosen inline results, reactions,
+  pre-checkout queries, poll answers and join requests, beside the message, callback and inline
+  query ones.
+- **The bot a plugin expects.** `mockBot<ConversationFlavour>()` builds the bot with the
+  flavour an installed plugin adds, as `Bot.fromToken<…>()` does, so its handlers are typed
+  without a cast. `mockAccount<…>()` takes the same parameter.
+
+### 3.1a Account harness
+
+`mockAccount()` from `yuigram/testing` (and `@yuigram/mtproto/testing`) does the same for an
+MTProto account: the real account — dispatch, filters, sessions, context operations, peers — over
+a channel that answers from a script instead of a datacenter. No key is exchanged, so a test runs
+in milliseconds and needs no credentials.
+
+```ts
+const { account, send, calls } = mockAccount()
+account.on('message', f.command('ping'), (event) => event.reply('pong'))
+
+await send.message('/ping')
+expect(calls.last('messages.sendMessage')?.query).toMatchObject({ message: 'pong' })
+```
+
+`send.message`, `send.service(action)` and `send.press(data)` deliver updates and write down the
+people and chats they name, as an account does. Sending, editing, deleting, reading, reacting,
+typing and answering a button are answered as Telegram would; `rpcError(code, name)` refuses a
+call through the same conversion a real refusal takes, so a handler sees `RpcError`,
+`FloodError` or `MigrationError` exactly as in production. `calls`, `sent` and `errors` read as
+they do for a bot. Each harness has a storage guard of its own, so harnesses never contend with
+each other for an account name.
+
+The protocol under it is not what this tests; the internal mock server below is.
 
 ### 3.2 Deterministic mock MTProto server
 
@@ -236,12 +280,15 @@ Honest accounting of the gaps:
 | Undocumented server behaviour | Test-DC experimentation; findings recorded in `docs/protocol-notes/` and turned into mock-server conditions |
 | Real-world flood-limit thresholds | Conservative defaults; documented as observed rather than specified |
 | Long-running peer-cache growth | Soak test with a synthetic high-volume update stream |
-| Cryptographic soundness of our own implementation | Known-answer vectors, plus an independent security review as a 1.0 release gate — testing shows presence of correctness on known inputs, not absence of weakness |
+| Cryptographic soundness of our own implementation | Known-answer vectors, plus an independent security review as a 1.0 release gate (deferred for 1.0.0, and not done: [security.md](security.md) §9) — testing shows presence of correctness on known inputs, not absence of weakness |
 | Telegram changing behaviour without notice | Scheduled test-DC smoke runs; schema drift detection ([codegen.md](codegen.md) §6) |
 
 The crypto row deserves emphasis. Test vectors prove the implementation matches the algorithm.
 They do not prove the implementation is free of side-channel or misuse weaknesses. That is what
 the external review is for, and it is why it is a release gate rather than an optional extra.
+For 1.0.0 it is deferred, so that gap is open. A functional test by an outside tester
+([releases/1.0.0-testing.md](releases/1.0.0-testing.md)) looks for wrong behaviour, and does not
+close it.
 
 ---
 
@@ -266,6 +313,35 @@ the external review is for, and it is why it is a release gate rather than an op
 The blocking set must stay under about fifteen minutes. A slow required suite gets bypassed,
 and a bypassed suite is worse than no suite because it produces false confidence.
 
+### 7.1 Against real runtimes and a real Redis
+
+Two jobs in `.github/workflows/ci.yml` run what the ordinary suite cannot:
+
+| Job | What it runs | What it starts, and how it ends |
+| --- | --- | --- |
+| `Runtimes` | `tools/runtime-matrix --strict`: the packed packages on Node, Bun 1.4.2, Deno 2.9.6 and workerd (Miniflare 4.20260730.0), against a local stand-in datacenter | A datacenter per runtime, the runtime's process and the worker, all stopped by the runner on success, failure or interruption |
+| `Real Redis` | `redis-live.test.ts` and `storage-lease-processes.test.ts` with `YUIGRAM_TEST_REDIS_URL` set | A `redis:8.10.2` service container, removed by the runner whatever the outcome |
+
+Neither reaches Telegram or a hosting provider. The same runs, locally:
+
+```sh
+# Real Redis: any server this suite may write to. Keys go under a namespace of
+# their own and are removed afterwards; database 15 keeps them apart from others.
+docker run --rm -d --name yuigram-redis -p 6379:6379 redis:8.10.2
+pnpm build
+YUIGRAM_TEST_REDIS_URL=redis://127.0.0.1:6379/15 pnpm exec vitest run \
+  packages/redis/test/redis-live.test.ts packages/mtproto/test/storage-lease-processes.test.ts
+docker stop yuigram-redis
+
+# Runtimes: point at the runtimes and a directory with Miniflare installed.
+YUIGRAM_BUN=… YUIGRAM_DENO=… YUIGRAM_MINIFLARE=… \
+  pnpm --filter @yuigram/runtime-matrix run matrix --strict
+```
+
+Without `YUIGRAM_TEST_REDIS_URL` both Redis suites skip every case and say so, which is why the
+ordinary `Test` step passes without a server and why this job exists. The Redis client libraries
+are development dependencies of `@yuigram/redis`, never runtime ones.
+
 ---
 
 ## 8. Coverage policy
@@ -283,9 +359,22 @@ Meaningful targets instead:
 | Peer resolution | Every path including `min` and failure |
 | Public API | Every documented example compiles and runs |
 
-That last row is a documentation guarantee: every code sample in `docs/` and in the
-documentation site is extracted and compiled in CI. Documentation that does not compile is a
-bug, and it is the most common kind of documentation bug.
+That last row is a documentation requirement: documentation that does not compile is a bug,
+and it is the most common kind of documentation bug. Two things hold it today.
+
+- The programs under `examples/` type-check with the repository, in `pnpm typecheck` and so in
+  CI.
+- `pnpm check:docs` type-checks every TypeScript sample in the READMEs, `docs/api-design.md` and
+  the Russian guides against the built packages, one program per page, strict. Names a fragment
+  takes from an earlier block — `bot`, `message`, a document an account read — are declared in
+  `scripts/doc-examples/`, typed with the package's own exports: no `any`, no casts, nothing the
+  package does not export. CI runs it in the `Verify` job against the packages that job has
+  already built; it does not cover the design records in `docs/` beyond the API design.
+
+What it shows is that every sample names APIs that exist, with arguments and results of the
+right types. It runs nothing: a sample that signs in, connects, sends or downloads is compiled,
+not executed, and whether Telegram accepts it is what [live-verification.md](live-verification.md)
+is for.
 
 ---
 

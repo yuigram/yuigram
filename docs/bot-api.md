@@ -125,6 +125,36 @@ bot.api.sendMessage({ chat_id, text })      // typed from the schema
 bot.api.call('newMethod', { … })            // works before regeneration
 ```
 
+### Defaults
+
+A bot's calls start from its defaults, in three layers:
+
+```ts
+Bot.fromToken(token, {
+  defaults: {
+    '*': { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+    sendMessage: { protect_content: true },
+  },
+})
+```
+
+| Layer | Applies to | Wins over |
+| --- | --- | --- |
+| `'*'` | methods whose schema takes the parameter; seven are settable here: `parse_mode`, `link_preview_options`, `disable_notification`, `protect_content`, `allow_paid_broadcast`, `message_effect_id`, `business_connection_id` | nothing |
+| a method's key | that method, with any of its parameters, typed from the schema | `'*'` |
+| the call | that call | both — including `false`, `null`, `''`, and `undefined`, which is how one call opts out of a default |
+
+Which methods take which of the seven is generated from the schema, so a `'*'` default never
+lands on `getMe`. A method newer than the schema, reached through `call()`, gets its own key's
+defaults and none of the `'*'` ones. Defaults are copied when the bot is made and again into
+each call, so a hook that adjusts `link_preview_options` on one call leaves the next alone, and
+two bots given one object never share it. A defaulted `parse_mode` is left off a call that
+carries its own ranges — `entities`, `caption_entities`, or a formatted value — and a
+`parse_mode` the call passes itself is always kept. Hooks see the parameters with defaults
+applied, a retry sends the same ones, and an upload sends them as fields beside the file.
+
+Parameters written at the top level, the form defaults took before, still apply to every call.
+
 ### HTTP client
 
 Native `fetch` on Node 22, behind a `HttpClient` interface so it can be replaced for proxying,
@@ -192,19 +222,27 @@ adapter is the few lines that translate one framework's objects into it:
 
 ```ts
 import { createServer } from 'node:http'
-import { expressWebhook, fastifyWebhook, nodeWebhook } from 'yuigram/webhook'
+import { expressWebhook, fastifyWebhook, koaWebhook, nodeWebhook } from 'yuigram/webhook'
 
 const handler = bot.webhook({ secretToken })
 
 createServer(nodeWebhook(handler, { path: '/hook' })).listen(8080)
 app.use('/hook', expressWebhook(handler))        // express
 app.post('/hook', fastifyWebhook(handler))       // fastify
+koa.use(koaWebhook(handler, { path: '/hook' }))  // koa
 ```
 
 **No adapter is a dependency.** Each describes the shape it needs structurally — a `headers`
 bag, a `body`, a way to send a status — so no framework has to be installed for the types to
-resolve, and no version is pinned. Koa, hono, h3, elysia and the Web `Request`/`Response` pair
-follow the same pattern; they are additions to one file, not new dependencies.
+resolve, and no version is pinned. `webWebhook` serves the Web `Request`/`Response` pair, which
+is what hono, elysia, h3 and the edge runtimes hand a route.
+
+`koaWebhook` is Koa middleware. It uses `ctx.request.body` when a body parser has run before it,
+and otherwise reads `ctx.req` itself under the same size limit as `nodeWebhook`, so it works with
+or without one. It sets the status, content type and body on the context and leaves sending them
+to Koa — it never writes to the socket, so nothing else can answer the same request twice. With
+`path`, other requests go on to the next middleware. A handler that throws is left to Koa's error
+handling. The adapter is tested inside a real Koa application over HTTP.
 
 Non-negotiable webhook behaviours, all pinned by tests:
 
@@ -243,11 +281,209 @@ configured rather than meaning "everything".
 | Download | 20 MB | `getFile` -> URL -> stream |
 | Upload | 50 MB | multipart, streaming |
 | Reuse | — | `file_id`, no transfer |
-| Local server | unlimited | `useLocal` lifts both limits |
+| Local server | unlimited | `baseUrl` with `local: true` lifts both limits |
 
 The 20/50 MB caps are Bot API facts, not Yuigram choices, and the documentation must say so
 plainly — a developer hitting the ceiling should be told immediately that a local Bot API
 server or an MTProto client is the answer.
+
+`bot.download(target)` and `bot.downloadStream(target)` fetch through the bot's own transport,
+and a message context's `download()` fetches the file that message carries. To disk, and from a
+local server, whose files are paths on its disk, the functions take the bot's transport:
+`downloadToFile(bot.files, path, target)`, `download(bot.files, target)`. The methods stay off
+the filesystem so a bot's bundle needs nothing but `fetch`.
+
+### Test environment
+
+Telegram runs a separate test environment with its own accounts, chats and bots.
+`Bot.fromToken(token, { testMode: true })` sends calls to `/bot<token>/test/<method>` and fetches
+files from `/file/bot<token>/test/<path>`, with a token from the test environment's @BotFather —
+the same switch an account's `testMode` is. A bot and an account meant to meet in a chat have to
+be in the same environment.
+
+### Lists
+
+Six methods page. Reading them — every item, in order — and showing them to a person a screen at a
+time are two different jobs, with two different helpers.
+
+**Reading.** `bot.profilePhotos(userId)`, `bot.profileAudios(userId)` and `bot.starTransactions()`
+count by position; `bot.userGifts(userId)`, `bot.chatGifts(chatId)` and
+`bot.businessGifts(connectionId)` follow Telegram's cursor, and take the method's own filters. Each
+returns an async sequence that fetches a page only when the loop asks for the next item, with the
+options an account's list walks take:
+
+| Option | Meaning |
+| --- | --- |
+| `limit` | stop after this many items; the last request asks only for what is still needed |
+| `pageSize` | how many to ask for at a time, up to Telegram's 100 |
+| `offset` / `cursor` | start from a position, or from a cursor a previous read ended on |
+| `signal` | stops the walk between requests and cancels the one in flight, as `CancelledError` |
+
+A position list ends on a short or empty page, or at the total Telegram gave. A cursor list ends
+when no next cursor comes back or a page is empty, and a cursor that comes back unchanged is an
+error rather than a loop that never ends. `.collect()` reads the rest into an array carrying
+`total`; `offsetPages` and `cursorPages` build the same for any other paged source.
+
+**Showing.** `pager(name, { pageSize })` gives the ‹ · › row for a page, slices an array into
+pages, and reads a press back. The page and the person the list was shown to travel in the button,
+so nothing is kept between presses, and a press by somebody else — in a group, anyone can press —
+comes back as `refused` for the application to answer. The label between the arrows is matched by
+the pager's filter so its press can be answered too.
+
+### Media caching
+
+`mediaCache()` keeps the identifier Telegram gives each upload and sends it in place of the
+file next time:
+
+```ts
+const cache = mediaCache({ storage: sqliteStore(database, { table: 'media' }) })
+bot.extend(cache)
+```
+
+| | |
+| --- | --- |
+| Covered | `sendPhoto`, `sendVideo`, `sendAnimation`, `sendVideoNote`, `sendAudio`, `sendDocument`, `sendSticker`, `sendVoice` |
+| Named by | the bot, the media kind, and the source: a path as given, a URL, a digest of bytes in memory, or a caller's `cacheKey` |
+| Not cached | an identifier already in the call; a single-use stream without `cacheKey`, which is never read to be named; anything marked `cacheKey: false` |
+| `keyFilesBy: 'content'` | files on disk named by a digest of their bytes, read once before each upload |
+| A bad identifier | a 400 saying the identifier is wrong sent nothing, so the call is made once more with the file and the entry replaced; any other failure is the caller's, and nothing is cached from a failed call |
+| Two sends at once | the second waits for the first's upload and sends its identifier; if that upload fails, it uploads for itself |
+| Handle | `cache.lookup(kind, source)`, `cache.invalidate(kind, source)`, `cache.storage` |
+
+An identifier belongs to one bot and works in every chat that bot writes to, so the chat is not
+part of the name and one cache serves one bot. Like every plugin, it is installed when the bot
+starts or dispatches its first update; a call made directly before either is not cached.
+
+### Mini App launch data
+
+A Mini App receives `Telegram.WebApp.initData` — who opened it, from where, and when — with
+Telegram's proof attached, and sends it to a server that must decide whether to believe it.
+`yuigram/web-app` keeps reading apart from believing, and follows the two checks Telegram
+publishes:
+
+```ts
+import { InitDataError, InitDataKey, verifyInitData } from 'yuigram/web-app'
+
+// On the bot's server, once: an HMAC of the token under the constant key `WebAppData`.
+const key = await InitDataKey.fromToken(process.env.BOT_TOKEN ?? '')
+
+async function launchUser(initData: string) {
+  try {
+    const data = await verifyInitData(initData, { key, maxAge: 3600 })
+    return data.user
+  } catch (error) {
+    if (error instanceof InitDataError) return undefined // error.problem says why
+    throw error
+  }
+}
+```
+
+```ts
+import { verifyInitDataSignature } from 'yuigram/web-app'
+
+// A third party, or the page itself: Telegram's Ed25519 key and the bot's id, no token.
+const data = await verifyInitDataSignature(initData, { botId: 123456789, maxAge: 3600 })
+```
+
+| | `readInitData` | `verifyInitData` | `verifyInitDataSignature` |
+| --- | --- | --- | --- |
+| Proves | nothing | the HMAC-SHA-256 in `hash`, under a key derived from the token | Telegram's Ed25519 `signature`, with the published key |
+| Data-check-string | — | every field but `hash`, `signature` included, sorted, `name=value` per line | `<botId>:WebAppData`, then every field but `hash` and `signature`, the same way |
+| Needs | — | the bot token, on a server | the bot's id; `publicKey: 'test'` for the test environment |
+| Age | not checked | `maxAge` required, in seconds; `Infinity` accepts any age, deliberately | the same |
+
+Reading follows the query-string form exactly — `+` is a space, an escape is UTF-8 — and
+refuses anything that could be read two ways: a pair with no `=`, a field named twice, a field
+name Telegram does not write, or a line feed, which would let two different texts produce one
+data-check-string. `hash` and `auth_date` are required. Empty text gets its own message: a Mini
+App opened from a keyboard button or in inline mode receives none. Fields keep Telegram's names
+(`auth_date`, `start_param`); `user`, `receiver` and `chat` are parsed from their JSON.
+
+The proof is checked before the age, so `'expired'` means genuine but old, and `'mismatch'`
+means altered or issued for another bot. `auth_date` may be ahead of the clock by `clockSkew`
+seconds, 60 by default. Launch data from before Telegram signed it has no `signature`: the
+third-party check calls it `'unsigned'` rather than forged, and the bot's own check still works.
+A runtime whose Web Crypto API cannot do the check — no `crypto.subtle` outside a secure context,
+or no Ed25519 — is `'unsupported'`, never a mismatch.
+
+A successful check is not a session. Anyone holding the text can present it again until
+`maxAge` passes, and what the user may do is the application's decision; see
+[security.md](security.md) §7. The entry point runs on the Web Crypto API alone and imports
+nothing from Node, and a program that never imports it does not load it.
+
+`hashInitData(fields, { token })` answers the `hash` those fields carry when they are the bot's —
+what an application's own tests need to write launch data their endpoint will accept, under a
+token made up for them. It is for writing, not for checking: `verifyInitData` compares in
+constant time and applies the age policy, and comparing two strings by hand does neither.
+
+### Dice
+
+A dice arrives as an emoji and a number, and for five of the six emoji the number is the face.
+A 🎰 is the exception: its value, 1 to 64, encodes three reels, and `yuigram/dice` reads them.
+
+```ts
+import { slotMachineReels } from 'yuigram/dice'
+
+bot.onMessage((message) => {
+  const dice = message.dice
+  if (dice?.emoji !== '🎰') return
+
+  const [left, center, right] = slotMachineReels(dice.value)
+  if (left === center && center === right) return message.reply(`three of ${left}`)
+})
+```
+
+The value less one is three base-four digits, the left reel lowest, and a digit names `'bar'`,
+`'grapes'`, `'lemon'` or `'seven'` in that order — so 1, 22, 43 and 64 are the three of a kind
+Telegram's apps animate as a win, and 64 is three sevens. A value outside 1 to 64 is a
+`ValidationError` rather than a guess. The same function reads an account's
+`message.media.diceValue`.
+
+---
+
+## 4.1 Payloads, built
+
+The generated types describe every payload a method takes, which is enough to write one
+correctly and not enough to write one quickly. A photo in an album is `{ type: 'photo', media }`;
+a permission set is sixteen booleans that all have to be named, because Telegram reads an absent
+permission as a withheld one; an invoice paid in Stars is priced in exactly one line, in `XTR`,
+with an empty provider token. Each of those is a rule a caller has to know, and each is a request
+refused for a reason that names the wrong field when they do not.
+
+So the payloads are built:
+
+| Builder | What it makes |
+| --- | --- |
+| `attach.photo` / `video` / `animation` / `audio` / `document` / `livePhoto` | one `InputMedia` item |
+| `attach.photos` / `videos` / `documents` / `audios` | a whole album, captioned once, on the item a client shows the caption from |
+| `newSticker.static` / `animated` / `video` | a sticker for a set, its format named rather than passed |
+| `content.text` / `location` / `venue` / `contact` / `invoice` | what an inline result sends |
+| `preview.off` / `url` / `large` / `small` | link preview options |
+| `replyTo` / `replyTo.inChat` / `replyTo.quoting` | reply parameters, across chats and quoting |
+| `reaction.emoji` / `custom` / `paid` | a reaction |
+| `price`, `invoice.fiat`, `invoice.stars`, `shipping` | the payment payloads |
+| `pollOption` | one poll option, with its own formatting |
+| `menuButton.default` / `commands` / `webApp` | the menu button variants |
+| `botCommands.of` / `list` / `scope.*` | commands, and where a list of them applies |
+| `permissions.all` / `none`, `adminRights.all` / `none` | a full set, then what differs |
+| `richMessage.html` / `markdown` / `blocks` | a rich message, in exactly one of its three forms |
+| `richMedia.photo` / `video` / `animation` / `audio` / `voiceNote` / `document`, `richMedia.link` | the files a written rich message names, and the link it names each by |
+
+Each returns the object the schema declares and nothing more, so it can be spread, edited and
+mixed with hand-written payloads. Files go in as they come from `media.*`: an upload nested in a
+payload is rewritten to `attach://` when the request is encoded.
+
+Inline results cover all twenty shapes: `inline.article`, `inline.photo` and the rest by URL or
+description, `inline.cached.*` for files Telegram already holds, and `inline.button.webApp` /
+`start` for the control above the results.
+
+A rich message written as HTML or Markdown names its files with `tg://photo`, `tg://video`,
+`tg://audio` and `tg://document` links. `richMedia.link(entry)` writes the link from the entry,
+so the id is written once and an animation is named as a video and a voice note as audio, as
+their players are. `richMessage.html` and `markdown` refuse a link to a file that is not attached,
+a link of the wrong kind, two files under one id, and more than fifty; an attached file no link
+names is left for Telegram to judge. An upload inside an entry is attached when the request is
+encoded, like any other nested file.
 
 ---
 
@@ -298,7 +534,14 @@ Everything needed to run a real bot in production, and nothing else:
 - Event normalization with service-message promotion — **shipped**
 - File download, streaming upload, `file_id` reuse, `media` sources — **shipped**
 - Keyboards, both inline and reply — **shipped**
-- Built-in filters, generated presence plus curated families — **shipped**
+- Built-in filters, generated presence plus curated families — **shipped**, including the
+  updates that are not messages: reactions (`f.reaction.*`, both sides of a change, added and
+  removed told apart), the three payment moments matched by the bot's own invoice payload
+  (`f.payment.*`), standing changes derived from the statuses before and after (`f.member.*`,
+  where one transition can be two changes), routing by kind including a plugin's own
+  (`f.kind.in`, `f.kind.custom`), a reply to one particular message (`f.reply.to`), boosts,
+  business connections, game buttons and chosen inline results. `when(filter, middleware)` gates
+  middleware on any of them and narrows what the middleware is written against.
 - Formatting helpers with escaping — **shipped**
 - Inline-mode result builders — **shipped**
 - API hooks, with flood-wait retry and throttling on them — **shipped**
@@ -317,20 +560,18 @@ What is not there yet, and what to do meanwhile:
 
 | Not yet | What to do instead | Planned |
 |---|---|---|
-| Scenes / conversations | `Router` plus sessions covers step-wise dialogue; the position is tracked by the application | v0.x |
-| Redis / SQLite storage | `KV` is four methods — write an adapter against the client the application already configures. See [storage.md](storage.md) | userland |
-| Media caching | A hook plus a `KV`, both of which ship | userland |
+| A store not shipped | `KV` is three required methods — write an adapter against the client the application already configures. SQLite and Redis ship as `@yuigram/sqlite` and `@yuigram/redis`; see [storage.md](storage.md) | userland |
 
 ### v0.x
 
-- Scenes, once the design questions in [bot-api-finalization.md](bot-api-finalization.md) §9 are answered
 - Business-account scoped API proxy
-- Rich messages (Bot API 10.2) as a first-class builder
+- Rich messages (Bot API 10.2) as a first-class builder — the written forms, the files they
+  name, and a builder for each block type
 
 ### v1.0
 
 - Ephemeral messages, communities (Bot API 10.2 features that need design, not just types)
-- Payments and Mini App helpers
+- Payments, and Mini App helpers beyond checking launch data (which ships in `yuigram/web-app`)
 - Passport
 
 ### Post-1.0
@@ -343,8 +584,8 @@ What is not there yet, and what to do meanwhile:
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Telegram restructures the documentation HTML | **High** | Committed schema means builds do not break; scheduled CI job fails loudly; ark0f cross-check gives a second signal; manual schema patch is always possible |
-| Prose type descriptions parsed wrongly | Medium | Golden tests over the emitted surface; ark0f diff; runtime `call()` escape hatch limits the blast radius |
+| Telegram restructures the documentation HTML | **High** | Committed schema means builds do not break; scheduled CI job fails loudly; manual schema patch is always possible. No independent parse gives a second signal yet ([codegen.md](codegen.md) §2.1) |
+| Prose type descriptions parsed wrongly | Medium | Golden tests over the emitted surface; runtime `call()` escape hatch limits the blast radius |
 | Undocumented behaviour (soft limits, absent "required" fields) | Medium | Treat documented-required as optional where evidence says otherwise; record deviations in a patch file applied after parsing |
 | Generated `.d.ts` degrades editor performance | Medium | Domain splitting; measured budget in [performance.md](performance.md) §5 |
 | Bot API release cadence outpaces maintenance | Low | Generation makes a release a review task, not an engineering task |

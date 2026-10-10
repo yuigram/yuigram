@@ -124,14 +124,98 @@ type BotPeer = number | `@${string}`
 
 // Account: a peer is a resolved handle, or something resolvable that may fail.
 type UserPeer = Peer | number | `@${string}`
-await user.resolve('@someone')   // may hit the network, may throw PeerNotFound
+await user.resolve('@someone')   // may hit the network, may throw PeerError
 ```
+
+`Account.resolve` takes a name or the reference an event already carries — its `chat` or its
+`sender` — and gives back the reference a call names a peer with, so what it produces is what
+the generated method surface accepts:
+
+```ts
+const peer = await user.resolve('@someone')
+await user.api.messages.sendMessage({ peer, message: 'hi', random_id: rnd() })
+```
+
+A name already harvested is answered from the peer store, which is why resolving somebody the
+account has heard from costs nothing and works with no connection. Telegram is asked only when
+nothing usable is known, and its answer is harvested whole. A peer the account has only seen in
+passing is refused rather than named: its hash means something only where it arrived, and a
+reference built from it is a request Telegram rejects as a problem with the call.
 
 Context-bound operations — `message.reply()`, `message.edit()`, `message.delete()` — are safe on both
 clients, because the peer came from the incoming update and is therefore already known. This
 is the important practical point: **the overwhelming majority of handler code addresses
 peers it just heard from**, so the unified surface covers the common case honestly, and the
 divergence appears only where it genuinely exists — addressing a peer out of the blue.
+
+### Crossing between the two: identifiers and links
+
+What does cross the seam is a *name* for a peer, and there are two notations for one that
+travel through places that belong to neither transport — configuration, a database column, a
+Bot API payload, a link somebody pasted. Both are read and written in `@yuigram/core`, so a
+program that only runs a bot never loads MTProto to use them:
+
+```ts
+import { botApiId, peerIdentity, readLink, writeLink } from 'yuigram'
+
+peerIdentity(-1001234567890)                    // { kind: 'channel', id: 1234567890n }
+botApiId({ kind: 'channel', id: 1234567890n })  // -1001234567890
+
+readLink('https://t.me/c/1234567890/42?single')
+// { kind: 'message', chat: { channel: { kind: 'channel', id: 1234567890n } }, id: 42, single: true }
+
+writeLink({ kind: 'bot-start', bot: 'shop_bot', payload: 'spring' })
+// 'https://t.me/shop_bot?start=spring'
+```
+
+Three things are kept apart, because confusing them is how the peer problem comes back:
+
+| | What it is | Where it comes from |
+| --- | --- | --- |
+| Peer identity | A kind and a bare identifier | `peerIdentity`, an event's `chat` or `sender` |
+| Marked identifier | The same identity as one signed number: the Bot API's `chat_id` | `botApiId` |
+| Resolved input peer | The identity plus the account's own access hash | `account.resolve(identity)` only |
+
+A peer identity has the same shape as an account's peer reference, so one read from a Bot API
+chat id goes straight to `account.resolve`, and resolution stays where §3 put it. Nothing here
+produces an access hash: an identifier names a peer and never reaches one.
+
+**Marked identifiers follow Telegram's own ranges**, with the boundaries its client library uses:
+users up to 2^40 − 1, basic groups below 10^12, ordinary channels up to 10^12 − 2^31, monoforum
+channels between 10^12 + 2^31 and 3·10^12, and secret chats in the 2^32-wide range around −2·10^12.
+A secret chat is recognised — `markedKind` answers `'secret-chat'` — and refused as a peer,
+because it exists only on the device holding its key; reading that range as channels would name
+a different conversation. Every valid identifier fits a JavaScript number exactly, so a number
+that is not a safe integer is refused rather than rounded, and text must be canonical decimal.
+
+**Links follow Telegram's published syntax, and where it is silent, its apps.** Twenty-one kinds
+are described: usernames and phone numbers with a message draft, invitations, chat folders,
+messages with their thread, comment, album item, media timestamp, checklist task and poll
+option, shares, video chats and live streams, sticker and emoji sets, stories, boosts, bot starts,
+adding a bot to a group or channel with administrator rights, main and named mini apps,
+attachment menus in the current chat, a chosen one or a named one, games, MTProxy and SOCKS5
+proxies, and temporary profile links — in their `t.me`,
+`telegram.me`, `telegram.dog`, `<username>.t.me` and `tg:` forms. Where a link carries several
+arguments, the first that forms a link decides; where a value is malformed, that argument is
+passed over rather than failing the link, as Telegram's apps do. A draft that is not valid UTF-8 is
+left out rather than decoded into different text.
+
+Administrator rights are described as the link lists them — known names, once each, in the
+link's order. Which of them apply to a group or a channel, and the implied right to manage the
+chat, are decided by whoever applies them, not by reading the link.
+
+A Telegram link of a kind not described here — a theme, a gift, a live story, an affiliate
+referral — reads as `undefined` rather than being mistaken for a username. A proxy link needs
+every part its syntax requires — server, a port from 1 to 65535 and, for MTProxy, the secret —
+or it reads as nothing. An MTProxy secret, or a SOCKS5 password, is what lets a client use the
+proxy, so a link carrying one is a credential and is shared as deliberately as the proxy. Writing
+always produces an `https://t.me/` link in the published form, and refuses a description a
+client would read as something else: a start parameter past 64 characters or with characters
+outside base64url, a right that does not exist, a channel link with no rights, an invite hash of
+digits alone, which every app opens as a phone number.
+
+Reading and writing are pure. Opening a link — resolving the username, joining the chat, starting
+the bot — is a request, and belongs to a client.
 
 ---
 
@@ -176,29 +260,42 @@ taxonomy, one logger — usable from a bot handler and a userbot handler without
 
 ## 5. What the unified context can honestly contain
 
-Only fields that exist with the same meaning on both sides, and only actions that are safe
-on both.
+The unified context is an **action surface, not a second entity model**. It carries the few
+members that mean the same thing whatever produced the update, and the operations §3 shows
+are safe on both because the peer came from the update itself.
 
 ```ts
 interface Context {
-  // Identity of the delivering client — always available, always honest.
-  readonly client: Bot | Account
-  readonly transport: 'bot-api' | 'mtproto'
+  // Which client and which subsystem produced this. The client is structural —
+  // a name — because naming a transport's own client type here would make the
+  // shared layer depend on the subsystem that produced the event.
+  readonly client: { readonly name: string }
+  readonly transport: string          // narrowed to a literal by each transport
 
-  // Normalized, present on both.
-  readonly chat: Chat | undefined
-  readonly sender: User | undefined
+  // Which event this is, and what it said, where both agree on the meaning.
+  readonly kind: string               // narrowed to a literal by each transport
   readonly text: string | undefined
-  readonly date: Date
+  readonly log: Logger
 
-  // Safe on both, because the peer came from the update.
-  reply (text: string, params?: ReplyParams): Promise<Message>
-  react (emoji: string): Promise<void>
+  // Safe on both, because the peer came from the update. See §3.
+  reply (text: string): Promise<unknown>
+  react (emoji: string): Promise<unknown>
 
   // The escape hatch, typed per transport.
   readonly raw: unknown   // narrowed by transport — see api-design.md §7
 }
 ```
+
+**Entities stay where they are modelled.** There is no unified `Chat`, `User`, `Message` or
+`Date` on this surface. The two protocols model peers differently — that is the whole of §3 —
+and a shared peer type would be the union-pretending-to-be-a-product-type §7 rejects. A Bot API
+context therefore keeps its schema `chat`, `sender` and `date`; an MTProto context keeps its
+peer references and its own timestamp; and a handler that needs either reads it after narrowing
+on `transport`, or reads the payload it came from under `raw`.
+
+Timestamps in particular are deliberately not normalized: the Bot API carries Unix seconds and
+MTProto carries its own, and converting on every update for every handler is a cost paid by
+everyone for the benefit of a few — see [events.md](events.md) §5.
 
 Everything else — `answerCallbackQuery`, `editMessageMedia`, `forwardMessages` with
 MTProto's semantics, `getFullUser` — lives on the client, where its availability is a
@@ -211,7 +308,8 @@ compile-time fact rather than a runtime surprise.
 > `raw`.
 
 This rule is what keeps Yuigram from over-abstracting the two protocols into a single
-surface that misrepresents both.
+surface that misrepresents both. Applied to entities it removes them; applied to
+context-bound actions it keeps them, which is the asymmetry §3 explains.
 
 ---
 
@@ -220,15 +318,15 @@ surface that misrepresents both.
 Type narrowing carries the divergence, so the compiler enforces what prose cannot.
 
 ```ts
-app.onMessage(async (message) => {
-  await message.reply('works on both')       // unified surface
+app.on('message', async (event) => {
+  await event.reply('works on both')         // unified surface, no branching
 
-  if (message.transport === 'mtproto') {
-    await message.client.api.messages.readHistory({ … })   // narrowed to Account
+  if (event.transport === 'mtproto') {
+    event.chat            // narrowed to MTProto's peer reference
   }
 
-  if (message.transport === 'bot-api') {
-    await message.client.api.setMessageReaction({ … })     // narrowed to Bot
+  if (event.transport === 'bot-api') {
+    event.chat.id         // narrowed to the Bot API's chat
   }
 })
 ```

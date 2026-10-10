@@ -117,8 +117,9 @@ is required and meaningless to the caller.
 | **Inline result builders** | **Core** | Types are generated already; the builders are a thin, stable layer |
 | **Media caching** | **Userland recipe** | It is a hook plus a `KV`. Both exist. Shipping it means owning an eviction policy nobody agrees on |
 | **Redis / SQLite storage** | **Userland recipe** | `KV` is four methods. Shipping an adapter means owning a driver dependency, a connection lifecycle and a version matrix for something the application already has |
-| **Scenes / conversations** | **Deferred** | Real design surface — persistence of position, re-entry, cancellation, nesting. Doing it badly is worse than not doing it. `Router` plus sessions covers the common case today |
-| **Rich messages** | **Not now** | New, niche, and the generated types already make them callable |
+| **Scenes / conversations** | **Core** | The position is state about one conversation, and the identity, the lock and the storage it needs are the ones sessions already use. Built on those rather than beside them |
+| **Typed callback data** | **Core** | The 64-byte budget is bytes of UTF-8, which a hand-rolled format gets wrong only for users who do not write in ASCII |
+| **Rich messages** | **Core** | A written rich message and the files it names have to agree, which the generated types cannot check. The block form is typed completely by the schema |
 | **Pagination** | **Not building** | The Bot API paginates almost nothing; `getUpdates` offsets are handled by polling |
 
 The through-line: something belongs in core when it rides an extension point core already
@@ -263,14 +264,14 @@ The remaining deficit becomes a *packaging* deficit rather than a capability one
 right shape: a developer can build all three in an afternoon against interfaces that exist,
 and none of them blocks starting.
 
+This table records where the two stood when this work finished, by capability. Storage
+drivers, scenes and media caching have shipped since ([bot-api.md](bot-api.md) §7). "Parity"
+here means the capability exists, not that every method takes the same options or behaves the
+same way as its puregram counterpart.
+
 ---
 
 ## 9. What is deliberately not implemented, and why
-
-**Scenes and conversations.** The design questions — where the position lives,
-what happens when a scene is re-entered, how cancellation interacts with global commands,
-whether scenes nest — deserve their own pass. Shipping a shallow version would fix the wrong
-answers into the public API. `Router` plus sessions covers step-wise dialogue today.
 
 **Storage adapters for Redis, SQLite or Postgres.** `KV` is `get`, `set`, `delete`, and an
 optional `info`. An adapter is thirty lines the application writes against the client it
@@ -282,8 +283,6 @@ about is eviction, and there is no answer that suits a bot with ten files and a 
 million.
 
 **Pagination helpers.** The Bot API paginates almost nothing.
-
-**Rich message builders.** Recent, narrow, and reachable through the generated types.
 
 **A plugin package per capability.** Package count is not a health metric. Every capability
 here rides an extension point that is public and documented, which is what makes an ecosystem

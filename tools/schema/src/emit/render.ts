@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Shared rendering helpers for the emitters.
  *
@@ -136,12 +138,20 @@ export function renderParameter(field: Field, indent = '  '): string {
   return `${doc}${indent}${propertyName(field.name)}${optional}: ${value}\n`
 }
 
-/** Standard header for every generated file. */
+/**
+ * Standard header for every generated file.
+ *
+ * The code is Yuigram's, under MIT. The descriptions in it are Telegram's
+ * own documentation text, which Yuigram's licence does not cover, so the header
+ * says so in words rather than with a single licence identifier.
+ */
 export function header(sourceVersion: string, description: string): string {
   return [
     '// GENERATED FILE — do not edit.',
     `// ${description}`,
     `// Source: Telegram Bot API ${sourceVersion}, schemas/bot-api/${sourceVersion}.json`,
+    '// The code is licensed under MIT (see LICENSE). Descriptions are quoted from',
+    "// Telegram's Bot API documentation, which that licence does not cover.",
     '',
     '',
   ].join('\n')

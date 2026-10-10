@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * 10 — A production setup.
  *

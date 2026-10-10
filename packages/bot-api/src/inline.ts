@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Answering an inline query.
  *
@@ -26,15 +28,26 @@
  * to derive that from.
  */
 
+import { ValidationError } from './core.js'
 import type {
   InlineQueryResultArticle,
   InlineQueryResultAudio,
+  InlineQueryResultCachedAudio,
+  InlineQueryResultCachedDocument,
+  InlineQueryResultCachedGif,
+  InlineQueryResultCachedMpeg4Gif,
+  InlineQueryResultCachedPhoto,
   InlineQueryResultCachedSticker,
+  InlineQueryResultCachedVideo,
+  InlineQueryResultCachedVoice,
   InlineQueryResultContact,
   InlineQueryResultDocument,
+  InlineQueryResultGame,
   InlineQueryResultGif,
   InlineQueryResultLocation,
+  InlineQueryResultMpeg4Gif,
   InlineQueryResultPhoto,
+  InlineQueryResultsButton,
   InlineQueryResultVenue,
   InlineQueryResultVideo,
   InlineQueryResultVoice,
@@ -118,6 +131,17 @@ export function gif(
 }
 
 /**
+ * A silent MPEG-4 animation, by URL. `thumbnail_url` defaults to the animation
+ * itself, as it does for a GIF.
+ */
+export function mpeg4Gif(
+  url: string,
+  extra: Extra<InlineQueryResultMpeg4Gif, 'mpeg4_url', 'thumbnail_url'> = {},
+): InlineQueryResultMpeg4Gif {
+  return build('mpeg4_gif', { mpeg4_url: url, thumbnail_url: url }, extra)
+}
+
+/**
  * A video, by URL.
  *
  * `mime_type` and `title` are required by Telegram and have no sensible
@@ -195,18 +219,105 @@ export function sticker(
   return build('sticker', { sticker_file_id: fileId }, extra)
 }
 
+/** A game, by the short name it was registered under. */
+export function game(
+  shortName: string,
+  extra: Extra<InlineQueryResultGame, 'game_short_name'> = {},
+): InlineQueryResultGame {
+  return build('game', { game_short_name: shortName }, extra)
+}
+
+/**
+ * Results for files Telegram already holds, named by `file_id`.
+ *
+ * Each has the same `type` as its URL counterpart — Telegram tells the two
+ * apart by which field names the file — so the builders are grouped rather
+ * than suffixed. A video, a voice recording and a document need a title, which
+ * is positional here as it is for their URL forms.
+ */
+export const cached = Object.freeze({
+  photo: (
+    fileId: string,
+    extra: Extra<InlineQueryResultCachedPhoto, 'photo_file_id'> = {},
+  ): InlineQueryResultCachedPhoto => build('photo', { photo_file_id: fileId }, extra),
+
+  gif: (
+    fileId: string,
+    extra: Extra<InlineQueryResultCachedGif, 'gif_file_id'> = {},
+  ): InlineQueryResultCachedGif => build('gif', { gif_file_id: fileId }, extra),
+
+  mpeg4Gif: (
+    fileId: string,
+    extra: Extra<InlineQueryResultCachedMpeg4Gif, 'mpeg4_file_id'> = {},
+  ): InlineQueryResultCachedMpeg4Gif => build('mpeg4_gif', { mpeg4_file_id: fileId }, extra),
+
+  video: (
+    fileId: string,
+    title: string,
+    extra: Extra<InlineQueryResultCachedVideo, 'video_file_id' | 'title'> = {},
+  ): InlineQueryResultCachedVideo => build('video', { video_file_id: fileId, title }, extra),
+
+  audio: (
+    fileId: string,
+    extra: Extra<InlineQueryResultCachedAudio, 'audio_file_id'> = {},
+  ): InlineQueryResultCachedAudio => build('audio', { audio_file_id: fileId }, extra),
+
+  voice: (
+    fileId: string,
+    title: string,
+    extra: Extra<InlineQueryResultCachedVoice, 'voice_file_id' | 'title'> = {},
+  ): InlineQueryResultCachedVoice => build('voice', { voice_file_id: fileId, title }, extra),
+
+  document: (
+    fileId: string,
+    title: string,
+    extra: Extra<InlineQueryResultCachedDocument, 'document_file_id' | 'title'> = {},
+  ): InlineQueryResultCachedDocument =>
+    build('document', { document_file_id: fileId, title }, extra),
+
+  sticker,
+})
+
+/** What a deep-link parameter may be made of, from the Bot API's description of it. */
+const START_PARAMETER = /^[A-Za-z0-9_-]{1,64}$/
+
+/**
+ * The button shown above an answer's results.
+ *
+ * It either opens a Web App or sends the bot `/start` with a parameter, and
+ * Telegram takes exactly one of the two, so each is its own builder.
+ */
+export const button = Object.freeze({
+  /** Open a Web App, which can hand the user back with `switchInlineQuery`. */
+  webApp: (text: string, url: string): InlineQueryResultsButton => ({
+    text,
+    web_app: { url },
+  }),
+
+  /** Open the chat with the bot and send `/start` with this parameter. */
+  start: (text: string, parameter: string): InlineQueryResultsButton => {
+    if (!START_PARAMETER.test(parameter)) {
+      throw new ValidationError('a start parameter is 1 to 64 characters of A-Z, a-z, 0-9, _ and -')
+    }
+
+    return { text, start_parameter: parameter }
+  },
+})
+
 /**
  * Every inline result builder, under one name.
  *
- * The eleven shapes a bot actually answers with. The other nine — the cached
- * variants of each media type — are one field different from their URL
- * counterparts and are written directly, since the generated types describe
- * them completely.
+ * All twenty result shapes: twelve described or linked by URL, and under
+ * `cached` the eight that name a file Telegram already holds. A sticker exists
+ * only in the cached form and is also offered at the top level, where it has
+ * always been. `button` builds the one control an answer carries above its
+ * results.
  */
 export const inline = Object.freeze({
   article,
   photo,
   gif,
+  mpeg4Gif,
   video,
   audio,
   voice,
@@ -215,5 +326,8 @@ export const inline = Object.freeze({
   venue,
   contact,
   sticker,
+  game,
+  cached,
+  button,
   id: resultId,
 })

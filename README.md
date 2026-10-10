@@ -2,161 +2,172 @@
 
 # Yuigram
 
-**An independent TypeScript framework for the Telegram Bot API and MTProto.**
+**One TypeScript framework for Telegram bots and Telegram accounts.**
 
-One package. Bots and user accounts. One programming model.
+[Documentation](docs/README.md) · [API design](docs/api-design.md) · [Examples](examples) · [Русский](README.ru.md)
 
-[![npm](https://img.shields.io/npm/v/yuigram.svg)](https://www.npmjs.com/package/yuigram)
-[![node](https://img.shields.io/node/v/yuigram.svg)](https://nodejs.org)
-[![licence](https://img.shields.io/npm/l/yuigram.svg)](LICENSE)
-[![CI](https://github.com/yuigram/yuigram/actions/workflows/ci.yml/badge.svg)](https://github.com/yuigram/yuigram/actions/workflows/ci.yml)
+Bot API 10.3 · TL layer 229 · Node.js 22+ · no runtime dependencies
 
 </div>
 
----
-
-> **Status: the Bot API subsystem is complete.** Every Bot API capability is reachable, and
-> nothing released is a stub — unimplemented means absent, not hollow. MTProto is next and is
-> being built bottom-up. See [the roadmap](docs/roadmap.md).
->
-> The client surface changed after `0.1.0`. [docs/migration.md](docs/migration.md) lists every
-> rename.
-
-## What it is
-
-Yuigram is a framework for Telegram applications that need more than a bot — a bot and a user
-account in one process, sharing middleware, routing, sessions and error handling.
-
-### Working today
-
 ```ts
-import { Bot } from 'yuigram'
+import { readFileSync } from 'node:fs'
+import { Account, App, Bot, bootstrapAt, serverKeysFromPem } from 'yuigram'
+import { f as heard } from 'yuigram/account-filters'
 
-const bot = Bot.fromToken(process.env.BOT_TOKEN)
+const OWNER = Number(process.env.OWNER_ID)
 
-bot.onCommand('start', (message) => message.reply('Hello.'))
-bot.onText((message) => message.reply(message.text))
-
-bot.onError((error, event) => event.log.error('handler failed', { error }))
-
-await bot.poll()
-```
-
-Registration decides what a handler receives. `onText` matched on the text, so
-`message.text` is a `string` there; `onMessage` cannot promise that, because a photo
-without a caption is a message with no text. The context types come from the Bot API
-schema, so what Telegram guarantees arrives guaranteed and what it leaves optional stays
-optional.
-
-Commands and routing, filters, middleware, sessions, storage, file downloads, long polling,
-webhooks with framework adapters, a typed surface generated from Bot API 10.2, and a testing
-harness that drives the real pipeline with only the network replaced. See
-[examples](examples).
-
-A context also carries every API method the update already addresses, with the identifiers
-filled in — `message.banChatMember({ user_id })`, `message.sendPhoto({ photo })` — and every
-event kind has a named registration. Both are generated from the schema, so the surface is
-complete without being maintained by hand.
-
-Every Bot API capability is reachable — all 185 methods and 388 objects are generated and
-typed. Two conveniences are still to come in v0.x: keyboard builders (pass the typed markup
-object meanwhile) and streaming upload (buffer the file meanwhile).
-
-### The design target
-
-```ts
-import { Account, App, Bot } from 'yuigram'
-
-const app = new App()
-
-const bot = app.add(Bot.fromToken(process.env.BOT_TOKEN))
-const me = app.add(Account.fromSession('./me.session', { apiId, apiHash }))
-
-// Shared middleware across both clients.
-app.use(async (event, next) => {
-  event.log.info({ transport: event.transport, kind: event.kind })
-  await next()
+const bot = Bot.fromToken(process.env.BOT_TOKEN!)
+const account = Account.fromSession('./me.session', {
+  apiId: Number(process.env.API_ID),
+  apiHash: process.env.API_HASH!,
+  keys: serverKeysFromPem(readFileSync('./telegram-keys.pem', 'utf8')),
+  bootstrap: bootstrapAt({ dc: 2, host: '149.154.167.50', port: 443 }),
 })
 
-bot.onCommand('start', (message) => message.reply('Hello!'))
-me.onMessage((message) => archive(message.text))
+// The bot is the control panel: its owner tells the account what to send.
+bot.onCommand('say', async (message) => {
+  if (message.sender?.id !== OWNER) return
+
+  await account.sendText('@example', message.command.rest)
+  await message.reply('Sent from the account.')
+})
+
+// What the account hears comes back as a notification from the bot.
+account.on('message', heard.incoming.and(heard.chat('user')), async (event) => {
+  await bot.api.sendMessage({ chat_id: OWNER, text: `New message: ${event.text ?? '(no text)'}` })
+})
+
+const app = new App()
+app.add(bot)
+app.add(account)
 
 await app.start()
 ```
 
-*`Account` and `App` arrive with the MTProto subsystem. See [docs/api-design.md](docs/api-design.md).*
+Yuigram is a framework for programs that work with Telegram as a bot, as a user account, or as
+both at once. `Bot` speaks the Bot API over HTTPS. `Account` speaks MTProto, implemented in this
+repository rather than wrapped from another library. `App` runs any number of either in one
+process, with the same handlers, filters, middleware, sessions, storage and test harness around
+all of them.
 
-## What makes it different
+## Why both in one framework
 
-**Both protocols, one framework.** No other TypeScript framework provides first-class Bot API
-*and* MTProto support in a single programming model. Today that means gluing two libraries
-together with two mental models, two session concepts and two error taxonomies.
+Yuigram lets one application coordinate a Bot API bot and an MTProto account. The application
+chooses which transport performs each operation it supports, within Telegram's permissions and
+what the account is able to see. Projects that need both usually glue two unrelated libraries
+together, with two event models, two kinds of session and two ways to test. Yuigram gives them
+one application model:
 
-**A framework over MTProto.** Middleware, filters, routing and sessions — over a user account,
-not just a bot. Existing MTProto libraries are clients; you build the framework yourself.
+- **A bot as the control panel for an account.** People talk to the bot; the work that needs an
+  account — reading a channel's history, resolving a username, sending as a person — happens
+  through the `Account` next to it, in the same process and the same handler.
+- **Account updates as bot notifications.** What the account hears is filtered by the same kind
+  of filter a bot uses, and delivered wherever the bot can write.
+- **One set of tools around both.** A single middleware chain, session and storage layer,
+  conversations, formatting, error types and logging; `mockBot` and `mockAccount` run the real
+  pipeline for either with only the network replaced.
 
-**Applications, not clients.** One `App` holds several clients with independent lifecycles,
-authentication and connection state, and shared everything else.
+The two transports are not made to look identical. A bot and an account have different
+permissions, different contexts and different ways of naming a chat, and the types keep that
+visible: `event.transport` says which one an update came through, and what only one of them can
+do is offered only there.
 
-**Honest abstractions.** The Bot API and MTProto genuinely differ, and Yuigram does not pretend
-otherwise. Divergence is carried by the type system rather than by documentation caveats —
-a member exists on a type only where it actually works. See
-[docs/unified-model.md](docs/unified-model.md).
+## Install
 
-## Independence
+**The published package is `yuigram@0.1.0`, which is the Bot API client alone.**
 
-**Yuigram implements both protocols itself.** It does not depend on puregram, mtcute, grammY,
-or any other Telegram library — at any layer, at any phase. The published packages have **zero
-runtime dependencies**.
+```bash
+npm install yuigram
+```
 
-This is enforced, not asserted. `pnpm invariants` fails the build if a Telegram library appears
-in any dependency field, or if a foreign identifier reaches a published declaration file.
+`Account`, `App` and the example above are in this repository and not on npm yet. They are
+prepared as `1.0.0` — every package at that version, `@yuigram/mtproto`, `@yuigram/sqlite` and
+`@yuigram/redis` for the first time — and that release is not published. Until it is, they are
+used from a checkout:
 
-Existing implementations were studied during design and are credited in [NOTICE.md](NOTICE.md).
-No code from any of them is used.
+```bash
+git clone https://github.com/yuigram/yuigram
+cd yuigram
+pnpm install && pnpm build
+BOT_TOKEN=123456:ABC-DEF pnpm tsx examples/01-basic-bot/index.ts
+```
+
+Node.js 22 or newer, ESM only. [docs/migration.md](docs/migration.md) lists what changed since
+`0.1.0`. An account needs an application id and hash from
+[my.telegram.org](https://my.telegram.org), Telegram's published server keys, and one sign-in;
+[examples/03-basic-userbot](examples/03-basic-userbot) walks through it. A session directory or
+session string **is** a signed-in account — keep it out of repositories, logs and messages.
+
+## What is in it
+
+- **Two clients, one model** — `Bot`, `Account`, and `App` to hold several of either, each with
+  its own lifecycle, credentials and connections.
+- **Typed from the schemas** — every Bot API method and every TL method is generated and typed;
+  a handler's context is the one its event kind has, and a registration narrows it.
+- **A framework layer** — filters, middleware, routers, sessions, conversations that survive a
+  restart, rate limits, and plugins, shared by both clients.
+- **Storage** — memory, files, encrypted files and browser storage built in; SQLite and Redis as
+  separate packages; an interface of three required methods for anything else.
+- **Messages as they are** — formatting from HTML, Markdown or builders, rich messages, answers
+  streamed as drafts, uploads and downloads on both transports.
+- **An escape hatch** — `bot.api.call` and `account.api` reach whatever the framework has not
+  wrapped yet.
 
 ## Documentation
 
-The research and architecture phase is complete. Start with [docs/README.md](docs/README.md).
-
 | | |
-|---|---|
-| [Architecture](docs/architecture.md) | System design and subsystem boundaries |
-| [Unified model](docs/unified-model.md) | What can and cannot be shared between the two protocols |
-| [API design](docs/api-design.md) | The intended public surface |
-| [MTProto](docs/mtproto.md) | The protocol implementation specification |
-| [Roadmap](docs/roadmap.md) | Phased delivery plan |
-| [Migration](docs/migration.md) | What changes between releases, and what to do about it |
-| [Feasibility](docs/feasibility.md) | Honest engineering assessment |
+| --- | --- |
+| [Examples](examples) | Runnable programs, type-checked with the repository |
+| [Package README](packages/yuigram/README.md) | Entry points and optional packages |
+| [API design](docs/api-design.md) | The public surface as implemented, and why it has this shape |
+| [Russian guides](docs/ru/README.md) | Both clients, handlers, messages, state and operations |
+| [Unified model](docs/unified-model.md) | What the two transports share, and what they do not |
+| [Events](docs/events.md), [middleware](docs/middleware.md), [sessions](docs/sessions.md), [storage](docs/storage.md) | The framework layer |
+| [Bot API](docs/bot-api.md), [MTProto](docs/mtproto.md), [formatting](docs/formatting.md) | Each subsystem |
+| [Runtimes](docs/runtimes.md), [testing](docs/testing.md), [security](docs/security.md) | Where it runs, how it is checked, what it protects |
 
-## Repository
+[docs/README.md](docs/README.md) indexes the design records behind all of it, and every
+TypeScript sample in this file is compiled against the built packages by `pnpm check:docs`.
 
-```
-packages/
-├── core/      transport-agnostic framework — dispatch, middleware, filters, sessions
-├── bot-api/   Bot API subsystem
-├── mtproto/   MTProto subsystem
-└── yuigram/   the package users install
-tools/
-└── invariants/ architecture checks enforced in CI
-docs/          research, architecture and specifications
-schemas/       committed Bot API and TL schema snapshots
-```
+## Status
+
+- **Node.js 22+ is the primary target.** Bun, Deno, workerd (locally, through Miniflare) and a
+  Chromium page have also run the runtime checks: Bot API calls and webhooks, the stores, and an
+  account's key exchange, encrypted calls and updates. [docs/runtimes.md](docs/runtimes.md) says
+  what was run and what is inferred.
+- **Against Telegram itself, one example has run, by hand.** Example 20 ran against production
+  Telegram: an account signing in with a code and a two-step password, receiving status updates
+  and reading users, and a bot answering commands over long polling. Everything else is checked
+  against mock transports and a stand-in datacenter that speaks the real protocol, and the
+  prepared live procedure has not been run; [docs/live-verification.md](docs/live-verification.md)
+  records what the runs showed and what they did not.
+- **The cold import is not reliably under its 100 ms target** on the machine it is measured on
+  — medians from 99 to 109 ms — and stays within the 120 ms the gate allows;
+  [docs/performance.md](docs/performance.md) has the method and the figures.
+- [docs/roadmap.md](docs/roadmap.md) lists what is still planned.
+
+An account acts as the person who owns it. Yuigram is not a tool for spam or flooding, and
+Telegram restricts accounts used that way.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm verify     # lint, typecheck, invariants, tests
+pnpm verify      # lint, typecheck, invariants, tests, declaration budget
+pnpm smoke       # pack the packages, install them, and use them as an application would
 ```
 
-Node 22+ required. See [CONTRIBUTING.md](CONTRIBUTING.md).
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the rest. Report vulnerabilities privately:
+[SECURITY.md](SECURITY.md).
 
-## Security
+## Licence and credits
 
-Yuigram handles Telegram credentials. A leaked MTProto session compromises an entire account.
-Report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
+[MIT](LICENSE). Yuigram ships no third-party code and has no runtime dependencies; both
+protocols are written from Telegram's published specifications.
 
-## Licence
-
-[MIT](LICENSE)
+[mtcute](https://github.com/mtcute/mtcute), [puregram](https://github.com/puregram/puregram),
+[Telethon](https://github.com/LonamiWebs/Telethon), [TDLib](https://github.com/tdlib/td) and
+[grammY](https://github.com/grammyjs/grammY) were studied while designing it. No code from any of
+them is used here; [NOTICE.md](NOTICE.md) says what was learned from each, and
+[docs/licensing.md](docs/licensing.md) records the analysis.

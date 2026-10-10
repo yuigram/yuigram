@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Media sources and text formatting.
  *

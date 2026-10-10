@@ -178,6 +178,35 @@ export const fromStaff = f.sender.id(...STAFF_IDS)
 expect(fromStaff(fixture)).toBe(true)
 ```
 
+### Account filters
+
+An account's events have their own `f`, in `@yuigram/mtproto/filters` (`yuigram/account-filters`
+from the facade), because they read a different transport: a chat is a sort of peer and a 64-bit
+number, a private message often arrives in a compact form with its fields spread across the
+update, and callback data is bytes.
+
+```
+f.kind(...kinds)            f.text(str | regex)          f.regex(pattern)   → event.match
+f.command(name | names | regex, { prefixes, username, ignoreCase })  → event.command, event.args
+f.chat(sort | id | ids)     f.sender(sort | id | ids)
+f.outgoing  f.incoming      f.reply  f.forward  f.mentioned  f.silent
+f.media(...kinds)           f.callback(str | regex)      f.inline(str | regex)
+f.action(...kinds)                                       → event.action, narrowed to those kinds
+f.and  f.or  f.not
+```
+
+`f.outgoing` matches what this account sent from another of its clients. What a call made
+here sends is the caller's answer, and is not handed to the account's handlers at all
+([mtproto.md](mtproto.md) §9.5.1).
+
+A command carrying a `@username` suffix matches only when the filter was given that username:
+it was addressed to somebody, and nothing else says it was this account. `f.media()` does not
+count a link preview, which is media to Telegram and not to a reader, unless asked for by name.
+
+`account.on(kind, filter, handler)` registers behind both; `account.on(filter, handler)` behind
+the filter alone. Either way the filter's proof reaches the handler, and a kind nothing produces
+is refused where it is registered rather than never firing.
+
 ---
 
 ## 5. Routing
@@ -214,7 +243,7 @@ bot.onCallbackQuery(/^buy:/, handler)
 ```
 
 Every kind also has a named registration of its own — `onMessage`, `onChatMemberJoined`,
-`onForumTopicCreated`, seventy-nine in all — generated from the same taxonomy the dispatcher
+`onForumTopicCreated` and the rest — generated from the same taxonomy the dispatcher
 indexes and equivalent to `on(kind, handler)`. That is how most people discover that a member
 joining has its own kind rather than arriving as a message to branch on.
 
@@ -297,6 +326,99 @@ Priority bands order *middleware*, not handlers. Handlers occupy one reserved sl
 the `normal` and `low` bands, so a session plugin registered `high` is correct wherever the
 application happens to install it.
 
+### Groups and propagation
+
+Where exclusivity is easier to state by position than by filters, a handler can join a
+numbered group: `on(match, handler, { group: 1 })`. Groups run in ascending order, and within a
+group only the first handler whose match accepts the update runs. A handler registered without
+a group is in none and keeps the rule above — it runs whenever it matches, in group 0's place.
+
+A handler steers what follows by what it returns, and only through these values — a returned
+string or message is never read as an instruction:
+
+| Returned | Effect |
+|---|---|
+| `Propagation.Continue` | In a group, the next matching handler of the same group runs too |
+| `Propagation.Stop` | No more of this dispatcher's handlers run; its children still do |
+| `Propagation.StopChildren` | No more handlers run here, and no child dispatcher runs |
+
+A `before` hook may return `Stop` or `StopChildren` to the same effect before any handler
+runs; an `after` hook is told whether any handler ran, and `dispatch` resolves to the same.
+
+### Registration while updates are in flight
+
+A dispatch works from the handlers registered when it began: one registered during it waits for
+the next update. `off` takes effect at once — a handler removed before its turn in a dispatch
+already running does not get one — while a handler already running finishes. A `once` handler
+runs once even when two matching updates evaluate its filter at the same moment: whichever
+match completes first takes it, and the other sees it gone.
+
+### Child dispatchers
+
+`addChild` puts one dispatcher inside another. A child runs after its parent's handlers with
+its own middleware, handlers and groups, reads the dependencies injected above it, and hands an
+error it does not handle to its parent. `extend` copies another dispatcher's registrations in
+as a snapshot, and `clone` makes an independent copy.
+
+On an account the child is an `AccountRouter`, a set of registrations with no connection of its
+own: `account.addChild(router)`, or `account.extend(router)`, which does the same. A router takes
+the same registrations an account does, belongs to one parent at a time, and can be taken back out
+with `removeChild`; an update already being dispatched keeps it.
+
+Routers compose the two ways a dispatcher does. `router.clone(children?)` is a new router with the
+same middleware, handlers, hooks, catchers and dependencies as they stand, added nowhere; from then
+on the two are separate, so a feature can be added to two accounts as a router and its copy.
+`router.extend(other)` takes in another router as it stands — its middleware joining this one's,
+its handlers after this one's own and in this one's groups, copies of its children as children —
+and what is registered on `other` later is not taken in. In both, a once-handler that has already
+run is not copied, and one that has not runs once on each side; `off`, `inject` and `removeChild`
+on one side leave the other as it was.
+
+### Dependencies
+
+`inject(name, value)` makes a value reachable as `deps[name]` from the handlers of a dispatcher
+and its children. Each dispatcher tree has its own, so two clients in one process never share
+them, and reading a name that was not injected throws a `ConfigError` naming it. The names are
+typed by merging into the `Dependencies` interface.
+
+A value is kept as given — a promise stays a promise, for a resource that is opened
+asynchronously — and is the application's to close. A dispatcher does not own what it was
+handed, and stopping a client does not dispose of it.
+
+### Rate limits
+
+`limiter()` counts what one person asks for and refuses past an allowance. One counter serves
+four forms, on a bot and an account alike:
+
+```ts
+const limits = limiter<MessageContext>({ storage })
+
+bot.use(limits.middleware({ limit: 20, windowMs: 60_000 }))          // drop the rest
+bot.on(limits.filter({ limit: 1, windowMs: 3_600_000, bucket: 'report' }), report)
+const decision = await limits.check(event, { limit: 5, windowMs: 10_000 })
+await limits.wait(chatId, { limit: 1, windowMs: 1_000 }, signal)       // throttle instead
+```
+
+- **Who is counted** is the sender unless a `key` function says otherwise, so a person is
+  limited wherever they write and a busy group is not mistaken for abuse. An account's peers are
+  written with their kind (`user:5`), so a user and a chat with the same number are never counted
+  together. A context that names nobody — a channel post, an anonymous admin — is not counted:
+  the middleware lets it through and the filter matches it.
+- **Every attempt counts**, the refused ones included, so holding a key down does not earn a
+  fresh allowance. Windows are fixed: one opens with the first hit and closes `windowMs` later.
+- **Buckets** are counted apart. A limit on a costly command and a limit on everything else do
+  not spend each other's allowance, even in one store.
+- **A store** shared by several processes counts one person across all of them. Each record is
+  written to expire with its window. The store has no compare-and-set, so two processes counting
+  one key at the same instant can each let a hit through; within one process, hits on a key are
+  counted one at a time. The default store is in memory and is walked once a minute for windows
+  that closed, since most keys are never read again.
+- **Filters count when they are evaluated.** A handler behind a limit's filter spends the
+  allowance only on updates the dispatcher offered it, which is what makes a per-command limit
+  possible without a middleware that inspects commands.
+
+The Bot API's `rateLimit(options)` is the middleware form with its options in one object.
+
 ---
 
 ## 6. Context extension
@@ -377,12 +499,13 @@ app.onError((err, event) => {
 })
 ```
 
-**An error is either handled or propagates. It is never silent.** Three cases, in order:
+**An error is either handled or propagates. It is never silent.** The cases, in order:
 
 | Situation | Outcome |
 |---|---|
 | An `onError` handler is registered | Every catcher sees the error; dispatch continues |
-| No catcher, but the client owns a logger | Logged at `error` level; dispatch continues |
+| Every catcher returns `false`, or there is none, in a child dispatcher | The parent's catchers get it, by the same rule |
+| No dispatcher takes it, but the client owns a logger | Logged at `error` level; dispatch continues |
 | Neither — a bare dispatcher | Propagates to the caller of `dispatch` |
 
 Continuing is the right default for a client. The alternative — crashing the process — is
@@ -395,8 +518,10 @@ client logs a one-time warning naming the risk. And a `Dispatcher` used directly
 a catcher nor a logger, rethrows rather than swallowing — nothing has claimed responsibility
 for the error, so the caller inherits it.
 
-A catcher that throws is reported through the same channel but never re-enters the catchers,
-since an error handler cannot meaningfully report to itself.
+A catcher that throws is reported through the same channel — the parent, then the owner — but
+never re-enters the catchers that failed, since an error handler cannot meaningfully report to
+itself. Returning `false` is how a catcher declines an error it does not recognise, so it goes
+on to whoever can.
 
 ---
 

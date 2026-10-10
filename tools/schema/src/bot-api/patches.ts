@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Deliberate deviations from the documentation.
  *
@@ -81,3 +83,16 @@ export const UPDATE_NAME_OVERRIDES: ReadonlyMap<string, string> = new Map([
  * documentation.
  */
 export const OPTIONALITY_OVERRIDES: ReadonlyMap<string, string> = new Map<string, string>()
+
+/**
+ * Union members the documentation states in prose rather than as subtypes.
+ *
+ * `RichText` is documented as "either a String for plain text, an Array of
+ * RichText, or any of the following types", and only the listed types are
+ * parsed as subtypes. Without the other two, a plain paragraph or a run of
+ * mixed formatting would not type-check, although both are what Telegram
+ * sends and accepts most often.
+ */
+export const UNION_EXTRAS: ReadonlyMap<string, readonly string[]> = new Map([
+  ['RichText', ['string', 'RichText[]']],
+])

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Proves each architecture invariant both accepts a conforming workspace and
  * rejects a violating one.
@@ -12,6 +14,7 @@ import {
   declaredImports,
   isForbiddenTelegramPackage,
   layerBoundaries,
+  licenceNotices,
   noTelegramDependencies,
   packageOfSpecifier,
   publicSurfaceIsClean,
@@ -111,6 +114,30 @@ describe('extractImports', () => {
     )
 
     expect(refs.map((r) => r.specifier)).toEqual(['real-pkg'])
+  })
+
+  it('separates what is loaded eagerly, on demand, and never', () => {
+    // What an entry point costs to load depends entirely on this distinction,
+    // so a rule about it is only as good as the classification underneath.
+    const refs = extractImports(
+      [
+        `import { a } from './eager.js'`,
+        `import type { B } from './erased.js'`,
+        `export type { C } from './also-erased.js'`,
+        `const d = await import('./on-demand.js')`,
+        `import { type E, f } from './still-eager.js'`,
+      ].join('\n'),
+    )
+
+    expect(refs.map((r) => [r.specifier, r.kind])).toEqual([
+      ['./eager.js', 'static'],
+      ['./erased.js', 'type'],
+      ['./also-erased.js', 'type'],
+      ['./on-demand.js', 'dynamic'],
+      // An inline type specifier does not erase the statement, so the module is
+      // still evaluated for it.
+      ['./still-eager.js', 'static'],
+    ])
   })
 
   it('keeps line numbers accurate after stripping comments', () => {
@@ -308,5 +335,50 @@ import type { X } from "@mtcute/core"
     ])
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.line).toBe(4)
+  })
+})
+
+describe('licence-notices', () => {
+  const workspaceOf = (...sources: SourceFile[]): Workspace => ({
+    root: '.',
+    packages: [pkg('@yuigram/core', { sources })],
+  })
+
+  it('accepts a hand-written file with an identifier, and generated files with theirs', () => {
+    const result = licenceNotices(
+      workspaceOf(
+        source('packages/core/src/a.ts', '// SPDX-License-Identifier: MIT\n\nexport const a = 1\n'),
+        source(
+          'packages/core/src/generated/b.ts',
+          '// GENERATED FILE — do not edit.\n// b\n// Source: x\n// SPDX-License-Identifier: MIT AND BSL-1.0\n',
+        ),
+        source(
+          'packages/core/src/generated/c.ts',
+          '// GENERATED FILE — do not edit.\n// c\n// Source: y\n// The code is licensed under MIT (see LICENSE). Descriptions are quoted\n',
+        ),
+      ),
+    )
+
+    expect(result.violations).toEqual([])
+  })
+
+  it('names a file that states no licence', () => {
+    const result = licenceNotices(
+      workspaceOf(source('packages/core/src/d.ts', 'export const d = 1\n')),
+    )
+
+    expect(result.violations.map((violation) => violation.file)).toEqual(['packages/core/src/d.ts'])
+  })
+
+  it('does not take another licence, or an identifier far down the file, for this one', () => {
+    const late = `${'\n'.repeat(20)}// SPDX-License-Identifier: MIT\n`
+    const result = licenceNotices(
+      workspaceOf(
+        source('packages/core/src/e.ts', '// SPDX-License-Identifier: MPL-2.0\n'),
+        source('packages/core/src/f.ts', late),
+      ),
+    )
+
+    expect(result.violations).toHaveLength(2)
   })
 })

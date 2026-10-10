@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The filter type machinery.
  *

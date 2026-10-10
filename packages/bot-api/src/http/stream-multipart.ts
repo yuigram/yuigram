@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Multipart that streams.
  *
@@ -25,7 +27,7 @@
  * finish.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from '../core.js'
 import type { InputFile, NamedFile } from '../input-file.js'
 import { isInputFile } from '../input-file.js'
 

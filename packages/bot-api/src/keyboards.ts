@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Keyboards.
  *
@@ -32,7 +34,7 @@
  * function that accepts markup accepts one of these without knowing it exists.
  */
 
-import { ValidationError } from '@yuigram/core'
+import { ValidationError } from './core.js'
 import type {
   CopyTextButton,
   ForceReply,

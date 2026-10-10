@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * What the published tarballs actually contain.
  *
  * `files` in a manifest is an allowlist, which is the safe direction — but it
  * is easy to widen by accident, and nothing otherwise looks *inside* the
- * archive. This packs every publishable package and asserts two things about
- * the result: that no file which should stay in the repository is in it, and
- * that no credential is.
+ * archive. This packs every publishable package and asserts three things about
+ * the result: that no file which should stay in the repository is in it, that
+ * no credential is, and that code generated from the TL schema carries the
+ * notice of the source the schema was copied from.
  *
  * ```sh
  * pnpm check:contents
@@ -20,7 +23,7 @@ import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram']
+const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram', 'sqlite', 'redis']
 
 /** Path shapes that must never appear in a published tarball. */
 const FORBIDDEN_PATHS = [
@@ -115,6 +118,37 @@ try {
       }
     }
 
+    // Every built file comes from a source the package ships. The compiler
+    // does not remove what a deleted source once produced, so a tree built
+    // before a deletion still holds that output, and packing it would publish
+    // code with no source beside it and no licence notice of its own.
+    const sources = new Set(
+      files.filter((file) => /^src\/.*\.ts$/.test(file)).map((file) => file.slice(4, -3)),
+    )
+    for (const file of files) {
+      if (!file.startsWith('dist/') || file === 'dist/package.json') continue
+      const stem = file.slice(5).replace(/(\.d\.ts\.map|\.js\.map|\.d\.ts|\.js)$/, '')
+      if (!sources.has(stem)) fail(`ships ${file}, which no source in src/ produces`)
+    }
+
+    // Code generated from the TL schema — the core, service and API tables —
+    // is produced from a copy of TDLib's schema file, and goes out with TDLib's
+    // notice: the one kept beside the schema, not a version of it. The Bot API's
+    // generated code comes from another schema and is not covered.
+    if (files.some((file) => /(^|\/)generated\/(api|core|mtproto)\//.test(file))) {
+      if (!files.includes('TDLIB-LICENSE.txt')) {
+        fail('ships code generated from the TL schema without TDLIB-LICENSE.txt')
+      } else {
+        const shipped = execSync(`tar -xzOf "${archive}" package/TDLIB-LICENSE.txt`, {
+          encoding: 'utf8',
+          cwd: dir,
+        })
+        if (shipped !== readFileSync('schemas/tl/TDLIB-LICENSE.txt', 'utf8')) {
+          fail('TDLIB-LICENSE.txt is not the notice kept beside the schema')
+        }
+      }
+    }
+
     for (const file of files) {
       let content
       try {
@@ -144,6 +178,12 @@ try {
     }
     if (manifest.private === true) fail('a private package was packed')
     if (manifest.license !== 'MIT') fail(`unexpected licence ${manifest.license}`)
+    // The licence text itself, not only its name: a package whose LICENSE file
+    // says something else ships two licences that disagree.
+    const licence = execSync(`tar -xzOf "${archive}" package/LICENSE`, { encoding: 'utf8', cwd: dir })
+    if (licence !== readFileSync('LICENSE', 'utf8')) {
+      fail("LICENSE is not the repository's MIT licence")
+    }
     if (typeof manifest.author !== 'string') fail('no author')
     if (!Array.isArray(manifest.files)) fail('no files allowlist')
 

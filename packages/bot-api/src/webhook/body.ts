@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Reading a request body safely.
  *

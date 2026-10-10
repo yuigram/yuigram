@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * One deadline for the whole shutdown.
  *

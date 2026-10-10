@@ -2,9 +2,16 @@
 
 Yuigram is licensed under the [MIT License](LICENSE).
 
+Material taken from others keeps its own licence and is not relicensed: the TL schema and the
+server keys from TDLib, under the Boost Software License 1.0 (below), and the schemas and
+documentation text Telegram publishes, which carry no licence of their own
+([docs/licensing.md](docs/licensing.md) §5). Each generated file says which applies to it.
+
 ## Third-party code
 
-**Yuigram ships no third-party code.**
+**Yuigram ships no third-party code**, with one bounded exception: `@yuigram/mtproto` contains
+code generated from Telegram's TL schema, and the copy of that schema the current layer is
+generated from is taken from TDLib. That package carries TDLib's notice; see below.
 
 The published packages have **zero runtime dependencies**. The Bot API subsystem uses Node's
 built-in `fetch`, `FormData` and `Blob`; the MTProto subsystem uses `node:crypto` and native
@@ -28,8 +35,25 @@ The protocol implementations are written from Telegram's published documentation
 Method names, type shapes and protocol algorithms are interface facts. Where documentation
 prose is reproduced in generated JSDoc, the generated entry carries a link to its source page.
 
-Telegram's server RSA public keys are taken from the published MTProto documentation. They are
-deliberately **not** extracted from Telegram's own client applications, which are GPL-licensed.
+Yuigram ships none of Telegram's server RSA public keys: an application supplies them. The
+documentation and example 20 take them from [TDLib](https://github.com/tdlib/td), Telegram's
+client library, which is published under the Boost Software License 1.0
+(`td/telegram/net/PublicRsaKeySharedMain.cpp`, retrieved at a pinned revision and checked by
+digest). They are deliberately **not** taken from Telegram's own client applications, which are
+GPL-licensed. The test suites generate their keys, except one known-answer test, which holds
+Telegram's two public server keys as they appear in that TDLib file: public data, no code.
+
+The TL schema of the current layer, `schemas/tl/api.229.tl`, is TDLib's
+`td/generate/scheme/telegram_api.tl` at a pinned revision, checked by digest — Telegram's
+documentation page serves an older layer. TDLib is distributed under the Boost Software License
+1.0. Its notice is kept beside the schema (`schemas/tl/TDLIB-LICENSE.txt`) and ships with
+`@yuigram/mtproto` (`TDLIB-LICENSE.txt`), whose generated code is produced from that schema.
+Six definitions are not TDLib's: the constructors the TL language owns, `null` among them, are
+taken from Telegram's documentation schema. `schemas/tl/sources.json` records every input, and
+what TDLib declares before its schema proper that is left out. The same layer was first taken
+from Telegram Desktop's schema file during development; that copy was removed from the
+repository's history before publication, and no revision holds it. See
+[docs/licensing.md](docs/licensing.md) §5.
 
 ## Acknowledgements
 
@@ -40,8 +64,8 @@ plainly even though it carries no licence obligation.
 
 | Project | Licence | What was learned from it |
 |---|---|---|
-| [mtcute](https://github.com/mtcute/mtcute) | MIT | The scale and layering a serious MTProto client requires; where the protocol's difficulty actually concentrates |
-| [puregram](https://github.com/puregram/puregram) | MPL-2.0 | Schema-driven Bot API generation; promoting service messages to first-class update kinds; dual-parameter filter narrowing |
+| [mtcute](https://github.com/mtcute/mtcute) | MIT | The scale and layering a serious MTProto client requires; where the protocol's difficulty actually concentrates. The account's high-level methods were checked against its method list for coverage |
+| [puregram](https://github.com/puregram/puregram) | MPL-2.0 | Schema-driven Bot API generation; promoting service messages to first-class update kinds; dual-parameter filter narrowing. Several companion utilities — formatting and rich-message builders, streaming, media caching, rate limits, test helpers — take the public names its companion packages use, so its users find them where they expect; the implementations are this repository's own |
 | [Telethon](https://github.com/LonamiWebs/Telethon) | MIT | Reference behaviour for protocol edge cases |
 | [TDLib](https://github.com/tdlib/td) | Boost 1.0 | Reference behaviour for protocol edge cases |
 | [grammY](https://github.com/grammyjs/grammY) | MIT | Middleware and plugin ergonomics in the Bot API space |

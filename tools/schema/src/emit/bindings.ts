@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Method bindings: which API methods a context can pre-address.
  *

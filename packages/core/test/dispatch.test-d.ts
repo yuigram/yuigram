@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Handler and middleware ergonomics.
  *
@@ -8,7 +10,7 @@
  */
 
 import { describe, expectTypeOf, it } from 'vitest'
-import { Dispatcher } from '../src/dispatch/index.js'
+import { Dispatcher } from '../src/dispatch/dispatcher.js'
 import type { Handler, Middleware } from '../src/index.js'
 
 interface Ctx {

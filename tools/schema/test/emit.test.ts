@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Emitter behaviour, checked against the committed schema.
  *

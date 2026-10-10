@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Client lifecycle.
  *
@@ -43,6 +45,16 @@ export interface LifecycleHooks {
   /** Bring the client up. Failure moves the state to `failed`. */
   onStart?: () => Promise<void> | void
   /**
+   * Begin taking the client down, before in-flight work is waited for.
+   *
+   * For whatever holds work open until it is told to let go. A handler
+   * suspended on a conversation's next message never finishes by itself, so a
+   * drain that ran first would spend the whole deadline waiting for it and then
+   * report the stop as unclean. Held to the same deadline as the rest of the
+   * stop.
+   */
+  onStopping?: () => Promise<void> | void
+  /**
    * Take the client down. Runs after in-flight work has drained.
    *
    * Receives the shutdown deadline, and must return once it fires. Anything
@@ -50,6 +62,32 @@ export interface LifecycleHooks {
    * gives up says so by returning rather than by waiting longer.
    */
   onStop?: (context: StopContext) => Promise<void> | void
+}
+
+/**
+ * Wait for what a hook returned, but no longer than the deadline.
+ *
+ * Raced rather than merely awaited. The signal asks a cooperative hook to
+ * return; racing the deadline holds one that does not to the same promise
+ * anyway. A foundation other transports implement cannot rely on every one of
+ * them honouring a signal, and the caller was given a deadline, not a
+ * suggestion. Resolves `false` when the deadline won; a hook that throws
+ * throws here.
+ */
+async function withinDeadline(hook: unknown, signal: AbortSignal): Promise<boolean> {
+  if (hook === undefined) return true
+
+  const settled = Promise.resolve(hook).then(() => true)
+  const expired = new Promise<boolean>((resolve) => {
+    if (signal.aborted) resolve(false)
+    else signal.addEventListener('abort', () => resolve(false), { once: true })
+  })
+
+  // A hook that loses the race keeps running; its failure would otherwise
+  // surface as an unhandled rejection long after the stop.
+  settled.catch(() => undefined)
+
+  return await Promise.race([settled, expired])
 }
 
 /**
@@ -181,28 +219,15 @@ export class Lifecycle {
     if (timeout <= 0) deadline.abort(new CancelledError('shutdown deadline passed'))
 
     try {
-      this.#drained = await this.drain(timeout, deadline.signal)
+      const released = await withinDeadline(this.#hooks.onStopping?.(), deadline.signal)
 
-      // Raced rather than merely awaited. The signal asks a cooperative hook
-      // to return; racing the deadline holds one that does not to the same
-      // promise anyway. A foundation other transports implement cannot rely on
-      // every one of them honouring a signal, and the caller was given a
-      // deadline, not a suggestion.
-      const hook = this.#hooks.onStop?.({ signal: deadline.signal })
+      this.#drained = (await this.drain(timeout, deadline.signal)) && released
 
-      if (hook !== undefined) {
-        const settled = Promise.resolve(hook).then(() => true)
-        const expired = new Promise<boolean>((resolve) => {
-          if (deadline.signal.aborted) resolve(false)
-          else deadline.signal.addEventListener('abort', () => resolve(false), { once: true })
-        })
-
-        // A hook that loses the race keeps running; its failure would
-        // otherwise surface as an unhandled rejection long after the stop.
-        settled.catch(() => undefined)
-
-        if (!(await Promise.race([settled, expired]))) this.#drained = false
-      }
+      const stopped = await withinDeadline(
+        this.#hooks.onStop?.({ signal: deadline.signal }),
+        deadline.signal,
+      )
+      if (!stopped) this.#drained = false
     } finally {
       if (timer !== undefined) clearTimeout(timer)
       this.#state = 'idle'

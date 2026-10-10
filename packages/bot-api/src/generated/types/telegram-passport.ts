@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Telegram Passport
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 /**
  * Describes Telegram Passport data shared with the bot by the user.

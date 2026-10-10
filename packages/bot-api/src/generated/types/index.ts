@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 export type * from './available-types.js'
 export type * from './games.js'

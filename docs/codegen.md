@@ -7,7 +7,7 @@ effort.
 | Generator | Input | Output | Scale |
 |---|---|---|---|
 | **Bot API** | `core.telegram.org/bots/api` (HTML) | types, methods, events, filters | 185 methods, 388 objects |
-| **TL** | `core.telegram.org/schema` (TL) | types, reader, writer, errors | 2,315 constructors, 552 errors |
+| **TL** | `core.telegram.org/schema` + `/schema/mtproto` (TL) | types, reader, writer, errors | 2,315 constructors, 552 errors |
 
 This is the answer to the maintainability requirement. Telegram ships Bot
 API releases every few months and TL layers more often; a framework that hand-maintains either
@@ -63,10 +63,11 @@ Primary: `corefork.telegram.org/bots/api`. Fallback: `core.telegram.org/bots/api
 The corefork host publishes documentation ahead of the stable page, which gives generated
 clients lead time on unreleased features at no cost.
 
-Cross-check: [`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT),
-regenerated nightly. CI parses both and diffs the result. A divergence means either Telegram
-restructured the page or our parser regressed — both worth an alert, and neither detectable
-from our own output alone.
+A cross-check against an independent parse, such as
+[`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT), is not in place for
+the Bot API. A parser regression shows only through the generator's own tests and the review of
+each schema update's diff — our own output cannot reveal our own parser's blind spots, which is
+why the TL generator has one (§3.4).
 
 Explicitly **not** used: puregram's schema JSON, which is MPL-2.0. See
 [licensing.md](licensing.md) §4.
@@ -160,10 +161,11 @@ export const CHAT_BOUND = {
 The signatures come from `ApiMethods`, which is already generated, mapped through a type that
 makes the supplied parameters optional rather than absent. No parameter shape is restated, so
 none can drift. The runtime is one binder that reads the table and one prototype per client.
-**105 bound methods, 165 generated lines, no per-method code anywhere.**
+**About a hundred bound methods in under two hundred generated lines, and no per-method code
+anywhere.**
 
 **`registrations`** emits one `on…` declaration per event kind — `onMessage`,
-`onChatMemberJoined`, seventy-nine in all — and the list the client installs them from. Again
+`onChatMemberJoined` and the rest — and the list the client installs them from. Again
 a declaration and a table: the bodies are one loop over that list.
 
 The comparison worth making: the same breadth, emitted as code, is what takes a mature Bot API
@@ -194,20 +196,359 @@ carry them:
 
 ## 3. TL generator
 
-### 3.1 Source
+### 3.1 Source of truth
 
-The official TL schema at `core.telegram.org/schema`, layer-tagged. Unlike the Bot API, this is
-already machine-readable — the difficulty is in the grammar, not the extraction.
+**Telegram's published `.tl` text is canonical.** Two documents, fetched from
+`core.telegram.org`, parsed by Yuigram's own parser:
 
-### 3.2 Grammar
+| Document | URL | Contents | Versioning |
+|---|---|---|---|
+| `api.tl` | `/schema`, `/schema?layer=N` | The API layer — 2,300-odd constructors and methods | Layer-numbered |
+| `mtproto.tl` | `/schema/mtproto` | The service layer — containers, acknowledgements, salts, the plaintext handshake | Unversioned; the page is titled *Current MTProto TL-schema* |
+
+The pipeline is fixed:
+
+```
+core.telegram.org/schema{,/mtproto}   (.tl text)
+            │
+     Yuigram TL parser
+            │
+   validated internal representation      committed, reviewable
+            │
+    emitters ──> generated TypeScript     committed, deterministic
+```
+
+**No third-party mirror is a source of truth, at any stage.** Not mtcute's `api-schema.json`,
+not GramJS's, not a community JSON dump. A mirror is someone else's parse with someone else's
+corrections folded in, and the parser has to exist regardless — the codec must agree with the
+notation the protocol is documented in.
+
+Telegram also publishes its own JSON renderings at `/schema/json` and `/schema/mtproto-json`.
+Those are first-party and useful, and they are used **only as a cross-check**: after a fetch the
+IR is compared against the JSON, and a divergence fails the update rather than being resolved
+silently. A cross-check earns its keep precisely because it does not share a parser with the
+thing it checks. It never becomes the input.
+
+**Runtime never fetches a schema.** Fetching happens in a development step run by a person, and
+the result is committed. A published package that reached the network to learn its own wire
+format would be unbuildable offline, non-reproducible, and a supply-chain surface.
+
+#### How a schema enters the repository
+
+```
+pnpm --filter @yuigram/tl-codegen fetch         download both documents
+        │
+        ├─> schemas/tl/api.<layer>.tl     the raw text, verbatim
+        ├─> schemas/tl/mtproto.tl         the raw text, verbatim
+        ├─> schemas/tl/api.<layer>.json   the parsed IR
+        └─> schemas/tl/mtproto.json       the parsed IR
+
+pnpm --filter @yuigram/tl-codegen errors        download Telegram's error database
+        │
+        └─> schemas/tl/errors.json        codes, names and methods; descriptions not kept
+
+pnpm --filter @yuigram/tl-codegen emit          IR and errors.json -> generated TypeScript, offline
+```
+
+The error database is a separate document with a layer of its own, usually a little behind the
+schema's. It is read into types only (`generated/errors.ts`), so a difference between the two
+layers makes a name missing from completion rather than a request refused; `docs/mtproto.md`
+§6.3 describes what the types do.
+
+Both the raw text and the IR are committed. The raw text is what makes a parser change
+reviewable: a diff of the IR alone cannot distinguish "Telegram changed the schema" from "the
+parser now reads it differently". Keeping both separates those two questions.
+
+#### How updates are reviewed
+
+The scheduled drift job of §6 opens a pull request and never merges one. The review surface is
+three diffs answering three different questions:
+
+| Diff | Question it answers |
+|---|---|
+| `schemas/tl/*.tl` | What did Telegram change? |
+| `schemas/tl/*.json` | Did the parser read that change the way it reads everything else? |
+| `packages/mtproto/src/generated/**` | What does it mean for the surface users compile against? |
+
+Because generation is deterministic (§5), the third diff is a function of the second. A
+generated diff that does not follow from a schema diff means the generator changed, and that is
+a separate review.
+
+#### How malformed and unsupported TL is rejected
+
+The parse is **total**. Every line of both documents is either recognised and represented, or it
+fails the fetch. There is no skip path, no permissive mode and no unrecognised-constructor
+bucket: a parser that silently drops what it does not understand produces a codec that is
+correct for everything it knows about and absent for the rest, and nothing downstream can tell
+the difference.
+
+The parser fails on:
+
+| Condition | Why it is fatal |
+|---|---|
+| A line matching no production of the grammar | The schema uses a construct the parser does not model |
+| A declared `#id` disagreeing with the CRC32 of the canonical signature | Either the canonicalisation is wrong or the schema is unusual; both need a person |
+| A duplicate constructor id within one table | The registry would silently lose one of them |
+| A flag reference to an undeclared bitfield, or a bit index outside `0..31` | A field that can never be read correctly |
+| A type reference with no definition in this schema or in the shared core | A dangling codec |
+| A generic parameter the emitter cannot express | Silent type erasure at the boundary |
+
+Each failure names the document, the line and the construct. None is downgradable by a flag.
+
+### 3.2 Two schemas, kept apart
+
+The two documents are separate on the wire and stay separate here. The service layer is read and
+written **before any auth key exists**, over a plaintext channel; the API layer only ever travels
+inside an encrypted session. Merging their constructor tables would make it possible for an API
+constructor to decode on the plaintext channel — a step that should be impossible rather than
+merely unused.
+
+What the two documents actually share is one constructor. `mtproto.tl` defines exactly one TL
+core primitive:
+
+```
+vector {t:Type} # [ t ] = Vector t;
+```
+
+`api.tl` defines the same vector as `vector#1cb5c415`, and owns the rest of the core:
+
+```
+boolFalse#bc799737 = Bool;
+boolTrue#997275b5 = Bool;
+true#3fedd339 = True;
+error#c4b9f9bb code:int text:string = Error;
+null#56730bcc = Null;
+```
+
+So the generator emits **three tables**, not one and not two:
+
+```
+core        vector · Bool · True · Error · Null       the TL language itself
+  │
+  ├── mtproto   service constructors + functions      plaintext channel and session control
+  └── api       layer constructors + methods          encrypted session only
+```
+
+`core` exists so the shared primitives are defined once rather than duplicated with a hope that
+both copies stay identical. `mtproto` and `api` never import each other, in either direction.
+
+**A reader is built for a channel, not for the protocol.** The plaintext handshake constructs a
+reader over `core + mtproto`; the session constructs one over `core + mtproto + api`. An API
+constructor id arriving on the plaintext channel resolves to nothing and raises a decode error,
+because it is genuinely absent from that reader's table.
+
+The distinction survives into the generated TypeScript rather than living only in the generator:
+
+- Separate modules, separate namespaces, separate registries.
+- Constructor ids are branded per table, so a function accepting an `MtprotoId` cannot be handed
+  an `ApiId`. The mistake is a compile error, not a runtime surprise.
+- No barrel re-exports one table's constructors from the other's module.
+- A `module-boundaries` invariant forbids the import edge outright. Branding stops a value
+  crossing between tables; only an import rule stops one table's module reaching into the
+  other's, and the two existing invariants resolve specifiers to package names and therefore
+  skip relative imports entirely.
+
+A single flat registry would be less code, and that being the only argument in its favour is why
+it is rejected.
+
+Two consequences only appear once the tables exist, and both are handled rather than avoided:
+
+- **The two schemas share one name.** `message` is the container element in the service schema
+  and a chat message in the API layer — different shapes, different identifiers. A scope
+  spanning both therefore **refuses** the name rather than resolving it by table order, because
+  preferring whichever table was listed first would encode the wrong constructor with nothing to
+  show it had happened. A caller that means one of them addresses that table.
+- **A bare reference names a type, not a constructor.** `%Message` says "a bare value of type
+  Message", and a bare value carries no identifier to say which constructor that is. The
+  generator resolves it to the type's sole constructor, and refuses to generate at all if the
+  type has more than one — a guess there would decode the wrong shape silently.
+
+### 3.3 Layer policy
+
+**Yuigram pins one TL layer per release. The pin is layer 229.**
+
+#### Where a layer's schema is read from
+
+`core.telegram.org/schema` is the written-up contract. The servers speak a layer before the
+documentation describes it — on 2026-09-18 the documentation served 223 while Telegram's
+clients were built from 229 — so a newer layer is read from TDLib, Telegram's own client
+library, which carries the schema it is built from in `td/generate/scheme/telegram_api.tl` and
+states the layer in `td/telegram/Version.h`. TDLib is distributed under the Boost Software
+License 1.0. Telegram's applications are GPL-licensed, and their copies of the schema are not
+read.
+
+Both sources are Telegram's own. Nothing here reads a schema assembled by anybody else, because
+a third-party reconstruction would put someone else's reading of the protocol into generated
+codecs, and a mistake in it would be indistinguishable from a mistake in this parser.
+
+```sh
+pnpm --filter @yuigram/tl-codegen run fetch                # the documentation page
+pnpm --filter @yuigram/tl-codegen run fetch --from-tdlib   # TDLib, at the pinned revision
+```
+
+`run` matters: `pnpm fetch` is a pnpm command of its own.
+
+The TDLib path is pinned and checked, not followed (`tools/tl/src/tdlib.ts`):
+
+- **One revision, three digests.** `telegram_api.tl`, `Version.h` and the licence text are read at
+  the commit `TDLIB` names, and each must have the SHA-256 recorded with it. A file that differs
+  stops the fetch before anything is written.
+- **The layer is the pinned one.** `Version.h` must state `MTPROTO_LAYER` exactly once, as the
+  layer the pin is for. Moving to another layer is a deliberate change of the pin, not a side
+  effect of a newer file.
+- **Everything before the schema proper is accounted for, by its exact text.** TDLib's file
+  opens with the language's builtins, five of the constructors the TL language owns, and
+  definitions of its own: its simple-configuration types, two legacy file locations, two test
+  entries and four encodings of wrapper prefixes, one of which declares an identifier its own
+  text does not compute to. `TDLIB_PREFIX` lists each with its section and what becomes of it.
+  A definition that is not listed, one listed that is gone, or one that changed shape under a
+  familiar name stops the fetch. The identifier check is not relaxed for any of them: they are
+  excluded by text, not admitted by exception.
+- **The language's constructors come from the documentation.** `boolFalse`, `boolTrue`, `true`,
+  `vector`, `error` and `null` are taken from the documentation schema, which is the one that
+  defines `null`, and TDLib's copies of the other five must match it exactly.
+- **The inputs are recorded.** `schemas/tl/sources.json` names, for each committed document,
+  where it came from: for the TDLib-derived one, the revision, path and digest of the schema
+  proper and of the file the layer was read from, the documentation's definitions, and every
+  definition left out with the reason. `schemas/tl/TDLIB-LICENSE.txt` is written from the
+  pinned revision's own copyright notice and licence text, and `@yuigram/mtproto` ships the same
+  file, because its generated code is produced from the copy.
+
+Which source a release is pinned to is a decision with a cost either way: the page is reviewable
+prose with a JSON oracle beside it, and TDLib's file is what Telegram's clients are built from
+now. **The pin moved to 229 because capabilities that only exist there could not otherwise be
+implemented at all** — rich messages, communities, and ephemeral and welcome messages are
+constructors the 223 document does not contain. Layer 229 was first read from Telegram
+Desktop's schema file; reading it from TDLib instead produced an identical parsed schema and
+byte-identical generated code. That copy was removed from the history before publication, so
+the revisions between the two hold no schema file for layer 229 and do not regenerate their TL
+code on their own.
+
+#### What the pin costs while the documentation is behind
+
+The crosscheck in §3.4 compares the parsed IR against Telegram's JSON rendering of the schema.
+That rendering follows the documentation page, so while the pin is ahead it describes a
+different layer: 55 combinators differ, every one of them a thing 229 changed. The command says
+so and does not fail — it is an oracle for the parser, and an oracle describing another layer
+cannot answer that question. It becomes one again when the page catches up. The service schema
+is unversioned and is still compared strictly; it agrees.
+
+What replaces it in the meantime is the check that does not depend on the layer at all: every
+combinator's identifier is recomputed from its own canonical form and compared with the
+identifier the schema declares. 2,459 of 2,471 verify that way, and the twelve that do not are
+the generic methods whose signatures canonicalization does not describe.
+
+**There is no automatic layer upgrade.** The drift job fetches, parses, diffs and opens a pull
+request. A person reads it and decides. A framework that followed the newest layer on its own
+would change its users' compiled surface without anyone having looked at what changed.
+
+**The layer is not runtime-configurable.** It is sent once per connection, in
+`invokeWithLayer(layer, initConnection(…))`, and it has to be the layer the generated codecs were
+emitted from. An application able to pass a different number would be announcing a wire contract
+its own types do not implement. No protocol requirement calls for a client to speak more than one
+layer, so nothing is lost by refusing.
+
+The whole public surface for this is one read-only field:
+
+```ts
+import { schemaInfo } from 'yuigram'
+schemaInfo.tlLayer   // 229
+```
+
+#### The update procedure
+
+1. The drift job reports that a source serves a layer above the pin — the documentation page, or
+   TDLib, which moves first.
+2. `fetch` writes the new `.tl` and IR alongside the current ones. Old snapshots stay — they are
+   the record of what each release spoke. For TDLib, the pin moves first: the revision, the three
+   digests and the layer in `TDLIB`, and `TDLIB_PREFIX` if what precedes the schema proper
+   changed — each entry read, not copied in.
+3. `emit` regenerates. Output is deterministic, so the diff is attributable.
+4. The generated round-trip corpus grows with the schema, so new constructors arrive with
+   coverage rather than without it.
+5. A person reviews the three diffs above and merges, or does not.
+6. The release carrying the bump names the old and new layer in its notes.
+
+#### Compatibility expectations
+
+Telegram continues to serve clients on older layers — that is what the layer number is for. A
+release pinned to 229 keeps working after 230 ships; it simply does not see what 230 introduced.
+The failure mode to plan for is the narrow one: a server sending a constructor the pinned table
+does not contain. That is a decode error confined to the message carrying it, not a
+connection-level failure, and the session layer treats it as an unparseable message rather than a
+protocol violation.
+
+An additive layer bump is a minor release. A bump that removes or changes existing surface is a
+major release, because it breaks compilation for someone (§7).
+
+### 3.4 Module layout and declaration size
+
+Generated TL declarations are the largest artifact the project ships and the one most able to
+degrade a consumer's editor. The measured reference is a 1.96 MB single declaration file in the
+ecosystem, re-read by the TypeScript server on every keystroke. The budget is **no generated
+`.d.ts` over 300 KB**, enforced by a CI check over the built declarations — the largest today is
+the Bot API's 229 KB `available-types.d.ts`, so the budget has headroom but no slack.
+
+Byte count is not the objective. The objective is that a developer's editor stays responsive and
+that the type relationships are the real ones, so the split is structural:
+
+```
+generated/
+├── core/             vector · Bool · True · Error · Null
+├── mtproto/
+│   ├── types.ts          service constructors
+│   ├── functions.ts      service methods
+│   └── registry.ts       id -> codec, this table only
+└── api/
+    ├── types/
+    │   ├── index.ts      root-namespace constructors
+    │   ├── messages.ts   one module per TL namespace
+    │   ├── channels.ts
+    │   └── …
+    ├── functions/        the same split, for methods
+    ├── errors.ts
+    └── registry.ts       id -> codec, this table only
+```
+
+**Split by TL namespace**, because that is the boundary the schema already draws and the one a
+developer navigates by. A split chosen purely to hit a byte target would cut across concepts and
+make every import arbitrary.
+
+One namespace needs more than that. The root namespace holds twelve hundred constructors and
+emits 330 KB on its own, so it is divided again — alphabetically, into a directory behind a
+barrel that keeps its original module path. Alphabetical is not arbitrary here: TL names a
+constructor after the type it builds, so a type and its constructors land in the same file, and
+a name moves between files only if it is renamed. The division triggers on measured output
+rather than on a constructor count, so it is a function of the schema alone and identical on
+every machine.
+
+**Cycles are handled by construction, not by luck.** Cross-namespace references are ordinary in
+TL — `messages.messages` carries root `Message`, `Chat` and `User` values. Two rules apply:
+
+- *Type modules* import each other with `import type` only. Those imports are erased, circular
+  references between them are legal TypeScript, and that is stated as intended rather than
+  tolerated.
+- *Runtime codec modules* have no cycles at all: a codec never imports another codec. It resolves
+  what it needs through the registry it was constructed with, by id. The runtime module graph is
+  therefore a tree — namespace modules export codec factories, the registry assembles them once,
+  and nothing points back up.
+
+**Resolution is lazy.** Ids map to factories realised on first use, so a client touching twenty
+constructors does not pay to build a table of 2,315.
+
+**The public surface is the API layer and the two codec entry points.** The `core` and `mtproto`
+tables, the registry internals, the branded id types and the emitter's own structures stay
+internal to `@yuigram/mtproto`. A consumer sees the TL types they call methods with; they never
+see how the generator arranged them.
+
+### 3.5 Grammar
 
 ```
 name#id  arg:Type  arg2:flags.3?Type  = ResultType;
 ```
 
-The constructor id is `CRC32` of the canonical signature with `;` and parentheses removed. It
-is **computed and then compared** against any explicit `#id` — a mismatch means either the
-parser's canonicalization is wrong or the schema is unusual, and both need a human.
+The constructor id is `CRC32` of the canonical signature with `;` and parentheses removed. It is
+**computed and then compared** against any explicit `#id`; a mismatch is fatal, per §3.1.
 
 The features that break naive parsers:
 
@@ -216,26 +557,41 @@ The features that break naive parsers:
 | `flags:#` | Declares a bitfield |
 | `field:flags.N?T` | Present only when bit `N` is set |
 | **`field:flags.N?true`** | **Zero bytes on the wire — the flag bit is the value** |
-| Bare types | `%Type` or lowercase reference: no leading constructor id |
+| Bare types | `%Type` or a lowercase reference: no leading constructor id |
 | Bare vectors | Inside otherwise-boxed structures |
 | Namespaces | `messages.sendMessage` → nested TypeScript namespaces |
 | Generic functions | `invokeWithLayer`, `invokeAfterMsg` — parameterized over the wrapped call |
+| Section markers | `---types---` and `---functions---`; a document may omit the first and default to types |
 
-### 3.3 Emitters
+### 3.6 Emitters
 
-| Emitter | Output | Approx. size |
-|---|---|---|
-| `types` | Interfaces per constructor, split by TL namespace | 1.5–2 MB `.d.ts` |
-| `reader` | Constructor id → deserializer | 200–300 KB |
-| `writer` | Constructor id → serializer | 400–500 KB |
-| `errors` | 552 typed error classes | 50–100 KB |
-| `round-trip tests` | Generated property tests | — |
+| Emitter | Output |
+|---|---|
+| `types` | An interface per constructor and a union per boxed type, split by TL namespace |
+| `tables` | The wire layout of every constructor, as data |
+| `registry` | The indexed table and its branded identifier type |
+| `schema-info` | The pinned layer, and nothing else |
+
+**The codec is table-driven.** The generator emits a description of each
+constructor's fields; one hand-written reader and one hand-written writer walk
+it. The alternative — a serializer and a deserializer emitted per constructor —
+was rejected once the tables existed, for two reasons that outlast any schema:
+
+- *One interpreter is verifiable once.* Twenty-three hundred generated functions
+  can only be checked by round-tripping them against each other, which passes
+  for a consistently wrong pair. A single reader and writer are checked against
+  fixed byte vectors, boundary cases and malformed input directly.
+- *A layer bump changes data, not code.* New constructors extend a table.
+  Nothing about the emitted logic has to be re-reviewed.
+
+The table also costs a consumer's editor nothing: its declaration is one line
+whatever its length, so the size budget applies only to the type modules.
 
 Errors are derived from Telegram's own schema and from observed responses, not from a
 third-party error table. See [licensing.md](licensing.md) §6.
 
-The generated round-trip test suite is itself an emitter output, so a new TL layer
-automatically extends test coverage rather than leaving new constructors unverified. See
+The generated round-trip test suite is itself an emitter output, so a new TL layer automatically
+extends test coverage rather than leaving new constructors unverified. See
 [testing.md](testing.md) §2.2.
 
 ---
@@ -251,18 +607,21 @@ reference points from the ecosystem:
 | `@puregram/api/updates.d.ts` | 358 KB | Same |
 | `bot-api/generated/bindings.ts` | 7 KB | Yuigram’s equivalent breadth, as a table |
 
-Mitigations, both structural rather than cosmetic:
+Two mitigations, both structural rather than cosmetic, and both applied by each generator:
 
-**Split by domain / namespace.** Generated declarations are emitted per Bot API domain
+**Split by domain or namespace.** Generated declarations are emitted per Bot API domain
 (`messages`, `chats`, `payments`, `stickers`, `business`, …) and per TL namespace
-(`messages`, `channels`, `account`, `photos`, …), behind a barrel re-export. Editors resolve and
-cache per file, and incremental recompilation touches a fraction of the surface.
+(`messages`, `channels`, `account`, `photos`, …). Editors resolve and cache per file, and
+incremental recompilation touches a fraction of the surface.
 
 **Lazy codec tables.** Constructor ids map to functions resolved on first use, so startup does
 not eagerly construct a 2,315-entry dispatch table for a client that will use twenty.
 
-Budget: **no single generated `.d.ts` over ~300 KB**, verified in CI. See
-[performance.md](performance.md) §5.
+Budget: **no single generated `.d.ts` over ~300 KB**, enforced by a CI check over the built
+declarations. See [performance.md](performance.md) §5.
+
+The TL generator's layout, and how it keeps the runtime module graph acyclic while type modules
+reference each other freely, is in §3.4.
 
 ---
 
@@ -325,7 +684,7 @@ may deserve a first-class abstraction rather than just a type — stays with a p
 | Failure | Signal | Response |
 |---|---|---|
 | Telegram restructures the HTML | Parser throws, or the diff is implausibly large | Job fails loudly; existing builds unaffected; fix the parser |
-| Parser regression | ark0f cross-check diverges | Investigate before merging |
+| Parser regression | TL: the JSON crosscheck diverges (§3.4). Bot API: only the generator's tests and the review of the diff | Investigate before merging |
 | New TL layer | Round-trip tests fail on new constructors | Extend the parser; tests are generated, so coverage follows |
 | Silent semantic change | Not detectable by diff alone | Test-DC smoke tests; user reports |
 
@@ -341,7 +700,7 @@ client in this ecosystem.
 | Artifact | Version relationship |
 |---|---|
 | Bot API schema | Tracks Telegram's version (10.2, 10.3, …) |
-| TL schema | Tracks the layer number (223, 224, …) |
+| TL schema | Tracks the pinned layer number — currently 229, see §3.3 |
 | `yuigram` | Independent semantic versioning |
 
 Yuigram's version does **not** encode the Bot API version or TL layer. Those are properties of
@@ -349,9 +708,14 @@ the schema the release was built against, exposed at runtime and documented per 
 
 ```ts
 import { schemaInfo } from 'yuigram'
-schemaInfo.botApi   // '10.2'
-schemaInfo.tlLayer  // 223
+schemaInfo.botApi   // '10.3'
+schemaInfo.tlLayer  // 229
 ```
+
+Both are emitted with the surface rather than written beside it: `BOT_API_VERSION` comes out of
+the Bot API generator and `TL_LAYER` out of the TL one, each read off the schema the surface was
+emitted from. A version kept by hand is updated by remembering to, and the regeneration that
+moves the surface is exactly the change that does not touch it.
 
 A schema bump that adds surface is a minor release. A schema bump that removes or changes
 existing surface is a major release, because it breaks compilation for someone.
@@ -390,11 +754,12 @@ mechanism hand-written and small.
    knows about the other.
 2. **Commit the schema.** Reproducible builds, reviewable diffs, and a documentation
    restructure that breaks a job rather than everyone's build.
-3. **Generated code is never hand-edited.** Enforced by checksum and CI regeneration.
+3. **Generated code is never hand-edited.** Enforced by CI regeneration: any difference fails
+   the build.
 4. **Deterministic output**, or drift detection becomes noise and stops being read.
 5. **Automate the mechanical work; keep the judgement.** The bot opens the pull request; a
    person decides whether the change needs design.
 6. **Cross-check against an independent parse.** Our own output cannot reveal our own parser's
-   blind spots.
+   blind spots. Done for TL (§3.4); not yet for the Bot API (§2.1).
 7. **Split the output.** A 2 MB declaration file is a cost paid by every user, every day.
 8. **Record deviations explicitly.** Patch files with stated reasons, not silent special cases.

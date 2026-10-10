@@ -3,6 +3,9 @@
 An assessment of Yuigram after `0.1.0`, written against the repository as it stands rather than
 against intent.
 
+> The plan below names the next release `0.2.0`. The release that follows `0.1.0` is `1.0.0`; it
+> was prepared first as `0.2.0`, which was never published. See [migration.md](migration.md).
+
 ---
 
 ## 1. Executive Summary
@@ -168,7 +171,7 @@ On A9 specifically: every export is a compatibility promise. Shipping `encodeReq
 level commits the project to them forever, for symbols no documented workflow uses. They should
 either be documented as the extension surface they are, or moved behind a subpath.
 
-**Would I put the current minimal example on the front page?** No. It contains a `??` that
+**The current minimal example does not belong on the front page.** It contains a `??` that
 exists only because the framework did not use information it was given.
 
 ---

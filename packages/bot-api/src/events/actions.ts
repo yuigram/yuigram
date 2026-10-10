@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * What a context can do.
  *
@@ -21,8 +23,9 @@
  * quoted message id survives while `quote` and the rest stay overridable.
  */
 
-import { ValidationError } from '@yuigram/core'
 import type { RawApi } from '../api.js'
+import { ConfigError, ValidationError } from '../core.js'
+import { collect, type DownloadDeps, type DownloadTarget, fetchFileStream } from '../download.js'
 import type { CallbackQuery, Message, ReactionType } from '../generated/types/index.js'
 import type {
   AnswerOptions,
@@ -41,7 +44,44 @@ import type {
 export interface MessageActionDeps {
   readonly api: RawApi
   readonly message: Message
+  /** The client's transport, for `download`. Absent where there is no client. */
+  readonly files?: DownloadDeps
 }
+
+/**
+ * The file a message carries, if it carries one.
+ *
+ * Most messages carry at most one. Where Telegram sends two descriptions of
+ * the same thing — an animation arrives as both `animation` and `document` —
+ * the order below takes the one meant as the file. A photo is its largest size,
+ * and a sticker comes last: one sent beside other media is decoration.
+ */
+export function attachmentOf(message: Message): DownloadTarget | undefined {
+  const carried = message as unknown as Record<string, unknown>
+  for (const field of ATTACHMENT_FIELDS) {
+    const value = carried[field]
+    if (field === 'photo') {
+      if (Array.isArray(value) && value.length > 0) return value as DownloadTarget
+      continue
+    }
+    if (typeof value === 'object' && value !== null && 'file_id' in value) {
+      return value as DownloadTarget
+    }
+  }
+  return undefined
+}
+
+/** Where a message's file can be, in the order `attachmentOf` takes them. */
+const ATTACHMENT_FIELDS = [
+  'document',
+  'video',
+  'audio',
+  'voice',
+  'video_note',
+  'animation',
+  'photo',
+  'sticker',
+] as const
 
 /**
  * Fields an action inherits from the message it acts on.
@@ -125,7 +165,31 @@ function toReactions(reaction: string | readonly ReactionType[]): ReactionType[]
 export function messageActions(deps: MessageActionDeps): MessageActions {
   const { api, message } = deps
 
+  /** The file to fetch and the transport to fetch it with, or why not. */
+  const toFetch = (): { files: DownloadDeps; target: DownloadTarget } => {
+    const target = attachmentOf(message)
+    if (target === undefined) {
+      throw new ValidationError(`message ${message.message_id} carries no file to download`)
+    }
+    if (deps.files === undefined) {
+      throw new ConfigError('this context was built without a client to download through')
+    }
+    return { files: deps.files, target }
+  }
+
   return {
+    // Async, so a message with no file or a context with no client is a
+    // rejection like any other failure of the call, not a throw at the call site.
+    async download(): Promise<Uint8Array> {
+      const { files, target } = toFetch()
+      return await collect(await fetchFileStream(files, target))
+    },
+
+    async downloadStream(): Promise<ReadableStream<Uint8Array>> {
+      const { files, target } = toFetch()
+      return await fetchFileStream(files, target)
+    },
+
     reply(first: string | SendContent, second: ReplyOptions = {}): Promise<Message> {
       const { method, params } = describeSend(first, second)
       const { reply_parameters, ...rest } = params

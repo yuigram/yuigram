@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Test helpers for Bot API code.
  *
@@ -10,14 +12,20 @@ export {
   type CallbackQueryOptions,
   callbackQueryUpdate,
   channelPostUpdate,
+  chatJoinRequestUpdate,
+  chosenInlineResultUpdate,
   editedMessageUpdate,
   groupChat,
   inlineQueryUpdate,
   type MessageOptions,
   memberJoinedUpdate,
   message,
+  messageReactionUpdate,
   messageUpdate,
+  pollAnswerUpdate,
+  preCheckoutQueryUpdate,
   privateChat,
+  type ReactionOptions,
   resetFixtureIds,
   unknownUpdate,
   user,

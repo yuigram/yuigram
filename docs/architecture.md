@@ -293,9 +293,15 @@ Two separate escape hatches, never merged (see [unified-model.md](unified-model.
 bot.api.sendMessage({ chat_id, text })              // typed Bot API
 bot.api.call('someNewMethod', { … })                // untyped, forward-compatible
 
-user.api.messages.sendMessage({ peer, message })    // typed TL
+user.api.messages.sendMessage({ peer, message, random_id })   // typed TL
 user.api.call({ _: 'messages.sendMessage', … })     // untyped, forward-compatible
 ```
+
+The TL half is generated from the committed schema — a signature per method, grouped by
+namespace, with argument and result types taken from the declaration rather than written by
+hand. It is types only: dispatch is one proxy over the same invoke `call` uses, so the typed
+surface is an ergonomic layer rather than a second route to a datacenter. `user.api` is on the
+client and on every MTProto context.
 
 **Why both a typed and an untyped form:** the typed form covers everything in the current
 schema; the untyped form covers the window between Telegram shipping a feature and Yuigram
@@ -339,8 +345,25 @@ interface Plugin<N extends string, Ext = void> {
   readonly name: N
   readonly dependsOn?: readonly string[]
   install (target: PluginTarget): Ext | Promise<Ext>
+  dispose? (value: Ext, target: PluginTarget): void | Promise<void>
 }
 ```
+
+Plugins are installed before the first update is dispatched, or when polling starts, in
+dependency order. What can go wrong, and when it is found:
+
+| Failure | Error | Found | Left behind |
+|---|---|---|---|
+| Two plugins with one name | `PluginConflictError` | at `extend()` | nothing |
+| A dependency never registered | `PluginDependencyError`, naming both | before any install runs | nothing |
+| A dependency cycle | `PluginCycleError`, with the path | before any install runs | nothing |
+| An install throws | `PluginInstallError`: `plugin`, the thrown error as `cause`, and whatever the rollback's disposals threw as `cleanup` | while installing | the plugins installed before it in that round are disposed, newest first, and not recorded |
+
+After an install failure the client stays failed: every later update, and `start()`, rejects with
+the same error, and no install runs again. Middleware an earlier install registered cannot be
+taken back out of its host, so installing again would register it twice; a client that cannot
+install its plugins is replaced rather than retried. Two clients given one plugin descriptor
+install it separately, and one failing leaves the other as it was.
 
 Extension points, fixed and documented, so plugins never need to reach into internals:
 
@@ -361,22 +384,29 @@ mistake.
 
 ## 10. Enforced invariants
 
-Architecture decays unless something checks it. These are CI gates, not conventions:
+Architecture decays unless something checks it. These are CI gates, not conventions, each
+named by what enforces it — `pnpm invariants` runs the rules in `tools/invariants`:
 
-1. **`core` imports nothing transport-specific.** Dependency-cruiser rule.
-2. **`bot-api` and `mtproto` never import each other.** Dependency-cruiser rule.
-3. **No mtcute or puregram type appears in any public `.d.ts`.** Enforced by scanning the
-   built declaration files for forbidden identifiers. This is the mechanical guarantee
-   behind long-term independence, and it holds regardless of what the implementation depends
-   on internally.
-4. **No puregram-derived source.** Similarity tripwire; see [licensing.md](licensing.md) §9.
-5. **Public API surface is snapshotted.** An API-extractor report is committed; any change to
-   the public surface shows up as a reviewable diff.
-6. **Generated code is never hand-edited.** A checksum in the header; CI regenerates and
-   fails on drift.
+1. **`core` imports nothing transport-specific.** The `layer-boundaries` rule, with
+   `declared-imports` and `module-boundaries` beside it.
+2. **`bot-api` and `mtproto` never import each other.** The same rule.
+3. **No mtcute or puregram type appears in any public `.d.ts`.** The `public-surface-is-clean`
+   rule scans the built declaration files for forbidden identifiers. This is the mechanical
+   guarantee behind long-term independence, and it holds regardless of what the implementation
+   depends on internally.
+4. **No Telegram library in the dependency tree, at any depth.** The
+   `no-telegram-dependencies` rule and CI's Independence job, which also holds runtime licences
+   to an allowlist ([licensing.md](licensing.md) §9).
+5. **Generated code is never hand-edited.** Each generated file names its source; CI
+   regenerates it from the committed schemas and fails on any difference.
 
 Invariant 3 is the one that decides whether the "not a wrapper" requirement is real or
 aspirational. It is a build failure, not a code-review preference.
+
+Two things are not enforced by a build. Nothing compares Yuigram's source with puregram's or
+mtcute's for copied text; "no code taken from either" rests on review. And the public surface
+is not snapshotted in a committed report: a change to it shows in the declarations a pull
+request changes, and `check:declarations` bounds their size, not their content.
 
 ---
 

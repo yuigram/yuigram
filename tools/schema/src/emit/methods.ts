@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Emits the Bot API method surface.
  *

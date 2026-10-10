@@ -1,0 +1,62 @@
+// GENERATED FILE — do not edit.
+// Wire layout for phone
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// SPDX-License-Identifier: MIT AND BSL-1.0
+// Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
+
+import type { TlEntry } from '../../../tl/schema.js'
+
+/** 51 combinators. */
+export const ENTRIES: readonly TlEntry[] = [
+  { id: 0x3bd2b4a0, n: 'phone.acceptCall', f: [{ n: 'peer', t: 'obj' }, { n: 'g_b', t: 'bytes' }, { n: 'protocol', t: 'obj' }] },
+  { id: 0xb59cf977, n: 'phone.checkGroupCall', f: [{ n: 'call', t: 'obj' }, { n: 'sources', t: { v: 'int' } }] },
+  { id: 0x2efe1722, n: 'phone.confirmCall', f: [{ n: 'peer', t: 'obj' }, { n: 'g_a', t: 'bytes' }, { n: 'key_fingerprint', t: 'long' }, { n: 'protocol', t: 'obj' }] },
+  { id: 0x7d0444bb, n: 'phone.createConferenceCall', f: [{ n: 'flags', b: 1 }, { n: 'muted', t: 'true', c: 'flags', i: 0 }, { n: 'video_stopped', t: 'true', c: 'flags', i: 2 }, { n: 'join', t: 'true', c: 'flags', i: 3 }, { n: 'random_id', t: 'int' }, { n: 'public_key', t: 'int256', c: 'flags', i: 3 }, { n: 'block', t: 'bytes', c: 'flags', i: 3 }, { n: 'params', t: 'obj', c: 'flags', i: 3 }] },
+  { id: 0x48cdc6d8, n: 'phone.createGroupCall', f: [{ n: 'flags', b: 1 }, { n: 'rtmp_stream', t: 'true', c: 'flags', i: 2 }, { n: 'peer', t: 'obj' }, { n: 'random_id', t: 'int' }, { n: 'title', t: 'string', c: 'flags', i: 0 }, { n: 'schedule_date', t: 'int', c: 'flags', i: 1 }] },
+  { id: 0x3c479971, n: 'phone.declineConferenceCallInvite', f: [{ n: 'msg_id', t: 'int' }] },
+  { id: 0x8ca60525, n: 'phone.deleteConferenceCallParticipants', f: [{ n: 'flags', b: 1 }, { n: 'only_left', t: 'true', c: 'flags', i: 0 }, { n: 'kick', t: 'true', c: 'flags', i: 1 }, { n: 'call', t: 'obj' }, { n: 'ids', t: { v: 'long' } }, { n: 'block', t: 'bytes' }] },
+  { id: 0xf64f54f7, n: 'phone.deleteGroupCallMessages', f: [{ n: 'flags', b: 1 }, { n: 'report_spam', t: 'true', c: 'flags', i: 0 }, { n: 'call', t: 'obj' }, { n: 'messages', t: { v: 'int' } }] },
+  { id: 0x1dbfeca0, n: 'phone.deleteGroupCallParticipantMessages', f: [{ n: 'flags', b: 1 }, { n: 'report_spam', t: 'true', c: 'flags', i: 0 }, { n: 'call', t: 'obj' }, { n: 'participant', t: 'obj' }] },
+  { id: 0xb2cbc1c0, n: 'phone.discardCall', f: [{ n: 'flags', b: 1 }, { n: 'video', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'duration', t: 'int' }, { n: 'reason', t: 'obj' }, { n: 'connection_id', t: 'long' }] },
+  { id: 0x7a777135, n: 'phone.discardGroupCall', f: [{ n: 'call', t: 'obj' }] },
+  { id: 0xa5273abf, n: 'phone.editGroupCallParticipant', f: [{ n: 'flags', b: 1 }, { n: 'call', t: 'obj' }, { n: 'participant', t: 'obj' }, { n: 'muted', t: 'bool', c: 'flags', i: 0 }, { n: 'volume', t: 'int', c: 'flags', i: 1 }, { n: 'raise_hand', t: 'bool', c: 'flags', i: 2 }, { n: 'video_stopped', t: 'bool', c: 'flags', i: 3 }, { n: 'video_paused', t: 'bool', c: 'flags', i: 4 }, { n: 'presentation_paused', t: 'bool', c: 'flags', i: 5 }] },
+  { id: 0x1ca6ac0a, n: 'phone.editGroupCallTitle', f: [{ n: 'call', t: 'obj' }, { n: 'title', t: 'string' }] },
+  { id: 0xe6aa647f, n: 'phone.exportGroupCallInvite', f: [{ n: 'flags', b: 1 }, { n: 'can_self_unmute', t: 'true', c: 'flags', i: 0 }, { n: 'call', t: 'obj' }] },
+  { id: 0x204bd158, n: 'phone.exportedGroupCallInvite', f: [{ n: 'link', t: 'string' }] },
+  { id: 0x55451fa9, n: 'phone.getCallConfig', f: [] },
+  { id: 0x041845db, n: 'phone.getGroupCall', f: [{ n: 'call', t: 'obj' }, { n: 'limit', t: 'int' }] },
+  { id: 0xee9f88a6, n: 'phone.getGroupCallChainBlocks', f: [{ n: 'call', t: 'obj' }, { n: 'sub_chain_id', t: 'int' }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }] },
+  { id: 0xef7c213a, n: 'phone.getGroupCallJoinAs', f: [{ n: 'peer', t: 'obj' }] },
+  { id: 0x6f636302, n: 'phone.getGroupCallStars', f: [{ n: 'call', t: 'obj' }] },
+  { id: 0x1ab21940, n: 'phone.getGroupCallStreamChannels', f: [{ n: 'call', t: 'obj' }] },
+  { id: 0x5af4c73a, n: 'phone.getGroupCallStreamRtmpUrl', f: [{ n: 'flags', b: 1 }, { n: 'live_story', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'revoke', t: 'bool' }] },
+  { id: 0xc558d8ab, n: 'phone.getGroupParticipants', f: [{ n: 'call', t: 'obj' }, { n: 'ids', t: { v: 'obj' } }, { n: 'sources', t: { v: 'int' } }, { n: 'offset', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0x9e727aad, n: 'phone.groupCall', f: [{ n: 'call', t: 'obj' }, { n: 'participants', t: { v: 'obj' } }, { n: 'participants_next_offset', t: 'string' }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x9d1dbd26, n: 'phone.groupCallStars', f: [{ n: 'total_stars', t: 'long' }, { n: 'top_donors', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0xd0e482b2, n: 'phone.groupCallStreamChannels', f: [{ n: 'channels', t: { v: 'obj' } }] },
+  { id: 0x2dbf3432, n: 'phone.groupCallStreamRtmpUrl', f: [{ n: 'url', t: 'string' }, { n: 'key', t: 'string' }] },
+  { id: 0xf47751b6, n: 'phone.groupParticipants', f: [{ n: 'count', t: 'int' }, { n: 'participants', t: { v: 'obj' } }, { n: 'next_offset', t: 'string' }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }, { n: 'version', t: 'int' }] },
+  { id: 0xbcf22685, n: 'phone.inviteConferenceCallParticipant', f: [{ n: 'flags', b: 1 }, { n: 'video', t: 'true', c: 'flags', i: 0 }, { n: 'call', t: 'obj' }, { n: 'user_id', t: 'obj' }] },
+  { id: 0x7b393160, n: 'phone.inviteToGroupCall', f: [{ n: 'call', t: 'obj' }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0xafe5623f, n: 'phone.joinAsPeers', f: [{ n: 'peers', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x8fb53057, n: 'phone.joinGroupCall', f: [{ n: 'flags', b: 1 }, { n: 'muted', t: 'true', c: 'flags', i: 0 }, { n: 'video_stopped', t: 'true', c: 'flags', i: 2 }, { n: 'call', t: 'obj' }, { n: 'join_as', t: 'obj' }, { n: 'invite_hash', t: 'string', c: 'flags', i: 1 }, { n: 'public_key', t: 'int256', c: 'flags', i: 3 }, { n: 'block', t: 'bytes', c: 'flags', i: 3 }, { n: 'params', t: 'obj' }] },
+  { id: 0xcbea6bc4, n: 'phone.joinGroupCallPresentation', f: [{ n: 'call', t: 'obj' }, { n: 'params', t: 'obj' }] },
+  { id: 0x500377f9, n: 'phone.leaveGroupCall', f: [{ n: 'call', t: 'obj' }, { n: 'source', t: 'int' }] },
+  { id: 0x1c50d144, n: 'phone.leaveGroupCallPresentation', f: [{ n: 'call', t: 'obj' }] },
+  { id: 0xec82e140, n: 'phone.phoneCall', f: [{ n: 'phone_call', t: 'obj' }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x17d54f61, n: 'phone.receivedCall', f: [{ n: 'peer', t: 'obj' }] },
+  { id: 0x42ff96ed, n: 'phone.requestCall', f: [{ n: 'flags', b: 1 }, { n: 'video', t: 'true', c: 'flags', i: 0 }, { n: 'user_id', t: 'obj' }, { n: 'random_id', t: 'int' }, { n: 'g_a_hash', t: 'bytes' }, { n: 'protocol', t: 'obj' }] },
+  { id: 0x277add7e, n: 'phone.saveCallDebug', f: [{ n: 'peer', t: 'obj' }, { n: 'debug', t: 'obj' }] },
+  { id: 0x41248786, n: 'phone.saveCallLog', f: [{ n: 'peer', t: 'obj' }, { n: 'file', t: 'obj' }] },
+  { id: 0x575e1f8c, n: 'phone.saveDefaultGroupCallJoinAs', f: [{ n: 'peer', t: 'obj' }, { n: 'join_as', t: 'obj' }] },
+  { id: 0x4167add1, n: 'phone.saveDefaultSendAs', f: [{ n: 'call', t: 'obj' }, { n: 'send_as', t: 'obj' }] },
+  { id: 0xc6701900, n: 'phone.sendConferenceCallBroadcast', f: [{ n: 'call', t: 'obj' }, { n: 'block', t: 'bytes' }] },
+  { id: 0xe5afa56d, n: 'phone.sendGroupCallEncryptedMessage', f: [{ n: 'call', t: 'obj' }, { n: 'encrypted_message', t: 'bytes' }] },
+  { id: 0xb1d11410, n: 'phone.sendGroupCallMessage', f: [{ n: 'flags', b: 1 }, { n: 'call', t: 'obj' }, { n: 'random_id', t: 'long' }, { n: 'message', t: 'obj' }, { n: 'allow_paid_stars', t: 'long', c: 'flags', i: 0 }, { n: 'send_as', t: 'obj', c: 'flags', i: 1 }] },
+  { id: 0xff7a9383, n: 'phone.sendSignalingData', f: [{ n: 'peer', t: 'obj' }, { n: 'data', t: 'bytes' }] },
+  { id: 0x59ead627, n: 'phone.setCallRating', f: [{ n: 'flags', b: 1 }, { n: 'user_initiative', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'rating', t: 'int' }, { n: 'comment', t: 'string' }] },
+  { id: 0x5680e342, n: 'phone.startScheduledGroupCall', f: [{ n: 'call', t: 'obj' }] },
+  { id: 0xf128c708, n: 'phone.toggleGroupCallRecord', f: [{ n: 'flags', b: 1 }, { n: 'start', t: 'true', c: 'flags', i: 0 }, { n: 'video', t: 'true', c: 'flags', i: 2 }, { n: 'call', t: 'obj' }, { n: 'title', t: 'string', c: 'flags', i: 1 }, { n: 'video_portrait', t: 'bool', c: 'flags', i: 2 }] },
+  { id: 0x974392f2, n: 'phone.toggleGroupCallSettings', f: [{ n: 'flags', b: 1 }, { n: 'reset_invite_hash', t: 'true', c: 'flags', i: 1 }, { n: 'call', t: 'obj' }, { n: 'join_muted', t: 'bool', c: 'flags', i: 0 }, { n: 'messages_enabled', t: 'bool', c: 'flags', i: 2 }, { n: 'send_paid_messages_stars', t: 'long', c: 'flags', i: 3 }] },
+  { id: 0x219c34e6, n: 'phone.toggleGroupCallStartSubscription', f: [{ n: 'call', t: 'obj' }, { n: 'subscribed', t: 'bool' }] },
+]

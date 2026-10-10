@@ -1,7 +1,6 @@
 {
   "name": "@yuigram/mtproto",
-  "version": "0.0.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "Telegram MTProto subsystem for Yuigram",
   "keywords": [
     "telegram",
@@ -28,7 +27,44 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "import": "./dist/worker/index.js",
+      "default": "./dist/worker/index.js"
+    },
+    "./stream": {
+      "types": "./dist/stream/index.d.ts",
+      "import": "./dist/stream/index.js",
+      "default": "./dist/stream/index.js"
+    },
+    "./filters": {
+      "types": "./dist/filters/index.d.ts",
+      "import": "./dist/filters/index.js",
+      "default": "./dist/filters/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
+    },
+    "./mtproxy": {
+      "types": "./dist/mtproxy/index.d.ts",
+      "import": "./dist/mtproxy/index.js",
+      "default": "./dist/mtproxy/index.js"
     }
+  },
+  "browser": {
+    "./dist/crypto/backend.js": "./dist/crypto/backend.browser.js",
+    "./dist/files/node-stream.js": "./dist/files/node-stream.browser.js",
+    "./dist/network/connect.js": "./dist/network/connect.browser.js",
+    "./dist/session/gunzip.js": "./dist/session/gunzip.browser.js",
+    "./dist/mtproxy/index.js": "./dist/mtproxy/index.browser.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -36,6 +72,7 @@
     "dist",
     "src",
     "LICENSE",
+    "TDLIB-LICENSE.txt",
     "README.md"
   ],
   "engines": {
@@ -52,5 +89,10 @@
   },
   "dependencies": {
     "@yuigram/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@yuigram/redis": "workspace:*",
+    "@yuigram/sqlite": "workspace:*",
+    "ioredis": "6.0.0"
   }
 }

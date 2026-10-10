@@ -15,14 +15,27 @@ it describes running code, and the behaviour is pinned by tests.
 reasoning behind that surface. They quote the `0.1.0` API they argue against, so they read
 against that release rather than against the current code.
 
-**MTProto is not implemented.** Neither is the `App` container that holds several clients, nor
-anything that depends on it. [api-design.md](api-design.md) is labelled the *proposed* API and
-shows the whole target, including parts that do not exist yet — `Account` and `App` among them.
-[naming.md](naming.md) records naming decisions for that target, not an inventory of what ships.
+The **MTProto subsystem is built from the protocol upwards**, and everything below the
+high-level surface ships: the cryptography, the TL codec, transport framing, the authorization
+handshake with its temporary-key binding, the session layer, datacenters and migration, the
+connection pools, the updates manager, and the peer store that makes an access hash something
+the account can produce again. Above them, `Account` connects, signs in, dispatches typed
+events, and reaches Telegram three ways — the generated method surface, the bound surface for
+the peer an update arrived from, and the untyped hatch for anything newer than the schema. It
+sends and fetches files. `App` holds several clients of either kind together.
 
-The rule when reading: anything involving a bot and only a bot exists today; anything involving
-a user account or several clients is design. The [roadmap](roadmap.md) says when each part
-arrives, and nothing described anywhere here is a stub — unimplemented means absent, not
+Above that, messages, users and conversations are read through views over the schema value, and
+the people an answer named are joined to what its messages reference — [entities.md](entities.md)
+records the shape and measures what has a reading layer and what does not. An account sends,
+edits, forwards and deletes messages, walks dialogs and history page by page, and manages chats,
+members, forums, stories and the rest of what [roadmap.md](roadmap.md) Phase 11 lists.
+[api-design.md](api-design.md) describes the public surface as implemented, and its examples
+type-check with `pnpm check:docs`; [mtproto.md](mtproto.md) §5.3 and §11 record what remains
+inside the protocol layers themselves.
+
+The rule when reading: the protocol subsystems, the clients on top of them and the ergonomic
+layer over both exist today. The [roadmap](roadmap.md) says what is still planned — secret chats
+among it — and nothing described anywhere here is a stub: unimplemented means absent, not
 hollow.
 
 ## The premise
@@ -73,9 +86,16 @@ The one command a user runs is `npm install yuigram`. Nothing else comes with it
 | 19 | [roadmap.md](roadmap.md) | Phased delivery plan |
 | 20 | [migration.md](migration.md) | What changes between releases, and what to do about it |
 | 21 | [bot-api-finalization.md](bot-api-finalization.md) | The last Bot API gaps, how they were closed, and what is deliberately not built |
+| 22 | [mtproto-plan.md](mtproto-plan.md) | How the MTProto subsystem is built, in what order, behind what boundaries |
+| 23 | [mtproto-crypto.md](mtproto-crypto.md) | The cryptographic layer: every primitive, and how each is verified |
+| 24 | [entities.md](entities.md) | How TL values are read, what has a reading layer, and what does not |
+| 25 | [runtimes.md](runtimes.md) | Where this runs, what was executed there, and what was only reasoned about |
+| 26 | [formatting.md](formatting.md) | Formatted text, rich messages and their readers, and streaming an answer as it is written |
 
 Plus [protocol-notes/](protocol-notes/) — the working record of observed server behaviour that
-the specification does not cover. Empty until the MTProto subsystem begins.
+the specification does not cover. No observation is recorded yet: the hand-run of example 20
+against Telegram ([live-verification.md](live-verification.md) §8) met nothing the specification
+does not describe.
 
 The executive summary is at the end of [feasibility.md](feasibility.md).
 
@@ -110,8 +130,11 @@ whose implementation belongs to Yuigram, and there is no shorter route to it.
 
 Research phase: **complete.**
 Bot API subsystem: **implemented**, on the redesigned public surface.
-MTProto subsystem: **not started** — the specification in [mtproto.md](mtproto.md) is what it
-will be built from.
+MTProto subsystem: **implemented** from the protocol upward, with the account client and its
+high-level surface, and verified against mock services and a stand-in datacenter that speaks the
+real protocol. Against Telegram it has run only through example 20, by hand;
+[live-verification.md](live-verification.md) records that, and its prepared procedure has not
+been run.
 
 All measurements were taken from published package artifacts on 2026-08-19 against
 puregram 3.7.0 / @puregram/api 10.2.1, @mtcute/core 0.31.0 / @mtcute/tl 223.0.0, Bot API 10.2

@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: MIT
+
 /**
- * Type-level prototype for the 0.2.0 surface.
+ * Type-level prototype for the 1.0.0 surface.
  *
  * Nothing here is wired to a client. It holds the event-specific context types
  * to the standard the design claims — that they come out clean at type level,

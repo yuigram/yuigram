@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The default transport, built on the platform `fetch`.
  *
@@ -7,7 +9,7 @@
  * third-party code in the path a credential travels.
  */
 
-import { ConfigError } from '@yuigram/core'
+import { ConfigError } from '../core.js'
 import type { ApiRequest, ApiResponse, ApiResult, HttpClient } from './client.js'
 import { encodeRequest } from './multipart.js'
 
@@ -35,6 +37,16 @@ export interface FetchClientOptions {
    * filesystem rather than over HTTP.
    */
   readonly local?: boolean
+
+  /**
+   * Whether to talk to Telegram's test environment rather than production.
+   *
+   * The test environment is a separate Telegram with its own accounts, chats
+   * and bots: a bot for it is made with the test environment's BotFather and
+   * has a token that production does not know. Calls go to
+   * `/bot<token>/test/<method>` and files to `/file/bot<token>/test/<path>`.
+   */
+  readonly testMode?: boolean
 }
 
 /** Shape of a bot token: numeric id, colon, secret. */
@@ -89,12 +101,14 @@ export function fetchClient(options: FetchClientOptions): HttpClient {
   // Held in a closure rather than on the returned object, so it cannot escape
   // through inspection or serialization of the client.
   const token = options.token
+  // The test environment is addressed by a path segment after the token.
+  const environment = options.testMode === true ? '/test' : ''
 
   return {
     fileUrl(filePath: string): string {
       // A local server hands back a path on disk, not something to fetch.
       if (options.local === true) return filePath
-      return `${baseUrl}/file/bot${token}/${filePath}`
+      return `${baseUrl}/file/bot${token}${environment}/${filePath}`
     },
 
     async fetchFile(url: string) {
@@ -103,7 +117,7 @@ export function fetchClient(options: FetchClientOptions): HttpClient {
     },
 
     async call<T>(request: ApiRequest): Promise<ApiResult<T>> {
-      const url = `${baseUrl}/bot${token}/${request.method}`
+      const url = `${baseUrl}/bot${token}${environment}/${request.method}`
       const encoded = await encodeRequest(request.params)
 
       const headers: Record<string, string> = { ...extraHeaders }

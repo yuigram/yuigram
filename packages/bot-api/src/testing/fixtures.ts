@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Update fixtures.
  *
@@ -152,4 +154,104 @@ export function memberJoinedUpdate(joined: User = user(), chat: Chat = groupChat
       new_chat_members: [joined],
     } as unknown as Message,
   })
+}
+
+/** An update carrying the inline result a person picked. */
+export function chosenInlineResultUpdate(
+  resultId: string,
+  options: {
+    readonly query?: string
+    readonly from?: User
+    readonly inlineMessageId?: string
+  } = {},
+): Update {
+  return update({
+    chosen_inline_result: {
+      result_id: resultId,
+      from: options.from ?? user(),
+      query: options.query ?? '',
+      ...(options.inlineMessageId === undefined
+        ? {}
+        : { inline_message_id: options.inlineMessageId }),
+    },
+  } as Partial<Update>)
+}
+
+/** Options accepted by the reaction builder. */
+export interface ReactionOptions {
+  /** The message reacted to. */
+  readonly messageId: number
+  readonly chat?: Chat
+  readonly user?: User
+  /** Emoji set before, and after. Each a plain emoji. */
+  readonly old?: readonly string[]
+  readonly new: readonly string[]
+}
+
+/** An update carrying one person's change of reaction to a message. */
+export function messageReactionUpdate(options: ReactionOptions): Update {
+  const who = options.user ?? user()
+  const emoji = (list: readonly string[] = []) => list.map((one) => ({ type: 'emoji', emoji: one }))
+
+  return update({
+    message_reaction: {
+      chat: options.chat ?? privateChat({ id: who.id }),
+      message_id: options.messageId,
+      user: who,
+      date: EPOCH,
+      old_reaction: emoji(options.old),
+      new_reaction: emoji(options.new),
+    },
+  } as Partial<Update>)
+}
+
+/** An update asking a bot to confirm a checkout before the payment is taken. */
+export function preCheckoutQueryUpdate(options: {
+  readonly payload: string
+  readonly currency?: string
+  readonly totalAmount?: number
+  readonly from?: User
+}): Update {
+  return update({
+    pre_checkout_query: {
+      id: String(id()),
+      from: options.from ?? user(),
+      currency: options.currency ?? 'XTR',
+      total_amount: options.totalAmount ?? 1,
+      invoice_payload: options.payload,
+    },
+  } as Partial<Update>)
+}
+
+/** An update carrying a vote in a non-anonymous poll. */
+export function pollAnswerUpdate(options: {
+  readonly pollId: string
+  readonly optionIds: readonly number[]
+  readonly user?: User
+}): Update {
+  return update({
+    poll_answer: {
+      poll_id: options.pollId,
+      user: options.user ?? user(),
+      option_ids: [...options.optionIds],
+      option_persistent_ids: options.optionIds.map(String),
+    },
+  } as Partial<Update>)
+}
+
+/** An update carrying somebody asking to join a chat the bot manages. */
+export function chatJoinRequestUpdate(
+  options: { readonly chat?: Chat; readonly from?: User; readonly bio?: string } = {},
+): Update {
+  const from = options.from ?? user()
+
+  return update({
+    chat_join_request: {
+      chat: options.chat ?? groupChat(),
+      from,
+      user_chat_id: from.id,
+      date: EPOCH,
+      ...(options.bio === undefined ? {} : { bio: options.bio }),
+    },
+  } as Partial<Update>)
 }

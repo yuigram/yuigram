@@ -60,13 +60,44 @@ MTProto session material is the highest-value asset in the system.
 | Control | Default | Rationale |
 |---|---|---|
 | File permissions `0600` | **On** | Costs nothing; prevents the most common local exposure |
-| Warn on wider permissions | **On** | Detects a session copied or checked out carelessly |
+| Warn on wider permissions | **On** | Detects a session copied or checked out carelessly. The directory rather than the file: nothing reaches a file whose directory denies it |
 | Encryption at rest | **Off**, opt-in | A mandatory passphrase pushes users to store the key beside the file, achieving nothing. Available and documented. |
-| Exclusive lock | **On** | Two clients on one session corrupt both — fail loudly |
-| Never in `git` | Documented + `.gitignore` in every template | The realistic leak path |
+| Ownership of an account's area | **On**, within the reach each backend has | Two clients on one session corrupt both — fail loudly where it can be detected. Exclusive within a process, a browser origin, or a SQLite/Redis store; over a plain directory across processes, a refusal on a later start only: see §3.1 |
+| Never in `git` | Documented + a `.gitignore` in every template, held by the `templates-ignore-secrets` invariant | The realistic leak path. A template is copied whole, so the root ignore file protects nothing once it has been copied |
 
 When enabled, encryption is AES-256-GCM with scrypt key derivation — authenticated, so
-tampering fails cleanly instead of producing confusing protocol errors.
+tampering fails cleanly instead of producing confusing protocol errors. Each value is bound to
+the key it is stored under, so one cannot be moved to another key unnoticed either. It is not
+bound to a version: whoever can write the store can put back a value it held earlier, and that
+value reads as genuine.
+
+### 3.1 Ownership of an account's area
+
+The requirement is met by ownership of an area rather than by a lock inside `file()`. The generic
+driver stays shareable, because framework state is legitimately shared between processes —
+several webhook workers behind one store is a supported deployment — and an account claims its
+own area, `accounts:<name>:`, through a guard before it reads or writes anything there.
+
+The guard is what the environment provides, and its reach is reported rather than assumed: the
+Web Locks API in a browser, which excludes every page, tab and worker of the origin; a registry
+inside the process everywhere else, which excludes other `Account`s in that process and nothing
+outside it. `sqliteStore` and `redisStore` add a lease the store records and checks in the same
+atomic step as every write, which excludes every process and machine reaching that database and
+refuses a superseded run's writes on the store itself.
+
+The claim record inside the area is not a lock. It is read and written in separate steps, so
+over `file()` or any other persistent adapter without leases it refuses a run that starts after
+another's claim was written — including the run after a crash, until `takeOverStorage` says the
+previous one has ended — but two processes that start together both proceed, and a take-over in
+one process does not stop a run still writing in another. Where the reach does cover every
+possible holder — a browser origin, a leasing store, an in-memory store — a claim left by a crash
+is adopted without a flag. An application with a better primitive for a shared directory — an
+advisory lock, a lock file — supplies it as `storageGuard`. Within the guard's reach, a
+superseded run is fenced: its writes are refused once it no longer holds the area, and what it
+had already begun finishes before the area is handed on.
+
+[storage.md](storage.md) §4, under "Which account a store's contents belong to", records the
+design and the cases a take-over refuses rather than forces.
 
 `exportSession()` returns a string that **is** a logged-in session. The documentation says
 exactly that, in those words, at every mention. It is not a config value, it does not go in a
@@ -94,8 +125,8 @@ real accounts in this ecosystem.
 |---|---|
 | TLS verification | Always on. No option to disable — a flag that disables certificate checking is a flag that will be found in production. |
 | `apiBaseUrl` override | Permitted for local Bot API servers; warn loudly when it is not `api.telegram.org` and not `localhost` |
-| Proxies | Supported explicitly, never picked up from ambient environment variables without opt-in |
-| MTProto server keys | Compiled in, sourced from Telegram's published MTProto documentation, verified by fingerprint |
+| Proxies | Never picked up from ambient environment variables. A Bot API proxy is a `fetch` given to `fetchClient`, and an account's connections can be routed through a SOCKS or HTTP proxy by its `open` option, which supplies the byte stream. An MTProxy is the account's `proxy` option (`yuigram/mtproxy`): its secret is a credential, and is never written to a description, an error, `JSON.stringify` or `util.inspect`. Nothing falls back to a direct connection when the proxy fails. A proxy, like anything on the path, can end a connection or forge the four-byte transport errors, which carry no authentication: a forged `404` costs the account a new temporary key, never its authorization, and the messages themselves stay encrypted and authenticated between the account and the datacenter |
+| MTProto server keys | Supplied by the application (`serverKeysFromPem`) from Telegram's own source — TDLib, which example 20 retrieves at a pinned revision and checks by digest — never compiled in, and checked by fingerprint; a datacenter offering a key the account does not hold is refused |
 | DH parameter validation | Full safe-prime check on every handshake. Not optional, not skippable. |
 | `g_a`/`g_b` range checks | Enforced — omitting them is a known MTProto weakness |
 | Nonce equality checks | Enforced at every handshake step |
@@ -105,9 +136,164 @@ The DH validation deserves emphasis: it is expensive and it is tempting to skip 
 carelessly. mtcute caches the *result* for a known-good prime, which is the correct
 optimization — cache the verification outcome, never bypass the verification.
 
+### Delivery nodes
+
+A datacenter may answer a request for a file by naming a machine Telegram does not operate. The
+node holds the file encrypted and is told nothing about the account asking for it, but a client
+that goes there is fetching bytes from somewhere outside Telegram, and that is a decision about
+trust rather than about speed.
+
+It is offered only to a client that says it can accept one, and **an account does not say so
+unless the caller asked**. `download({ …, cdn: true })` is the whole of the opt-in; without it a
+datacenter that would rather redirect still serves the file, so the default costs nothing.
+
+Four rules hold the boundary, and each is this client's rather than the node's — a guarantee
+that depends on the far end declining what it should never have been offered is not one:
+
+| Rule | Why |
+|---|---|
+| A node is recognised by the **address list**, never by the redirection | A redirection is a claim somebody else made. The `cdn` flag is Telegram's own statement about which machines it does not operate |
+| A node gets **its own authorization and nothing else** | No temporary key is vouched for there, and the long-lived key this account authorizes with never travels to one |
+| A node may be asked `upload.getCdnFile` and `upload.getCdnFileHashes` — **nothing else** | Checked against a list before anything is sent |
+| `account.reach()` **refuses** a node outright | The escape hatch exists for a method that must go to a particular datacenter, and a node answers none of them |
+
+A redirection naming a datacenter the address list does not describe as a node is refused rather
+than attempted: there is nowhere to go, and a client that tried would wait on an address it does
+not have.
+
+What does reach a node is the Diffie-Hellman handshake, the description every MTProto connection
+opens with, and requests for byte ranges. What comes back is checked against the hashes published
+for it before a single byte is handed to the caller — `mtproto.md` §11.
+
+### What a forged refusal can remove
+
+A transport error is four bytes with no authentication, so anything on the path — a proxy, a
+middlebox — can send one. A refusal does not name a key. The account attributes it to the key
+the refused connection presented and discards that key, in one step per datacenter that compares
+identifiers, so a refusal cannot remove a key obtained after it.
+
+| A refusal on | The connection presented | Discarded | Cost |
+| --- | --- | --- | --- |
+| Any connection to a Telegram datacenter: main or media, any datacenter, at start or after a migration | That datacenter's temporary key | That temporary key | One key exchange and one binding, vouched for by the permanent key, which stays stored |
+| A connection to a delivery node | The node's own key, which has no lifetime | That key, stored under the node | One key exchange with that node |
+
+The account's permanent key is never presented on a connection that carries requests. It is used
+on the channel that negotiates it, which is closed once the key is stored, and inside the
+binding message, encrypted. The code that removes a stored permanent key when a refusal names it
+remains, and today a delivery node's key is the only one it reaches. `network-datacenters.test.ts`
+holds this under "what a refusal can reach", and the concurrent cases under "discarding a key the
+datacenter refused".
+
+What this does not cover: a party that refuses every attempt keeps the account from staying
+connected. That is denial of service, which anything on the path can also cause by dropping the
+connection.
+
 ---
 
-## 6. Handling untrusted input
+## 6. The cipher a browser gets, and what it does not promise
+
+A browser has no AES. `crypto.subtle` cannot help with the two modes MTProto
+needs — it exposes no single-block operation, so IGE cannot be built on it, and
+its counter mode has no object that keeps its place — so the cipher is in the
+package, in TypeScript, and `docs/runtimes.md` §4.2 records why. This section is
+about what that costs, because it costs something real.
+
+### 6.1 The implementation is not constant-time
+
+The portable AES is table-driven: four 256-entry tables, indexed by bytes of the
+round state, which is a function of the key. **Where a table entry lands in the
+cache depends on the key**, and how long a lookup takes depends on where it
+landed. That is the classic cache-timing side channel against software AES, and
+it has been used to recover keys in practice.
+
+Nothing about the tests changes this. Every published vector can pass while the
+timing leaks, which is exactly why the surviving mutant in
+`crypto-backend.test.ts` — replacing the constant-time comparison with one that
+returns early — stays a survivor. No functional test can kill it, and killing it
+by other means would be the test asserting something it did not establish.
+
+What is and is not claimed:
+
+| | |
+| --- | --- |
+| The comparison in `constantTimeEqual` | Reads every byte and accumulates the differences with `\|`, so the work does not depend on where or whether two values differ. The **algorithm** is constant-time; whether the engine compiles it that way is not something this repository can establish, and is not claimed. |
+| The platform backend's comparison | `node:crypto`'s `timingSafeEqual`, which is the platform's own claim rather than this repository's. |
+| The portable AES | **Not constant-time, and not claimed to be.** Stated in the module and here. |
+| The portable digests | No key-dependent table indices; a digest has no key. Nothing to leak. |
+| `modPow` | Square-and-multiply on JavaScript's `BigInt`, on every runtime rather than only in a browser, branching on exponent bits — and `BigInt` arithmetic itself takes time that depends on its operands. The exponents it is used with — DH secrets, the SRP exponent, which carries the hash of the password, and RSA public exponents — make this worth naming, and §6.4 says who could time it. |
+
+### 6.2 Who can see the timing
+
+A cache-timing attack needs an observer that can measure the victim's cache
+behaviour. In a browser that means code running on the same machine, and the
+mitigations that followed Spectre are what stand between it and a usable clock:
+
+- `performance.now()` is coarsened, and the coarsening is per-context.
+- `SharedArrayBuffer` — the usual way to build a fine-grained timer — requires
+  cross-origin isolation, which a page must opt into with headers.
+- A page on a different origin cannot read this page's memory or its cache lines
+  directly; it has to infer them.
+
+That is a real obstacle rather than a guarantee. The honest statement is that
+**a browser is a hostile place to run software AES, and the mitigations are
+someone else's and can change**.
+
+### 6.3 What this means for a release
+
+The exposure is not the same everywhere, and the difference is worth being
+precise about:
+
+| Where | Cipher | Exposure |
+| --- | --- | --- |
+| Node, Bun, Deno | `node:crypto`, which is the platform's AES and uses the processor's own instructions | The platform's problem, and AES-NI is constant-time by construction |
+| A browser or worker | The portable AES | The side channel above, against whatever else the machine is running |
+
+So: **the portable cipher is a fit for a browser page the person running it
+controls, and is not a fit for a page that also runs untrusted code.** A page
+that embeds third-party scripts is a page where an attacker is already inside
+the origin — at which point they can read the authorization key straight out of
+storage (§3) and do not need a timing attack at all. That is the sharper point:
+in a browser, the side channel is not the weakest thing about holding a key.
+
+The alternatives, and why each was not taken:
+
+| | |
+| --- | --- |
+| A WebAssembly AES | Fast and closer to constant-time. It is a binary artifact to vendor and to trust, and this repository's dependency policy admits neither an npm runtime dependency nor a vendored blob. Not ruled out on merit — ruled out by a policy that would have to change first, deliberately. |
+| `crypto.subtle` for the block cipher | Cannot be done: it exposes no way to encrypt a single block, and IGE needs one. `docs/runtimes.md` §4.2. |
+| Refusing to run in a browser | What the package did before, and it makes the question moot by making the feature absent. |
+
+**Release position.** Browser support ships with this limitation stated, in the
+module, here, and in `docs/runtimes.md`. It is not a blocker for a page whose
+scripts are all the developer's own. A deployment that cannot make that
+statement about its page should run the account on a server and talk to it, and
+that is the recommendation rather than a footnote.
+
+### 6.4 Exponentiation, on every runtime
+
+`modPow` is the one timing question not confined to browsers: Node, Bun and Deno run it too.
+What it exponentiates:
+
+| Use | Secret in the exponent | How often one secret is used |
+| --- | --- | --- |
+| Key exchange (`g^b`, `g_a^b`) | A fresh 2,048-bit secret; recovering it yields that exchange's key | Twice, then discarded |
+| Two-step password (SRP) | `a + u·x` with a fresh `a`, and `x` alone in `g^x`; `x` is derived from the password and its salts | `g^x` repeats the same `x` at every sign-in with that password; such sign-ins are rare |
+| RSA, in the key exchange | None: the exponent is public. The data being protected is the base | Once per exchange |
+
+Who could time it: on a server, code sharing the machine — another tenant, another process on
+the same cores. Over the network, an observer sees only when an answer leaves, after the
+exponentiation and everything around it.
+
+**Neither exploitable nor harmless has been shown.** No timing measurement of this code was made,
+and none of these exponentiations repeats a secret often enough to make a remote measurement
+obviously practical. Equally, JavaScript offers no constant-time big-integer arithmetic, and a
+process sharing a machine with code that can time it finely is the case nothing above rules out;
+there the password's `x`, which repeats, is the most exposed. For 1.0.0 the position is the
+cipher's: stated rather than fixed, and a question for the independent review (§9).
+
+---
+
+## 7. Handling untrusted input
 
 Every update is attacker-controlled. A user chooses their own display name, filename, caption
 and callback data.
@@ -122,14 +308,23 @@ and callback data.
 | **Callback-data spoofing** | Callback data is attacker-controlled — documented as such. Authorization decisions must use `query.sender.id`, never the callback payload. Signed callback data is offered as a plugin. |
 | **Webhook forgery** | `secret_token` validated on every request, compared in constant time. Requests without it are rejected, not merely logged. |
 | **Webhook body size** | Bounded before parsing. |
+| **Mini App launch data** | `Telegram.WebApp.initData` is whatever the page sends. `yuigram/web-app` reads it apart from checking it: only `verifyInitData` (the bot's `hash`) or `verifyInitDataSignature` (Telegram's `signature`) returns data that was checked. A pair with no `=`, a field named twice, an escape that is not UTF-8 or a line feed anywhere is refused, since each would let two texts check alike. Errors never repeat the data or the token. |
 
 The callback-data point is worth stating explicitly in user documentation, because the mistake
 — trusting `callback_data` to identify who may perform an action — is common and produces a
 straightforward privilege escalation.
 
+Launch data has the same limit in a different place. A valid proof says Telegram issued the text
+to this bot's Mini App, for the user it names, at `auth_date`; it does not say who is presenting
+it, or that it is presented for the first time. Anyone holding the text can send it again until
+it is too old, so the age limit is a required option and kept short, and a server that must not
+act twice on one launch remembers what it has accepted. What the user may do is still the
+application's decision. The bot token that checks `hash` stays on the server; a page, or a third
+party, checks `signature` with the bot's id alone.
+
 ---
 
-## 7. Account-ban exposure — a product-level risk
+## 8. Account-ban exposure — a product-level risk
 
 From `core.telegram.org/api/obtaining_api_id`: Telegram monitors unofficial client usage and
 states that accounts used for flooding, spamming or faking counters will be banned
@@ -154,7 +349,7 @@ wrappers.
 
 ---
 
-## 8. Supply chain
+## 9. Supply chain
 
 **Zero runtime dependencies** across core, `bot-api` and `mtproto`. Node's built-ins cover
 everything: `fetch`, `FormData` and `Blob` for the Bot API; `node:crypto` and native `BigInt`
@@ -188,14 +383,17 @@ only defensible with the controls it requires:
   configuration switch.
 - **Constant-time comparison** for every secret-derived value.
 - **Independent security review** of the crypto and protocol layers before 1.0, treated as a
-  release gate rather than a nice-to-have.
+  release gate rather than a nice-to-have. **For 1.0.0 the owner has deferred it, and it has
+  not taken place.** The reviews done so far were internal: they found and fixed defects, and
+  the release checklist lists them with their limits. None of them is the independent review.
 
 Owning the implementation means owning its correctness. That is the point, and the review gate
-is what makes it a responsible position rather than an assertion.
+is what makes it a responsible position rather than an assertion. Deferring it leaves 1.0.0
+without that, and the release notes say so rather than implying otherwise.
 
 ---
 
-## 9. Defaults
+## 10. Defaults
 
 Security defaults are the ones that actually take effect, so they are chosen conservatively:
 
@@ -212,10 +410,12 @@ Security defaults are the ones that actually take effect, so they are chosen con
 
 ---
 
-## 10. Pre-release checklist
+## 11. Pre-release checklist
 
 Checked before each release. An item is ticked only when a test holds it, not when it was
-looked at once.
+looked at once. Where an item is a property of the code rather than of a single path — that no
+option disables a check, say — the evidence names both the tests that hold the behaviour and
+the surface that was read to establish there is no way round it.
 
 ### Bot API — closed for 0.1.0
 
@@ -224,7 +424,12 @@ looked at once.
 - [x] Redaction verified against tokens, `api_hash`, session strings, auth keys — `log.test.ts`
 - [x] Errors scrubbed of URLs containing tokens — `download.test.ts`, `fetch-client.test.ts`
 - [x] Constant-time comparison everywhere a secret is compared — the webhook secret is the only
-      one the Bot API has, and uses `timingSafeEqual`
+      one the Bot API has. The comparison is written out in `webhook/handler.ts` rather than taken
+      from `node:crypto`: length is checked first and separately, then every byte of both is read
+      and none is branched on. That import was the one thing keeping the whole Bot API subsystem
+      from running anywhere `fetch` exists, and it was worth one function — see
+      [runtimes.md](runtimes.md) §3. The property under test is unchanged, and
+      `webhook.test.ts` still tests it
 - [x] Session files `0600`, and the store directory `0700` — `storage.test.ts`
 - [x] Webhook secret comparison is constant-time — `webhook.test.ts`
 - [x] Path-traversal test over download helpers — `secret-exposure.test.ts` covers `..` on both
@@ -236,10 +441,45 @@ looked at once.
       for the day that changes
 - [x] `SECURITY.md` with a disclosure address and response commitment
 
-### MTProto — open until the subsystem exists
+### MTProto — closed for the subsystem as built
 
-- [ ] Crypto primitives validated against known-answer vectors
-- [ ] DH validation cannot be bypassed by configuration
-- [ ] TL decoder fuzzed for bounds and allocation limits
-- [ ] Ban-risk warning present in MTProto documentation
-- [ ] Session encryption at rest, and a permission warning when a session file is too open
+- [x] Crypto primitives validated against known-answer vectors — AES-CTR against NIST SP
+      800-38A F.5.5 (`crypto-ctr.test.ts`). The rest of the schedule has no published vectors
+      to use, so each is checked against an independent reference rather than against itself:
+      IGE drives the recurrence off the platform's raw AES-ECB, RSA is decrypted back by
+      `node:crypto` with padding disabled, the key derivations are recomputed by direct
+      slicing over `node:crypto` hashes, and SRP is answered by the other side of the protocol
+      implemented from its published definition. 148 cases across nine suites
+- [x] DH validation cannot be bypassed by configuration — `handshake.ts` validates the
+      modulus, the generator and the server's public value before storing any of them, and
+      re-checks the client's own public value and the shared secret. No option gates it:
+      neither `HandshakeOptions` nor `DatacentersOptions` carries a switch, and the seams that
+      exist replace the byte stream or the whole channel rather than disabling a check. The
+      safe-prime memo caches refusals as well as acceptances, so it cannot be primed to skip
+      one. Held end to end by `auth-handshake.test.ts`, which runs the real exchange against a
+      peer injecting an unsafe modulus, a degenerate public value and an oversized modulus,
+      and by the nineteen single-condition cases in `crypto-primes.test.ts`
+- [x] TL decoder fuzzed for bounds and allocation limits — `tl-fuzz.test.ts` holds the
+      property the session layer relies on: for any bytes, decoding produces a value or raises
+      `TlReadError`, and nothing else escapes. Seeded, so a failure is reproducible; driven
+      with uniform noise, with bodies behind a real constructor identifier, with hostile
+      length and count fields written over every four-byte window, and with corrupted and
+      truncated valid encodings. Both tables, including the one the plaintext handshake
+      channel decodes with before any key exists
+- [x] Ban-risk warning present in MTProto documentation — [mtproto.md](mtproto.md) opens with
+      it, as §7 obligation 1 requires
+- [x] No secret reachable via `JSON.stringify` of any public object, or by walking one —
+      `secret-exposure.test.ts` covers the account, the surfaces it hands out and the context a
+      handler is given, with a control proving the search finds a secret that is really there.
+      It also records what the technique cannot see: a credential a closure captured, which is
+      why the closures an account hands out are given the account rather than its secret
+- [x] Hostile input cannot pollute prototypes or reach a handler as though it were real —
+      `normalize.test.ts` drives a chosen `__proto__` and `constructor.prototype` through the
+      seam, a message whose every field is the wrong type, and a constructor this build does
+      not know. Nothing copies keys off an update, every field is read through a guard, and an
+      unknown constructor is carried as raw rather than dispatched as a message
+- [x] Session encryption at rest, and a permission warning when a session directory is too
+      open — `encrypted()` wraps any adapter; `file()` checks the directory's mode the first
+      time it opens one and warns through the caller's logger, which `Account.fromSession`
+      supplies. `storage.test.ts` holds both, and `account.test.ts` holds the wiring on
+      platforms where a mode means something

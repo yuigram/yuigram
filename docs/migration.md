@@ -4,14 +4,19 @@ What changes between releases, and what to do about it. Newest first.
 
 ---
 
-## 0.1 → 0.2
+## 0.1 → 1.0
 
-`0.2.0` replaces the client surface. Registration now selects the context type, so a handler
-receives what its registration proved rather than the weakest case across every update kind.
+`1.0.0` replaces the client surface and adds the MTProto subsystem. It is the release after
+`0.1.0`, prepared first as `0.2.0`, which was never published. Registration now selects
+the context type, so a handler receives what its registration proved rather than the weakest
+case across every update kind.
 
 The change is mechanical: renamed methods, one construction form, and a type parameter that
 carries less. Nothing was removed without a replacement, and no behaviour silently changed
 underneath a name that stayed the same.
+
+MTProto is additive. There is nothing to migrate to reach it and nothing to pay for ignoring
+it — see [Accounts arrive](#accounts-arrive) below.
 
 ### Why
 
@@ -27,7 +32,7 @@ asserted that Telegram does not promise, and nothing it does promise thrown away
 
 ### Renames
 
-| `0.1` | `0.2` |
+| `0.1` | `1.0` |
 |---|---|
 | `new Bot(token)` | `Bot.fromToken(token)` — the constructor is kept for full configuration |
 | `bot.start()` | `bot.poll()` |
@@ -54,7 +59,7 @@ because draining is the same whatever was started.
 // 0.1
 bot.on('message', (ctx) => ctx.reply(ctx.text ?? 'Say something.'))
 
-// 0.2
+// 1.0
 bot.onText((message) => message.reply(message.text))
 ```
 
@@ -81,7 +86,7 @@ is written against.
 type MyContext = Context & SessionFlavor<Cart>
 const bot = new Bot<MyContext>(token)
 
-// 0.2
+// 1.0
 const bot = Bot.fromToken<SessionFlavor<Cart>>(token)
 ```
 
@@ -111,7 +116,7 @@ narrowing does not survive a composition written inside the registration argumen
 
 ### Fixed on the way
 
-Five defects surfaced while porting, and are fixed:
+Six defects surfaced while porting, and are fixed:
 
 - **Service messages could not reply.** A promoted service kind is absent from `MESSAGE_KINDS`,
   and deciding by kind left exactly those updates — a member joining, a title changing —
@@ -130,6 +135,10 @@ Five defects surfaced while porting, and are fixed:
   state, and `stop()` returned immediately when idle — abandoning every in-flight handler
   while reporting a clean shutdown. In-flight work is now drained whether or not a start verb
   was ever called.
+- **`getAvailableGifts` was typed as returning a boolean.** It returns a `Gifts` object. The
+  return type is read from the method's prose, and a single-word type name was taken for an
+  ordinary noun; any word the page defines as an object is now read as one. Code that used the
+  result as a boolean was already wrong at runtime.
 
 ### What is new
 
@@ -153,12 +162,54 @@ same design working when MTProto lands, where addressing a peer needs an access 
 client holds.
 
 **A named registration per event kind.** `onMessage`, `onChatMemberJoined`,
-`onForumTopicCreated` — seventy-nine of them, each equivalent to `on(kind, handler)` with the
+`onForumTopicCreated` — one per event kind, each equivalent to `on(kind, handler)` with the
 kind fixed. `onText`, `onCommand` and `onCallbackQuery` stay hand-written, because each
 matches as well as selects.
+
+### Accounts arrive
+
+`1.0.0` is the first release with the MTProto subsystem in it. Nothing here is a migration:
+there is no `0.1` equivalent to move off, and a bot that ignores it is unaffected.
+
+```ts
+import { Account, App, Bot } from 'yuigram'
+
+const account = Account.fromString(process.env.SESSION!, { apiId, apiHash, keys, bootstrap, storage })
+account.onMessage((event) => event.reply('as me, not as a bot'))
+```
+
+`keys` are Telegram's server public keys, read with `serverKeysFromPem` from PEM — the form
+TDLib, Telegram's own library, carries them in — and `bootstrap` is the first address to reach, built
+with `bootstrapAt({ dc, host, port })`. Neither is compiled in; [api-design.md](api-design.md) §1
+says why. An account's events are filtered with the `f` from `yuigram/account-filters` — the
+Bot API's `f` reads fields they do not carry, and an account refuses it at compile time.
+
+An account is a client like a bot: its own lifecycle, its own store, its own handlers. An `App`
+holds any number of them alongside a bot, each with its own credentials and connections.
+
+**What it costs a bot that never uses it: nothing in a bundle.** A bundler leaves the whole
+subsystem out of a Bot API program — a budget CI measures at zero bytes on every build, not a
+claim. Without a bundler, importing `yuigram` loads the account's own surface, while its
+connections and schema tables wait until an account first connects;
+[performance.md](performance.md) §2 measures what that import costs. Installing `yuigram` is
+the same command it was.
+
+**An account is not a bot, and the difference is not cosmetic.** It signs in with an
+application's credentials rather than a token, it acts as the person who owns it, and Telegram
+bans accounts used for flooding, spamming or faking counters. The ban applies to the account,
+not to the application. [mtproto.md](mtproto.md) opens with what that means, and it is worth
+reading before the first sign-in rather than after.
+
+Two things a Bot API user will look for and not find, both deliberate. There is no
+`sendMessage(chatId, …)` on an account: addressing a peer needs an access hash issued per
+account and impossible to derive, so a peer the client has never encountered is resolved
+explicitly through `account.resolve()` and can fail. And there is no unified entity model —
+a `Chat` on the Bot API and a peer reference on MTProto are different things, and
+[unified-model.md](unified-model.md) §5 says why pretending otherwise would misrepresent both.
 
 ### Reading order
 
 The reasoning behind each decision is in [api-decisions.md](api-decisions.md), the assessment of
 the `0.1.0` surface it answers in [api-review.md](api-review.md), and the resulting surface in
-[api-design.md](api-design.md).
+[api-design.md](api-design.md). The MTProto subsystem has its own:
+[mtproto.md](mtproto.md) for the protocol and the decisions inside it.

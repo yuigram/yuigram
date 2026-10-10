@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Per-event context shapes.
  *

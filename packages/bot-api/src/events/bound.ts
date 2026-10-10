@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The generated half of what a context can do.
  *
@@ -55,9 +57,9 @@
  * error report should contain.
  */
 
-import { YuigramError } from '@yuigram/core'
 import type { RawApi } from '../api.js'
 import type { CallOptions } from '../api-options.js'
+import { YuigramError } from '../core.js'
 import type { ApiMethods } from '../generated/api.js'
 import {
   CALLBACK_QUERY_BOUND,

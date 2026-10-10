@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Middleware composition behaviour.
  *
@@ -7,6 +9,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
+import { defineFilter } from '../src/filter/define.js'
 import type { Middleware } from '../src/middleware/compose.js'
 import { compose, MiddlewareError, run, when } from '../src/middleware/compose.js'
 
@@ -202,6 +205,23 @@ describe('when', () => {
     await run([when<Ctx>(async (inner) => inner.kind === 'message', tracer('gated'))], c)
 
     expect(c.trail).toEqual(['>gated', '<gated'])
+  })
+
+  it('gates on a filter, which the middleware is then written against', async () => {
+    const isMessage = defineFilter<Ctx & { kind: 'message' }>(
+      'isMessage',
+      (value) => (value as Ctx).kind === 'message',
+    )
+
+    const matched = ctx()
+    matched.kind = 'message'
+    await run([when(isMessage, tracer('gated')) as Middleware<Ctx>, tracer('after')], matched)
+    expect(matched.trail).toEqual(['>gated', '>after', '<after', '<gated'])
+
+    const missed = ctx()
+    missed.kind = 'callback'
+    await run([when(isMessage, tracer('gated')) as Middleware<Ctx>, tracer('after')], missed)
+    expect(missed.trail).toEqual(['>after', '<after'])
   })
 
   it('evaluates the predicate once per pass', async () => {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Onion middleware composition.
  *
@@ -18,6 +20,7 @@
  */
 
 import { YuigramError } from '../errors/errors.js'
+import type { AnyFilter } from '../filter/types.js'
 
 /** The continuation passed to middleware. */
 export type Next = () => Promise<void>
@@ -89,11 +92,38 @@ export async function run<C>(middlewares: ReadonlyArray<Middleware<C>>, context:
 }
 
 /**
+ * Gate middleware on a filter, which narrows the context it sees.
+ *
+ * ```ts
+ * bot.use(when(f.chat.private, async (context, next) => {
+ *   log.info('a private message', { from: context.sender?.id })
+ *   await next()
+ * }))
+ * ```
+ *
+ * What a filter adds over a bare predicate is the narrowing: the middleware is
+ * written against what matching proved, rather than against the widest context
+ * the chain carries.
+ *
+ * Declared before the predicate form on purpose. A filter is itself callable,
+ * so with the predicate form first it matched that one, with the context
+ * inferred as `unknown`, and the narrowing never reached the middleware.
+ */
+export function when<Base, Mod>(
+  matching: AnyFilter<Base, Mod>,
+  middleware: Middleware<Base & Mod>,
+): Middleware<unknown>
+
+/**
  * Gate middleware on a predicate: run it on a match, skip to `next()` otherwise.
  *
  * Skipping rather than blocking is what makes a gated middleware safe to place
  * anywhere in a chain — a non-match must not stop the updates behind it.
  */
+export function when<C>(
+  predicate: (context: C) => boolean | Promise<boolean>,
+  middleware: Middleware<C>,
+): Middleware<C>
 export function when<C>(
   predicate: (context: C) => boolean | Promise<boolean>,
   middleware: Middleware<C>,
@@ -121,4 +151,25 @@ export function when<C>(
  */
 export interface MiddlewareHost {
   use(middleware: Middleware<never>): unknown
+  /**
+   * Be told when the host starts and when it begins to stop.
+   *
+   * Optional, because a router has no lifecycle of its own. A plugin holding
+   * work open between updates — a conversation waiting for the next message —
+   * uses it to let go when the client stops, rather than relying on the
+   * application to remember to.
+   */
+  observe?(observer: HostObserver): unknown
+}
+
+/** What a plugin can be told about the lifecycle of the host it is on. */
+export interface HostObserver {
+  /** The host is up and taking updates, including after a restart. */
+  readonly started?: () => unknown
+  /**
+   * The host has begun to stop, and has not yet waited for the work in flight.
+   *
+   * What is returned is awaited, within the stop's deadline.
+   */
+  readonly stopping?: () => unknown
 }

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Keeping "typing…" visible while work happens.
  *

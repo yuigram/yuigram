@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The registrations that match as well as select.
  *

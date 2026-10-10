@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The filter namespace.
  *
@@ -28,13 +30,22 @@
 
 import {
   anyText,
+  boost,
+  business,
   callback,
   caption,
   chat,
+  chosenResult,
   command,
   entity,
   forward,
+  game,
+  kind,
+  type MemberChange,
   media,
+  member,
+  payment,
+  reaction,
   reply,
   sender,
   type TextMatch,
@@ -43,7 +54,7 @@ import {
 } from './families.js'
 import { has, hasQuery, MESSAGE_BEARING_KINDS, type PresenceFilters } from './presence.js'
 
-export type { PresenceFilters, TextMatch }
+export type { MemberChange, PresenceFilters, TextMatch }
 export { has, hasQuery, MESSAGE_BEARING_KINDS }
 
 /** Every built-in filter, under one name. */
@@ -64,4 +75,13 @@ export const f = Object.freeze({
   forward,
   entity,
   topic,
+  reaction,
+  payment,
+  member,
+  kind,
+  boost,
+  business,
+  game,
+  /** An inline result somebody picked, by the identifier the bot gave it. */
+  chosenResult,
 })

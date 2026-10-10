@@ -1,9 +1,11 @@
 // GENERATED FILE — do not edit.
 // Bot API callable surface
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallOptions } from '../api-options.js'
-import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
+import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, Gifts, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
 import type {
   AddStickerToSetParams,
   AnswerCallbackQueryParams,
@@ -392,9 +394,8 @@ export interface ApiMethods {
   sendVoice(params: SendVoiceParams, options?: CallOptions): Promise<Message>
 
   /**
-   * As of v.4.0, Telegram clients support rounded square MPEG4 videos of up to 1
-   * minute long. Use this method to send video messages. On success, the sent
-   * Message is returned.
+   * Use this method to send a rounded square MPEG4 video of up to 1 minute long.
+   * On success, the sent Message is returned.
    *
    * @see https://corefork.telegram.org/bots/api#sendvideonote
    */
@@ -1202,7 +1203,7 @@ export interface ApiMethods {
    *
    * @see https://corefork.telegram.org/bots/api#getavailablegifts
    */
-  getAvailableGifts(params?: GetAvailableGiftsParams, options?: CallOptions): Promise<boolean>
+  getAvailableGifts(params?: GetAvailableGiftsParams, options?: CallOptions): Promise<Gifts>
 
   /**
    * Sends a gift to the given user or channel chat. The gift can't be converted
@@ -1535,9 +1536,9 @@ export interface ApiMethods {
   stopPoll(params: StopPollParams, options?: CallOptions): Promise<Poll>
 
   /**
-   * Use this method to edit an ephemeral text message. Note that it is not
-   * guaranteed that the user will receive the message edit event, especially if
-   * they are offline. On success, True is returned.
+   * Use this method to edit an ephemeral text or rich message. Note that it is
+   * not guaranteed that the user will receive the message edit event, especially
+   * if they are offline. On success, True is returned.
    *
    * @see https://corefork.telegram.org/bots/api#editephemeralmessagetext
    */

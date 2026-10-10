@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Limiting what one user can ask of the bot.
  *
@@ -11,7 +13,10 @@
  * ```
  *
  * Middleware rather than a hook, because it gates updates coming *in*, and
- * that is a different pipeline from the one calls go out on.
+ * that is a different pipeline from the one calls go out on. The counting is
+ * the shared `limiter` underneath; this is its middleware form with the
+ * options in one object, and `limiter` itself offers the filter, the check a
+ * handler makes, and the wait.
  *
  * ## What happens when the limit is hit
  *
@@ -23,20 +28,17 @@
  * update so the decision stays yours.
  */
 
-import type { BaseContext, Middleware } from '@yuigram/core'
+import {
+  type BaseContext,
+  type KV,
+  limiter,
+  type Middleware,
+  type RateLimitEntry,
+  type RateLimitInfo,
+  type RateLimitKey,
+} from './core.js'
 
-/** How a request is attributed. Returning `undefined` skips the limit. */
-export type RateLimitKey<C> = (context: C) => string | number | undefined
-
-/** What a limiter knows about the caller it is about to refuse. */
-export interface RateLimitInfo {
-  /** The key that was over its limit. */
-  readonly key: string
-  /** Requests already counted in the window. */
-  readonly count: number
-  /** Milliseconds until the window resets. */
-  readonly resetMs: number
-}
+export type { RateLimitInfo, RateLimitKey } from '@yuigram/core'
 
 /** Options for {@link rateLimit}. */
 export interface RateLimitOptions<C> {
@@ -60,28 +62,18 @@ export interface RateLimitOptions<C> {
    * here rather than checking inside the limiter.
    */
   readonly kinds?: readonly string[]
+  /**
+   * Where counts are kept. Memory unless given.
+   *
+   * A store several instances share limits one user across all of them.
+   */
+  readonly storage?: KV<RateLimitEntry>
+  /**
+   * The name counts are kept under, so two limits in one store — one on
+   * everything, one on a costly command — do not spend each other's allowance.
+   */
+  readonly bucket?: string
 }
-
-/** One key's window. */
-interface Counter {
-  count: number
-  /** When the window closes, in epoch milliseconds. */
-  resetAt: number
-}
-
-/** Read the sender from any context that has one. */
-function defaultKey(context: unknown): string | number | undefined {
-  const sender = (context as { sender?: { id?: number } }).sender
-  return sender?.id
-}
-
-/**
- * How often expired counters are dropped.
- *
- * Sweeping walks every tracked key, so it stays off the per-update path for
- * the same reason the throttle's does.
- */
-const SWEEP_INTERVAL_MS = 60_000
 
 /**
  * Limit how often one key may reach the handlers.
@@ -89,7 +81,7 @@ const SWEEP_INTERVAL_MS = 60_000
  * A fixed window rather than a sliding one: the question here is "has this
  * person had their allowance recently", where the exact boundary matters far
  * less than it does for Telegram's own enforcement, and a fixed window costs
- * one integer per key instead of a list of timestamps.
+ * one small record per key instead of a list of timestamps.
  *
  * ```ts
  * bot.use(
@@ -103,56 +95,10 @@ const SWEEP_INTERVAL_MS = 60_000
  * ```
  */
 export function rateLimit<C extends BaseContext>(options: RateLimitOptions<C>): Middleware<C> {
-  const { limit, windowMs, key = defaultKey as RateLimitKey<C>, onLimited, kinds } = options
+  const { storage, key, ...rule } = options
 
-  const counters = new Map<string, Counter>()
-  const only = kinds === undefined ? undefined : new Set(kinds)
-  let lastSweep = 0
-
-  return async (context, next) => {
-    if (only !== undefined && !only.has(context.kind)) {
-      await next()
-      return
-    }
-
-    const raw = key(context)
-
-    // No key means nothing to attribute the request to — a channel post, an
-    // anonymous admin. Limiting those by some invented key would group
-    // unrelated traffic together.
-    if (raw === undefined) {
-      await next()
-      return
-    }
-
-    const now = Date.now()
-
-    if (now - lastSweep > SWEEP_INTERVAL_MS) {
-      lastSweep = now
-      for (const [id, counter] of counters) {
-        if (counter.resetAt <= now) counters.delete(id)
-      }
-    }
-
-    const id = String(raw)
-    let counter = counters.get(id)
-
-    if (counter === undefined || counter.resetAt <= now) {
-      counter = { count: 0, resetAt: now + windowMs }
-      counters.set(id, counter)
-    }
-
-    counter.count += 1
-
-    if (counter.count > limit) {
-      await onLimited?.(context, {
-        key: id,
-        count: counter.count,
-        resetMs: Math.max(0, counter.resetAt - now),
-      })
-      return
-    }
-
-    await next()
-  }
+  return limiter<C>({
+    ...(storage === undefined ? {} : { storage }),
+    ...(key === undefined ? {} : { key }),
+  }).middleware(rule)
 }

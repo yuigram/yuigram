@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Type-level assertions for the filter machinery.
  *
@@ -8,8 +10,8 @@
  */
 
 import { describe, expectTypeOf, it } from 'vitest'
-import type { AsyncFilter, Filter, FilterMatch, Modify } from '../src/filter/index.js'
-import { and, defineAsyncFilter, defineFilter, not, or } from '../src/filter/index.js'
+import { and, defineAsyncFilter, defineFilter, not, or } from '../src/filter/define.js'
+import type { AsyncFilter, Filter, FilterMatch, Modify } from '../src/filter/types.js'
 
 /** A context shape with the optional fields real updates have. */
 interface Ctx {

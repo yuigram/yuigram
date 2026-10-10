@@ -1,6 +1,6 @@
 {
   "name": "yuigram",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Independent TypeScript framework for the Telegram Bot API and MTProto",
   "keywords": [
     "telegram",
@@ -39,6 +39,56 @@
       "types": "./dist/webhook.d.ts",
       "import": "./dist/webhook.js",
       "default": "./dist/webhook.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js",
+      "default": "./dist/worker.js"
+    },
+    "./markup": {
+      "types": "./dist/markup.d.ts",
+      "import": "./dist/markup.js",
+      "default": "./dist/markup.js"
+    },
+    "./stream": {
+      "types": "./dist/stream.d.ts",
+      "import": "./dist/stream.js",
+      "default": "./dist/stream.js"
+    },
+    "./rich": {
+      "types": "./dist/rich.d.ts",
+      "import": "./dist/rich.js",
+      "default": "./dist/rich.js"
+    },
+    "./dice": {
+      "types": "./dist/dice.d.ts",
+      "import": "./dist/dice.js",
+      "default": "./dist/dice.js"
+    },
+    "./web-app": {
+      "types": "./dist/web-app.d.ts",
+      "import": "./dist/web-app.js",
+      "default": "./dist/web-app.js"
+    },
+    "./account-filters": {
+      "types": "./dist/account-filters.d.ts",
+      "import": "./dist/account-filters.js",
+      "default": "./dist/account-filters.js"
+    },
+    "./account-utils": {
+      "types": "./dist/account-utils.d.ts",
+      "import": "./dist/account-utils.js",
+      "default": "./dist/account-utils.js"
+    },
+    "./indexeddb": {
+      "types": "./dist/indexeddb.d.ts",
+      "import": "./dist/indexeddb.js",
+      "default": "./dist/indexeddb.js"
+    },
+    "./mtproxy": {
+      "types": "./dist/mtproxy.d.ts",
+      "import": "./dist/mtproxy.js",
+      "default": "./dist/mtproxy.js"
     }
   },
   "main": "./dist/index.js",
@@ -63,6 +113,7 @@
   },
   "dependencies": {
     "@yuigram/bot-api": "workspace:*",
-    "@yuigram/core": "workspace:*"
+    "@yuigram/core": "workspace:*",
+    "@yuigram/mtproto": "workspace:*"
   }
 }

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Automatic `allowed_updates` derivation.
  *

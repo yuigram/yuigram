@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Error hierarchy behaviour.
  *
@@ -24,7 +26,7 @@ import {
   TelegramError,
   ValidationError,
   YuigramError,
-} from '../src/errors/index.js'
+} from '../src/errors/errors.js'
 
 describe('hierarchy', () => {
   it('roots every framework error at YuigramError', () => {

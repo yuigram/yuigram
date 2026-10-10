@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * In-memory key-value store.
  *
