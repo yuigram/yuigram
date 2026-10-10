@@ -43,7 +43,7 @@
  */
 
 import { TelegramError, ValidationError } from '@yuigram/core'
-import { applyUpdates, type Chatting } from '../chats/common.js'
+import type { Chatting } from '../chats/common.js'
 import type { FormattedText } from '../format/text.js'
 import type {
   TypeInputInvoice,
@@ -218,7 +218,6 @@ export async function sendGift(
   }
 
   const updates = await payWithStars(client, invoice)
-  await applyUpdates(client, updates)
 
   return sentMessage(updates, 0n)
 }
@@ -292,8 +291,6 @@ export async function upgradeGift(
       }),
   )
 
-  await applyUpdates(client, updates)
-
   return sentMessage(updates, 0n)
 }
 
@@ -322,8 +319,6 @@ export async function transferGift(
     async () => await client.api.payments.transferStarGift({ stargift: named, to_id: recipient }),
   )
 
-  await applyUpdates(client, updates)
-
   return sentMessage(updates, 0n)
 }
 
@@ -351,8 +346,6 @@ export async function buyResaleGift(
     ...(options?.inTon === true ? { ton: true } : {}),
   })
 
-  await applyUpdates(client, updates)
-
   return sentMessage(updates, 0n)
 }
 
@@ -373,12 +366,10 @@ export async function setResalePrice(
   gift: GiftRef,
   price: StarsPrice | null,
 ): Promise<void> {
-  const answer = await client.api.payments.updateStarGiftPrice({
+  await client.api.payments.updateStarGiftPrice({
     stargift: await giftRef(client, gift),
     resell_amount: price === null ? { _: 'starsAmount', amount: 0n, nanos: 0 } : starsAmount(price),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -401,8 +392,6 @@ export async function prepayUpgrade(
     peer: await client.resolve(peer),
     hash,
   })
-
-  await applyUpdates(client, updates)
 
   return sentMessage(updates, 0n)
 }
@@ -751,8 +740,6 @@ export async function offerForGift(
     ...(offer.forPaidMessages === undefined ? {} : { allow_paid_stars: offer.forPaidMessages }),
   })
 
-  await applyUpdates(client, answer)
-
   return sentMessage(answer, key)
 }
 
@@ -768,8 +755,6 @@ export async function offerForGift(
  */
 export async function settleGiftOffer(client: Gifting, message: number): Promise<SentMessage> {
   const answer = await client.api.payments.resolveStarGiftOffer({ offer_msg_id: message })
-
-  await applyUpdates(client, answer)
 
   return sentMessage(answer, 0n)
 }

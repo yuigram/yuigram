@@ -28,12 +28,13 @@
  * a topic, renaming one, closing one: each of those is a visible event in the
  * conversation, and the answer carries it. So they hand it back — a caller that
  * wants the topic's identifier after creating one has it without a second
- * request — and also feed it to the account, so its own handlers see the change
- * it made.
+ * request. The account takes the answer into its update sequences as it takes
+ * every answer, and does not hand the change to its own handlers: the caller
+ * already has it.
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyUpdates, type Chatting, removeInStages } from '../chats/common.js'
+import { type Chatting, removeInStages } from '../chats/common.js'
 import { ForumTopicView } from '../entities/chat.js'
 import type { TypeForumTopic } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
@@ -113,8 +114,6 @@ export async function createTopic(
     random_id: key,
   })
 
-  await applyUpdates(client, answer)
-
   return sentMessage(answer, key)
 }
 
@@ -169,8 +168,6 @@ export async function editTopic(
     ...(edit.closed === undefined ? {} : { closed: edit.closed }),
     ...(edit.hidden === undefined ? {} : { hidden: edit.hidden }),
   })
-
-  await applyUpdates(client, answer)
 
   return sentMessage(answer, 0n)
 }
@@ -280,11 +277,11 @@ export async function deleteTopicHistory(
 ): Promise<number> {
   const peer = await client.resolve(chat)
 
-  // Not an updates container, so it cannot be fed as one. What it carries is a
-  // position and a count in the channel's own sequence — a forum is always a
-  // channel — and a long thread is removed in stages, each asked for again
-  // until Telegram says the last is done.
-  return await removeInStages(client, peer, () =>
+  // Not an updates container: what it carries is a position and a count in the
+  // channel's own sequence — a forum is always a channel — which the account
+  // applies as it applies every answer. A long thread is removed in stages,
+  // each asked for again until Telegram says the last is done.
+  return await removeInStages(() =>
     client.api.messages.deleteTopicHistory({ peer, top_msg_id: topicId(topic) }),
   )
 }
@@ -352,13 +349,11 @@ export async function setForumSettings(
   settings: ForumSettings,
 ): Promise<void> {
   const { asChannel } = await import('../chats/common.js')
-  const answer = await client.api.channels.toggleForum({
+  await client.api.channels.toggleForum({
     channel: await asChannel(client, chat, 'making a conversation a forum'),
     enabled: settings.enabled,
     // Required by the schema rather than optional, so it is always sent and
     // defaults to the list rather than to whatever was there before.
     tabs: settings.asTabs ?? false,
   })
-
-  await applyUpdates(client, answer)
 }

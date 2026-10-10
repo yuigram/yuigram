@@ -1849,19 +1849,16 @@ export class Account<Ext = unknown> {
   /**
    * The same, for acting on a message that already exists.
    *
-   * Those operations hand the account what their answers carried, so a vote or
-   * an edit made here reaches this account's own handlers, and one of them — an
-   * inline message's edit — has to be made on the datacenter the message lives
-   * on rather than wherever the pools would send it.
+   * What their answers report reaches the update sequences the way every
+   * answer's does, through {@link Account.#invoke}. One of them — an inline
+   * message's edit — has to be made on the datacenter the message lives on
+   * rather than wherever the pools would send it.
    */
   get #interacting(): Interacting {
     return {
       api: this.#api,
       resolve: async (peer) => await this.resolve(peer),
       random: this.#options.random ?? randomBytes,
-      feed: async (value) => {
-        await this.feed(value)
-      },
       at: async (dcId, query) => await this.#onDatacenter(dcId, query),
       ...(this.#options.now === undefined ? {} : { now: this.#options.now }),
     }
@@ -1916,9 +1913,6 @@ export class Account<Ext = unknown> {
     return {
       api: this.#api,
       resolve: async (peer) => await this.resolve(peer),
-      feed: async (value) => {
-        await this.feed(value)
-      },
       random: this.#options.random ?? randomBytes,
     }
   }
@@ -5293,6 +5287,8 @@ export class Account<Ext = unknown> {
       // small its numbers. Only an account that has none asks for one.
       established: resumed !== undefined,
       onPosition: async () => await this.#remember(),
+      // A call naming the account as `inputPeerSelf` acts on this conversation.
+      self: () => this.#selfId,
       onProgress: (report) => {
         if (report.kind === 'retrying') this.#log.warn('updates: will try again', report)
         else this.#log.info(`updates: ${PROGRESS[report.kind]}`, report)
@@ -5657,16 +5653,55 @@ export class Account<Ext = unknown> {
    * The single place an account turns a query into a request. Both the escape
    * hatch and the actions a context is given go through it, so there is one
    * answer to which datacenter a call travels to, one answer to what happens
-   * when there is no connection, and one place the peers an answer described
-   * are written down.
+   * when there is no connection, one place the peers an answer described are
+   * written down, and one place what an answer reports is taken into the
+   * update sequences — a send moves the box it was sent in, and an account
+   * that did not count it would take its own next update for a gap.
    */
   async #invoke(query: TlValue, options?: CallDefaults): Promise<TlValue> {
-    // A mention formatted by any means goes out addressed with the hash this
-    // account holds; see `messaging/mentions.ts`.
-    const answer = await this.#following(await addressMentions(query, this.#peers), options)
-    await this.#learn(answer)
+    // A call that draws deduplication keys is watched for, so what it created
+    // is recognised if the stream reports it before the answer does.
+    const expected = this.#network?.updates.expect(query)
+
+    let answer: TlValue
+    try {
+      // A mention formatted by any means goes out addressed with the hash this
+      // account holds; see `messaging/mentions.ts`.
+      answer = await this.#following(await addressMentions(query, this.#peers), options)
+    } catch (error) {
+      expected?.settle(false)
+      throw error
+    }
+
+    try {
+      await this.#learn(answer)
+      await this.#take(answer, query)
+    } finally {
+      expected?.settle(true)
+    }
 
     return answer
+  }
+
+  /**
+   * Take what an answer reports into the update sequences.
+   *
+   * What it says about what the call did is applied and withheld from the
+   * handlers: the caller holds the answer already. Never fails the call — it
+   * has happened by the time there is an answer, and a sequence that could not
+   * take the report catches up later rather than making the call look refused.
+   */
+  async #take(answer: TlValue, query: TlValue): Promise<void> {
+    const updates = this.#network?.updates
+    if (updates === undefined) return
+
+    try {
+      if (await updates.absorb(answer, query)) await this.#remember()
+    } catch (error) {
+      this.#log.warn('could not take what an answer reported into the update sequence', {
+        error,
+      })
+    }
   }
 
   /**

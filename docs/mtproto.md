@@ -1854,8 +1854,10 @@ else                                   -> GAP: recover
 ### 9.3 Gap recovery
 
 1. On a gap, **wait up to 0.5 s** — the documentation notes the server may simply have
-   reordered, and the missing update often arrives. This avoids a difference call on every
-   transient reorder.
+   reordered, and the missing update often arrives. When it does, what was held behind it is
+   applied in order and nothing is asked, so a reorder costs no difference call. A container
+   out of sequence is the exception: only a difference says where the container sequence
+   stands, so that wait ends in one whatever arrives.
 2. If unresolved: `updates.getDifference` (common box) or
    `updates.getChannelDifference` (that channel).
 3. Buffer incoming updates for the affected box while recovering.
@@ -1910,9 +1912,82 @@ everything after it will be fetched and delivered.
 
 ### 9.5 Deduplication
 
-Updates already observed as RPC results must not be dispatched twice. A bounded
-**no-dispatch index** of recently-applied message identities is consulted before emitting,
-because `getDifference` legitimately returns messages already seen through the normal stream.
+`getDifference` legitimately returns what the ordinary stream already delivered, so what has
+been handed out is remembered and consulted before anything is handed out again. A catch-up
+returns things in two shapes, and each has its own identity:
+
+| What | Known by | Why |
+|---|---|---|
+| A new message — `updateNewMessage`, `updateNewChannelMessage` and the short forms | its box and number | a catch-up returns it stripped of the update that carried it |
+| Anything else in a sequence — an edit, a deletion, a pin, a read | its box and position | a position names one step of one box, so two edits of one message are two things, not one |
+| A key matched to a message — `updateMessageID` | the key | a key is one send's alone |
+
+What belongs to no sequence has no identity and is handed out as it arrives; nothing returns it
+a second time. The short forms — `updateShortMessage`, `updateShortChatMessage` and
+`updateShortSentMessage` — are whole updates of the common box: they carry its count, and they
+are judged by §9.2 like any other.
+
+The memory is bounded — 2 000 identities, the oldest forgotten first — and lives as long as the
+update state does, from `connect()` to `stop()`. It is not written down: a run that starts again
+starts with none.
+
+### 9.5.1 The answers to this account's own calls
+
+A call that changes something is answered with what it changed, and that moves the sequences: a
+send takes a step of the box it was sent in. An account that left the answer out would hold a
+position behind Telegram's, take its next update for a gap, and be handed its own message back
+by the catch-up as news. So every answer is taken into the sequences where every call becomes a
+request — the operations, the actions a context binds, and the escape hatch alike — and judged
+by §9.2 like the stream's updates:
+
+- **Containers** (`updates`, `updatesCombined`, `updateShort`, the short forms, and those
+  carried under `updates` by a payment result, an invitation or a join) go the stream's way.
+- **A position** — `messages.affectedMessages`, `affectedHistory`, `affectedFoundMessages` — is
+  applied to the box of the conversation the call named: a channel's own, or the common one. Saved
+  messages, call history and `messages.deleteMessages`, which names no conversation, belong to
+  the common box.
+
+What an answer reports about **what the call acted on** is applied and not handed to the
+handlers: the caller holds the answer. What the call acted on is read from the call itself — the
+conversation it names, the messages it names, the deduplication keys it drew — never guessed from
+the answer, which describes whatever happened at the same moment:
+
+| In the answer | The call's when |
+|---|---|
+| `updateShortSentMessage` | always: it answers this call and nothing else |
+| a key matched to a message, and that message | the key is one the call drew |
+| a new message, from a call that drew no key | it is outgoing, in a conversation the call named — a title changed, a gift sent, a topic opened |
+| anything else about a conversation | the call named that conversation and, where both name messages, those messages |
+| a deletion or read of the common box, which names no conversation | it names messages the call named, outside a channel |
+
+Anything else an answer carries — news about another conversation, about the account as a
+whole, a poll's running count — is handed out as the stream would hand it out. So is a read whose
+call names nothing it acted on: a business connection's state, read with
+`account.getBotBusinessConnection`, is news about something this account did not change.
+
+What is withheld is remembered by the identities above, so a catch-up returning it is recognised
+too. The stream can also report a send before its answer arrives. A call that draws keys is
+expected while it is made; a message the stream or a catch-up matches to one of its keys is held
+until the call ends — dropped once it is answered, handed out if it fails, because the stream is
+then the only report there is. At most 256 calls are expected at once; beyond that the oldest is
+treated as failed.
+
+An account with no position yet does not ask for one for an answer that reports only the call's
+doing: the position Telegram reports will already count it. A call made on behalf of a business
+connection is not taken at all: its answer belongs to the conversations of the account that
+granted the connection.
+
+**What this does not establish.** Withheld means not handed out a second time *within one run*,
+not exactly once:
+
+- an answer that was lost — the call failed — leaves the change to the catch-up, which reports it
+  once, as news;
+- a run that stops after an answer and before its position is written down resumes behind it, and
+  the catch-up reports the change once;
+- a send the stream reports before its answer in a form that carries no key — a short message —
+  cannot be matched to the call, so it is handed out once, and the answer then changes nothing;
+- a remembered identity older than the bound is forgotten, and a catch-up reaching back past it
+  reports again.
 
 ### 9.6 What a send answers with
 
@@ -1939,7 +2014,8 @@ be less true than saying the identifier is not known.
 
 `event.reply()` returns this, with the answer itself still reachable. The other bound
 operations return their answer unchanged: an edit and a deletion are about a message the caller
-already identified, so there is nothing in the answer to discover.
+already identified, so there is nothing in the answer to discover. Either way the answer reaches
+the update sequences too, as §9.5.1 describes.
 
 ### 9.6.1 Sends that are more than one message, or more than one step
 

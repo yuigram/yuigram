@@ -322,30 +322,53 @@ describe('taking the server at its word', () => {
 })
 
 describe('not handing the same thing out twice', () => {
-  it('answers no the first time and yes after', () => {
+  it('knows nothing until told, and knows it after', () => {
     const state = new UpdateState()
 
-    expect(state.seen('message:1')).toBe(false)
-    expect(state.seen('message:1')).toBe(true)
+    expect(state.known('common:new:1')).toBe(false)
+    state.remember('common:new:1')
+    expect(state.known('common:new:1')).toBe(true)
   })
 
   it('tells one thing from another', () => {
     const state = new UpdateState()
-    state.seen('message:1')
+    state.remember('common:new:1')
 
-    expect(state.seen('message:2')).toBe(false)
+    expect(state.known('common:new:2')).toBe(false)
+    expect(state.known('common:pts:1')).toBe(false)
+  })
+
+  it('does not count a thing twice towards what it remembers', () => {
+    const state = new UpdateState({}, { memory: 3 })
+
+    for (const id of ['a', 'a', 'b']) state.remember(id)
+
+    expect(state.remembered).toBe(2)
   })
 
   it('forgets the oldest once it has remembered enough', () => {
     const state = new UpdateState({}, { memory: 3 })
 
-    for (const id of ['a', 'b', 'c', 'd']) state.seen(id)
+    for (const id of ['a', 'b', 'c', 'd']) state.remember(id)
 
     // Bounded on purpose: what falls out is old enough that no catch-up will
     // mention it again, and remembering everything is not an option.
     expect(state.remembered).toBe(3)
-    expect(state.seen('a')).toBe(false)
-    expect(state.seen('d')).toBe(true)
+    expect(state.known('a')).toBe(false)
+    expect(state.known('d')).toBe(true)
+  })
+
+  it('starts empty however much the state it resumes from had seen', () => {
+    // What is remembered is not written down: a run that starts again from a
+    // position written by an earlier one knows nothing of what that run handed
+    // out.
+    const earlier = new UpdateState({ pts: 10 })
+    earlier.remember('common:new:5')
+
+    const resumed = new UpdateState(earlier.snapshot())
+
+    expect(resumed.known('common:new:5')).toBe(false)
+    expect(resumed.pts).toBe(10)
   })
 })
 

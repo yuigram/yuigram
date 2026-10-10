@@ -36,6 +36,26 @@ interface Entry {
   /** How much of the sequence it consumed. */
   readonly count: number
   readonly update: TlValue
+  /**
+   * The match a send leaves behind: the key the client drew and the message it
+   * became. A difference carries it among the other updates, which is how a
+   * client whose answer was lost finds out which message was its own.
+   */
+  readonly match?: TlValue
+}
+
+/** What this account's own send produced, as each side sees it. */
+export interface Sent {
+  /** The answer to the call. */
+  readonly answer: TlValue
+  /**
+   * The same message as the stream would report it, matched to its key. Made
+   * when asked for, because a container takes a step of the container sequence
+   * and a case that never delivers one must not leave a gap behind it.
+   */
+  push(): TlValue
+  /** The message itself. */
+  readonly message: TlValue
 }
 
 /** What a channel is doing when it is asked about. */
@@ -197,6 +217,115 @@ export class UpdateServer {
     return update
   }
 
+  /**
+   * A message this account sent, and the answer its send was given.
+   *
+   * In the common box a send is answered with the short form, which names the
+   * message and the step it took and nothing else; in a channel, with a
+   * container matching the key to the message. Either way the history keeps
+   * the message and the match, as a real server does.
+   */
+  sent(
+    id: number,
+    options: { readonly randomId: bigint; readonly to?: bigint; readonly channelId?: bigint },
+  ): Sent {
+    this.#date += 1
+    const match: TlValue = { _: 'updateMessageID', id, random_id: options.randomId }
+    const channelId = options.channelId
+
+    if (channelId !== undefined) {
+      const key = channelId.toString()
+      const box = this.#channels.get(key) ?? { pts: 1, log: [] }
+      box.pts += 1
+      this.#channels.set(key, box)
+      const message: TlValue = {
+        _: 'message',
+        out: true,
+        id,
+        peer_id: { _: 'peerChannel', channel_id: channelId },
+        message: `sent ${id}`,
+        date: this.#date,
+      }
+      const update: TlValue = { _: 'updateNewChannelMessage', message, pts: box.pts, pts_count: 1 }
+      box.log.push({ pts: box.pts, count: 1, update, match })
+      // An answer is outside the container sequence: it takes no step of it.
+      const answer: TlValue = {
+        _: 'updates',
+        updates: [match, update],
+        users: [...this.#users],
+        chats: [...this.#chats],
+        date: this.#date,
+        seq: 0,
+      }
+
+      return { answer, push: () => this.container([match, update]), message }
+    }
+
+    this.#pts += 1
+    const message: TlValue = {
+      _: 'message',
+      out: true,
+      id,
+      peer_id: { _: 'peerUser', user_id: options.to ?? 5n },
+      message: `sent ${id}`,
+      date: this.#date,
+    }
+    const update: TlValue = { _: 'updateNewMessage', message, pts: this.#pts, pts_count: 1 }
+    this.#common.push({ pts: this.#pts, count: 1, update, match })
+
+    return {
+      answer: {
+        _: 'updateShortSentMessage',
+        out: true,
+        id,
+        pts: this.#pts,
+        pts_count: 1,
+        date: this.#date,
+      },
+      push: () => this.container([match, update]),
+      message,
+    }
+  }
+
+  /** An edit of a message in the common box, which takes a step of its own. */
+  edited(id: number, options: { readonly peer?: bigint; readonly text?: string } = {}): TlValue {
+    this.#pts += 1
+    this.#date += 1
+    const update: TlValue = {
+      _: 'updateEditMessage',
+      message: {
+        _: 'message',
+        id,
+        peer_id: { _: 'peerUser', user_id: options.peer ?? 5n },
+        message: options.text ?? `edited ${id}`,
+        date: this.#date,
+        edit_date: this.#date,
+      },
+      pts: this.#pts,
+      pts_count: 1,
+    }
+    this.#common.push({ pts: this.#pts, count: 1, update })
+
+    return update
+  }
+
+  /**
+   * Messages this account removed from the common box, and the answer its call
+   * was given: the position the removal reached and how many steps it took.
+   */
+  removed(ids: readonly number[]): { readonly answer: TlValue; readonly update: TlValue } {
+    const update = this.deletion(ids)
+
+    return {
+      answer: {
+        _: 'messages.affectedMessages',
+        pts: update['pts'] as number,
+        pts_count: ids.length,
+      },
+      update,
+    }
+  }
+
   /** A new message in a channel, which keeps a sequence of its own. */
   channelMessage(channelId: bigint, id: number, options: { count?: number } = {}): TlValue {
     const key = channelId.toString()
@@ -306,7 +435,15 @@ export class UpdateServer {
     const taken = limit === undefined ? missing : missing.slice(0, limit)
     const complete = taken.length === missing.length
 
-    const messages = taken.map((entry) => entry.update['message'] as TlValue)
+    // New messages go back stripped of their updates; everything else keeps
+    // its update and position, and a send's match comes along with it.
+    const messages = taken
+      .filter((entry) => entry.update._ === 'updateNewMessage')
+      .map((entry) => entry.update['message'] as TlValue)
+    const others = taken.flatMap((entry) => [
+      ...(entry.match === undefined ? [] : [entry.match]),
+      ...(entry.update._ === 'updateNewMessage' ? [] : [entry.update]),
+    ])
     const reached = taken.at(-1)?.pts ?? from
 
     return complete
@@ -314,7 +451,7 @@ export class UpdateServer {
           _: 'updates.difference',
           new_messages: messages,
           new_encrypted_messages: [],
-          other_updates: [],
+          other_updates: others,
           chats: [...this.#chats],
           users: [...this.#users],
           state: this.state,
@@ -323,7 +460,7 @@ export class UpdateServer {
           _: 'updates.differenceSlice',
           new_messages: messages,
           new_encrypted_messages: [],
-          other_updates: [],
+          other_updates: others,
           chats: [...this.#chats],
           users: [...this.#users],
           intermediate_state: {
@@ -396,7 +533,7 @@ export class UpdateServer {
       ...(this.timing.timeout === undefined ? {} : { timeout: this.timing.timeout }),
       pts: taken.at(-1)?.pts ?? from,
       new_messages: taken.map((entry) => entry.update['message'] as TlValue),
-      other_updates: [],
+      other_updates: taken.flatMap((entry) => (entry.match === undefined ? [] : [entry.match])),
       chats: [...this.#chats],
       users: [...this.#users],
     }

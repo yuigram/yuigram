@@ -144,12 +144,18 @@ describe('an ordinary stream', () => {
 
   it('does not hand out what was already seen as the answer to a call', async () => {
     const c = client()
-    const update = c.server.message(1)
+    const sent = c.server.sent(1, { randomId: 71n, to: 5n })
 
     // A message sent by this client comes back as the answer to the send, and
-    // then again in the stream. Reporting it twice is reporting it wrongly.
-    c.updates.observed(update)
-    await c.updates.feed(c.server.container([update]))
+    // may come again in the stream. Reporting it is reporting the caller's own
+    // doing back to it.
+    await c.updates.absorb(sent.answer, {
+      _: 'messages.sendMessage',
+      peer: { _: 'inputPeerUser', user_id: 5n, access_hash: 1n },
+      message: 'sent 1',
+      random_id: 71n,
+    })
+    await c.updates.feed(sent.push())
 
     expect(c.dispatched).toEqual([])
     // The sequence still moves: the message did happen.
@@ -158,12 +164,18 @@ describe('an ordinary stream', () => {
 
   it('still hands out something else that was never seen', async () => {
     const c = client()
-    const first = c.server.message(1)
-    c.updates.observed(first)
+    const sent = c.server.sent(1, { randomId: 71n, to: 5n })
+    await c.updates.absorb(sent.answer, {
+      _: 'messages.sendMessage',
+      peer: { _: 'inputPeerUser', user_id: 5n, access_hash: 1n },
+      message: 'sent 1',
+      random_id: 71n,
+    })
 
-    await c.updates.feed(c.server.container([first, c.server.message(2)]))
+    await c.updates.feed(c.server.container([c.server.message(2)]))
 
     expect(c.ids()).toEqual([2])
+    expect(c.server.asked).toEqual([])
   })
 
   it('writes down the peers an answer described', async () => {

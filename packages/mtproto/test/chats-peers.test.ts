@@ -157,7 +157,6 @@ function fake(options: {
         yield new DialogView(one as never)
       }
     },
-    feed: () => Promise.resolve(),
   }
 
   return client

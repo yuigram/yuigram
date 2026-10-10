@@ -195,6 +195,10 @@ f.action(...kinds)                                       → event.action, narro
 f.and  f.or  f.not
 ```
 
+`f.outgoing` matches what this account sent from another of its clients. What a call made
+here sends is the caller's answer, and is not handed to the account's handlers at all
+([mtproto.md](mtproto.md) §9.5.1).
+
 A command carrying a `@username` suffix matches only when the filter was given that username:
 it was addressed to somebody, and nothing else says it was this account. `f.media()` does not
 count a link preview, which is media to Telegram and not to a reader, unless asked for by name.

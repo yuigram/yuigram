@@ -26,11 +26,11 @@
  * by the server. So rights are taken as booleans here and written as flags.
  *
  * **What the answer did.** Many of these are answered with the updates the
- * change caused rather than with a result, and those updates are how an account
- * learns that its own membership changed, that a title is different, that
- * somebody joined. Forwarding the RPC and dropping the answer would leave the
- * account's own handlers unaware of a change it made itself, so every operation
- * that is answered with updates hands them to the account.
+ * change caused rather than with a result. The account takes every answer into
+ * its update sequences where each call becomes a request, so its position stays
+ * where Telegram has it; what an answer reports about the change itself is not
+ * handed to the account's own handlers, because the program made the change and
+ * holds the answer.
  */
 
 import { PeerError, SessionError } from '@yuigram/core'
@@ -48,19 +48,17 @@ import { UPDATE_CONTAINERS } from '../normalize/events.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { TlValue } from '../tl/index.js'
 
-/** What operating on a conversation needs from a client. */
+/**
+ * What operating on a conversation needs from a client.
+ *
+ * Nothing about updates: what an answer reports is taken into the account's
+ * update sequences where every call becomes a request, so no operation has to
+ * remember to pass it on — and what a change this account made reports about
+ * itself is not handed to its handlers, because the caller holds the answer.
+ */
 export interface Chatting {
   readonly api: MtprotoApi
   resolve(peer: string | PeerRef): Promise<TypeInputPeer>
-  /**
-   * Take updates an answer carried, so the account learns what it just did.
-   *
-   * The same door updates from the connection come through, so a change this
-   * account made reaches its own handlers exactly as one somebody else made
-   * would — and the sequence's record of what it has already handed out keeps
-   * it from being dispatched twice when the same change arrives over the wire.
-   */
-  feed(value: TlValue): Promise<void>
 }
 
 /** Which of the three kinds a resolved peer is. */
@@ -131,72 +129,18 @@ export async function asChat(client: Chatting, peer: string | PeerRef): Promise<
 }
 
 /**
- * Hand an answer to the account when it is one carrying updates.
- *
- * Answers of other shapes pass through untouched. Which constructors count is
- * the same list the connection uses, so an answer and a pushed update are
- * judged by one rule rather than two that could drift.
- */
-export async function applyUpdates(client: Chatting, answer: unknown): Promise<void> {
-  if (typeof answer !== 'object' || answer === null) return
-
-  const value = answer as TlValue
-  if (typeof value._ !== 'string' || !UPDATE_CONTAINERS.has(value._)) return
-
-  await client.feed(value)
-}
-
-/**
- * Hand the account the position an operation on history moved to.
- *
- * Deleting, unpinning everything and clearing reaction badges are answered with
- * a position and a count rather than with updates, and the position belongs to
- * a sequence: a channel's own, or the common one every other conversation
- * shares. Applied to the wrong one it opens a gap there and leaves the right one
- * behind, and the account then fetches a difference to repair something that
- * was never broken — or misses one that was.
- *
- * So the answer is fed as the update that would have carried it, for the
- * sequence it came from.
- */
-export async function applyAffected(
-  client: Chatting,
-  peer: TypeInputPeer,
-  answer: { readonly pts: number; readonly pts_count: number },
-): Promise<void> {
-  const channel = channelFor(peer)
-
-  await applyUpdates(client, {
-    _: 'updateShort',
-    date: 0,
-    update:
-      channel?._ === 'inputChannel'
-        ? {
-            _: 'updateDeleteChannelMessages',
-            channel_id: channel.channel_id,
-            messages: [],
-            pts: answer.pts,
-            pts_count: answer.pts_count,
-          }
-        : { _: 'updateDeleteMessages', messages: [], pts: answer.pts, pts_count: answer.pts_count },
-  })
-}
-
-/**
  * Repeat a removal Telegram carries out in stages, until it says it is done.
  *
  * A long history is not removed by one request. The answer's `offset` above
  * zero is Telegram asking for the same request again, and it falls as the
  * removal proceeds; a caller that stopped after the first answer would report
- * success for a history that was only partly removed. Each stage's position is
- * applied to the account as it arrives, as any other removal's is.
+ * success for a history that was only partly removed. Each stage is a call of
+ * its own, so its position reaches the account's sequences as it arrives.
  *
  * Answers how many messages went. A stage whose offset does not fall is
  * refused rather than repeated forever: the request would never finish.
  */
 export async function removeInStages(
-  client: Chatting,
-  peer: TypeInputPeer,
   request: () => Promise<{
     readonly pts: number
     readonly pts_count: number
@@ -208,7 +152,6 @@ export async function removeInStages(
 
   for (;;) {
     const answer = await request()
-    await applyAffected(client, peer, answer)
     removed += answer.pts_count
 
     if (answer.offset <= 0) return removed

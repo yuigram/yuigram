@@ -66,8 +66,13 @@ export interface UpdateStateSnapshot {
   readonly basis?: 'telegram'
 }
 
-/** How much of the recent past is remembered for the sake of not repeating it. */
-const DEFAULT_MEMORY = 1000
+/**
+ * How much of the recent past is remembered for the sake of not repeating it.
+ *
+ * In identities, of which a message can have two: its number and the step of
+ * the sequence it took.
+ */
+const DEFAULT_MEMORY = 2000
 
 /**
  * The sequences an account is following.
@@ -85,13 +90,16 @@ export class UpdateState {
   readonly #channels = new Map<string, number>()
 
   /**
-   * The messages already handed out.
+   * What has already been handed out, or accounted for without being handed out.
    *
    * A catch-up legitimately returns messages the ordinary stream already
    * delivered, and a client that dispatches both reports every one of them
-   * twice. Bounded, because the point is to recognise the recent past rather
-   * than to remember everything: an identity old enough to have fallen out is
-   * old enough that no catch-up will mention it again.
+   * twice; the answer to this account's own call reports what a catch-up may
+   * report again. Bounded, because the point is to recognise the recent past
+   * rather than to remember everything: an identity old enough to have fallen
+   * out is old enough that no catch-up will mention it again. Held in memory
+   * only, for as long as this state is — a run that starts again starts with
+   * none.
    */
   readonly #dispatched = new Set<string>()
   readonly #order: string[] = []
@@ -247,14 +255,14 @@ export class UpdateState {
     this.#channels.delete(channelId.toString())
   }
 
-  /**
-   * Whether something has already been handed out, remembering it if not.
-   *
-   * Answers for the first sight and every sight after it, so a caller asks once
-   * per update and dispatches only when the answer is no.
-   */
-  seen(identity: string): boolean {
-    if (this.#dispatched.has(identity)) return true
+  /** Whether something has already been handed out or accounted for. */
+  known(identity: string): boolean {
+    return this.#dispatched.has(identity)
+  }
+
+  /** Record that something has been handed out or accounted for. */
+  remember(identity: string): void {
+    if (this.#dispatched.has(identity)) return
 
     this.#dispatched.add(identity)
     this.#order.push(identity)
@@ -265,8 +273,6 @@ export class UpdateState {
       const oldest = this.#order.shift()
       if (oldest !== undefined) this.#dispatched.delete(oldest)
     }
-
-    return false
   }
 
   /** How much of the recent past is currently remembered. */

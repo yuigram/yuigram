@@ -28,7 +28,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyUpdates, type Chatting } from '../chats/common.js'
+import type { Chatting } from '../chats/common.js'
 import type { FormattedText } from '../format/text.js'
 import type {
   TypeBotBusinessConnection,
@@ -159,7 +159,9 @@ export async function boostStats(client: Premiuming, chat: string | PeerRef) {
  * For a bot rather than for a person: the identifier arrives with the update
  * that announced the connection, and this reads its current state — which
  * rights it carries and whether it is still enabled. The answer is a container
- * of updates, so it reaches the account's own handlers as well.
+ * of updates describing a connection this call only read — the business account
+ * made it — so, unlike what a change this account makes reports about itself,
+ * it reaches the account's own handlers as well.
  */
 export async function businessConnection(
   client: Premiuming,
@@ -168,8 +170,6 @@ export async function businessConnection(
   const answer = await client.api.account.getBotBusinessConnection({
     connection_id: connectionId,
   })
-
-  await applyUpdates(client, answer)
 
   for (const update of updatesOf(answer)) {
     if (update['_'] !== 'updateBotBusinessConnect') continue

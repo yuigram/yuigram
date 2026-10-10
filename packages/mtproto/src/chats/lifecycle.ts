@@ -7,7 +7,8 @@
  * the fact it succeeded: the new conversation's identifier and access hash are
  * in the updates the call returns, and a caller with nothing to address cannot
  * do the next thing. So each of these reads the conversation out of its own
- * answer and hands it back, as well as giving the updates to the account.
+ * answer and hands it back; the account takes the updates into its sequences as
+ * it takes every answer's.
  *
  * ```
  *   createGroup      ──> messages.createChat      ──> a basic group
@@ -31,7 +32,7 @@ import type { TypeUpdates } from '../generated/api/types/index.js'
 import { channelFor } from '../network/peers.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { Chatting } from './common.js'
-import { applyUpdates, asChannel, asUser, groupIdOf, removeInStages } from './common.js'
+import { asChannel, asUser, groupIdOf, removeInStages } from './common.js'
 
 /** How a new conversation starts out. */
 export interface NewChat {
@@ -79,8 +80,6 @@ export async function createGroup(
     ...(chat.ttl === undefined ? {} : { ttl_period: chat.ttl }),
   })
 
-  await applyUpdates(client, answer.updates)
-
   return createdChat(answer.updates, 'messages.createChat')
 }
 
@@ -106,8 +105,6 @@ export async function createSupergroup(
     ...(chat.ttl === undefined ? {} : { ttl_period: chat.ttl }),
   })
 
-  await applyUpdates(client, answer)
-
   return createdChat(answer, 'channels.createChannel')
 }
 
@@ -128,8 +125,6 @@ export async function createChannel(client: Chatting, chat: NewChat): Promise<Ch
     about: chat.description ?? '',
     ...(chat.ttl === undefined ? {} : { ttl_period: chat.ttl }),
   })
-
-  await applyUpdates(client, answer)
 
   return createdChat(answer, 'channels.createChannel')
 }
@@ -161,11 +156,9 @@ function createdChat(updates: TypeUpdates, what: string): ChatView {
  * that removes this account and leaves the conversation standing.
  */
 export async function deleteChannel(client: Chatting, chat: string | PeerRef): Promise<void> {
-  const answer = await client.api.channels.deleteChannel({
+  await client.api.channels.deleteChannel({
     channel: await asChannel(client, chat, 'deleting a channel'),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -184,8 +177,7 @@ export async function deleteGroup(client: Chatting, chat: string | PeerRef): Pro
     throw new ValidationError('this is not a basic group; a channel is deleted with deleteChannel')
   }
 
-  const answer = await client.api.messages.deleteChat({ chat_id: group })
-  await applyUpdates(client, answer)
+  await client.api.messages.deleteChat({ chat_id: group })
 }
 
 /** How much of a conversation's history to remove. */
@@ -232,16 +224,15 @@ export async function deleteHistory(
   // removes it in one request and answers with updates; `keepChat` has no
   // meaning there, since leaving is a separate operation.
   if (channel !== undefined) {
-    const answer = await client.api.channels.deleteHistory({
+    await client.api.channels.deleteHistory({
       channel,
       max_id: options.upTo ?? 0,
       ...(options.forEveryone === true ? { for_everyone: true } : {}),
     })
-    await applyUpdates(client, answer)
     return
   }
 
-  await removeInStages(client, peer, () =>
+  await removeInStages(() =>
     client.api.messages.deleteHistory({
       peer,
       max_id: options.upTo ?? 0,
@@ -268,12 +259,9 @@ export async function deleteMemberHistory(
   member: string | PeerRef,
 ): Promise<void> {
   const channel = await asChannel(client, chat, "removing one member's messages")
-  const peer = await client.resolve(chat)
   const participant = await client.resolve(member)
 
   // Removed in stages like any long history, and each stage advances the
   // channel's own sequence.
-  await removeInStages(client, peer, () =>
-    client.api.channels.deleteParticipantHistory({ channel, participant }),
-  )
+  await removeInStages(() => client.api.channels.deleteParticipantHistory({ channel, participant }))
 }

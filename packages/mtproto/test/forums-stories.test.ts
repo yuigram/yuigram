@@ -84,7 +84,6 @@ const storyItem = (id: number, extra: Record<string, unknown> = {}): TlValue => 
  */
 function fake(answers: readonly unknown[] = []) {
   const asked: { method: string; params: Record<string, unknown> }[] = []
-  const fed: TlValue[] = []
   let at = 0
 
   const named =
@@ -131,17 +130,10 @@ function fake(answers: readonly unknown[] = []) {
   const client: Foruming &
     Storying & {
       readonly asked: typeof asked
-      readonly fed: TlValue[]
     } = {
     api,
     asked,
-    fed,
     resolve: () => Promise.resolve(FORUM),
-    feed: (value) => {
-      fed.push(value)
-
-      return Promise.resolve()
-    },
     // Fixed, so a request carrying a deduplication key is comparable between
     // runs. Nothing here is about the key's randomness.
     random: (length: number) => new Uint8Array(length).fill(7),
@@ -195,12 +187,12 @@ describe('opening and changing topics', () => {
     await expect(createTopic(fake([]), '@forum', { title: '' })).rejects.toThrow(ValidationError)
   })
 
-  it('hands the updates a creation carried to the account', async () => {
+  it('opens a topic in the forum it names', async () => {
     const client = fake([NOTHING])
 
     await createTopic(client, '@forum', { title: 'a' })
 
-    expect(client.fed).toHaveLength(1)
+    expect(sent(client, 'messages.createForumTopic')).toMatchObject({ title: 'a' })
   })
 
   it('sends only the fields an edit named', async () => {
@@ -262,7 +254,6 @@ describe('opening and changing topics', () => {
       topic_id: 42,
       pinned: true,
     })
-    expect(client.fed).toHaveLength(0)
   })
 
   it('sends an order as numbers, and asks before unpinning the rest', async () => {
@@ -278,19 +269,14 @@ describe('opening and changing topics', () => {
     expect(sent(forceful, 'messages.reorderPinnedForumTopics')).toMatchObject({ force: true })
   })
 
-  it('keeps the account’s place in the stream after deleting a thread', async () => {
-    // The answer is a position and a count rather than a container, and an
-    // account that ignored it would chase a gap it opened itself. A forum is a
-    // channel, so the position is the channel's own: applied to the common
-    // sequence it would open a gap there instead.
+  it('deletes a thread and counts what went', async () => {
+    // The answer is a position and a count rather than a container; the count
+    // is what went, and the position is the account's to apply, as it applies
+    // every answer's.
     const client = fake([{ _: 'messages.affectedHistory', pts: 40, pts_count: 3, offset: 0 }])
 
     expect(await deleteTopicHistory(client, '@forum', 42)).toBe(3)
     expect(sent(client, 'messages.deleteTopicHistory')).toMatchObject({ top_msg_id: 42 })
-    expect(client.fed[0]).toMatchObject({
-      _: 'updateShort',
-      update: { _: 'updateDeleteChannelMessages', pts: 40, pts_count: 3 },
-    })
   })
 
   it('reads topics positionally, with a gap for one that is gone', async () => {
@@ -327,7 +313,6 @@ describe('opening and changing topics', () => {
     await setForumSettings(client, '@group', { enabled: true })
 
     expect(sent(client, 'channels.toggleForum')).toMatchObject({ enabled: true, tabs: false })
-    expect(client.fed).toHaveLength(1)
   })
 })
 
@@ -379,7 +364,6 @@ describe('posting and reading stories', () => {
 
     expect(story.id).toBe(7)
     expect(story.expiresAt).toBe(1_700_086_400)
-    expect(client.fed).toHaveLength(1)
   })
 
   it('refuses a post whose answer carried no story', async () => {

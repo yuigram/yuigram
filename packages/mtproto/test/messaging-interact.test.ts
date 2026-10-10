@@ -59,10 +59,9 @@ type Answer = unknown | ((params: Record<string, unknown>, call: number) => unkn
 
 const UPDATES = { _: 'updates', updates: [], users: [], chats: [], date: 0, seq: 0 }
 
-/** A client that records each call, answers from a script, and keeps what was fed. */
+/** A client that records each call and answers from a script. */
 function scripted(script: Readonly<Record<string, Answer>> = {}) {
   const calls: Call[] = []
-  const fed: TlValue[] = []
   const elsewhere: { dcId: number; query: TlValue }[] = []
   let seed = 0
 
@@ -95,7 +94,6 @@ function scripted(script: Readonly<Record<string, Answer>> = {}) {
 
   const client: Interacting & {
     readonly calls: Call[]
-    readonly fed: TlValue[]
     readonly elsewhere: typeof elsewhere
     readonly resolved: (string | PeerRef)[]
   } = {
@@ -104,7 +102,6 @@ function scripted(script: Readonly<Record<string, Answer>> = {}) {
       channels: handler('channels'),
     } as unknown as MtprotoApi,
     calls,
-    fed,
     elsewhere,
     resolved: [],
     resolve(peer) {
@@ -126,11 +123,6 @@ function scripted(script: Readonly<Record<string, Answer>> = {}) {
       seed += 1
 
       return Uint8Array.from({ length }, (_value, at) => (seed * 17 + at) % 251)
-    },
-    feed(value) {
-      fed.push(value)
-
-      return Promise.resolve()
     },
     at(dcId, query) {
       elsewhere.push({ dcId, query })
@@ -225,7 +217,6 @@ describe('voting and closing a poll', () => {
       options: [Uint8Array.of(20)],
     })
     expect(state.results).toMatchObject({ total_voters: 4 })
-    expect(client.fed).toEqual([pollUpdate])
   })
 
   it('turns positions into the bytes the poll gave each option', async () => {
@@ -287,7 +278,6 @@ describe('voting and closing a poll', () => {
       },
     })
     expect(state.poll).toMatchObject({ closed: true })
-    expect(client.fed).toEqual([pollUpdate])
   })
 })
 
@@ -315,7 +305,6 @@ describe('a paid reaction', () => {
     expect(sent(client, 'messages.sendPaidReaction')).toMatchObject({ msg_id: 9, count: 5 })
     expect(sent(client, 'messages.sendPaidReaction')).not.toHaveProperty('private')
     expect(reactions).toMatchObject({ _: 'messageReactions' })
-    expect(client.fed).toEqual([reactionsUpdate])
   })
 
   it.each([
@@ -375,53 +364,38 @@ describe('a paid reaction', () => {
   })
 })
 
-describe('positions an operation on history moves to', () => {
+describe('operations on history answered with a position', () => {
   const affected = { _: 'messages.affectedHistory', pts: 120, pts_count: 3, offset: 0 }
 
-  it('applies a private chat’s position to the common sequence', async () => {
+  it('clears reaction badges in the conversation it names', async () => {
     const client = scripted({ 'messages.readReactions': affected })
 
     await readReactions(client, '@someone')
 
-    expect(client.fed).toEqual([
-      {
-        _: 'updateShort',
-        date: 0,
-        update: { _: 'updateDeleteMessages', messages: [], pts: 120, pts_count: 3 },
-      },
-    ])
+    expect(sent(client, 'messages.readReactions')).toMatchObject({
+      peer: { _: 'inputPeerUser', user_id: 5n },
+    })
   })
 
-  it('applies a channel’s position to the channel’s own sequence', async () => {
+  it('unpins everything in one topic of a channel', async () => {
     const client = scripted({ 'messages.unpinAllMessages': affected })
 
     await unpinAllMessages(client, '@channel_news', { topicId: 4 })
 
-    expect(sent(client, 'messages.unpinAllMessages')).toMatchObject({ top_msg_id: 4 })
-    expect(client.fed).toEqual([
-      {
-        _: 'updateShort',
-        date: 0,
-        update: {
-          _: 'updateDeleteChannelMessages',
-          channel_id: 77n,
-          messages: [],
-          pts: 120,
-          pts_count: 3,
-        },
-      },
-    ])
+    expect(sent(client, 'messages.unpinAllMessages')).toMatchObject({
+      peer: { _: 'inputPeerChannel', channel_id: 77n },
+      top_msg_id: 4,
+    })
   })
 
-  it('applies a forum topic’s deletion to the channel, not to the common sequence', async () => {
-    // A forum is always a channel, so its history belongs to the channel's own
-    // sequence; applied to the common one it would open a gap there.
+  it('deletes a forum topic’s history in the forum it names', async () => {
     const client = scripted({ 'messages.deleteTopicHistory': affected })
 
     await deleteTopicHistory(client, '@channel_forum', 4)
 
-    expect(client.fed[0]).toMatchObject({
-      update: { _: 'updateDeleteChannelMessages', channel_id: 77n, pts: 120 },
+    expect(sent(client, 'messages.deleteTopicHistory')).toMatchObject({
+      peer: { _: 'inputPeerChannel', channel_id: 77n },
+      top_msg_id: 4,
     })
   })
 })
@@ -471,7 +445,6 @@ describe('checklists', () => {
       },
     ])
     expect(view?.text).toBe('edited')
-    expect(client.fed).toEqual([edited])
   })
 
   it('refuses nothing to add, and a message that carries no checklist', async () => {
@@ -920,7 +893,6 @@ describe('what hangs off several messages at once', () => {
 
     expect(found[0]).toBeUndefined()
     expect(found[1]).toMatchObject({ results: [{ count: 4 }] })
-    expect(client.fed).toEqual([answer])
   })
 
   it('asks one conversation at a time and answers in the order given', async () => {

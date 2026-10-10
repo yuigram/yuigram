@@ -35,7 +35,7 @@
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyUpdates, type Chatting } from '../chats/common.js'
+import type { Chatting } from '../chats/common.js'
 import { PeerStoriesView, StoryView } from '../entities/story.js'
 import type { FormattedText } from '../format/text.js'
 import type {
@@ -129,8 +129,6 @@ export async function postStory(
     ...(story.protectContent === true ? { noforwards: true } : {}),
   })
 
-  await applyUpdates(client, answer)
-
   return storyIn(answer, 'posting a story')
 }
 
@@ -175,8 +173,6 @@ export async function editStory(
     ...(edit.audience === undefined ? {} : { privacy_rules: edit.audience }),
     ...(edit.areas === undefined ? {} : { media_areas: edit.areas }),
   })
-
-  await applyUpdates(client, answer)
 
   return storyIn(answer, 'editing a story')
 }
@@ -286,14 +282,12 @@ export async function reactToStory(
   reaction: StoryReaction,
   options?: { readonly addToRecent?: boolean },
 ): Promise<void> {
-  const answer = await client.api.stories.sendReaction({
+  await client.api.stories.sendReaction({
     peer: await client.resolve(peer),
     story_id: id,
     reaction: reactionOf(reaction),
     ...(options?.addToRecent === true ? { add_to_recent: true } : {}),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -368,8 +362,6 @@ export async function hideMyViews(
     ...(options?.past === false ? {} : { past: true }),
     ...(options?.future === false ? {} : { future: true }),
   })
-
-  await applyUpdates(client, answer)
 
   const mode = stealthIn(answer)
   if (mode === undefined) {

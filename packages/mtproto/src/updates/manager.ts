@@ -18,7 +18,8 @@
  * The wait is deliberate. The documentation notes that the server may simply
  * have reordered, and the missing update usually arrives on its own moments
  * later — so a catch-up on the first sign of trouble spends a round trip on
- * almost every reorder. Waiting briefly turns most gaps into nothing at all.
+ * almost every reorder. When what was missing arrives inside the wait, what
+ * was held behind it is applied in order and nothing is asked at all.
  *
  * While a box is catching up, everything for that box is held rather than
  * judged: the sequence is about to be told what it really is, and judging
@@ -29,6 +30,13 @@
  * Nothing is dispatched twice. A catch-up legitimately returns messages the
  * ordinary stream already delivered, so what has been handed out is remembered
  * and consulted before anything is handed out again.
+ *
+ * The answers to this account's own calls go into the same sequences, because
+ * they move them: a send consumes a step of the box it was sent in. What an
+ * answer reports about what the call acted on is applied and withheld from the
+ * handlers — the caller holds it already — and remembered, so a catch-up that
+ * mentions it later does not hand it out either. `local.ts` says which part of
+ * an answer that is.
  *
  * A position is something Telegram reported, never something assumed. An
  * account that has never had one asks for it with `updates.getState` when its
@@ -42,6 +50,15 @@ import type { TypeInputChannel } from '../generated/api/types/index.js'
 import { harvest, inputChannel } from '../network/peers.js'
 import type { PeerStore } from '../storage/peers.js'
 import type { TlValue } from '../tl/index.js'
+import {
+  answeredPosition,
+  carriedUpdates,
+  ownEffects,
+  positionChannel,
+  scopeOf,
+  updatesIn,
+  widenedBy,
+} from './local.js'
 import type { BoxKind, UpdateState } from './state.js'
 
 /** Milliseconds a gap is given to resolve itself before it is chased. */
@@ -66,6 +83,24 @@ const RETRY_CAP = 60_000
  * falls out is reported, never dropped silently.
  */
 const MAX_EARLY = 1000
+
+/**
+ * Calls awaiting their answers whose messages are watched for in the stream.
+ *
+ * Bounded, because an answer can fail to come for as long as the network
+ * fails. The oldest beyond the bound is treated as a call that failed: whatever
+ * was held for it is handed out rather than kept.
+ */
+const MAX_EXPECTED = 256
+
+/**
+ * What an answer that is only a position becomes, for the sequence to judge.
+ *
+ * Not a TL constructor, and never handed out: it carries a box, a position and
+ * a count, and nothing to report. A deletion, a read or a cleared badge is
+ * answered this way rather than with the updates that describe it.
+ */
+const POSITION = 'yuigram.position'
 
 /**
  * How long to wait before asking a followed channel again, absent an answer.
@@ -106,6 +141,20 @@ export interface UpdatesOptions {
   readonly reorderWindow?: number
   /** Run something later, and return the way to cancel it. */
   readonly schedule?: (run: () => void, delayMs: number) => () => void
+  /** Who this account is, for a call that names it as `inputPeerSelf`. */
+  readonly self?: () => bigint | undefined
+}
+
+/** A call awaiting its answer, whose messages the stream may report first. */
+export interface Expectation {
+  /**
+   * Say how the call ended.
+   *
+   * Answered: whatever the stream reported of it is dropped, because the answer
+   * is the caller's report. Failed: it is handed out, because the stream is
+   * then the only report there is.
+   */
+  settle(answered: boolean): void
 }
 
 /** What the manager reports along the way, for a log. Counters only, never content. */
@@ -151,15 +200,29 @@ export interface Updates {
    */
   feed(value: TlValue): Promise<void>
   /**
-   * Note something already seen as the answer to a call.
+   * Take the answer to a call this account made.
    *
-   * A catch-up legitimately returns messages the ordinary stream has already
-   * delivered, and sending a message hands one back as the answer to the send.
-   * Both would otherwise be reported a second time when the stream or a
-   * catch-up mentions them, so what has already been accounted for is recorded
-   * before it can arrive again.
+   * Applied to the sequences as the stream's updates are, so the next update
+   * finds the position where Telegram has it. What it reports about what the
+   * call acted on is not handed out, and is remembered so that a catch-up
+   * mentioning it later does not hand it out either; anything else it carries
+   * is handed out as the stream would hand it out.
+   *
+   * Answers whether the position may have moved, so a caller knows to write it
+   * down. An account with no position yet does not ask for one for the sake of
+   * an answer that reports only what the call did: the position it will be
+   * given already counts that.
    */
-  observed(update: TlValue): void
+  absorb(answer: unknown, query: TlValue): Promise<boolean>
+  /**
+   * Note a call about to be made, when it draws deduplication keys.
+   *
+   * The stream, or a catch-up, can report what the call created before its
+   * answer arrives. Telegram names the key it matched in such a report, and
+   * that is how it is recognised as this call's. Nothing when the call draws
+   * no key.
+   */
+  expect(query: TlValue): Expectation | undefined
   /**
    * Catch a box up now, without waiting for a gap to be noticed.
    *
@@ -203,8 +266,14 @@ export function openUpdates(options: UpdatesOptions): Updates {
 
   /** Boxes currently catching up, and what arrived for them while they were. */
   const catching = new Map<string, { held: TlValue[]; running: Promise<void> }>()
-  /** Gaps waiting out the reorder window, so one box chases at most one. */
-  const pending = new Map<string, { cancel: () => void; held: TlValue[] }>()
+  /**
+   * Gaps waiting out the reorder window, so one box chases at most one.
+   *
+   * `ordered` while everything held is waiting only for what precedes it in
+   * its own box, so that what was missing arriving is enough. A container out
+   * of sequence, or a failed catch-up, has to be asked about whatever arrives.
+   */
+  const pending = new Map<string, { cancel: () => void; held: TlValue[]; ordered: boolean }>()
   /** Channels the account can no longer see, which there is no point chasing. */
   const gone = new Set<string>()
   /**
@@ -229,14 +298,112 @@ export function openUpdates(options: UpdatesOptions): Updates {
   /** Consecutive failed catch-ups, per box, which lengthen the wait before the next. */
   const failuresOf = new Map<string, number>()
 
+  /**
+   * Updates an answer to this account's own call reported about what the call
+   * did. Applied like any other, never handed out. The same objects travel
+   * through holds and catch-ups, so recognising them by identity is exact.
+   */
+  const local = new WeakSet<TlValue>()
+
+  /** A call awaiting its answer, and what the stream reported of it meanwhile. */
+  interface Expected {
+    readonly keys: readonly bigint[]
+    /** The boxes its messages land in: the common one, or a channel's. */
+    readonly boxes: readonly string[]
+    /** The identities of messages Telegram matched to its keys so far. */
+    readonly identities: Set<string>
+    readonly held: TlValue[]
+  }
+  /** Calls awaiting answers, by key and in the order they were made. */
+  const expectedByKey = new Map<bigint, Expected>()
+  const expectedOrder: Expected[] = []
+
   const nameOf = (box: Box) => (box.kind === 'channel' ? `channel:${box.channelId}` : box.kind)
 
-  /** Hand an update out, unless it has already been handed out. */
+  /**
+   * Hand an update out, unless it should not be.
+   *
+   * Not when it reports what this account's own call did, not when it has been
+   * handed out or withheld before, and not yet when it reports what a call
+   * still awaiting its answer created — that waits for the call to end.
+   */
   const dispatch = (update: TlValue): void => {
-    const identity = identify(update)
-    if (identity !== undefined && state.seen(identity)) return
+    if (update._ === POSITION) return
 
+    const identities = identitiesOf(update)
+    if (local.has(update)) {
+      for (const identity of identities) state.remember(identity)
+      return
+    }
+    if (identities.some((identity) => state.known(identity))) return
+
+    const waiting = awaiting(update, identities)
+    if (waiting !== undefined) {
+      waiting.held.push(update)
+      return
+    }
+
+    for (const identity of identities) state.remember(identity)
     options.onUpdate(update)
+  }
+
+  /** The call awaiting its answer that an update reports on, if any. */
+  const awaiting = (update: TlValue, identities: readonly string[]): Expected | undefined => {
+    if (expectedOrder.length === 0) return undefined
+
+    if (update._ === 'updateMessageID') {
+      const key = update['random_id']
+
+      return typeof key === 'bigint' ? expectedByKey.get(key) : undefined
+    }
+
+    return expectedOrder.find((record) =>
+      identities.some((identity) => record.identities.has(identity)),
+    )
+  }
+
+  /**
+   * Recognise what awaiting calls created, from the keys Telegram matched.
+   *
+   * Read from a whole batch before any of it is handed out, because a batch
+   * need not put the match ahead of the message it names.
+   */
+  const noteMatches = (updates: readonly unknown[]): void => {
+    if (expectedOrder.length === 0) return
+
+    for (const update of updates) {
+      if (!isValue(update) || update._ !== 'updateMessageID') continue
+      const key = update['random_id']
+      const id = update['id']
+      if (typeof key !== 'bigint' || typeof id !== 'number') continue
+
+      const record = expectedByKey.get(key)
+      if (record === undefined) continue
+      for (const box of record.boxes) record.identities.add(`${box}:new:${id}`)
+    }
+  }
+
+  /** End an awaited call; see {@link Expectation.settle}. */
+  const settle = (record: Expected, answered: boolean): void => {
+    const index = expectedOrder.indexOf(record)
+    if (index < 0) return
+
+    expectedOrder.splice(index, 1)
+    for (const key of record.keys) {
+      if (expectedByKey.get(key) === record) expectedByKey.delete(key)
+    }
+
+    if (answered) {
+      // The answer is the report. What the stream said of it is remembered as
+      // accounted for, so a catch-up repeating it is recognised too.
+      for (const identity of record.identities) state.remember(identity)
+      for (const key of record.keys) state.remember(`key:${key}`)
+      record.held.length = 0
+      return
+    }
+
+    if (closed) return
+    for (const update of record.held.splice(0)) dispatch(update)
   }
 
   const fail = (error: unknown): void => {
@@ -287,12 +454,86 @@ export function openUpdates(options: UpdatesOptions): Updates {
         ...(box.channelId === undefined ? {} : { channelId: box.channelId }),
       })
       dispatch(update)
+      // What was held behind this may follow on from it now.
+      closeWindow(box)
       return
     }
 
     // A gap. Held rather than dropped, because it is real and will be wanted
     // once whatever precedes it has been fetched.
     hold(box, update)
+  }
+
+  /** What the sequence makes of one held update, judged now. */
+  const judgeHeld = (update: TlValue): 'apply' | 'seen' | 'gap' => {
+    const box = boxOf(update)
+    const pts = readInt(update, 'pts')
+    if (box === undefined || pts === undefined) return 'gap'
+
+    return state.judge({
+      box: box.kind,
+      pts,
+      count: box.kind === 'secret' ? 1 : (readInt(update, 'pts_count') ?? 1),
+      ...(box.channelId === undefined ? {} : { channelId: box.channelId }),
+    }).kind
+  }
+
+  /**
+   * Apply what a box's window is holding, as far as the sequence now allows.
+   *
+   * In order of position, and repeatedly, because applying one can make the
+   * next the next. A window left with nothing to wait for is closed without a
+   * catch-up: the gap was a reorder, and it is over.
+   */
+  const closeWindow = (box: Box): boolean => {
+    const name = nameOf(box)
+    const waiting = pending.get(name)
+    if (waiting === undefined || !waiting.ordered) return false
+
+    // Each pass applies what has become next; it ends when one applies nothing.
+    let draining = waiting.held.length > 0
+    while (draining) draining = drainOnce(waiting.held) && waiting.held.length > 0
+
+    if (waiting.held.length > 0) return false
+
+    waiting.cancel()
+    pending.delete(name)
+
+    return true
+  }
+
+  /**
+   * One pass over held updates in order of position: apply what is next, drop
+   * what is already counted, keep what still has something missing before it.
+   * Answers whether anything left the list.
+   */
+  const drainOnce = (held: TlValue[]): boolean => {
+    held.sort((left, right) => (readInt(left, 'pts') ?? 0) - (readInt(right, 'pts') ?? 0))
+
+    const before = held.length
+    const keep: TlValue[] = []
+    for (const update of held) {
+      const verdict = judgeHeld(update)
+      if (verdict === 'gap') {
+        keep.push(update)
+        continue
+      }
+      if (verdict === 'apply') applyHeld(update)
+    }
+    held.splice(0, held.length, ...keep)
+
+    return held.length < before
+  }
+
+  /** Move a box on to where a held update arrived, and hand the update out. */
+  const applyHeld = (update: TlValue): void => {
+    const box = boxOf(update) as Box
+    state.advance({
+      box: box.kind,
+      pts: readInt(update, 'pts') as number,
+      ...(box.channelId === undefined ? {} : { channelId: box.channelId }),
+    })
+    dispatch(update)
   }
 
   /**
@@ -304,16 +545,22 @@ export function openUpdates(options: UpdatesOptions): Updates {
    * other.
    */
   const hold = (box: Box, update: TlValue): void => {
-    queueCatchUp(box, [update], window)
+    queueCatchUp(box, [update], window, true)
   }
 
   /**
    * Arrange a catch-up after `delay`, with what is waiting for it.
    *
    * Joins a catch-up already running or already arranged rather than starting
-   * another, for the same reason a gap does.
+   * another, for the same reason a gap does. `ordered` when what waits needs
+   * only its own box's missing updates; see {@link pending}.
    */
-  const queueCatchUp = (box: Box, updates: readonly TlValue[], delay: number): void => {
+  const queueCatchUp = (
+    box: Box,
+    updates: readonly TlValue[],
+    delay: number,
+    ordered = false,
+  ): void => {
     if (closed) return
 
     const name = nameOf(box)
@@ -328,20 +575,30 @@ export function openUpdates(options: UpdatesOptions): Updates {
     const waiting = pending.get(name)
     if (waiting !== undefined) {
       waiting.held.push(...updates)
+      waiting.ordered &&= ordered
       return
     }
 
     const held: TlValue[] = [...updates]
-    const cancel = later(() => {
+    const entry = {
+      held,
+      ordered,
+      cancel: () => {},
+    }
+    entry.cancel = later(() => {
+      // Once more before asking: what was missing may have come in a way that
+      // did not pass through the box, such as a catch-up of another kind.
+      if (closeWindow(box)) return
+
       pending.delete(name)
       if (closed) return
 
-      const entry = { held, running: Promise.resolve() }
-      catching.set(name, entry)
-      entry.running = catchUp(box, entry).catch(fail)
+      const running = { held, running: Promise.resolve() }
+      catching.set(name, running)
+      running.running = catchUp(box, running).catch(fail)
     }, delay)
 
-    pending.set(name, { cancel, held })
+    pending.set(name, entry)
   }
 
   /**
@@ -517,6 +774,9 @@ export function openUpdates(options: UpdatesOptions): Updates {
    * the stream from one that came from a catch-up.
    */
   const dispatchDifference = (answer: TlValue, wrap: (message: TlValue) => TlValue): void => {
+    // A send whose answer was lost is in here, matched to its key among the
+    // other updates; read before the messages it names are handed out.
+    noteMatches(asArray(answer['other_updates']))
     for (const message of asArray(answer['new_messages'])) dispatch(wrap(message as TlValue))
     for (const update of asArray(answer['other_updates'])) dispatch(update as TlValue)
   }
@@ -799,6 +1059,7 @@ export function openUpdates(options: UpdatesOptions): Updates {
    */
   const feedContainer = async (value: TlValue): Promise<void> => {
     await harvest(options.peers, value)
+    noteMatches(asArray(value['updates']))
 
     const seq = readInt(value, 'seq') ?? 0
     const seqStart = readInt(value, 'seq_start') ?? seq
@@ -808,8 +1069,10 @@ export function openUpdates(options: UpdatesOptions): Updates {
 
     if (verdict.kind === 'gap') {
       // The container itself is out of order. The boxes inside it are chased
-      // individually, which is what a catch-up on the common box covers.
-      for (const update of asArray(value['updates'])) hold({ kind: 'common' }, update as TlValue)
+      // individually, which is what a catch-up on the common box covers — and
+      // only a catch-up can say where the container sequence stands, so this
+      // wait ends in one whatever arrives meanwhile.
+      queueCatchUp({ kind: 'common' }, asArray(value['updates']) as TlValue[], window, false)
       return
     }
 
@@ -817,6 +1080,29 @@ export function openUpdates(options: UpdatesOptions): Updates {
 
     const date = readInt(value, 'date')
     state.advanceContainer({ seq, ...(date === undefined ? {} : { date }) })
+  }
+
+  /**
+   * Take an answer that is only a position: where a deletion, a read or a
+   * cleared badge left a box, and how many steps it took.
+   */
+  const absorbPosition = async (
+    position: { readonly pts: number; readonly count: number },
+    channelId: bigint | undefined,
+  ): Promise<boolean> => {
+    const entry: TlValue = {
+      _: POSITION,
+      ...(channelId === undefined ? {} : { channel_id: channelId }),
+      pts: position.pts,
+      pts_count: position.count,
+    }
+    // Remembered whatever happens next, so the update that describes the same
+    // step is withheld when a catch-up returns it.
+    for (const identity of identitiesOf(entry)) state.remember(identity)
+    if (!established) return false
+
+    await consume(entry)
+    return true
   }
 
   /** Keep something that arrived before there was a position, and ask for one. */
@@ -867,6 +1153,7 @@ export function openUpdates(options: UpdatesOptions): Updates {
       if (value._ === 'updateShort') {
         await harvest(options.peers, value)
         const update = value['update']
+        noteMatches([update])
         if (typeof update === 'object' && update !== null) await consume(update as TlValue)
         const date = readInt(value, 'date')
         state.advanceContainer({ seq: 0, ...(date === undefined ? {} : { date }) })
@@ -876,6 +1163,7 @@ export function openUpdates(options: UpdatesOptions): Updates {
       if (value._ !== 'updates' && value._ !== 'updatesCombined') {
         // Anything else in the stream is a single update in its own right.
         await harvest(options.peers, value)
+        noteMatches([value])
         await consume(value)
         return
       }
@@ -883,9 +1171,63 @@ export function openUpdates(options: UpdatesOptions): Updates {
       await feedContainer(value)
     },
 
-    observed(update) {
-      const identity = identify(update)
-      if (identity !== undefined) state.seen(identity)
+    async absorb(answer, query) {
+      if (closed) return false
+
+      const scope = scopeOf(query, options.self?.())
+      // On behalf of a business connection: what the answer reports belongs to
+      // another account's conversations, and moves none of this one's boxes.
+      if (scope.delegated) return false
+
+      const position = answeredPosition(answer)
+      if (position !== undefined) return await absorbPosition(position, positionChannel(scope))
+
+      // The keys the call drew are accounted for by its answer: a match the
+      // stream or a catch-up reports for one of them is the call's, not news.
+      for (const key of scope.randomIds) state.remember(`key:${key}`)
+
+      const carried = carriedUpdates(answer)
+      if (carried === undefined) return false
+
+      const updates = updatesIn(carried)
+      const own = ownEffects(updates, widenedBy(scope, carried))
+      for (const update of own) {
+        local.add(update)
+        for (const identity of identitiesOf(update)) state.remember(identity)
+      }
+
+      // With no position yet there is nothing to keep in step: the one Telegram
+      // will report already counts what the call did. Anything else the answer
+      // carries is still news, though, and goes the way the stream's would —
+      // which, without a position, starts by asking for one.
+      if (!established && updates.every((update) => own.has(update))) return false
+
+      await api.feed(carried)
+      return true
+    },
+
+    expect(query) {
+      if (closed) return undefined
+
+      const scope = scopeOf(query, options.self?.())
+      if (scope.delegated || scope.randomIds.size === 0) return undefined
+
+      const boxes = new Set<string>()
+      for (const conversation of scope.conversations) {
+        boxes.add(conversation.startsWith('channel:') ? conversation : 'common')
+      }
+      const record: Expected = {
+        keys: [...scope.randomIds],
+        boxes: boxes.size === 0 ? ['common'] : [...boxes],
+        identities: new Set(),
+        held: [],
+      }
+      for (const key of record.keys) expectedByKey.set(key, record)
+      expectedOrder.push(record)
+
+      while (expectedOrder.length > MAX_EXPECTED) settle(expectedOrder[0] as Expected, false)
+
+      return { settle: (answered) => settle(record, answered) }
     },
 
     async recover(box = { kind: 'common' }) {
@@ -961,6 +1303,8 @@ export function openUpdates(options: UpdatesOptions): Updates {
       catching.clear()
       for (const entry of watching.values()) entry.cancel?.()
       watching.clear()
+      expectedByKey.clear()
+      expectedOrder.length = 0
     },
   }
 
@@ -970,6 +1314,17 @@ export function openUpdates(options: UpdatesOptions): Updates {
 /** Which sequence an update belongs to, when it belongs to one. */
 function boxOf(update: TlValue): Box | undefined {
   switch (update._) {
+    case POSITION: {
+      const channelId = update['channel_id']
+
+      return typeof channelId === 'bigint' ? { kind: 'channel', channelId } : { kind: 'common' }
+    }
+
+    // The short forms are whole updates of the common box, carrying its count:
+    // left unjudged, every one would leave the position a step behind.
+    case 'updateShortMessage':
+    case 'updateShortChatMessage':
+    case 'updateShortSentMessage':
     case 'updateNewMessage':
     case 'updateDeleteMessages':
     case 'updateEditMessage':
@@ -1014,22 +1369,64 @@ function channelOf(update: TlValue): bigint | undefined {
 }
 
 /**
- * What makes one dispatched thing the same as another.
+ * What makes one handed-out thing the same as another.
  *
- * Only messages carry an identity worth remembering: a catch-up returns
- * messages the stream already delivered, and those are what would otherwise be
- * reported twice. Anything without one is dispatched as it arrives.
+ * Two kinds of identity, because a catch-up returns things in two shapes. A
+ * message it returns is stripped of the update that carried it, so a new
+ * message is known by its box and number. Everything else it returns keeps its
+ * update and position, and a position names exactly one step of one box — so
+ * an edit, a deletion or a pin is known by that, and two edits of one message
+ * are two things rather than one.
+ *
+ * A match of a deduplication key to a message is known by the key.
+ *
+ * Only these have an identity. The rest is handed out as it arrives: nothing
+ * returns it a second time.
  */
-function identify(update: TlValue): string | undefined {
-  const message = update['message']
-  if (typeof message !== 'object' || message === null) return undefined
+function identitiesOf(update: TlValue): string[] {
+  // A match names the key a send drew, and the key is the send's alone.
+  if (update._ === 'updateMessageID') {
+    const key = update['random_id']
 
-  const id = (message as TlValue)['id']
-  if (typeof id !== 'number') return undefined
+    return typeof key === 'bigint' ? [`key:${key}`] : []
+  }
 
-  const channelId = channelOf(update)
+  const box = boxOf(update)
+  if (box === undefined || box.kind === 'secret') return []
 
-  return channelId === undefined ? `message:${id}` : `channel:${channelId}:${id}`
+  const name = box.kind === 'channel' ? `channel:${box.channelId}` : 'common'
+  const found: string[] = []
+
+  const created = createdIdOf(update)
+  if (created !== undefined) found.push(`${name}:new:${created}`)
+
+  const pts = readInt(update, 'pts')
+  if (pts !== undefined && pts > 0) found.push(`${name}:pts:${pts}`)
+
+  return found
+}
+
+/** The message an update brings into existence, if it is one that does. */
+function createdIdOf(update: TlValue): number | undefined {
+  switch (update._) {
+    case 'updateNewMessage':
+    case 'updateNewChannelMessage': {
+      const message = update['message']
+      const id = isValue(message) ? message['id'] : undefined
+
+      return typeof id === 'number' ? id : undefined
+    }
+    case 'updateShortMessage':
+    case 'updateShortChatMessage':
+    case 'updateShortSentMessage':
+      return readInt(update, 'id')
+    default:
+      return undefined
+  }
+}
+
+function isValue(value: unknown): value is TlValue {
+  return typeof value === 'object' && value !== null && typeof (value as TlValue)._ === 'string'
 }
 
 /** A box, in words, for an error about it. */

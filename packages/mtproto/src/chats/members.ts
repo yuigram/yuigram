@@ -37,7 +37,6 @@ import type { TlValue } from '../tl/index.js'
 import type { AdminRights, Chatting, Restrictions } from './common.js'
 import {
   adminRights,
-  applyUpdates,
   asChannel,
   asUser,
   BANNED,
@@ -115,7 +114,6 @@ export async function addMembers(
         fwd_limit: options.history ?? 0,
       })
 
-      await applyUpdates(client, answer.updates)
       missing.push(...refusals(answer.missing_invitees))
     }
 
@@ -126,8 +124,6 @@ export async function addMembers(
     channel: await asChannel(client, chat, 'adding members'),
     users,
   })
-
-  await applyUpdates(client, answer.updates)
 
   return refusals(answer.missing_invitees)
 }
@@ -168,13 +164,11 @@ export async function banMember(
   member: string | PeerRef,
   options: { readonly until?: number } = {},
 ): Promise<void> {
-  const answer = await client.api.channels.editBanned({
+  await client.api.channels.editBanned({
     channel: await asChannel(client, chat, 'banning somebody'),
     participant: await client.resolve(member),
     banned_rights: options.until === undefined ? BANNED : { ...BANNED, until_date: options.until },
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -189,13 +183,11 @@ export async function unbanMember(
   chat: string | PeerRef,
   member: string | PeerRef,
 ): Promise<void> {
-  const answer = await client.api.channels.editBanned({
+  await client.api.channels.editBanned({
     channel: await asChannel(client, chat, 'unbanning somebody'),
     participant: await client.resolve(member),
     banned_rights: NO_RESTRICTIONS,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -218,13 +210,11 @@ export async function restrictMember(
   member: string | PeerRef,
   restrictions: Restrictions,
 ): Promise<void> {
-  const answer = await client.api.channels.editBanned({
+  await client.api.channels.editBanned({
     channel: await asChannel(client, chat, 'restricting somebody'),
     participant: await client.resolve(member),
     banned_rights: bannedRights(restrictions),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -252,13 +242,11 @@ export async function kickMember(
   const group = groupIdOf(resolved)
 
   if (group !== undefined) {
-    const answer = await client.api.messages.deleteChatUser({
+    await client.api.messages.deleteChatUser({
       chat_id: group,
       user_id: await asUser(client, member, 'removing a member'),
       ...(options.deleteHistory === true ? { revoke_history: true } : {}),
     })
-
-    await applyUpdates(client, answer)
 
     return
   }
@@ -266,19 +254,17 @@ export async function kickMember(
   const channel = await asChannel(client, chat, 'removing a member')
   const participant = await client.resolve(member)
 
-  const removed = await client.api.channels.editBanned({
+  await client.api.channels.editBanned({
     channel,
     participant,
     banned_rights: { ...BANNED, until_date: 0 },
   })
-  await applyUpdates(client, removed)
 
-  const lifted = await client.api.channels.editBanned({
+  await client.api.channels.editBanned({
     channel,
     participant,
     banned_rights: NO_RESTRICTIONS,
   })
-  await applyUpdates(client, lifted)
 }
 
 /**
@@ -304,14 +290,12 @@ export async function setAdminRights(
   rights: AdminRights,
   options: { readonly rank?: string } = {},
 ): Promise<void> {
-  const answer = await client.api.channels.editAdmin({
+  await client.api.channels.editAdmin({
     channel: await asChannel(client, chat, 'changing administrator rights'),
     user_id: await asUser(client, member, 'an administrator'),
     admin_rights: adminRights(rights),
     ...(options.rank === undefined ? {} : { rank: options.rank }),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -333,13 +317,11 @@ export async function setMemberRank(
   member: string | PeerRef,
   rank: string | undefined,
 ): Promise<void> {
-  const answer = await client.api.messages.editChatParticipantRank({
+  await client.api.messages.editChatParticipantRank({
     peer: await client.resolve(chat),
     participant: await client.resolve(member),
     rank: rank ?? '',
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -406,13 +388,11 @@ export async function transferOwnership(
     (await client.api.account.getPassword()) as unknown as TlValue,
   )
 
-  const answer = await client.api.messages.editChatCreator({
+  await client.api.messages.editChatCreator({
     peer: await client.resolve(chat),
     user_id: await asUser(client, to, 'the new owner'),
     password: await passwordProof(password, challenge),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -427,11 +407,9 @@ export async function transferOwnership(
  * joined is not an error.
  */
 export async function joinChat(client: Chatting, chat: string | PeerRef): Promise<void> {
-  const answer = await client.api.channels.joinChannel({
+  await client.api.channels.joinChannel({
     channel: await asChannel(client, chat, 'joining'),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -454,22 +432,18 @@ export async function leaveChat(
   const group = groupIdOf(resolved)
 
   if (group !== undefined) {
-    const answer = await client.api.messages.deleteChatUser({
+    await client.api.messages.deleteChatUser({
       chat_id: group,
       user_id: { _: 'inputUserSelf' },
       ...(options.deleteHistory === true ? { revoke_history: true } : {}),
     })
 
-    await applyUpdates(client, answer)
-
     return
   }
 
-  const answer = await client.api.channels.leaveChannel({
+  await client.api.channels.leaveChannel({
     channel: await asChannel(client, chat, 'leaving'),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**

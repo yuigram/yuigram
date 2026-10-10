@@ -36,7 +36,6 @@ import type { TlValue } from '../tl/index.js'
 export interface Gaming {
   readonly api: MtprotoApi
   resolve(peer: string | PeerRef): Promise<TypeInputPeer>
-  feed(value: TlValue): Promise<void>
   /** Make a call on a particular datacenter, for an inline message that lives there. */
   at?(dcId: number, query: TlValue): Promise<TlValue>
 }
@@ -105,8 +104,6 @@ export async function setGameScore(
     ...(options.noEdit === true ? {} : { edit_message: true }),
     ...(options.force === true ? { force: true } : {}),
   })
-
-  await client.feed(answer as unknown as TlValue)
 
   return editedMessage(answer as unknown as TlValue)
 }

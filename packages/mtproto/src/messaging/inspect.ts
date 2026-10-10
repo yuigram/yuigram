@@ -213,17 +213,16 @@ export async function getMessagesOutsideChannels(
  * gone both look like.
  */
 export async function getMessageReactions(
-  client: Sending & { feed?(value: TlValue): Promise<void> },
+  client: Sending,
   peer: string | PeerRef,
   ids: readonly number[],
 ): Promise<readonly (TypeMessageReactions | undefined)[]> {
   if (ids.length === 0) return []
 
   const target = await client.resolve(peer)
+  // The answer is updates, the same ones a reaction arriving over the
+  // connection would be; the account takes them as it takes every answer.
   const answer = await client.api.messages.getMessagesReactions({ peer: target, id: [...ids] })
-  // The answer is updates: the same ones a reaction arriving over the
-  // connection would be, and the account keeps its own record of reactions.
-  await client.feed?.(answer as unknown as TlValue)
 
   const found = new Map<number, TypeMessageReactions>()
   const value = answer as unknown as TlValue
@@ -249,7 +248,7 @@ export async function getMessageReactions(
  * and answered in the order the messages were given.
  */
 export async function getReactionsOf(
-  client: Sending & { feed?(value: TlValue): Promise<void> },
+  client: Sending,
   messages: readonly MessageView[],
 ): Promise<readonly (TypeMessageReactions | undefined)[]> {
   const byChat = new Map<string, { chat: PeerRef; ids: number[] }>()

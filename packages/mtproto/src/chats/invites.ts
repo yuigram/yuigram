@@ -30,7 +30,7 @@ import { InviteLinkView } from '../entities/chat.js'
 import { ChatView, UserView } from '../entities/peer.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { Chatting } from './common.js'
-import { applyUpdates, asUser } from './common.js'
+import { asUser } from './common.js'
 
 /** The limits a new link carries. */
 export interface NewInviteLink {
@@ -235,13 +235,11 @@ export async function decideJoinRequest(
   person: string | PeerRef,
   approve: boolean,
 ): Promise<void> {
-  const answer = await client.api.messages.hideChatJoinRequest({
+  await client.api.messages.hideChatJoinRequest({
     peer: await client.resolve(chat),
     user_id: await asUser(client, person, 'deciding a join request'),
     ...(approve ? { approved: true } : {}),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -260,13 +258,11 @@ export async function decideAllJoinRequests(
   approve: boolean,
   options: { readonly link?: string | InviteLinkView } = {},
 ): Promise<void> {
-  const answer = await client.api.messages.hideAllChatJoinRequests({
+  await client.api.messages.hideAllChatJoinRequests({
     peer: await client.resolve(chat),
     ...(approve ? { approved: true } : {}),
     ...(options.link === undefined ? {} : { link: linkOf(options.link) }),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /** What a link opens, before joining it. */
@@ -337,9 +333,7 @@ export async function previewInvite(client: Chatting, hash: string): Promise<Inv
  * in.
  */
 export async function joinByLink(client: Chatting, hash: string): Promise<void> {
-  const answer = await client.api.messages.importChatInvite({ hash })
-
-  await applyUpdates(client, answer)
+  await client.api.messages.importChatInvite({ hash })
 }
 
 /** What a shared folder link would add. */
@@ -395,9 +389,7 @@ export async function joinChatlist(
   const peers = []
   for (const chat of chats) peers.push(await client.resolve(chat))
 
-  const answer = await client.api.chatlists.joinChatlistInvite({ slug, peers })
-
-  await applyUpdates(client, answer)
+  await client.api.chatlists.joinChatlistInvite({ slug, peers })
 }
 
 /** Whether a chat is the one a peer names. */

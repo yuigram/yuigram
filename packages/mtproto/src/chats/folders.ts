@@ -32,7 +32,6 @@ import type {
 } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { Chatting } from './common.js'
-import { applyUpdates } from './common.js'
 
 /** The folder number Telegram reserves for the archive. */
 const ARCHIVE = 1
@@ -238,9 +237,7 @@ export async function archiveChats(
     })
   }
 
-  const answer = await client.api.folders.editPeerFolders({ folder_peers })
-
-  await applyUpdates(client, answer)
+  await client.api.folders.editPeerFolders({ folder_peers })
 }
 
 /**

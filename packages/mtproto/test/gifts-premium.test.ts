@@ -72,7 +72,6 @@ const PAID: TlValue = { _: 'payments.paymentResult', updates: NOTHING }
 /** A client answering from a script, recording what it was asked. */
 function fake(answers: readonly unknown[] = []) {
   const asked: { method: string; params: Record<string, unknown> }[] = []
-  const fed: TlValue[] = []
   let at = 0
 
   const named =
@@ -128,16 +127,10 @@ function fake(answers: readonly unknown[] = []) {
     },
   } as unknown as MtprotoApi
 
-  const client: Gifting & Premiuming & { readonly asked: typeof asked; readonly fed: TlValue[] } = {
+  const client: Gifting & Premiuming & { readonly asked: typeof asked } = {
     api,
     asked,
-    fed,
     resolve: () => Promise.resolve(PEER),
-    feed: (value) => {
-      fed.push(value)
-
-      return Promise.resolve()
-    },
     random: (length: number) => new Uint8Array(length).fill(3),
   }
 
@@ -600,7 +593,6 @@ describe('sending and settling gifts', () => {
     await settleGiftOffer(client, 42)
 
     expect(sent(client, 'payments.resolveStarGiftOffer')).toEqual({ offer_msg_id: 42 })
-    expect(client.fed).toHaveLength(1)
   })
 })
 
@@ -718,7 +710,6 @@ describe('the business surface', () => {
     const connection = await businessConnection(client, 'c1')
 
     expect(connection).toMatchObject({ connection_id: 'c1' })
-    expect(client.fed).toHaveLength(1)
   })
 
   it('refuses when the answer described no connection', async () => {

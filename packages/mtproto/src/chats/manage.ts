@@ -16,10 +16,11 @@
  *   slow mode      ──> supergroups only
  * ```
  *
- * **Every setting here changes what other people see or may do**, so each is
- * answered with the updates it caused and those go to the account: a program
- * that renames a channel should see the rename arrive through its own handlers
- * exactly as one somebody else made would.
+ * **Every setting here changes what other people see or may do**, and each is
+ * answered with the updates it caused. Those reach the account's sequences as
+ * every answer's do. They do not come back through its own handlers: the
+ * program that renamed a channel knows it did, and a rename somebody else makes
+ * still arrives as news.
  */
 
 import { ValidationError } from '@yuigram/core'
@@ -27,7 +28,7 @@ import type { UploadedFile } from '../files/upload.js'
 import type { TypePeerColor } from '../generated/api/types/index.js'
 import type { PeerRef } from '../normalize/normalize.js'
 import type { Chatting, Restrictions } from './common.js'
-import { applyUpdates, asChannel, bannedRights, groupIdOf } from './common.js'
+import { asChannel, bannedRights, groupIdOf } from './common.js'
 
 /**
  * Rename a conversation.
@@ -44,15 +45,15 @@ export async function setChatTitle(
   const resolved = await client.resolve(chat)
   const group = groupIdOf(resolved)
 
-  const answer =
-    group === undefined
-      ? await client.api.channels.editTitle({
-          channel: await asChannel(client, chat, 'renaming'),
-          title,
-        })
-      : await client.api.messages.editChatTitle({ chat_id: group, title })
+  if (group === undefined) {
+    await client.api.channels.editTitle({
+      channel: await asChannel(client, chat, 'renaming'),
+      title,
+    })
+    return
+  }
 
-  await applyUpdates(client, answer)
+  await client.api.messages.editChatTitle({ chat_id: group, title })
 }
 
 /**
@@ -131,15 +132,15 @@ async function writePhoto(
   const resolved = await client.resolve(chat)
   const group = groupIdOf(resolved)
 
-  const answer =
-    group === undefined
-      ? await client.api.channels.editPhoto({
-          channel: await asChannel(client, chat, 'changing the photo'),
-          photo,
-        })
-      : await client.api.messages.editChatPhoto({ chat_id: group, photo })
+  if (group === undefined) {
+    await client.api.channels.editPhoto({
+      channel: await asChannel(client, chat, 'changing the photo'),
+      photo,
+    })
+    return
+  }
 
-  await applyUpdates(client, answer)
+  await client.api.messages.editChatPhoto({ chat_id: group, photo })
 }
 
 /**
@@ -217,12 +218,10 @@ export async function setChatTtl(
     throw new ValidationError('a message lifetime is a whole number of seconds, or zero')
   }
 
-  const answer = await client.api.messages.setHistoryTTL({
+  await client.api.messages.setHistoryTTL({
     peer: await client.resolve(chat),
     period: seconds,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -241,12 +240,10 @@ export async function setChatDefaultPermissions(
   chat: string | PeerRef,
   restrictions: Restrictions,
 ): Promise<void> {
-  const answer = await client.api.messages.editChatDefaultBannedRights({
+  await client.api.messages.editChatDefaultBannedRights({
     peer: await client.resolve(chat),
     banned_rights: bannedRights(restrictions),
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -261,12 +258,10 @@ export async function setSlowMode(
   chat: string | PeerRef,
   seconds: number,
 ): Promise<void> {
-  const answer = await client.api.channels.toggleSlowMode({
+  await client.api.channels.toggleSlowMode({
     channel: await asChannel(client, chat, 'slow mode'),
     seconds,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -281,12 +276,10 @@ export async function toggleContentProtection(
   chat: string | PeerRef,
   enabled: boolean,
 ): Promise<void> {
-  const answer = await client.api.messages.toggleNoForwards({
+  await client.api.messages.toggleNoForwards({
     peer: await client.resolve(chat),
     enabled,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -300,12 +293,10 @@ export async function toggleJoinRequests(
   chat: string | PeerRef,
   enabled: boolean,
 ): Promise<void> {
-  const answer = await client.api.channels.toggleJoinRequest({
+  await client.api.channels.toggleJoinRequest({
     channel: await asChannel(client, chat, 'join requests'),
     enabled,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -319,12 +310,10 @@ export async function toggleJoinToSend(
   chat: string | PeerRef,
   enabled: boolean,
 ): Promise<void> {
-  const answer = await client.api.channels.toggleJoinToSend({
+  await client.api.channels.toggleJoinToSend({
     channel: await asChannel(client, chat, 'requiring membership to write'),
     enabled,
   })
-
-  await applyUpdates(client, answer)
 }
 
 /**
@@ -340,7 +329,7 @@ export async function setChatColor(
   colour: TypePeerColor | undefined,
   options: { readonly forProfile?: boolean } = {},
 ): Promise<void> {
-  const answer = await client.api.channels.updateColor({
+  await client.api.channels.updateColor({
     channel: await asChannel(client, chat, 'setting a colour'),
     ...(colour?._ === 'peerColor' && colour.color !== undefined ? { color: colour.color } : {}),
     ...(colour?._ === 'peerColor' && colour.background_emoji_id !== undefined
@@ -348,6 +337,4 @@ export async function setChatColor(
       : {}),
     ...(options.forProfile === true ? { for_profile: true } : {}),
   })
-
-  await applyUpdates(client, answer)
 }

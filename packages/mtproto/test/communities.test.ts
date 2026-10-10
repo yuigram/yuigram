@@ -34,7 +34,6 @@ import { ChatView } from '../src/entities/peer.js'
 import type { TypeChat, TypeInputPeer } from '../src/generated/api/types/index.js'
 import { readPeers } from '../src/network/peers.js'
 import type { PeerRef } from '../src/normalize/normalize.js'
-import type { TlValue } from '../src/tl/index.js'
 
 interface Call {
   readonly method: string
@@ -53,7 +52,6 @@ const COMMUNITY: TypeChat = {
 /** A client recording calls and answering from a script. */
 function scripted(script: Readonly<Record<string, unknown>> = {}) {
   const calls: Call[] = []
-  const fed: TlValue[] = []
 
   const answer = (method: string, params: Record<string, unknown>) => {
     calls.push({ method, params })
@@ -70,10 +68,9 @@ function scripted(script: Readonly<Record<string, unknown>> = {}) {
       },
     )
 
-  const client: Communing & { readonly calls: Call[]; readonly fed: TlValue[] } = {
+  const client: Communing & { readonly calls: Call[] } = {
     api: { communities: handler('communities') } as unknown as MtprotoApi,
     calls,
-    fed,
     resolve(peer: string | PeerRef) {
       const name = typeof peer === 'string' ? peer.replace(/^@/, '') : `${peer.kind}${peer.id}`
       const resolved: TypeInputPeer = name.startsWith('group')
@@ -83,11 +80,6 @@ function scripted(script: Readonly<Record<string, unknown>> = {}) {
           : { _: 'inputPeerChannel', channel_id: 500n, access_hash: 501n }
 
       return Promise.resolve(resolved)
-    },
-    feed(value: TlValue) {
-      fed.push(value)
-
-      return Promise.resolve()
     },
   }
 
@@ -323,7 +315,6 @@ describe('making and arranging a community', () => {
     })
     expect(community.id).toBe(500n)
     // Fed to the account, so the community it just made is one it knows.
-    expect(client.fed).toHaveLength(1)
   })
 
   it('refuses a community with no title, and says so when Telegram describes none', async () => {
@@ -350,7 +341,6 @@ describe('making and arranging a community', () => {
       collapsed: true,
     })
     expect(expand).not.toHaveProperty('collapsed')
-    expect(client.fed).toHaveLength(2)
   })
 })
 

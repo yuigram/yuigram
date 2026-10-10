@@ -58,7 +58,6 @@ type Answer = unknown | ((params: Record<string, unknown>) => unknown)
 /** A client answering any method from a script, in order per method. */
 function fake(script: Record<string, Answer | Answer[]>, as: TypeInputPeer = CHANNEL) {
   const asked: { method: string; params: Record<string, unknown> }[] = []
-  const fed: TlValue[] = []
   const queues = new Map(
     Object.entries(script).map(([method, answers]) => [
       method,
@@ -90,15 +89,10 @@ function fake(script: Record<string, Answer | Answer[]>, as: TypeInputPeer = CHA
     },
   ) as unknown as MtprotoApi
 
-  const client: Chatting & { readonly asked: typeof asked; readonly fed: TlValue[] } = {
+  const client: Chatting & { readonly asked: typeof asked } = {
     api,
     asked,
-    fed,
     resolve: (peer) => Promise.resolve(typeof peer === 'string' && PEOPLE.has(peer) ? USER : as),
-    feed: (value) => {
-      fed.push(value)
-      return Promise.resolve()
-    },
   }
   return client
 }
@@ -108,7 +102,7 @@ const sent = (client: ReturnType<typeof fake>, method: string) =>
   client.asked.find((one) => one.method === method)?.params
 
 describe('removing history', () => {
-  it('asks again while Telegram says more is left, applying each stage', async () => {
+  it('asks again while Telegram says more is left', async () => {
     const client = fake(
       {
         'messages.deleteHistory': [
@@ -128,10 +122,6 @@ describe('removing history', () => {
       'messages.deleteHistory',
     ])
     expect(sent(client, 'messages.deleteHistory')).toEqual({ peer: USER, max_id: 50, revoke: true })
-    // Each stage is a position in the common sequence, fed as the update that
-    // would have carried it.
-    expect(client.fed.map((one) => (one['update'] as TlValue)['pts'])).toEqual([11, 12, 13])
-    expect((client.fed[0]?.['update'] as TlValue | undefined)?._).toBe('updateDeleteMessages')
   })
 
   it('refuses a stage that does not progress, rather than asking forever', async () => {
@@ -160,10 +150,9 @@ describe('removing history', () => {
       max_id: 0,
       for_everyone: true,
     })
-    expect(client.fed).toEqual([UPDATES])
   })
 
-  it('removes one member’s messages in stages, in the channel’s own sequence', async () => {
+  it('removes one member’s messages in stages, through the channel call', async () => {
     const client = fake({
       'channels.deleteParticipantHistory': [
         { _: 'messages.affectedHistory', pts: 40, pts_count: 100, offset: 1 },
@@ -178,10 +167,6 @@ describe('removing history', () => {
       participant: USER,
     })
     expect(client.asked).toHaveLength(2)
-    expect(client.fed.map((one) => (one['update'] as TlValue)['_'])).toEqual([
-      'updateDeleteChannelMessages',
-      'updateDeleteChannelMessages',
-    ])
     await expect(deleteMemberHistory(fake({}, GROUP), 'group', '@spammer')).rejects.toBeInstanceOf(
       PeerError,
     )
@@ -201,7 +186,7 @@ describe('removing history', () => {
 })
 
 describe('settings a conversation keeps', () => {
-  it('sends each setting through the channel call, and gives the account what changed', async () => {
+  it('sends each setting through the channel call', async () => {
     const client = fake({
       'channels.updateColor': UPDATES,
       'channels.toggleSlowMode': UPDATES,
@@ -242,7 +227,6 @@ describe('settings a conversation keeps', () => {
     ])
     // The four answered with updates reached the account; the two answered
     // with a bare yes carry nothing to give it.
-    expect(client.fed).toHaveLength(4)
   })
 
   it('clears a colour by sending none of its fields', async () => {
@@ -306,7 +290,6 @@ describe('members and ownership', () => {
       { peer: CHANNEL, participant: USER, rank: 'Keeper' },
       { peer: CHANNEL, participant: USER, rank: '' },
     ])
-    expect(client.fed).toHaveLength(2)
   })
 
   it('names who would own a conversation after leaving, or nobody', async () => {
@@ -326,7 +309,6 @@ describe('members and ownership', () => {
     expect(sent(client, 'channels.joinChannel')).toEqual({
       channel: { _: 'inputChannel', channel_id: 10n, access_hash: 99n },
     })
-    expect(client.fed).toEqual([UPDATES])
     await expect(joinChat(fake({}, GROUP), 'g')).rejects.toBeInstanceOf(PeerError)
   })
 
@@ -372,7 +354,6 @@ describe('members and ownership', () => {
     expect(JSON.stringify(client.asked, (_k, v) => (typeof v === 'bigint' ? '' : v))).not.toContain(
       'hunter2',
     )
-    expect(client.fed).toEqual([UPDATES])
 
     // The new owner is a person; a conversation is refused before the change is asked for.
     const refused = fake({
@@ -460,7 +441,6 @@ describe('folders, invites and lookups', () => {
     expect(already.alreadyHave).toBe(true)
     expect(already.missing.map((chat) => chat.title)).toEqual(['News'])
     expect(sent(client, 'chatlists.joinChatlistInvite')).toEqual({ slug: 'slug', peers: [CHANNEL] })
-    expect(client.fed).toEqual([UPDATES])
   })
 
   it('previews the conversation a name belongs to, not whatever came first, and not a person', async () => {
@@ -512,7 +492,6 @@ describe('leaving, deleting and reading the list', () => {
         params: { chat_id: 3n, user_id: { _: 'inputUserSelf' }, revoke_history: true },
       },
     ])
-    expect(group.fed).toEqual([UPDATES])
 
     const channel = fake({ 'channels.leaveChannel': UPDATES })
     await leaveChat(channel, '@news')
@@ -530,7 +509,6 @@ describe('leaving, deleting and reading the list', () => {
     expect(sent(client, 'channels.deleteChannel')).toEqual({
       channel: { _: 'inputChannel', channel_id: 10n, access_hash: 99n },
     })
-    expect(client.fed).toEqual([UPDATES])
     await expect(deleteChannel(fake({}, GROUP), 'g')).rejects.toBeInstanceOf(PeerError)
   })
 

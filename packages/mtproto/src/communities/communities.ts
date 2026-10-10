@@ -47,8 +47,6 @@ import type { TlValue } from '../tl/index.js'
 export interface Communing {
   readonly api: MtprotoApi
   resolve(peer: string | PeerRef): Promise<TypeInputPeer>
-  /** Take updates an answer carried, so the account learns what it just did. */
-  feed(value: TlValue): Promise<void>
 }
 
 /**
@@ -260,8 +258,6 @@ export async function createCommunity(
     ...(community.hidden === true ? { hidden: true } : {}),
   })
 
-  await client.feed(answer as unknown as TlValue)
-
   const made = madeCommunity(answer as unknown as TlValue)
   if (made === undefined) {
     throw new PeerError('Telegram did not describe the community it made')
@@ -289,12 +285,10 @@ export async function toggleCommunityCollapsed(
   community: string | PeerRef,
   collapsed: boolean,
 ): Promise<void> {
-  const answer = await client.api.communities.toggleCommunityCollapsedInDialogs({
+  await client.api.communities.toggleCommunityCollapsedInDialogs({
     community: await asCommunity(client, community),
     ...(collapsed ? { collapsed: true } : {}),
   })
-
-  await client.feed(answer as unknown as TlValue)
 }
 
 /* -------------------------------------------------------------------------- */

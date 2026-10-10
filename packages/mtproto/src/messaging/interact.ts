@@ -16,7 +16,6 @@
  */
 
 import { ValidationError } from '@yuigram/core'
-import { applyAffected } from '../chats/common.js'
 import type { MessageView } from '../entities/message.js'
 import { MessageView as View } from '../entities/message.js'
 import type {
@@ -48,8 +47,6 @@ import {
 
 /** What acting on a message needs from a client, beyond what sending does. */
 export interface Interacting extends Sending {
-  /** Take updates an answer carried, the same door updates from the connection use. */
-  feed(value: TlValue): Promise<void>
   /**
    * Make a call on a particular datacenter.
    *
@@ -59,11 +56,6 @@ export interface Interacting extends Sending {
   at?(dcId: number, query: TlValue): Promise<TlValue>
   /** The current time in milliseconds, for identifiers Telegram requires to be time-based. */
   now?(): number
-}
-
-/** Hand the account an answer, where it is one carrying updates. */
-async function absorb(client: Interacting, answer: unknown): Promise<void> {
-  if (typeof answer === 'object' && answer !== null) await client.feed(answer as TlValue)
 }
 
 /** The updates an answer carries, however it carries them. */
@@ -175,7 +167,6 @@ export async function sendVote(
   }
 
   const answer = await client.api.messages.sendVote({ peer: target, msg_id: id, options: chosen })
-  await absorb(client, answer)
 
   return pollIn(answer, 'a vote')
 }
@@ -210,7 +201,6 @@ export async function closePoll(
       },
     },
   })
-  await absorb(client, answer)
 
   return pollIn(answer, 'closing a poll')
 }
@@ -291,7 +281,6 @@ export async function sendPaidReaction(
         random_id: paidKey(client),
         ...(privacy === undefined ? {} : { private: privacy }),
       })
-      await absorb(client, answer)
 
       const update = updatesOf(answer).find((one) => one._ === 'updateMessageReactions')
       const reactions = update?.['reactions'] as TypeMessageReactions | undefined
@@ -319,12 +308,10 @@ export async function readReactions(
   options?: { readonly topicId?: number },
 ): Promise<void> {
   const target = await client.resolve(peer)
-  const answer = await client.api.messages.readReactions({
+  await client.api.messages.readReactions({
     peer: target,
     ...(options?.topicId === undefined ? {} : { top_msg_id: options.topicId }),
   })
-
-  await applyAffected(client, target, answer)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -344,12 +331,10 @@ export async function unpinAllMessages(
   options?: { readonly topicId?: number },
 ): Promise<void> {
   const target = await client.resolve(peer)
-  const answer = await client.api.messages.unpinAllMessages({
+  await client.api.messages.unpinAllMessages({
     peer: target,
     ...(options?.topicId === undefined ? {} : { top_msg_id: options.topicId }),
   })
-
-  await applyAffected(client, target, answer)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -395,7 +380,6 @@ export async function appendTodoList(
       }
     }),
   })
-  await absorb(client, answer)
 
   return editedIn(answer, id)
 }
@@ -430,7 +414,6 @@ export async function toggleTodoCompleted(
     completed: [...completed],
     incompleted: [...incompleted],
   })
-  await absorb(client, answer)
 
   return editedIn(answer, id)
 }

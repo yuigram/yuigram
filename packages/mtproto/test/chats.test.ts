@@ -98,7 +98,6 @@ const PEOPLE = new Set(['@a', '@b', '@c', '@ann', '@somebody', '@spammer', '@noi
 
 function fake(answers: readonly unknown[], as: TypeInputPeer = CHANNEL) {
   const asked: { method: string; params: unknown }[] = []
-  const fed: TlValue[] = []
   let at = 0
 
   const named =
@@ -157,17 +156,10 @@ function fake(answers: readonly unknown[], as: TypeInputPeer = CHANNEL) {
 
   const client: Chatting & {
     readonly asked: { method: string; params: unknown }[]
-    readonly fed: TlValue[]
   } = {
     api,
     asked,
-    fed,
     resolve: (peer) => Promise.resolve(typeof peer === 'string' && PEOPLE.has(peer) ? USER : as),
-    feed: (value) => {
-      fed.push(value)
-
-      return Promise.resolve()
-    },
   }
 
   return client
@@ -249,7 +241,6 @@ describe('membership', () => {
       { userId: 9n, privacy: false, needsPremium: true },
     ])
     // The updates the answer carried reached the account.
-    expect(client.fed).toHaveLength(1)
   })
 
   it('adds to a basic group one at a time', async () => {
@@ -558,13 +549,12 @@ describe('invite links', () => {
     expect(preview.chat?.title).toBe('Already here')
   })
 
-  it('joins by hash and gives the updates to the account', async () => {
+  it('joins by hash', async () => {
     const client = fake([NOTHING_HAPPENED])
 
     await joinByLink(client, 'abc')
 
     expect(sent(client, 'messages.importChatInvite')).toEqual({ hash: 'abc' })
-    expect(client.fed).toHaveLength(1)
   })
 })
 
@@ -582,7 +572,6 @@ describe('making and unmaking conversations', () => {
     const group = await createGroup(client, { title: 'Weekend' }, ['@ann'])
 
     expect(group.title).toBe('Weekend')
-    expect(client.fed).toHaveLength(1)
   })
 
   it('refuses to make a basic group with nobody in it', async () => {
@@ -637,7 +626,6 @@ describe('making and unmaking conversations', () => {
 
     expect(client.asked).toEqual([{ method: 'messages.deleteChat', params: { chat_id: 3n } }])
     // The answer is a Bool, which carries no updates to hand on.
-    expect(client.fed).toEqual([])
   })
 
   it('keeps the conversation when only its history was asked to go', async () => {
@@ -758,12 +746,11 @@ describe('settings that change what others may do', () => {
     })
   })
 
-  it('gives the account the updates a setting change caused', async () => {
+  it('turns content protection on in the conversation it names', async () => {
     const client = fake([NOTHING_HAPPENED])
 
     await toggleContentProtection(client, '@channel', true)
 
-    expect(client.fed).toHaveLength(1)
     expect(sent(client, 'messages.toggleNoForwards')).toMatchObject({ enabled: true })
   })
 

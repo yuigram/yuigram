@@ -49,7 +49,6 @@ const SCORES = {
 
 function scripted(script: Readonly<Record<string, unknown>> = {}) {
   const calls: Call[] = []
-  const fed: TlValue[] = []
 
   const answer = (method: string, params: Record<string, unknown>, dcId?: number) => {
     calls.push({ method, params, ...(dcId === undefined ? {} : { dcId }) })
@@ -69,7 +68,6 @@ function scripted(script: Readonly<Record<string, unknown>> = {}) {
   const client: Gaming &
     Operating & {
       readonly calls: Call[]
-      readonly fed: TlValue[]
     } = {
     api: {
       messages: handler('messages'),
@@ -82,7 +80,6 @@ function scripted(script: Readonly<Record<string, unknown>> = {}) {
       },
     } as unknown as MtprotoApi,
     calls,
-    fed,
     resolve(peer: string | PeerRef) {
       const name = typeof peer === 'string' ? peer.replace(/^@/, '') : `${peer.kind}${peer.id}`
       const id = typeof peer === 'object' ? peer.id : undefined
@@ -95,11 +92,6 @@ function scripted(script: Readonly<Record<string, unknown>> = {}) {
             : { _: 'inputPeerUser', user_id: id ?? 9n, access_hash: 90n }
 
       return Promise.resolve(resolved)
-    },
-    feed(value: TlValue) {
-      fed.push(value)
-
-      return Promise.resolve()
     },
     at(dcId: number, query: TlValue) {
       const { _: method, ...params } = query
@@ -145,7 +137,6 @@ describe('game scores', () => {
       edit_message: true,
     })
     expect(message?.id).toBe(12)
-    expect(client.fed).toHaveLength(1)
   })
 
   it('leaves the board alone when told to, and lets a score fall when forced', async () => {
