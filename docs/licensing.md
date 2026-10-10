@@ -270,14 +270,17 @@ not relabelled.
       works — no code taken, engineering debt stated.
 - [ ] **No third-party Telegram library in any `dependencies` field.** Enforced by CI (§9).
 - [ ] `package.json` `license` field matches reality for every published package.
-- [ ] No file contains puregram-derived or mtcute-derived source. Enforced by a CI check (§9).
+- [ ] No file contains puregram-derived or mtcute-derived source. This rests on review; no CI
+      check compares sources (§9).
 - [ ] Generated schema records `source` URL and `fetchedAt` per release.
 - [ ] `@yuigram/mtproto` ships `TDLIB-LICENSE.txt`, identical to `schemas/tl/TDLIB-LICENSE.txt`
       (enforced by `pnpm check:contents`), for as long as a TL snapshot is copied from TDLib.
 - [ ] Documentation states plainly that users must obtain their own `api_id`/`api_hash`, and
       links to `my.telegram.org`.
 - [ ] `THIRD-PARTY-NOTICES` generated from the dependency tree as a release step.
-- [ ] Legal review of the §5 flags before 1.0.
+- [ ] Legal review of the §5 flags before 1.0. Not done: waived by the project's owner for
+      `1.0.0`, and the §5 questions remain open ([release checklist](releases/1.0.0-checklist.md),
+      item 4).
 
 ## 9. Enforcement
 

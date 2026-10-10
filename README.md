@@ -75,16 +75,13 @@ do is offered only there.
 
 ## Install
 
-**The published package is `yuigram@0.1.0`, which is the Bot API client alone.**
-
 ```bash
 npm install yuigram
 ```
 
-`Account`, `App` and the example above are in this repository and not on npm yet. They are
-prepared as `1.0.0` — every package at that version, `@yuigram/mtproto`, `@yuigram/sqlite` and
-`@yuigram/redis` for the first time — and that release is not published. Until it is, they are
-used from a checkout:
+`Account`, `App` and the example above came with `1.0.0`: every package at that version, and
+the first release of `@yuigram/mtproto`, `@yuigram/sqlite` and `@yuigram/redis`. `0.1.0` was the
+Bot API client alone. The examples run from a checkout:
 
 ```bash
 git clone https://github.com/yuigram/yuigram
