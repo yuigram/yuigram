@@ -115,6 +115,10 @@ method, not a new shape.
 **Status: Decided.** `Account` was already settled in `naming.md`; this extends the same
 reasoning to construction.
 
+**Superseded in part.** A bot signed in over MTProto became an `Account` —
+`account.signInAsBot(token)` — rather than a second kind of `Bot`: what it can call is MTProto's
+surface, not the Bot API's ([api-design.md](api-design.md) §1). `Bot.fromMtproto` does not exist.
+
 ---
 
 ## Decision 4 — Lifecycle verbs name the mechanism
@@ -527,9 +531,10 @@ A named factory for the common case, a plain constructor for full configuration.
 other.
 
 **Applied to Yuigram:** `Bot.fromToken(token)` is the documented path; `new Bot({ … })` stays
-for the case where every option is being set. `Bot.fromMtproto` and `Account.fromSession` join
-the factory set, which is where Yuigram's three client kinds are expressed and where the
-reference has nothing to say — it implements one transport.
+for the case where every option is being set. `Account.fromSession` and `Account.fromString`
+join the factory set, which is where Yuigram's client kinds are expressed and where the
+reference has nothing to say — it implements one transport. (The MTProto bot planned here as
+`Bot.fromMtproto` became `account.signInAsBot`; see Decision 3.)
 
 **Decision 2 closed:** static factories, plus a constructor.
 

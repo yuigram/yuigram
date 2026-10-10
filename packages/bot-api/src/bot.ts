@@ -272,9 +272,10 @@ export class Bot<Ext = unknown> {
   /**
    * Build a client from a bot token.
    *
-   * The usual way in. The name says which credential is being used, which is
-   * what lets `Bot.fromMtproto` and `Account.fromSession` join it later without
-   * any of them growing a mode flag.
+   * The usual way in. The name says which credential is being used, as
+   * `Account.fromSession` and `Account.fromString` do, so no constructor grows a
+   * mode flag. A bot that signs in over MTProto is an `Account`:
+   * `account.signInAsBot(token)`.
    */
   static fromToken<Ext = unknown>(token: string, options: BotOptions = {}): Bot<Ext> {
     return new Bot<Ext>(token, options)
