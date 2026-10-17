@@ -13,7 +13,7 @@ import type { PassportElementError } from '../types/index.js'
  */
 export interface SetPassportDataErrorsParams {
   /**
-   * User identifier
+   * User identifier, at least 1
    */
   user_id: number
 
