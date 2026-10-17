@@ -18,9 +18,9 @@
   },
   "packageManager": "pnpm@10.34.5",
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && node scripts/write-dist-manifests.mjs",
     "build:clean": "tsc --build --clean",
-    "typecheck": "tsc --build --force",
+    "typecheck": "tsc --build --force && node scripts/write-dist-manifests.mjs && tsc -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome check .",
@@ -28,9 +28,11 @@
     "format": "biome format --write .",
     "invariants": "tsx tools/invariants/src/cli.ts",
     "smoke": "node scripts/smoke-package.mjs",
+    "check:declarations": "pnpm build && node scripts/check-declarations.mjs",
     "check:contents": "pnpm build && node scripts/check-package-contents.mjs",
-    "bench": "pnpm build && node scripts/bench-dispatch.mjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test",
+    "check:docs": "pnpm build && node scripts/check-doc-examples.mjs",
+    "bench": "pnpm build && tsx tools/bench/src/cli.ts",
+    "verify": "pnpm lint && pnpm typecheck && pnpm invariants && pnpm test && pnpm check:declarations",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish"
@@ -38,7 +40,10 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.9",
     "@changesets/cli": "^3.0.1",
+    "@types/koa": "3.0.3",
     "@types/node": "^26.2.0",
+    "fake-indexeddb": "6.2.5",
+    "koa": "3.2.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

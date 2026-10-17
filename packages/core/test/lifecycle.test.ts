@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Lifecycle and draining.
  *
@@ -73,6 +75,45 @@ describe('state transitions', () => {
     await stopping
 
     expect(order).toEqual(['work done', 'stop hook'])
+  })
+
+  it('runs the stopping hook before draining, so held work can be let go', async () => {
+    const order: string[] = []
+    const held = deferred()
+
+    const lifecycle = new Lifecycle({
+      onStopping: () => {
+        order.push('stopping hook')
+        held.resolve()
+      },
+      onStop: () => {
+        order.push('stop hook')
+      },
+    })
+
+    await lifecycle.start()
+    // Work that only finishes once something lets it go, as a handler waiting
+    // for a conversation's next message does.
+    lifecycle.track(
+      held.promise.then(() => {
+        order.push('work done')
+      }),
+    )
+
+    await lifecycle.stop({ timeout: 1000 })
+
+    expect(order).toEqual(['stopping hook', 'work done', 'stop hook'])
+    expect(lifecycle.stopped).toBe(true)
+  })
+
+  it('reports a stop unclean when the stopping hook outlives the deadline', async () => {
+    const lifecycle = new Lifecycle({ onStopping: () => new Promise<void>(() => {}) })
+    await lifecycle.start()
+
+    await lifecycle.stop({ timeout: 20 })
+
+    expect(lifecycle.stopped).toBe(false)
+    expect(lifecycle.state).toBe('idle')
   })
 
   it('moves to failed when the start hook throws', async () => {

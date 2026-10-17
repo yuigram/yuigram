@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Context method bindings (18 message, 79 chat, 4 source)
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 /**
  * Methods addressed to the message that arrived. `chat_id` and `message_id`
@@ -81,7 +83,7 @@ export const CHAT_BOUND = {
   sendDocument: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendGame: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendGift: ['chat_id'],
-  sendInvoice: ['chat_id', 'message_thread_id'],
+  sendInvoice: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendLivePhoto: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendLocation: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendMediaGroup: ['chat_id', 'message_thread_id', 'business_connection_id'],

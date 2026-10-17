@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Secrets must not be reachable from any public object.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Context flavours, at the type level.
  *
@@ -21,6 +23,7 @@ import { assertType, describe, expectTypeOf, it } from 'vitest'
 import { Bot } from '../src/bot.js'
 import type { MessageContext } from '../src/events/index.js'
 import { filter } from '../src/filter.js'
+import { mockBot } from '../src/testing/mock-bot.js'
 
 interface Cart {
   items: string[]
@@ -101,6 +104,16 @@ describe('a flavoured bot', () => {
       expectTypeOf(message.sessionHandle.dirty).toEqualTypeOf<boolean>()
       assertType<(next: Cart) => void>(message.sessionHandle.set)
     })
+  })
+  it('is what the test harness builds when told the flavour', () => {
+    // A test of a plugin's handlers needs the bot the plugin expects, without
+    // a cast that would also silence a wrong one.
+    const { bot } = mockBot<WithCart>()
+
+    bot.on('message', (message) => {
+      expectTypeOf(message.session).toEqualTypeOf<Cart>()
+    })
+    expectTypeOf(mockBot().bot).toEqualTypeOf<Bot>()
   })
 })
 

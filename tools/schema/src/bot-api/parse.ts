@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Parses the Bot API documentation into the IR.
  *
@@ -192,14 +194,18 @@ function collectScalarReturns(sentence: string, add: AddReturn): void {
 function collectReferenceReturns(
   sentence: string,
   seen: ReadonlySet<string>,
+  objects: ReadonlySet<string>,
   add: AddReturn,
 ): void {
   for (const match of sentence.matchAll(/\b([A-Z][A-Za-z0-9]*)\b/g)) {
     const name = match[1]
     if (name === undefined) continue
     if (SCALAR_RETURN_NAMES.has(name)) continue
-    // An internal capital marks a type name; the known list covers the rest.
-    if (!/^[A-Z][a-z]*[A-Z]/.test(name) && !KNOWN_RETURN_NAMES.has(name)) continue
+    // An internal capital marks a type name. A single word is one only where
+    // the page defines an object by it, or the known list names it.
+    if (!/^[A-Z][a-z]*[A-Z]/.test(name) && !objects.has(name) && !KNOWN_RETURN_NAMES.has(name)) {
+      continue
+    }
     if (seen.has(`[]${name}`)) continue
     add({ kind: 'reference', name }, name)
   }
@@ -218,8 +224,15 @@ function collectReferenceReturns(
  * Sentences mentioning a return are scanned for type names, and several
  * distinct results become a union — which is the honest reading of the last
  * shape above.
+ *
+ * `objects` is every object the page defines. A single-word name such as
+ * `Gifts` has no internal capital to mark it as a type, and without the set
+ * it falls through to a boolean.
  */
-export function inferReturnType(description: string): TypeRef {
+export function inferReturnType(
+  description: string,
+  objects: ReadonlySet<string> = new Set(),
+): TypeRef {
   const sentences = description
     .split(/(?<=\.)\s+/)
     .filter((sentence) => /\breturn(s|ed|ing)?\b/i.test(sentence))
@@ -238,7 +251,7 @@ export function inferReturnType(description: string): TypeRef {
   for (const sentence of sentences) {
     collectArrayReturns(sentence, add)
     collectScalarReturns(sentence, add)
-    collectReferenceReturns(sentence, seen, add)
+    collectReferenceReturns(sentence, seen, objects, add)
   }
 
   if (found.length === 0) return { kind: 'boolean' }
@@ -283,6 +296,11 @@ const SCALAR_RETURN_NAMES: ReadonlySet<string> = new Set([
 export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
   const root = parseHtml(html)
   const sections = collectSections(root)
+  // Every object the page defines, known before any method is read, so a
+  // return that names one is recognised wherever on the page it is declared.
+  const objectNames = new Set(
+    sections.map((section) => section.title).filter((title) => /^[A-Z][A-Za-z0-9]*$/.test(title)),
+  )
 
   const methods: Method[] = []
   const objects: ObjectType[] = []
@@ -308,7 +326,7 @@ export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
         description: section.description,
         documentationLink,
         parameters,
-        returns: inferReturnType(section.description),
+        returns: inferReturnType(section.description, objectNames),
         hasFileParameter: parameters.some((parameter) => containsFile(parameter.type)),
       })
       continue

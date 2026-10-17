@@ -124,9 +124,143 @@ Namespaced, because they exist only on an `Account`:
 | `mtproto:dialog_pinned` / `mtproto:dialog_unpinned` | Dialog list changes |
 | `mtproto:folder` | Folder membership changed |
 | `mtproto:call` | Call state |
+| `mtproto:membership` | Somebody joined, left, was promoted or was restricted |
+| `mtproto:callback_query` | An inline-keyboard button was tapped |
+| `mtproto:inline_query` | Somebody typed an inline query |
+| `mtproto:inline_chosen` | Somebody picked one of the results offered |
+| `mtproto:shipping_query` | A checkout is asking what delivery options exist |
+| `mtproto:precheckout_query` | A payment is about to be taken and can still be refused |
+| `mtproto:join_request` | Somebody asked to be let into a conversation |
+| `mtproto:join_requests_pending` | How many people are waiting to be let into a chat this account manages |
+| `mtproto:album` | Several messages sent together, handled once after the last part |
+| `mtproto:poll` / `mtproto:poll_vote` | A poll's results changed; one person voted |
+| `mtproto:story` | A story was posted, edited or deleted |
+| `mtproto:bot_stopped` | A person stopped a bot's private chat, or started it again |
+| `mtproto:bot_reaction` / `mtproto:bot_reaction_count` | One person's reaction changed; anonymous counts changed |
+| `mtproto:chat_boost` | A chat the bot manages was boosted |
+| `mtproto:paid_media_purchased` | A person paid for media the bot sent |
+| `mtproto:business_connection` | A business account connected the bot, or changed what it may do |
+| `mtproto:business_message` / `_edited` / `mtproto:business_messages_deleted` | A business account's chats, as the connected bot sees them |
+| `mtproto:business_callback_query` | A button under a business account's message was pressed |
+| `mtproto:guest_query` | A bot is asked about a message in a chat it is not a member of |
 | `mtproto:raw` | Any TL update, unwrapped |
 
 Registering an `mtproto:*` handler on a `Bot` is a **type error**, not a silent no-op.
+
+#### Why the bot-facing queries are here and not on `Bot`
+
+A bot token can sign an account in over MTProto — `account.signInAsBot(token)` — and an account
+signed in that way receives these queries on its own connection. A `Bot` is a different client
+talking to a different endpoint; it cannot answer a query that arrived on an `Account`, because
+the identifier the answer is keyed by is scoped to the connection the query came in on. Sharing
+a framework does not make the two interchangeable, so these keep the `mtproto:` prefix and each
+has an answer on `Account` rather than being delegated to the Bot API subsystem.
+
+Every one of them holds something a person is looking at. An unanswered callback query leaves a
+spinner on the button; an unanswered inline query leaves an empty result list; an unanswered
+shipping or pre-checkout query stalls a checkout. Answering with nothing to say is still an
+answer, and is usually the right one.
+
+| Event | Constructor | Answered by | Keyed by | Deadline |
+|---|---|---|---|---|
+| `mtproto:callback_query` | `updateBotCallbackQuery`, `updateInlineBotCallbackQuery` | `account.answerCallback` | `query_id` | Expires; the spinner runs until then |
+| `mtproto:inline_query` | `updateBotInlineQuery` | `account.answerInlineQuery` | `query_id` | Expires; results are dropped after |
+| `mtproto:inline_chosen` | `updateBotInlineSend` | — | — | Nothing to answer |
+| `mtproto:shipping_query` | `updateBotShippingQuery` | `account.answerShipping` | `query_id` | Checkout waits |
+| `mtproto:precheckout_query` | `updateBotPrecheckoutQuery` | `account.answerPrecheckout` | `query_id` | Checkout waits; last refusal point |
+| `mtproto:join_request` | `updateBotChatInviteRequester` | `account.decideJoinRequest` | chat + person | Stands until decided |
+| `mtproto:guest_query` | `updateBotGuestChatQuery` | `account.answerBotGuestChatQuery` | `query_id` | Expires |
+
+Each is also answerable from the event itself, which reads the identifier from the update so a
+handler does not: `event.answerCallback(answer?)`, `event.answerInline(results, answer?)`,
+`event.answerShipping(answer)`, `event.answerPrecheckout(refusal?)`, `event.answerGuest(result)`
+and `event.decideJoin(approved)`. Each refuses, by name, an event of a kind it does not answer.
+`event.queryId` is the identifier, and `event.data` a pressed button's data read as UTF-8 text —
+`undefined` where the bytes are not text, which stay readable under `event.raw.data`.
+
+**`mtproto:shipping_query`.** Sent only for an invoice that asked for a delivery address, and
+only to the account that issued it. `event.raw` carries the `payload` the invoice was created
+with and the `shipping_address` the person entered. The answer either offers `shipping_option`
+entries — each an id, a title and a list of labelled prices — or gives an error string shown to
+the person as written. `answerShipping` refuses an answer carrying neither, because the protocol
+requires one and an answer with neither leaves the checkout waiting on a reply Telegram cannot
+display.
+
+**`mtproto:precheckout_query`.** The last point at which a charge can be stopped. `event.raw`
+carries the `payload`, the `currency` and `total_amount`, and the `info` and `shipping_option_id`
+chosen earlier. `answerPrecheckout` with no argument approves and the card is charged;
+`answerPrecheckout(queryId, reason)` refuses and the reason is shown. There is no silent
+refusal, and the two are mutually exclusive on the wire — approving and refusing in one message
+is not expressible.
+
+**`mtproto:join_request`.** Not a query: it stands until it is decided rather than expiring, so
+it is answered by naming the conversation and the person rather than by an identifier.
+`event.raw` carries the `about` text the person wrote and the `invite` they used.
+`decideJoinRequest(chat, user, approved)` lets them in or turns them down; turning somebody down
+is not a ban and they may ask again.
+
+**What these events do not carry.** A query is not said in a conversation. `updateBotInlineQuery`,
+`updateBotInlineSend`, `updateInlineBotCallbackQuery` and both payment steps name no chat at all,
+so `event.chat` is `undefined` for them rather than the private chat with whoever asked — an
+inline query typed in a group is not a message to the bot. `updateBotCallbackQuery` and
+`updateBotChatInviteRequester` do name one, and it is read. `event.sender` is the person asking
+in every case.
+
+#### Conversation, actor and subject
+
+Three fields, because an update can name three different peers and a handler has to be able to
+tell them apart:
+
+| Field | Meaning | Absent when |
+|---|---|---|
+| `chat` | The conversation: somewhere things are said, and what a reply, a session or a conversation key is scoped to | The update is said in no conversation |
+| `sender` | Who acted | Nobody is named as having acted, or this account did |
+| `target` | Whom it is about, where that is neither of the above | The update names nobody apart from where and who |
+
+A `user_id` on an update is **not** read as the conversation. Only two updates are said in the
+private chat of the user they name — somebody typing to this account, and somebody stopping a
+bot — and only those two read it that way. A user's status, name or phone changing is about that
+user (`target`) and happens in no conversation, so `chat` is `undefined` rather than a private
+chat nobody spoke in; a conversation invented there would give a status change a session, a lock
+and a scene position.
+
+Two updates name the actor where others name the place: a poll vote's `peer` is the voter and a
+story's `peer` is whoever posted it, so both are `sender` and neither has a `chat`. A reaction a
+bot is told about names who reacted in `actor`, which may be a channel reacting anonymously.
+
+A business account's messages have their own kinds because they are answered through the
+connection they arrived on rather than as the bot. `event.reply`, `event.send` and `event.edit`
+on one of them are sent inside `invokeWithBusinessConnection` with that connection's identifier,
+so the answer comes from the business account.
+
+`mtproto:album` is gathered from the messages of one `grouped_id` in one conversation. Telegram
+marks none of them as last, so the album is handled once no further part has arrived for
+`albumWindow` milliseconds (250 unless the account says otherwise); `event.album` holds the
+messages in order and `event.text` the caption, from whichever part carries one. Each part is
+still its own `message` event. Nothing is gathered unless a handler could take `mtproto:album`,
+and an album still gathering when the account stops is handled before the stop waits for
+handlers.
+
+#### Which field names the actor on a membership change
+
+`mtproto:membership` covers the seven constructors Telegram kept for one question, and they
+disagree about which field means what. The subject — the person the change happened to — is
+always `user_id` and is reachable through `event.raw`. The actor is not:
+
+| Constructor | Conversation | Actor | Subject |
+|---|---|---|---|
+| `updateChatParticipant` | `chat_id` | `actor_id` | `user_id` |
+| `updateChannelParticipant` | `channel_id` | `actor_id` | `user_id` |
+| `updateChatParticipantAdd` | `chat_id` | `inviter_id` | `user_id` |
+| `updateChatParticipantDelete` | `chat_id` | not named | `user_id` |
+| `updateChatParticipantAdmin` | `chat_id` | not named | `user_id` |
+| `updateChatParticipantRank` | `chat_id` | not named | `user_id` |
+| `updateChatParticipants` | `participants.chat_id` | not named | the whole list |
+
+`event.sender` is the actor where one is named and `undefined` where none is, and `event.target`
+is the subject. The three that name no actor really do not carry it: the basic-group forms predate
+`actor_id`, and reading `user_id` in its place would report the person who was removed as the
+person who removed them.
 
 ### 3.5 Framework events
 
@@ -180,15 +314,51 @@ bot.on(['message', 'message_edited'], (event) => {
 })
 ```
 
-Cross-client handlers on the `App` intersect the two maps and expose only what both provide:
+Cross-client handlers on the `App` see every client's updates. The application is declared
+with the union it is written against, and the discriminant carries the divergence:
 
 ```ts
-app.onMessage((message) => {
-  message.text                   // available
-  message.transport              // 'bot-api' | 'mtproto'
-  if (message.transport === 'mtproto') message.client.api.messages…   // narrowed
+const app = new App<AnyEventContext | MtprotoContext>()
+
+app.on('message', (event) => {
+  event.transport                // 'bot-api' | 'mtproto'
+
+  if (event.transport === 'mtproto') event.text      // narrowed to the account's context
+  if (event.transport === 'bot-api') event.updateId  // narrowed to the bot's
 })
 ```
+
+The union is named at the call site rather than published by core, which describes neither
+transport and must not: the shared layer would otherwise depend on whichever subsystem
+produced the event. What the two have in common is already a type — the base every context
+extends — and `transport` carries what they do not.
+
+`on` takes a kind, a list of kinds, or a filter, exactly as on a client. Handlers run in
+registration order, and all of them run: they are independent concerns that matched the same
+update. `once` and `off` complete the set.
+
+An application handler runs inside the application's middleware and outside the client's:
+
+```
+App middleware
+  App handlers          every client, matching kinds
+    Client middleware
+      Client handlers   the client still handles its own update
+```
+
+Both tiers are live at once. Registering on the application does not consume the update or
+replace what a client handles itself, and registration is independent of the lifecycle — a
+handler added before or after `start` reaches the same updates, and stopping an application
+forgets nothing.
+
+A handler that throws takes the application's existing error path, naming the client the
+update arrived on:
+
+```ts
+app.onError(({ client, error }) => log.error({ client: client.name, error }))
+```
+
+A failure nobody is listening for is raised rather than dropped.
 
 ---
 
@@ -271,52 +441,66 @@ they hand over:
 
 Yuigram's defaults:
 
-- **Concurrent dispatch.** Updates process in parallel. This is the right default for
-  throughput and for the many bots whose handlers are independent.
+- **In order within a chat, in parallel across chats, for a polling bot.** Updates for one
+  chat run one after another; unrelated chats run at the same time, up to a bound. A
+  conversation's state machine sees its messages in the order they were sent, and one slow chat
+  does not hold up the rest.
 - **Deduplication on.** By `update_id` (Bot API) or message identity (MTProto), over a
   bounded recent window. Duplicate delivery is a real occurrence, not a theoretical one, and
   the failure it causes — a double reply, a double charge — is user-visible.
-- **Per-chat ordering opt-in.** `new App({ ordering: 'per-chat' })` serializes handlers per
-  chat. Correct for conversational state machines, a throughput ceiling for everything else,
-  which is why it is a choice.
 
 ```ts
-new App({ ordering: 'concurrent' })   // default
-new App({ ordering: 'per-chat' })     // serialize within a chat
-new App({ ordering: 'sequential' })   // one at a time, globally — debugging aid
+await bot.poll()                       // per chat in order, sixteen chats at a time
+await bot.poll({ concurrency: 64 })    // a wider bound
+await bot.poll({ concurrency: 1 })     // one update at a time — simplest to reason about
 ```
 
-In-flight handlers are tracked so `app.stop()` drains rather than severing.
+A webhook handles each update when the server it is mounted on delivers the request, so how
+many run at once is that server's. An account starts each update's handlers in the order its
+update sequence accepted them and does not wait for one to finish before starting the next, so
+one slow handler is not a gap in the sequence.
+
+In-flight handlers are tracked on every client, so `stop()` — and `app.stop()` over several —
+drains rather than severing.
 
 ---
 
 ## 8. Custom events
 
-Applications and plugins can define their own kinds, which then flow through the same
-filters, middleware and routing as Telegram events:
+An application's own events — a payment provider's webhook, a timer, a signal from another
+service — flow through the same plugins, middleware, sessions, routing and error handling as
+Telegram's:
 
 ```ts
-app.defineEvent('payment_confirmed')
+import { defineEvent } from 'yuigram'
 
-app.on('payment_confirmed', (event) => event.reply('Thanks!'))
-app.emit('payment_confirmed', { chat, sender, orderId })
+const paymentConfirmed = defineEvent<{ orderId: string; chatId: number }>('payment_confirmed')
+
+bot.on(paymentConfirmed, async (event) => {
+  await bot.api.sendMessage({ chat_id: event.payload.chatId, text: `Order ${event.payload.orderId} is paid.` })
+})
+
+await bot.emit(paymentConfirmed, { orderId: 'A-17', chatId: 42 }, { chat: { id: 42 }, sender: { id: 42 } })
 ```
 
-The payload map is a type parameter, for the same reasons the context flavours are
-([sessions.md](sessions.md) §Typing): declaration merging is process-global and cannot cross
-the `yuigram` façade.
+The payload type belongs to the definition, so a handler registered for it reads a typed
+`event.payload`, and a definition is an ordinary value to import where it is emitted and where it
+is handled. `account.on` and `account.emit` take the same definitions.
 
-```ts
-interface MyEvents {
-  payment_confirmed: { orderId: string }
-}
+| | An emitted event | An update |
+| --- | --- | --- |
+| `transport` | `'custom'` | `'bot-api'` or `'mtproto'` |
+| identity | none: no update id, nothing acknowledged | Telegram's |
+| polling offset, update sequence | untouched | advanced |
+| `allowed_updates: 'auto'` | never asked for | derived from handlers |
+| plugins, middleware, sessions, error handlers | the same | the same |
+| `stop()` | waits for it | waits for it |
+| who it concerns | the `chat` and `sender` it was emitted with, if any | who sent it |
 
-const app = new App<MyEvents>()
-```
-
-This exists so that a webhook from a payment provider, a cron tick or an internal signal can
-reuse the framework's dispatch machinery instead of living in a parallel universe with its
-own error handling.
+`emit` resolves once the handlers have run; an error in them goes to the client's error handlers
+exactly as an update's would, rather than rejecting the `emit`. A kind that names something
+Telegram sends — `message`, `callback_query` — is refused, since a handler for it would run for
+both.
 
 ---
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Telegram Bot API subsystem.
  *
@@ -24,12 +26,23 @@ export {
   type PollOptions,
 } from './bot.js'
 export {
+  CALLBACK_DATA_LIMIT,
+  type CallbackData,
+  CallbackDataInvalid,
+  CallbackDataTooLong,
+  type CallbackValue,
+  defineCallbackData,
+  type FieldSpec,
+} from './callback-data.js'
+export {
   type ChatActionOptions,
   type ChatActionTarget,
   chatAction,
   type RunningChatAction,
   withChatAction,
 } from './chat-action.js'
+export { parseCommand } from './command.js'
+export type { CommonDefaults, MethodDefaults, ParamsOf } from './defaults.js'
 export {
   type DownloadDeps,
   type DownloadTarget,
@@ -85,6 +98,7 @@ export {
   has,
   hasQuery,
   MESSAGE_BEARING_KINDS,
+  type MemberChange,
   type PresenceFilters,
   type TextMatch,
 } from './filters/index.js'
@@ -118,6 +132,7 @@ export type {
 export { SERVICE_EVENTS, UPDATE_EVENTS } from './generated/events.js'
 export type * from './generated/methods/index.js'
 export { type GeneratedRegistrations, REGISTRATIONS } from './generated/registrations.js'
+export { BOT_API_VERSION } from './generated/schema-info.js'
 export type * from './generated/types/index.js'
 export type { BotApiTypeName } from './generated/types/names.js'
 export { type FloodWaitOptions, retryOnFloodWait, withDefaults } from './hooks.js'
@@ -150,7 +165,57 @@ export {
 } from './input-file.js'
 export { InlineKeyboard, Keyboard } from './keyboards.js'
 export { type MediaOptions, media } from './media.js'
+export {
+  CACHEABLE_METHODS,
+  type MediaCache,
+  type MediaCacheOptions,
+  type MediaKind,
+  mediaCache,
+} from './media-cache.js'
 export { type NormalizedUpdate, normalizeUpdate, UNKNOWN_KIND } from './normalize.js'
+export { type Pager, type PagerOptions, type Press, pager, type Shown } from './pager.js'
+export {
+  businessGifts,
+  type Collected,
+  type CursorFetch,
+  chatGifts,
+  cursorPages,
+  type GiftFilters,
+  type OffsetFetch,
+  offsetPages,
+  type Page,
+  type PageOptions,
+  type Pages,
+  profileAudios,
+  profilePhotos,
+  starTransactions,
+  userGifts,
+} from './paginate.js'
+export {
+  type AlbumCaption,
+  adminRights,
+  attach,
+  botCommands,
+  content,
+  type FiatInvoice,
+  invoice,
+  menuButton,
+  newSticker,
+  type PayloadFile,
+  permissions,
+  pollOption,
+  preview,
+  price,
+  type RichMediaLink,
+  type RichMessageOptions,
+  type RichTextOptions,
+  reaction,
+  replyTo,
+  richMedia,
+  richMessage,
+  type StarsInvoice,
+  shipping,
+} from './payloads.js'
 export {
   type RateLimitInfo,
   type RateLimitKey,
@@ -175,7 +240,7 @@ export {
   chatKeyOf,
   createScheduler,
   type Scheduler,
-  type SchedulerOptions,
+  type UpdateSchedulerOptions,
 } from './scheduler.js'
 export {
   createWindow,

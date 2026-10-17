@@ -1,6 +1,6 @@
 {
   "name": "@yuigram/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Transport-agnostic framework core for Yuigram: dispatch, middleware, filters, context, sessions, storage",
   "keywords": [
     "telegram",
@@ -28,7 +28,31 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./format": {
+      "types": "./dist/format/index.d.ts",
+      "import": "./dist/format/index.js",
+      "default": "./dist/format/index.js"
+    },
+    "./stream": {
+      "types": "./dist/stream/index.d.ts",
+      "import": "./dist/stream/index.js",
+      "default": "./dist/stream/index.js"
+    },
+    "./dice": {
+      "types": "./dist/dice/index.d.ts",
+      "import": "./dist/dice/index.js",
+      "default": "./dist/dice/index.js"
+    },
+    "./indexeddb": {
+      "types": "./dist/indexeddb/index.d.ts",
+      "import": "./dist/indexeddb/index.js",
+      "default": "./dist/indexeddb/index.js"
     }
+  },
+  "browser": {
+    "./dist/storage/file.js": "./dist/storage/file.browser.js",
+    "./dist/storage/encrypted.js": "./dist/storage/encrypted.browser.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

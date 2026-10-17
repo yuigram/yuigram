@@ -8,6 +8,12 @@
       "path": "02-keyboards"
     },
     {
+      "path": "03-basic-userbot"
+    },
+    {
+      "path": "04-bot-and-userbot"
+    },
+    {
       "path": "05-middleware"
     },
     {
@@ -24,6 +30,33 @@
     },
     {
       "path": "10-production"
+    },
+    {
+      "path": "12-multiple-clients"
+    },
+    {
+      "path": "13-walking-lists"
+    },
+    {
+      "path": "14-conversations"
+    },
+    {
+      "path": "15-worker"
+    },
+    {
+      "path": "16-durable-flows"
+    },
+    {
+      "path": "17-streaming"
+    },
+    {
+      "path": "18-account-handlers"
+    },
+    {
+      "path": "19-shop"
+    },
+    {
+      "path": "20-presence-watch"
     }
   ]
 }

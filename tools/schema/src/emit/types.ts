@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Emits the Bot API object types.
  *
@@ -11,6 +13,7 @@
  */
 
 import type { BotApiSchema, ObjectType, TypeRef } from '../bot-api/ir.js'
+import { UNION_EXTRAS } from '../bot-api/patches.js'
 import { header, pascalCase, renderDoc, renderField, slug } from './render.js'
 
 /** One emitted file. */
@@ -25,7 +28,8 @@ function renderObject(object: ObjectType): string {
 
   // Abstract types are documented as "It should be one of" and carry no fields.
   if (object.subtypes !== undefined && object.subtypes.length > 0) {
-    const members = [...object.subtypes].sort()
+    // Members stated only in prose come first; the listed subtypes follow, sorted.
+    const members = [...(UNION_EXTRAS.get(object.name) ?? []), ...[...object.subtypes].sort()]
     return `${doc}export type ${object.name} =\n${members.map((name) => `  | ${name}`).join('\n')}\n`
   }
 

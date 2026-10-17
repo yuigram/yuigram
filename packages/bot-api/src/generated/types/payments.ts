@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Payments
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { Chat, Gift, PaidMedia, User } from './available-types.js'
 
@@ -11,7 +13,7 @@ import type { Chat, Gift, PaidMedia, User } from './available-types.js'
  */
 export interface LabeledPrice {
   /**
-   * Portion label
+   * Portion label, non-empty
    */
   readonly label: string
 
@@ -46,7 +48,7 @@ export interface Invoice {
   readonly start_parameter: string
 
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -130,12 +132,12 @@ export interface OrderInfo {
  */
 export interface ShippingOption {
   /**
-   * Shipping option identifier
+   * Shipping option identifier, non-empty
    */
   readonly id: string
 
   /**
-   * Option title
+   * Option title, non-empty
    */
   readonly title: string
 
@@ -155,7 +157,7 @@ export interface ShippingOption {
  */
 export interface SuccessfulPayment {
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -171,22 +173,6 @@ export interface SuccessfulPayment {
    * Bot-specified invoice payload
    */
   readonly invoice_payload: string
-
-  /**
-   * Expiration date of the subscription, in Unix time; for recurring payments
-   * only
-   */
-  readonly subscription_expiration_date?: number | undefined
-
-  /**
-   * True, if the payment is a recurring payment for a subscription
-   */
-  readonly is_recurring?: true | undefined
-
-  /**
-   * True, if the payment is the first payment for a subscription
-   */
-  readonly is_first_recurring?: true | undefined
 
   /**
    * Identifier of the shipping option chosen by the user
@@ -207,6 +193,22 @@ export interface SuccessfulPayment {
    * Provider payment identifier
    */
   readonly provider_payment_charge_id: string
+
+  /**
+   * True, if the payment is a recurring payment for a subscription
+   */
+  readonly is_recurring?: true | undefined
+
+  /**
+   * True, if the payment is the first payment for a subscription
+   */
+  readonly is_first_recurring?: true | undefined
+
+  /**
+   * Expiration date of the subscription, in Unix time; for recurring payments
+   * only
+   */
+  readonly subscription_expiration_date?: number | undefined
 }
 
 /**
@@ -216,8 +218,8 @@ export interface SuccessfulPayment {
  */
 export interface RefundedPayment {
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram
-   * Stars. Currently, always “XTR”.
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram
+   * Stars. Currently, always "XTR".
    */
   readonly currency: string
 
@@ -289,7 +291,7 @@ export interface PreCheckoutQuery {
   readonly from: User
 
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
 
@@ -352,7 +354,7 @@ export type RevenueWithdrawalState =
  */
 export interface RevenueWithdrawalStatePending {
   /**
-   * Type of the state, always “pending”
+   * Type of the state, always "pending"
    */
   readonly type: string
 }
@@ -364,7 +366,7 @@ export interface RevenueWithdrawalStatePending {
  */
 export interface RevenueWithdrawalStateSucceeded {
   /**
-   * Type of the state, always “succeeded”
+   * Type of the state, always "succeeded"
    */
   readonly type: string
 
@@ -386,7 +388,7 @@ export interface RevenueWithdrawalStateSucceeded {
  */
 export interface RevenueWithdrawalStateFailed {
   /**
-   * Type of the state, always “failed”
+   * Type of the state, always "failed"
    */
   readonly type: string
 }
@@ -423,7 +425,7 @@ export interface AffiliateInfo {
 
   /**
    * The number of 1/1000000000 shares of Telegram Stars received by the
-   * affiliate; from -999999999 to 999999999; can be negative for refunds
+   * affiliate, from -999999999 to 999999999; can be negative for refunds
    */
   readonly nanostar_amount?: number | undefined
 }
@@ -435,33 +437,63 @@ export interface AffiliateInfo {
  * @see https://corefork.telegram.org/bots/api#transactionpartner
  */
 export type TransactionPartner =
-  | TransactionPartnerAffiliateProgram
-  | TransactionPartnerChat
-  | TransactionPartnerFragment
-  | TransactionPartnerOther
-  | TransactionPartnerTelegramAds
-  | TransactionPartnerTelegramApi
-  | TransactionPartnerUser
+  | TransactionTypeAffiliateProgramCommission
+  | TransactionTypeBotInvoiceSale
+  | TransactionTypeBotPaidMediaSale
+  | TransactionTypeBotSubscriptionSale
+  | TransactionTypeBusinessBotTransferReceive
+  | TransactionTypeFragmentDeposit
+  | TransactionTypeFragmentWithdrawal
+  | TransactionTypeGiftPurchase
+  | TransactionTypePremiumPurchase
+  | TransactionTypeTelegramAdsWithdrawal
+  | TransactionTypeTelegramApiUsage
+  | TransactionTypeUnsupported
 
 /**
- * Describes a transaction with a user.
+ * Describes a deposit of Telegram Stars from Fragment.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartneruser
+ * @see https://corefork.telegram.org/bots/api#transactiontypefragmentdeposit
  */
-export interface TransactionPartnerUser {
+export interface TransactionTypeFragmentDeposit {
   /**
-   * Type of the transaction partner, always “user”
+   * Type of the transaction partner, always "fragment"
+   */
+  readonly type: string
+}
+
+/**
+ * Describes a withdrawal of Telegram Stars to Fragment.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypefragmentwithdrawal
+ */
+export interface TransactionTypeFragmentWithdrawal {
+  /**
+   * Type of the transaction partner, always "fragment"
    */
   readonly type: string
 
   /**
-   * Type of the transaction, currently one of “invoice_payment” for payments via
-   * invoices, “paid_media_payment” for payments for paid media, “gift_purchase”
-   * for gifts sent by the bot, “premium_purchase” for Telegram Premium
-   * subscriptions gifted by the bot, “business_account_transfer” for direct
-   * transfers from managed business accounts
+   * State of the transaction if the transaction is outgoing
+   */
+  readonly withdrawal_state?: RevenueWithdrawalState | undefined
+}
+
+/**
+ * Describes a purchase of paid media by a user.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypebotpaidmediasale
+ */
+export interface TransactionTypeBotPaidMediaSale {
+  /**
+   * Type of the transaction, always "paid_media_payment"
    */
   readonly transaction_type: string
+
+  /**
+   * Type of the transaction partner, always "user"
+   */
+  readonly type: string
 
   /**
    * Information about the user
@@ -469,79 +501,213 @@ export interface TransactionPartnerUser {
   readonly user: User
 
   /**
-   * Information about the affiliate that received a commission via this
-   * transaction. Can be available only for “invoice_payment” and
-   * “paid_media_payment” transactions.
+   * Information about the paid media bought by the user
    */
-  readonly affiliate?: AffiliateInfo | undefined
+  readonly paid_media: PaidMedia[]
 
   /**
-   * Bot-specified invoice payload. Can be available only for “invoice_payment”
-   * transactions.
-   */
-  readonly invoice_payload?: string | undefined
-
-  /**
-   * The duration of the paid subscription. Can be available only for
-   * “invoice_payment” transactions.
-   */
-  readonly subscription_period?: number | undefined
-
-  /**
-   * Information about the paid media bought by the user; for
-   * “paid_media_payment” transactions only
-   */
-  readonly paid_media?: PaidMedia[] | undefined
-
-  /**
-   * Bot-specified paid media payload. Can be available only for
-   * “paid_media_payment” transactions.
+   * Bot-specified paid media payload
    */
   readonly paid_media_payload?: string | undefined
 
   /**
-   * The gift sent to the user by the bot; for “gift_purchase” transactions only
+   * Information about the affiliate that received a commission via this
+   * transaction
    */
-  readonly gift?: Gift | undefined
-
-  /**
-   * Number of months the gifted Telegram Premium subscription will be active
-   * for; for “premium_purchase” transactions only
-   */
-  readonly premium_subscription_duration?: number | undefined
+  readonly affiliate?: AffiliateInfo | undefined
 }
 
 /**
- * Describes a transaction with a chat.
+ * Describes a payment by a user for an invoice.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerchat
+ * @see https://corefork.telegram.org/bots/api#transactiontypebotinvoicesale
  */
-export interface TransactionPartnerChat {
+export interface TransactionTypeBotInvoiceSale {
   /**
-   * Type of the transaction partner, always “chat”
+   * Type of the transaction, always "invoice_payment"
+   */
+  readonly transaction_type: string
+
+  /**
+   * Type of the transaction partner, always "user"
    */
   readonly type: string
 
   /**
-   * Information about the chat
+   * Information about the user
    */
-  readonly chat: Chat
+  readonly user: User
 
   /**
-   * The gift sent to the chat by the bot
+   * Bot-specified invoice payload
    */
-  readonly gift?: Gift | undefined
+  readonly invoice_payload?: string | undefined
+
+  /**
+   * Information about the affiliate that received a commission via this
+   * transaction
+   */
+  readonly affiliate?: AffiliateInfo | undefined
 }
 
 /**
- * Describes the affiliate program that issued the affiliate commission
- * received via this transaction.
+ * Describes a payment by a user for a subscription.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartneraffiliateprogram
+ * @see https://corefork.telegram.org/bots/api#transactiontypebotsubscriptionsale
  */
-export interface TransactionPartnerAffiliateProgram {
+export interface TransactionTypeBotSubscriptionSale {
   /**
-   * Type of the transaction partner, always “affiliate_program”
+   * Type of the transaction, always "invoice_payment"
+   */
+  readonly transaction_type: string
+
+  /**
+   * Type of the transaction partner, always "user"
+   */
+  readonly type: string
+
+  /**
+   * Information about the user
+   */
+  readonly user: User
+
+  /**
+   * Bot-specified invoice payload
+   */
+  readonly invoice_payload?: string | undefined
+
+  /**
+   * The duration of the paid subscription
+   */
+  readonly subscription_period?: number | undefined
+
+  /**
+   * Information about the affiliate that received a commission via this
+   * transaction
+   */
+  readonly affiliate?: AffiliateInfo | undefined
+}
+
+/**
+ * Describes a withdrawal of Telegram Stars to the Telegram Ads platform.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypetelegramadswithdrawal
+ */
+export interface TransactionTypeTelegramAdsWithdrawal {
+  /**
+   * Type of the transaction partner, always "telegram_ads"
+   */
+  readonly type: string
+}
+
+/**
+ * Describes a payment for paid broadcasting.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypetelegramapiusage
+ */
+export interface TransactionTypeTelegramApiUsage {
+  /**
+   * Type of the transaction partner, always "telegram_api"
+   */
+  readonly type: string
+
+  /**
+   * The number of successful requests that exceeded regular limits and were
+   * therefore billed
+   */
+  readonly request_count: number
+}
+
+/**
+ * Describes a gift that the bot bought and sent to a user or a chat.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypegiftpurchase
+ */
+export interface TransactionTypeGiftPurchase {
+  /**
+   * Type of the transaction, always "gift_purchase"
+   */
+  readonly transaction_type?: string | undefined
+
+  /**
+   * Type of the transaction partner, currently can be "user" or "chat"
+   */
+  readonly type: string
+
+  /**
+   * Information about the user
+   */
+  readonly user?: User | undefined
+
+  /**
+   * Information about the chat
+   */
+  readonly chat?: Chat | undefined
+
+  /**
+   * The gift that the bot bought and sent
+   */
+  readonly gift: Gift
+}
+
+/**
+ * Describes a Telegram Premium subscription gifted by the bot to a user.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypepremiumpurchase
+ */
+export interface TransactionTypePremiumPurchase {
+  /**
+   * Type of the transaction, always "premium_purchase"
+   */
+  readonly transaction_type: string
+
+  /**
+   * Type of the transaction partner, always "user"
+   */
+  readonly type: string
+
+  /**
+   * Information about the user
+   */
+  readonly user: User
+
+  /**
+   * Number of months the gifted Telegram Premium subscription will be active for
+   */
+  readonly premium_subscription_duration: number
+}
+
+/**
+ * Describes a direct transfer of Telegram Stars from a managed business
+ * account.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypebusinessbottransferreceive
+ */
+export interface TransactionTypeBusinessBotTransferReceive {
+  /**
+   * Type of the transaction, always "business_account_transfer"
+   */
+  readonly transaction_type: string
+
+  /**
+   * Type of the transaction partner, always "user"
+   */
+  readonly type: string
+
+  /**
+   * Information about the user
+   */
+  readonly user: User
+}
+
+/**
+ * Describes an affiliate commission received from an affiliate program.
+ *
+ * @see https://corefork.telegram.org/bots/api#transactiontypeaffiliateprogramcommission
+ */
+export interface TransactionTypeAffiliateProgramCommission {
+  /**
+   * Type of the transaction partner, always "affiliate_program"
    */
   readonly type: string
 
@@ -558,60 +724,13 @@ export interface TransactionPartnerAffiliateProgram {
 }
 
 /**
- * Describes a withdrawal transaction with Fragment.
+ * Describes a transaction of an unknown type.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerfragment
+ * @see https://corefork.telegram.org/bots/api#transactiontypeunsupported
  */
-export interface TransactionPartnerFragment {
+export interface TransactionTypeUnsupported {
   /**
-   * Type of the transaction partner, always “fragment”
-   */
-  readonly type: string
-
-  /**
-   * State of the transaction if the transaction is outgoing
-   */
-  readonly withdrawal_state?: RevenueWithdrawalState | undefined
-}
-
-/**
- * Describes a withdrawal transaction to the Telegram Ads platform.
- *
- * @see https://corefork.telegram.org/bots/api#transactionpartnertelegramads
- */
-export interface TransactionPartnerTelegramAds {
-  /**
-   * Type of the transaction partner, always “telegram_ads”
-   */
-  readonly type: string
-}
-
-/**
- * Describes a transaction with payment for paid broadcasting.
- *
- * @see https://corefork.telegram.org/bots/api#transactionpartnertelegramapi
- */
-export interface TransactionPartnerTelegramApi {
-  /**
-   * Type of the transaction partner, always “telegram_api”
-   */
-  readonly type: string
-
-  /**
-   * The number of successful requests that exceeded regular limits and were
-   * therefore billed
-   */
-  readonly request_count: number
-}
-
-/**
- * Describes a transaction with an unknown source or recipient.
- *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerother
- */
-export interface TransactionPartnerOther {
-  /**
-   * Type of the transaction partner, always “other”
+   * Type of the transaction partner, always "other"
    */
   readonly type: string
 }
@@ -634,17 +753,6 @@ export interface StarTransaction {
   readonly id: string
 
   /**
-   * Integer amount of Telegram Stars transferred by the transaction
-   */
-  readonly amount: number
-
-  /**
-   * The number of 1/1000000000 shares of Telegram Stars transferred by the
-   * transaction; from 0 to 999999999
-   */
-  readonly nanostar_amount?: number | undefined
-
-  /**
    * Date the transaction was created in Unix time
    */
   readonly date: number
@@ -661,6 +769,17 @@ export interface StarTransaction {
    * Fragment for a withdrawal). Only for outgoing transactions.
    */
   readonly receiver?: TransactionPartner | undefined
+
+  /**
+   * Integer amount of Telegram Stars transferred by the transaction
+   */
+  readonly amount: number
+
+  /**
+   * The number of 1/1000000000 shares of Telegram Stars transferred by the
+   * transaction, 0-999999999
+   */
+  readonly nanostar_amount?: number | undefined
 }
 
 /**

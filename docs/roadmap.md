@@ -133,7 +133,7 @@ offline.
 **5a — Crypto (4–6 weeks)**
 - AES-256-IGE, validated against known-answer vectors
 - RSA with both Telegram padding schemes
-- PQ factorization (Pollard's rho / Brent)
+- PQ factorization (Pollard's rho)
 - Miller-Rabin primality, safe-prime validation
 - SRP 6a with Telegram's KDF
 - Constant-time comparison utilities
@@ -159,7 +159,7 @@ deep-equal), as a generated test. Every crypto primitive matches its known-answe
 - DH auth key handshake
 - **All mandatory security checks** ([mtproto.md](mtproto.md) §5.2), non-bypassable
 - PFS temporary keys with `auth.bindTempAuthKey`
-- MTProto storage: auth keys, temp keys, salts, DC options
+- MTProto storage: auth keys, temp keys, salts, datacenter addresses and selection
 - Sign-in flows: phone, 2FA, bot token, QR, session resume
 
 Developed against **Telegram's test datacenters** with test-only accounts.
@@ -248,8 +248,10 @@ Where the thesis becomes real.
 - Unified error handling
 - Examples 03, 04, 09, 10 (bot + userbot, multiple clients, raw API, production)
 
-Exit: `yuigram@0.5.0` — the first release that does what no other framework does, on an
-implementation Yuigram owns end to end.
+Exit: the first release that does what no other framework does, on an implementation Yuigram
+owns end to end. That is `1.0.0`, the release after `0.1.0`: it was prepared first as `0.2.0`,
+which was never published. The commitments Phase 12 names for 1.0 that it does not yet meet are
+listed, with their state, in [releases/1.0.0-checklist.md](releases/1.0.0-checklist.md).
 
 ---
 
@@ -259,13 +261,84 @@ implementation Yuigram owns end to end.
 
 - High-level MTProto surface: messages, chats, channels, users, dialogs — demand-driven,
   prioritized by feedback gathered since Phase 4
+  - Paged lists: eighteen walks over eight continuation policies, each yielding a view where the
+    value needs interpreting and the schema's own value where it does not. See
+    [entities.md](entities.md) §6
+  - Files: three receiving shapes — whole, pushed at a sink, and pulled as an async iterable —
+    over one transfer. See [mtproto.md](mtproto.md) §11
+  - People: identity, profiles, contacts, blocking, presence and profile media, each resolving
+    the people it names through the account's own peer store
+  - Conversations: membership and permissions, invite-link operations, management, creation
+    and deletion, lookup, and folders and dialog state — sixty operations, loaded when one is
+    called so a bot that never uses them pays nothing
+  - Peers in bulk: reading who several are through the three bulk reads the protocol has, one
+    request per family rather than one per peer, and finding a conversation in the list by
+    walking it rather than by keeping a cache
+  - Following a channel: Telegram does not push a channel's updates to an account that is not
+    looking at it, so watching one is a subscription that asks at the server's interval
+  - Forums and stories: topics — opening, editing, closing, pinning, reordering — and stories
+    — posting, editing, pinning, archiving, reacting, reading and counting views
+  - Gifts, boosts and business: the gift lifecycle from sending to withdrawal, each paid step
+    going through the payment form Telegram requires, plus boost slots and the business surface
+  - File identifiers: reading and writing the opaque string files travel under between clients,
+    and the stable identifier that says two of them are the same file. See
+    [mtproto.md](mtproto.md) §11
+  - Pages beside the walks, and the message surface in full: a page read reporting the total
+    beside every walk; albums, copies, quoted replies, comments and the scheduled family; votes,
+    paid reactions, checklists, translation, inline edits on the datacenter an identifier names,
+    rich messages and streaming drafts; and the reads beside them
+  - The bot surface and stickers: commands per scope and language, a bot's description, menu
+    button and default rights, pressing a button and keeping a mini app open for as long as the
+    account is; sticker sets from creation to reordering, and custom emoji
+  - Communities, which hold conversations rather than being ones, and the ephemeral and welcome
+    messages — both constructs that exist only from layer 229. Games' high scores. The operations
+    that concern the authorization itself: a login code sent again, test-datacenter sign-in,
+    takeout sessions, call defaults bound to a view, a precise range of a file, and what a
+    collectible handle sold for
+  - QR sign-in as the whole flow, and a download wearing either stream shape
+  - Conversation state: scenes whose position survives a restart, prompts that belong to one
+    conversation, and callback data with a shape and a byte budget
+  - An account in a worker: a dedicated worker or a `SharedWorker` that every tab attaches to,
+    the account made once and connected once, and a fixed table of what may cross. See
+    [runtimes.md](runtimes.md) §6
+  - Durable flows: a conversation written as one function whose journal survives a restart, with
+    effects that are not repeated behind the application's back. See [sessions.md](sessions.md) §6.6
+  - Formatting and rich messages as entry points of their own: formatted text with readers and
+    writers for both dialects, rich messages from builders or read from either rich dialect, and
+    streaming an answer as drafts and messages over both transports. See
+    [formatting.md](formatting.md)
+  - A connection status on every account, carried across a worker, and a worker host that lets a
+    closed tab go at once without mistaking a hidden one for it. See [runtimes.md](runtimes.md) §6
+  - Still to come in this phase: the storage drivers below
+  - The missing capabilities found against the libraries the surface was compared with, built:
+    an MTProxy route with all three kinds of secret, fake TLS included (`yuigram/mtproxy`, see
+    [mtproto.md](mtproto.md) §7); an IndexedDB store for browser accounts (`yuigram/indexeddb`,
+    see [storage.md](storage.md) §2); and a Koa webhook adapter (`koaWebhook`, see
+    [bot-api.md](bot-api.md), webhooks). MTProxy is checked against a local proxy and OpenSSL,
+    not yet against a real proxy or through one to Telegram
+  - Still open at the level of single methods: options some account methods do not take that
+    mtcute's do — an upload progress callback, cancelling one sign-in step, a timeout on a
+    callback answer, acting through a business connection, code settings for `sendCode`,
+    rescheduling or rich content in `editMessage`, paid invite links, declining a gift offer,
+    clearing mentions, a contact's note, a web-app switch button on inline answers, answering a
+    content-protection request. Most of these calls can be made through `account.api`, which
+    makes the call and nothing more: the account method's peer resolution and reading of the
+    answer are not part of it
+  - Outside the comparison: converting session strings from Telethon, Pyrogram, GramJS and
+    MTKruto, which mtcute provides in a separate package (Yuigram reads and writes mtcute's own
+    version-3 string), and a SOCKS or HTTP proxy helper — one can be put in an account's path
+    through its `open` option, but none is shipped
+- Storage ownership: an area per account, a claim inside it, and a refusal rather than a silent
+  merge when two accounts meet. See [storage.md](storage.md) §4
 - Storage drivers: `sqlite`, `redis`, plus `tiered` / `namespaced` / `encrypted`
 - Throttling plugin; flood handling on both transports
 - Benchmark suite in CI with regression thresholds
 - Performance budgets met and published
 - Security review against the [security.md](security.md) §10 checklist
 
-Exit: `yuigram@0.8.0` — production-ready for real workloads.
+Exit: production-ready for real workloads. Which version that is depends on how many
+releases the phase takes; the number is whatever the releases before it reached, not a figure
+reserved in advance.
 
 ---
 
@@ -278,7 +351,8 @@ Exit: `yuigram@0.8.0` — production-ready for real workloads.
   GramJS / mtcute
 - All ten planned examples
 - Plugin ecosystem foundations; stable extension points
-- Independent security review of the cryptographic and protocol layers
+- Independent security review of the cryptographic and protocol layers — deferred for `1.0.0`
+  by the owner, and not done
 
 Exit: `yuigram@1.0.0`.
 

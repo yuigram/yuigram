@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Inline mode
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { InlineKeyboardMarkup, LinkPreviewOptions, Location, MessageEntity, User, WebAppInfo } from './available-types.js'
+import type { InputInlineKeyboardMarkup, LinkPreviewOptions, Location, MessageEntity, User, WebAppInfo } from './available-types.js'
 import type { LabeledPrice } from './payments.js'
 import type { InputRichMessage } from './rich-messages.js'
 
@@ -24,7 +26,21 @@ export interface InlineQuery {
   readonly from: User
 
   /**
-   * Text of the query (up to 256 characters)
+   * Sender location, only for bots that request user location
+   */
+  readonly location?: Location | undefined
+
+  /**
+   * Type of the chat from which the inline query was sent. Can be either
+   * "sender" for a private chat with the inline query sender, "private",
+   * "group", "supergroup", or "channel". The chat type should be always known
+   * for requests sent from official clients and most third-party clients, unless
+   * the request was sent from a secret chat.
+   */
+  readonly chat_type?: string | undefined
+
+  /**
+   * Text of the query, 0-256 characters
    */
   readonly query: string
 
@@ -32,20 +48,6 @@ export interface InlineQuery {
    * Offset of the results to be returned, can be controlled by the bot
    */
   readonly offset: string
-
-  /**
-   * Type of the chat from which the inline query was sent. Can be either
-   * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
-   * for requests sent from official clients and most third-party clients, unless
-   * the request was sent from a secret chat.
-   */
-  readonly chat_type?: string | undefined
-
-  /**
-   * Sender location, only for bots that request user location
-   */
-  readonly location?: Location | undefined
 }
 
 /**
@@ -61,15 +63,8 @@ export interface InlineQueryResultsButton {
   readonly text: string
 
   /**
-   * Description of the Web App that will be launched when the user presses the
-   * button. The Web App will be able to switch back to the inline mode using the
-   * method switchInlineQuery inside the Web App.
-   */
-  readonly web_app?: WebAppInfo | undefined
-
-  /**
    * Deep-linking parameter for the /start message sent to the bot when a user
-   * presses the button. 1-64 characters, only A-Z, a-z, 0-9, _ and - are
+   * presses the button, 1-64 characters, only A-Z, a-z, 0-9, _ and - are
    * allowed. Example: An inline bot that sends YouTube videos can ask the user
    * to connect the bot to their YouTube account to adapt search results
    * accordingly. To do this, it displays a 'Connect your YouTube account' button
@@ -80,13 +75,19 @@ export interface InlineQueryResultsButton {
    * chat where they wanted to use the bot's inline capabilities.
    */
   readonly start_parameter?: string | undefined
+
+  /**
+   * Description of the Web App that will be launched when the user presses the
+   * button. The Web App will be able to switch back to the inline mode using the
+   * method switchInlineQuery inside the Web App.
+   */
+  readonly web_app?: WebAppInfo | undefined
 }
 
 /**
- * This object represents one result of an inline query. Telegram clients
- * currently support results of the following 20 types: Note: All URLs passed
- * in inline query results will be available to end users and therefore must be
- * assumed to be public.
+ * This object represents one result of an inline query. Currently, it can be
+ * one of Note: All URLs passed in inline query results will be available to
+ * end users and therefore must be assumed to be public.
  *
  * @see https://corefork.telegram.org/bots/api#inlinequeryresult
  */
@@ -124,14 +125,9 @@ export interface InlineQueryResultArticle {
   readonly type: string
 
   /**
-   * Unique identifier for this result, 1-64 Bytes
+   * Unique identifier for this result, 1-64 bytes
    */
   readonly id: string
-
-  /**
-   * Title of the result
-   */
-  readonly title: string
 
   /**
    * Content of the message to be sent
@@ -141,17 +137,7 @@ export interface InlineQueryResultArticle {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * URL of the result
-   */
-  readonly url?: string | undefined
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
    * Url of the thumbnail for the result
@@ -167,6 +153,21 @@ export interface InlineQueryResultArticle {
    * Thumbnail height
    */
   readonly thumbnail_height?: number | undefined
+
+  /**
+   * URL of the result
+   */
+  readonly url?: string | undefined
+
+  /**
+   * Title of the result
+   */
+  readonly title: string
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
 }
 
 /**
@@ -188,46 +189,20 @@ export interface InlineQueryResultPhoto {
   readonly id: string
 
   /**
-   * A valid URL of the photo. Photo must be in JPEG format. Photo size must not
-   * exceed 5MB.
+   * Content of the message to be sent instead of the photo
    */
-  readonly photo_url: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * URL of the thumbnail for the photo
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly thumbnail_url: string
-
-  /**
-   * Width of the photo
-   */
-  readonly photo_width?: number | undefined
-
-  /**
-   * Height of the photo
-   */
-  readonly photo_height?: number | undefined
-
-  /**
-   * Title for the result
-   */
-  readonly title?: string | undefined
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the photo to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the photo caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -243,12 +218,38 @@ export interface InlineQueryResultPhoto {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the photo
+   * URL of the thumbnail for the photo
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url: string
+
+  /**
+   * A valid URL of the photo. Photo must be in JPEG format. Photo size must not
+   * exceed 5MB. Must be non-empty.
+   */
+  readonly photo_url: string
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * Width of the photo
+   */
+  readonly photo_width?: number | undefined
+
+  /**
+   * Height of the photo
+   */
+  readonly photo_height?: number | undefined
 }
 
 /**
@@ -271,51 +272,20 @@ export interface InlineQueryResultGif {
   readonly id: string
 
   /**
-   * A valid URL for the GIF file
+   * Content of the message to be sent instead of the GIF animation
    */
-  readonly gif_url: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Width of the GIF
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly gif_width?: number | undefined
-
-  /**
-   * Height of the GIF
-   */
-  readonly gif_height?: number | undefined
-
-  /**
-   * Duration of the GIF in seconds
-   */
-  readonly gif_duration?: number | undefined
-
-  /**
-   * URL of the static (JPEG or GIF) or animated (MPEG4) thumbnail for the result
-   */
-  readonly thumbnail_url: string
-
-  /**
-   * MIME type of the thumbnail, must be one of “image/jpeg”, “image/gif”, or
-   * “video/mp4”. Defaults to “image/jpeg”.
-   */
-  readonly thumbnail_mime_type?: string | undefined
-
-  /**
-   * Title for the result
-   */
-  readonly title?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the GIF file to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the caption. See formatting options for more
-   * details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -331,12 +301,43 @@ export interface InlineQueryResultGif {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the GIF animation
+   * URL of the static (JPEG or GIF) or animated (MPEG4) thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url: string
+
+  /**
+   * A valid URL for the GIF file, non-empty
+   */
+  readonly gif_url: string
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4", defaults to "image/jpeg"
+   */
+  readonly thumbnail_mime_type?: string | undefined
+
+  /**
+   * Duration of the GIF in seconds
+   */
+  readonly gif_duration?: number | undefined
+
+  /**
+   * Width of the GIF
+   */
+  readonly gif_width?: number | undefined
+
+  /**
+   * Height of the GIF
+   */
+  readonly gif_height?: number | undefined
 }
 
 /**
@@ -359,52 +360,21 @@ export interface InlineQueryResultMpeg4Gif {
   readonly id: string
 
   /**
-   * A valid URL for the MPEG4 file
+   * Content of the message to be sent instead of the video animation
    */
-  readonly mpeg4_url: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Video width
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly mpeg4_width?: number | undefined
-
-  /**
-   * Video height
-   */
-  readonly mpeg4_height?: number | undefined
-
-  /**
-   * Video duration in seconds
-   */
-  readonly mpeg4_duration?: number | undefined
-
-  /**
-   * URL of the static (JPEG or GIF) or animated (MPEG4) thumbnail for the result
-   */
-  readonly thumbnail_url: string
-
-  /**
-   * MIME type of the thumbnail, must be one of “image/jpeg”, “image/gif”, or
-   * “video/mp4”. Defaults to “image/jpeg”.
-   */
-  readonly thumbnail_mime_type?: string | undefined
-
-  /**
-   * Title for the result
-   */
-  readonly title?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the MPEG-4 file to be sent, 0-1024 characters after entities
    * parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the caption. See formatting options for more
-   * details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -420,12 +390,43 @@ export interface InlineQueryResultMpeg4Gif {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the video animation
+   * URL of the static (JPEG or GIF) or animated (MPEG4) thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url: string
+
+  /**
+   * A valid URL for the MPEG4 file, non-empty
+   */
+  readonly mpeg4_url: string
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4", defaults to "image/jpeg"
+   */
+  readonly thumbnail_mime_type?: string | undefined
+
+  /**
+   * Video duration in seconds
+   */
+  readonly mpeg4_duration?: number | undefined
+
+  /**
+   * Video width
+   */
+  readonly mpeg4_width?: number | undefined
+
+  /**
+   * Video height
+   */
+  readonly mpeg4_height?: number | undefined
 }
 
 /**
@@ -450,35 +451,22 @@ export interface InlineQueryResultVideo {
   readonly id: string
 
   /**
-   * A valid URL for the embedded video player or video file
+   * Content of the message to be sent instead of the video. This field is
+   * required if InlineQueryResultVideo is used to send an HTML-page as a result
+   * (e.g., a YouTube video).
    */
-  readonly video_url: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * MIME type of the content of the video URL, “text/html” or “video/mp4”
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly mime_type: string
-
-  /**
-   * URL of the thumbnail (JPEG only) for the video
-   */
-  readonly thumbnail_url: string
-
-  /**
-   * Title for the result
-   */
-  readonly title: string
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the video to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -490,6 +478,36 @@ export interface InlineQueryResultVideo {
    * Pass True if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
+
+  /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * URL of the thumbnail (JPEG only) for the video
+   */
+  readonly thumbnail_url: string
+
+  /**
+   * A valid URL for the embedded video player or video file, non-empty
+   */
+  readonly video_url: string
+
+  /**
+   * Title for the result
+   */
+  readonly title: string
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * MIME type of the content of the video URL, "text/html" or "video/mp4"
+   */
+  readonly mime_type: string
 
   /**
    * Video width
@@ -505,23 +523,6 @@ export interface InlineQueryResultVideo {
    * Video duration in seconds
    */
   readonly video_duration?: number | undefined
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * Content of the message to be sent instead of the video. This field is
-   * required if InlineQueryResultVideo is used to send an HTML-page as a result
-   * (e.g., a YouTube video).
-   */
-  readonly input_message_content?: InputMessageContent | undefined
 }
 
 /**
@@ -543,25 +544,20 @@ export interface InlineQueryResultAudio {
   readonly id: string
 
   /**
-   * A valid URL for the audio file
+   * Content of the message to be sent instead of the audio
    */
-  readonly audio_url: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Title
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title: string
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the audio caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -570,9 +566,14 @@ export interface InlineQueryResultAudio {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Performer
+   * Inline keyboard attached to the message
    */
-  readonly performer?: string | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * A valid URL for the audio file, non-empty
+   */
+  readonly audio_url: string
 
   /**
    * Audio duration in seconds
@@ -580,14 +581,14 @@ export interface InlineQueryResultAudio {
   readonly audio_duration?: number | undefined
 
   /**
-   * Inline keyboard attached to the message
+   * Title
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly title: string
 
   /**
-   * Content of the message to be sent instead of the audio
+   * Performer
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly performer?: string | undefined
 }
 
 /**
@@ -610,7 +611,34 @@ export interface InlineQueryResultVoice {
   readonly id: string
 
   /**
-   * A valid URL for the voice recording
+   * Content of the message to be sent instead of the voice recording
+   */
+  readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  readonly parse_mode?: string | undefined
+
+  /**
+   * Caption, 0-1024 characters after entities parsing
+   */
+  readonly caption?: string | undefined
+
+  /**
+   * List of special entities that appear in the caption, which can be specified
+   * instead of parse_mode
+   */
+  readonly caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * A valid URL for the voice recording, non-empty
    */
   readonly voice_url: string
 
@@ -620,36 +648,9 @@ export interface InlineQueryResultVoice {
   readonly title: string
 
   /**
-   * Caption, 0-1024 characters after entities parsing
-   */
-  readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the voice message caption. See formatting
-   * options for more details.
-   */
-  readonly parse_mode?: string | undefined
-
-  /**
-   * List of special entities that appear in the caption, which can be specified
-   * instead of parse_mode
-   */
-  readonly caption_entities?: MessageEntity[] | undefined
-
-  /**
    * Recording duration in seconds
    */
   readonly voice_duration?: number | undefined
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * Content of the message to be sent instead of the voice recording
-   */
-  readonly input_message_content?: InputMessageContent | undefined
 }
 
 /**
@@ -672,20 +673,20 @@ export interface InlineQueryResultDocument {
   readonly id: string
 
   /**
-   * Title for the result
+   * Content of the message to be sent instead of the file
    */
-  readonly title: string
+  readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the document to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the document caption. See formatting options
-   * for more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -694,30 +695,9 @@ export interface InlineQueryResultDocument {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * A valid URL for the file
-   */
-  readonly document_url: string
-
-  /**
-   * MIME type of the content of the file, either “application/pdf” or
-   * “application/zip”
-   */
-  readonly mime_type: string
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
-
-  /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * Content of the message to be sent instead of the file
-   */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
    * URL of the thumbnail (JPEG only) for the file
@@ -733,6 +713,27 @@ export interface InlineQueryResultDocument {
    * Thumbnail height
    */
   readonly thumbnail_height?: number | undefined
+
+  /**
+   * A valid URL for the file, non-empty
+   */
+  readonly document_url: string
+
+  /**
+   * Title for the result
+   */
+  readonly title: string
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * MIME type of the content of the file, must be one of "application/pdf" or
+   * "application/zip"
+   */
+  readonly mime_type: string
 }
 
 /**
@@ -749,59 +750,19 @@ export interface InlineQueryResultLocation {
   readonly type: string
 
   /**
-   * Unique identifier for this result, 1-64 Bytes
+   * Unique identifier for this result, 1-64 bytes
    */
   readonly id: string
-
-  /**
-   * Location latitude in degrees
-   */
-  readonly latitude: number
-
-  /**
-   * Location longitude in degrees
-   */
-  readonly longitude: number
-
-  /**
-   * Location title
-   */
-  readonly title: string
-
-  /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
-   */
-  readonly horizontal_accuracy?: number | undefined
-
-  /**
-   * Period in seconds during which the location can be updated, must be between
-   * 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
-   * indefinitely
-   */
-  readonly live_period?: number | undefined
-
-  /**
-   * For live locations, a direction in which the user is moving, in degrees.
-   * Must be between 1 and 360 if specified.
-   */
-  readonly heading?: number | undefined
-
-  /**
-   * For live locations, a maximum distance for proximity alerts about
-   * approaching another chat member, in meters. Must be between 1 and 100000 if
-   * specified.
-   */
-  readonly proximity_alert_radius?: number | undefined
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
 
   /**
    * Content of the message to be sent instead of the location
    */
   readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
    * Url of the thumbnail for the result
@@ -817,6 +778,46 @@ export interface InlineQueryResultLocation {
    * Thumbnail height
    */
   readonly thumbnail_height?: number | undefined
+
+  /**
+   * Location latitude in degrees
+   */
+  readonly latitude: number
+
+  /**
+   * Location longitude in degrees
+   */
+  readonly longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
+
+  /**
+   * Period in seconds during which the location can be updated, must be 0,
+   * 60-86400, or 2147483647; 2147483647 (0x7FFFFFFF) for live locations that can
+   * be edited indefinitely, or 0 for a static location
+   */
+  readonly live_period?: number | undefined
+
+  /**
+   * For live locations, a direction in which the user is moving, in degrees.
+   * Values between 1-360 are accepted.
+   */
+  readonly heading?: number | undefined
+
+  /**
+   * For live locations, a maximum distance for proximity alerts about
+   * approaching another chat member, in meters. Values between 1-100000 are
+   * accepted.
+   */
+  readonly proximity_alert_radius?: number | undefined
+
+  /**
+   * Location title
+   */
+  readonly title: string
 }
 
 /**
@@ -833,9 +834,34 @@ export interface InlineQueryResultVenue {
   readonly type: string
 
   /**
-   * Unique identifier for this result, 1-64 Bytes
+   * Unique identifier for this result, 1-64 bytes
    */
   readonly id: string
+
+  /**
+   * Content of the message to be sent instead of the venue
+   */
+  readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Url of the thumbnail for the result
+   */
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Thumbnail width
+   */
+  readonly thumbnail_width?: number | undefined
+
+  /**
+   * Thumbnail height
+   */
+  readonly thumbnail_height?: number | undefined
 
   /**
    * Latitude of the venue location in degrees
@@ -846,6 +872,11 @@ export interface InlineQueryResultVenue {
    * Longitude of the venue location in degrees
    */
   readonly longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
 
   /**
    * Title of the venue
@@ -864,8 +895,8 @@ export interface InlineQueryResultVenue {
 
   /**
    * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -878,31 +909,6 @@ export interface InlineQueryResultVenue {
    * Google Places type of the venue. (See supported types.)
    */
   readonly google_place_type?: string | undefined
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * Content of the message to be sent instead of the venue
-   */
-  readonly input_message_content?: InputMessageContent | undefined
-
-  /**
-   * Url of the thumbnail for the result
-   */
-  readonly thumbnail_url?: string | undefined
-
-  /**
-   * Thumbnail width
-   */
-  readonly thumbnail_width?: number | undefined
-
-  /**
-   * Thumbnail height
-   */
-  readonly thumbnail_height?: number | undefined
 }
 
 /**
@@ -919,9 +925,34 @@ export interface InlineQueryResultContact {
   readonly type: string
 
   /**
-   * Unique identifier for this result, 1-64 Bytes
+   * Unique identifier for this result, 1-64 bytes
    */
   readonly id: string
+
+  /**
+   * Content of the message to be sent instead of the contact
+   */
+  readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Url of the thumbnail for the result
+   */
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Thumbnail width
+   */
+  readonly thumbnail_width?: number | undefined
+
+  /**
+   * Thumbnail height
+   */
+  readonly thumbnail_height?: number | undefined
 
   /**
    * Contact's phone number
@@ -942,31 +973,6 @@ export interface InlineQueryResultContact {
    * Additional data about the contact in the form of a vCard, 0-2048 bytes
    */
   readonly vcard?: string | undefined
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
-
-  /**
-   * Content of the message to be sent instead of the contact
-   */
-  readonly input_message_content?: InputMessageContent | undefined
-
-  /**
-   * Url of the thumbnail for the result
-   */
-  readonly thumbnail_url?: string | undefined
-
-  /**
-   * Thumbnail width
-   */
-  readonly thumbnail_width?: number | undefined
-
-  /**
-   * Thumbnail height
-   */
-  readonly thumbnail_height?: number | undefined
 }
 
 /**
@@ -986,14 +992,14 @@ export interface InlineQueryResultGame {
   readonly id: string
 
   /**
+   * Inline keyboard attached to the message
+   */
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
    * Short name of the game
    */
   readonly game_short_name: string
-
-  /**
-   * Inline keyboard attached to the message
-   */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -1016,30 +1022,20 @@ export interface InlineQueryResultCachedPhoto {
   readonly id: string
 
   /**
-   * A valid file identifier of the photo
+   * Content of the message to be sent instead of the photo
    */
-  readonly photo_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Title for the result
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title?: string | undefined
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the photo to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the photo caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1055,12 +1051,37 @@ export interface InlineQueryResultCachedPhoto {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the photo
+   * Url of the thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * Width of the photo
+   */
+  readonly photo_width?: number | undefined
+
+  /**
+   * Height of the photo
+   */
+  readonly photo_height?: number | undefined
+
+  /**
+   * A valid file identifier of the photo
+   */
+  readonly photo_file_id: string
 }
 
 /**
@@ -1083,25 +1104,20 @@ export interface InlineQueryResultCachedGif {
   readonly id: string
 
   /**
-   * A valid file identifier for the GIF file
+   * Content of the message to be sent instead of the GIF animation
    */
-  readonly gif_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Title for the result
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the GIF file to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the caption. See formatting options for more
-   * details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1117,12 +1133,43 @@ export interface InlineQueryResultCachedGif {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the GIF animation
+   * Url of the thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4", defaults to "image/jpeg"
+   */
+  readonly thumbnail_mime_type?: string | undefined
+
+  /**
+   * Duration of the GIF in seconds
+   */
+  readonly gif_duration?: number | undefined
+
+  /**
+   * Width of the GIF
+   */
+  readonly gif_width?: number | undefined
+
+  /**
+   * Height of the GIF
+   */
+  readonly gif_height?: number | undefined
+
+  /**
+   * A valid file identifier for the GIF file
+   */
+  readonly gif_file_id: string
 }
 
 /**
@@ -1146,26 +1193,21 @@ export interface InlineQueryResultCachedMpeg4Gif {
   readonly id: string
 
   /**
-   * A valid file identifier for the MPEG4 file
+   * Content of the message to be sent instead of the video animation
    */
-  readonly mpeg4_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Title for the result
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the MPEG-4 file to be sent, 0-1024 characters after entities
    * parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the caption. See formatting options for more
-   * details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1181,12 +1223,43 @@ export interface InlineQueryResultCachedMpeg4Gif {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the video animation
+   * Url of the thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Title for the result
+   */
+  readonly title?: string | undefined
+
+  /**
+   * MIME type of the thumbnail, must be one of "image/jpeg", "image/gif", or
+   * "video/mp4", defaults to "image/jpeg"
+   */
+  readonly thumbnail_mime_type?: string | undefined
+
+  /**
+   * Video duration in seconds
+   */
+  readonly mpeg4_duration?: number | undefined
+
+  /**
+   * Video width
+   */
+  readonly mpeg4_width?: number | undefined
+
+  /**
+   * Video height
+   */
+  readonly mpeg4_height?: number | undefined
+
+  /**
+   * A valid file identifier for the MPEG4 file
+   */
+  readonly mpeg4_file_id: string
 }
 
 /**
@@ -1209,19 +1282,19 @@ export interface InlineQueryResultCachedSticker {
   readonly id: string
 
   /**
-   * A valid file identifier of the sticker
+   * Content of the message to be sent instead of the sticker
    */
-  readonly sticker_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the sticker
+   * A valid file identifier of the sticker
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly sticker_file_id: string
 }
 
 /**
@@ -1244,30 +1317,20 @@ export interface InlineQueryResultCachedDocument {
   readonly id: string
 
   /**
-   * Title for the result
+   * Content of the message to be sent instead of the file
    */
-  readonly title: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * A valid file identifier for the file
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly document_file_id: string
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the document to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the document caption. See formatting options
-   * for more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1278,12 +1341,43 @@ export interface InlineQueryResultCachedDocument {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the file
+   * Url of the thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Thumbnail width
+   */
+  readonly thumbnail_width?: number | undefined
+
+  /**
+   * Thumbnail height
+   */
+  readonly thumbnail_height?: number | undefined
+
+  /**
+   * Title for the result
+   */
+  readonly title: string
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * MIME type of the content of the file, must be one of "application/pdf" or
+   * "application/zip"
+   */
+  readonly mime_type?: string | undefined
+
+  /**
+   * A valid file identifier for the file
+   */
+  readonly document_file_id: string
 }
 
 /**
@@ -1306,30 +1400,20 @@ export interface InlineQueryResultCachedVideo {
   readonly id: string
 
   /**
-   * A valid file identifier for the video file
+   * Content of the message to be sent instead of the video
    */
-  readonly video_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Title for the result
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title: string
-
-  /**
-   * Short description of the result
-   */
-  readonly description?: string | undefined
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption of the video to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1345,12 +1429,47 @@ export interface InlineQueryResultCachedVideo {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the video
+   * Url of the thumbnail for the result
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly thumbnail_url?: string | undefined
+
+  /**
+   * Title for the result
+   */
+  readonly title: string
+
+  /**
+   * Short description of the result
+   */
+  readonly description?: string | undefined
+
+  /**
+   * MIME type of the content of the video URL, "text/html" or "video/mp4"
+   */
+  readonly mime_type?: string | undefined
+
+  /**
+   * Video width
+   */
+  readonly video_width?: number | undefined
+
+  /**
+   * Video height
+   */
+  readonly video_height?: number | undefined
+
+  /**
+   * Video duration in seconds
+   */
+  readonly video_duration?: number | undefined
+
+  /**
+   * A valid file identifier for the video file
+   */
+  readonly video_file_id: string
 }
 
 /**
@@ -1373,25 +1492,20 @@ export interface InlineQueryResultCachedVoice {
   readonly id: string
 
   /**
-   * A valid file identifier for the voice message
+   * Content of the message to be sent instead of the voice message
    */
-  readonly voice_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
 
   /**
-   * Voice message title
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  readonly title: string
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the voice message caption. See formatting
-   * options for more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1402,12 +1516,22 @@ export interface InlineQueryResultCachedVoice {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the voice message
+   * Voice message title
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly title: string
+
+  /**
+   * Recording duration in seconds
+   */
+  readonly voice_duration?: number | undefined
+
+  /**
+   * A valid file identifier for the voice message
+   */
+  readonly voice_file_id: string
 }
 
 /**
@@ -1430,20 +1554,20 @@ export interface InlineQueryResultCachedAudio {
   readonly id: string
 
   /**
-   * A valid file identifier for the audio file
+   * Content of the message to be sent instead of the audio
    */
-  readonly audio_file_id: string
+  readonly input_message_content?: InputMessageContent | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  readonly parse_mode?: string | undefined
 
   /**
    * Caption, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the audio caption. See formatting options for
-   * more details.
-   */
-  readonly parse_mode?: string | undefined
 
   /**
    * List of special entities that appear in the caption, which can be specified
@@ -1454,17 +1578,32 @@ export interface InlineQueryResultCachedAudio {
   /**
    * Inline keyboard attached to the message
    */
-  readonly reply_markup?: InlineKeyboardMarkup | undefined
+  readonly reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
-   * Content of the message to be sent instead of the audio
+   * Audio duration in seconds
    */
-  readonly input_message_content?: InputMessageContent | undefined
+  readonly audio_duration?: number | undefined
+
+  /**
+   * Title
+   */
+  readonly title?: string | undefined
+
+  /**
+   * Performer
+   */
+  readonly performer?: string | undefined
+
+  /**
+   * A valid file identifier for the audio file
+   */
+  readonly audio_file_id: string
 }
 
 /**
  * This object represents the content of a message to be sent as a result of an
- * inline query. Telegram clients currently support the following types:
+ * inline query. Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#inputmessagecontent
  */
@@ -1489,8 +1628,13 @@ export interface InputTextMessageContent {
   readonly message_text: string
 
   /**
+   * Link preview generation options for the message
+   */
+  readonly link_preview_options?: LinkPreviewOptions | undefined
+
+  /**
    * Mode for parsing entities in the message text. See formatting options for
-   * more details.
+   * more details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -1499,11 +1643,6 @@ export interface InputTextMessageContent {
    * instead of parse_mode
    */
   readonly entities?: MessageEntity[] | undefined
-
-  /**
-   * Link preview generation options for the message
-   */
-  readonly link_preview_options?: LinkPreviewOptions | undefined
 }
 
 /**
@@ -1514,7 +1653,8 @@ export interface InputTextMessageContent {
  */
 export interface InputRichMessageContent {
   /**
-   * The message to be sent
+   * The message to be sent. Only previously uploaded files may be used in the
+   * message.
    */
   readonly rich_message: InputRichMessage
 }
@@ -1537,27 +1677,27 @@ export interface InputLocationMessageContent {
   readonly longitude: number
 
   /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
+   * The radius of uncertainty for the location, measured in meters, 0-1500
    */
   readonly horizontal_accuracy?: number | undefined
 
   /**
-   * Period in seconds during which the location can be updated, must be between
-   * 60 and 86400, or 0x7FFFFFFF for live locations that can be edited
-   * indefinitely
+   * Period in seconds during which the location can be updated, must be 0,
+   * 60-86400, or 2147483647; 2147483647 (0x7FFFFFFF) for live locations that can
+   * be edited indefinitely, or 0 for a static location
    */
   readonly live_period?: number | undefined
 
   /**
    * For live locations, a direction in which the user is moving, in degrees.
-   * Must be between 1 and 360 if specified.
+   * Values between 1-360 are accepted.
    */
   readonly heading?: number | undefined
 
   /**
    * For live locations, a maximum distance for proximity alerts about
-   * approaching another chat member, in meters. Must be between 1 and 100000 if
-   * specified.
+   * approaching another chat member, in meters. Values between 1-100000 are
+   * accepted.
    */
   readonly proximity_alert_radius?: number | undefined
 }
@@ -1580,6 +1720,11 @@ export interface InputVenueMessageContent {
   readonly longitude: number
 
   /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
+
+  /**
    * Name of the venue
    */
   readonly title: string
@@ -1596,8 +1741,8 @@ export interface InputVenueMessageContent {
 
   /**
    * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -1648,29 +1793,7 @@ export interface InputContactMessageContent {
  */
 export interface InputInvoiceMessageContent {
   /**
-   * Product name, 1-32 characters
-   */
-  readonly title: string
-
-  /**
-   * Product description, 1-255 characters
-   */
-  readonly description: string
-
-  /**
-   * Bot-defined invoice payload, 1-128 bytes. This will not be displayed to the
-   * user, use it for your internal processes.
-   */
-  readonly payload: string
-
-  /**
-   * Payment provider token, obtained via @BotFather. Pass an empty string for
-   * payments in Telegram Stars.
-   */
-  readonly provider_token?: string | undefined
-
-  /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
    * payments in Telegram Stars.
    */
   readonly currency: string
@@ -1694,11 +1817,33 @@ export interface InputInvoiceMessageContent {
 
   /**
    * A JSON-serialized Array of suggested amounts of tip in the smallest units of
-   * the currency (integer, not float/double). At most 4 suggested tip amounts
-   * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * the currency (integer, not float/double). Must have at most 4 elements. The
+   * suggested tip amounts must be positive, passed in a strictly increased order
+   * and must not exceed max_tip_amount.
    */
   readonly suggested_tip_amounts?: number[] | undefined
+
+  /**
+   * Product name, 1-32 characters
+   */
+  readonly title: string
+
+  /**
+   * Product description, 1-255 characters
+   */
+  readonly description: string
+
+  /**
+   * Bot-defined invoice payload, 1-128 bytes. This will not be displayed to the
+   * user, use it for your internal processes.
+   */
+  readonly payload: string
+
+  /**
+   * Payment provider token, obtained via @BotFather. Pass an empty string for
+   * payments in Telegram Stars.
+   */
+  readonly provider_token?: string | undefined
 
   /**
    * A JSON-serialized object for data about the invoice, which will be shared
@@ -1779,11 +1924,6 @@ export interface InputInvoiceMessageContent {
  */
 export interface ChosenInlineResult {
   /**
-   * The unique identifier for the result that was chosen
-   */
-  readonly result_id: string
-
-  /**
    * The user that chose the result
    */
   readonly from: User
@@ -1804,4 +1944,9 @@ export interface ChosenInlineResult {
    * The query that was used to obtain the result
    */
   readonly query: string
+
+  /**
+   * The unique identifier for the result that was chosen
+   */
+  readonly result_id: string
 }

@@ -1,0 +1,3131 @@
+{
+  "provenance": {
+    "source": "https://core.telegram.org/api/errors.json",
+    "retrieved": "2026-09-30",
+    "databaseLayer": 227,
+    "schemaLayer": 229,
+    "recorded": "Error codes, names and the methods listed for each. The descriptions are not recorded. Not exhaustive: Telegram may send a name the database does not list."
+  },
+  "errors": {
+    "2FA_CONFIRM_WAIT_%d": {
+      "codes": [420],
+      "methods": ["account.deleteAccount"]
+    },
+    "ABOUT_TOO_LONG": {
+      "codes": [400],
+      "methods": ["account.updateProfile"]
+    },
+    "ACCESS_DENIED": {
+      "codes": [403],
+      "methods": ["account.initPasskeyRegistration"]
+    },
+    "ACCESS_TOKEN_EXPIRED": {
+      "codes": [400],
+      "methods": ["auth.importBotAuthorization"]
+    },
+    "ACCESS_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["auth.importBotAuthorization"]
+    },
+    "ADDRESS_INVALID": {
+      "codes": [400, 420],
+      "methods": ["channels.createChannel"]
+    },
+    "ADMINS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.editAdmin"]
+    },
+    "ADMIN_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.deleteRevokedExportedChatInvites", "messages.getExportedChatInvites"]
+    },
+    "ADMIN_RANK_EMOJI_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin"]
+    },
+    "ADMIN_RANK_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editAdmin"]
+    },
+    "ADMIN_RIGHTS_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "AD_EXPIRED": {
+      "codes": [400],
+      "methods": ["channels.reportSponsoredMessage"]
+    },
+    "AICOMPOSE_FLOOD_PREMIUM": {
+      "codes": [400],
+      "methods": ["messages.composeMessageWithAI"]
+    },
+    "AICOMPOSE_TIMEOUT": {
+      "codes": [500],
+      "methods": ["messages.composeMessageWithAI"]
+    },
+    "AICOMPOSE_TONE_INVALID": {
+      "codes": [400],
+      "methods": ["aicompose.deleteTone", "aicompose.getTone", "aicompose.getToneExample", "aicompose.saveTone", "aicompose.updateTone"]
+    },
+    "AICOMPOSE_TONE_TITLE_INVALID": {
+      "codes": [400],
+      "methods": ["aicompose.createTone"]
+    },
+    "AI_COMPOSE_TASK_MISSING": {
+      "codes": [400],
+      "methods": ["messages.composeMessageWithAI"]
+    },
+    "ALBUM_PHOTOS_TOO_MANY": {
+      "codes": [400],
+      "methods": ["photos.updateProfilePhoto", "photos.uploadProfilePhoto"]
+    },
+    "ALLOW_PAYMENT_REQUIRED": {
+      "codes": [406],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "ALLOW_PAYMENT_REQUIRED_%d": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "API_GIFT_RESTRICTED_UPDATE_APP": {
+      "codes": [406],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "API_ID_INVALID": {
+      "codes": [400],
+      "methods": ["auth.exportLoginToken", "auth.importBotAuthorization", "auth.importWebTokenAuthorization", "auth.initPasskeyLogin", "auth.sendCode"]
+    },
+    "API_ID_PUBLISHED_FLOOD": {
+      "codes": [400],
+      "methods": ["auth.exportLoginToken", "auth.importBotAuthorization", "auth.sendCode"]
+    },
+    "ARTICLE_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "AUDIO_CONTENT_URL_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "AUDIO_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "AUTH_BYTES_INVALID": {
+      "codes": [400],
+      "methods": ["auth.importAuthorization", "invokeWithLayer"]
+    },
+    "AUTH_KEY_DUPLICATED": {
+      "codes": [406],
+      "methods": []
+    },
+    "AUTH_KEY_INVALID": {
+      "codes": [401],
+      "methods": []
+    },
+    "AUTH_KEY_PERM_EMPTY": {
+      "codes": [401],
+      "methods": []
+    },
+    "AUTH_KEY_UNREGISTERED": {
+      "codes": [401],
+      "methods": ["account.acceptAuthorization", "account.cancelPasswordEmail", "account.changeAuthorizationSettings", "account.changePhone", "account.checkUsername", "account.clearRecentEmojiStatuses", "account.confirmBotConnection", "account.confirmPasswordEmail", "account.confirmPhone", "account.createBusinessChatLink", "account.createTheme", "account.declinePasswordReset", "account.deleteAutoSaveExceptions", "account.deleteBusinessChatLink", "account.deletePasskey", "account.deleteSecureValue", "account.deleteWebBrowserSettingsExceptions", "account.disablePeerConnectedBot", "account.editBusinessChatLink", "account.finishTakeoutSession", "account.getAccountTTL", "account.getAllSecureValues", "account.getAuthorizationForm", "account.getAuthorizations", "account.getAutoDownloadSettings", "account.getAutoSaveSettings", "account.getBotBusinessConnection", "account.getBusinessChatLinks", "account.getChannelDefaultEmojiStatuses", "account.getChannelRestrictedStatusEmojis", "account.getChatThemes", "account.getCollectibleEmojiStatuses", "account.getConnectedBots", "account.getContactSignUpNotification", "account.getContentSettings", "account.getDefaultBackgroundEmojis", "account.getDefaultEmojiStatuses", "account.getDefaultGroupPhotoEmojis", "account.getDefaultProfilePhotoEmojis", "account.getGlobalPrivacySettings", "account.getMultiWallPapers", "account.getNotifyExceptions", "account.getNotifySettings", "account.getPaidMessagesRevenue", "account.getPasskeys", "account.getPassword", "account.getPasswordSettings", "account.getPrivacy", "account.getReactionsNotifySettings", "account.getRecentEmojiStatuses", "account.getSavedMusicIds", "account.getSavedRingtones", "account.getSecureValue", "account.getTheme", "account.getThemes", "account.getTmpPassword", "account.getUniqueGiftChatThemes", "account.getWallPaper", "account.getWallPapers", "account.getWebAuthorizations", "account.getWebBrowserSettings", "account.initPasskeyRegistration", "account.initTakeoutSession", "account.installTheme", "account.installWallPaper", "account.invalidateSignInCodes", "account.registerDevice", "account.registerPasskey", "account.reorderUsernames", "account.reportPeer", "account.reportProfilePhoto", "account.resendPasswordEmail", "account.resetAuthorization", "account.resetNotifySettings", "account.resetPassword", "account.resetWallPapers", "account.resetWebAuthorization", "account.resetWebAuthorizations", "account.resolveBusinessChatLink", "account.saveAutoDownloadSettings", "account.saveAutoSaveSettings", "account.saveMusic", "account.saveRingtone", "account.saveSecureValue", "account.saveTheme", "account.saveWallPaper", "account.sendChangePhoneCode", "account.sendConfirmPhoneCode", "account.sendVerifyPhoneCode", "account.setAccountTTL", "account.setAuthorizationTTL", "account.setContactSignUpNotification", "account.setContentSettings", "account.setGlobalPrivacySettings", "account.setMainProfileTab", "account.setPrivacy", "account.setReactionsNotifySettings", "account.toggleConnectedBotPaused", "account.toggleNoPaidMessagesException", "account.toggleSponsoredMessages", "account.toggleUsername", "account.toggleWebBrowserSettingsException", "account.unregisterDevice", "account.updateBirthday", "account.updateBusinessAwayMessage", "account.updateBusinessGreetingMessage", "account.updateBusinessIntro", "account.updateBusinessLocation", "account.updateBusinessWorkHours", "account.updateColor", "account.updateConnectedBot", "account.updateDeviceLocked", "account.updateEmojiStatus", "account.updateNotifySettings", "account.updatePasswordSettings", "account.updatePersonalChannel", "account.updateProfile", "account.updateStatus", "account.updateTheme", "account.updateUsername", "account.updateWebBrowserSettings", "account.uploadRingtone", "account.uploadTheme", "account.uploadWallPaper", "account.verifyPhone", "aicompose.createTone", "aicompose.deleteTone", "aicompose.getTone", "aicompose.getToneExample", "aicompose.getTones", "aicompose.saveTone", "aicompose.updateTone", "auth.acceptLoginToken", "auth.checkPassword", "auth.checkRecoveryPassword", "auth.exportAuthorization", "auth.recoverPassword", "auth.requestPasswordRecovery", "auth.resetAuthorizations", "bots.addPreviewMedia", "bots.allowSendMessage", "bots.answerWebhookJSONQuery", "bots.canSendMessage", "bots.checkDownloadFileParams", "bots.checkUsername", "bots.createBot", "bots.deletePreviewMedia", "bots.editAccessSettings", "bots.editPreviewMedia", "bots.exportBotToken", "bots.getAccessSettings", "bots.getAdminedBots", "bots.getBotCommands", "bots.getBotInfo", "bots.getBotMenuButton", "bots.getBotRecommendations", "bots.getPopularAppBots", "bots.getPreviewInfo", "bots.getPreviewMedias", "bots.getRequestedWebViewButton", "bots.invokeWebViewCustomMethod", "bots.reorderPreviewMedias", "bots.reorderUsernames", "bots.requestWebViewButton", "bots.resetBotCommands", "bots.sendCustomRequest", "bots.setBotBroadcastDefaultAdminRights", "bots.setBotCommands", "bots.setBotGroupDefaultAdminRights", "bots.setBotInfo", "bots.setBotMenuButton", "bots.setCustomVerification", "bots.setJoinChatResults", "bots.toggleUserEmojiStatusPermission", "bots.toggleUsername", "bots.updateStarRefProgram", "bots.updateUserEmojiStatus", "channels.checkSearchPostsFlood", "channels.checkUsername", "channels.convertToGigagroup", "channels.createChannel", "channels.deactivateAllUsernames", "channels.deleteChannel", "channels.deleteHistory", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.editAdmin", "channels.editBanned", "channels.editLocation", "channels.editPhoto", "channels.editTitle", "channels.exportMessageLink", "channels.getAdminLog", "channels.getAdminedPublicChannels", "channels.getChannelRecommendations", "channels.getChannels", "channels.getFullChannel", "channels.getGroupsForDiscussion", "channels.getInactiveChannels", "channels.getLeftChannels", "channels.getMessageAuthor", "channels.getMessages", "channels.getParticipant", "channels.getParticipants", "channels.getSendAs", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "channels.readHistory", "channels.readMessageContents", "channels.reorderUsernames", "channels.reportAntiSpamFalsePositive", "channels.reportSpam", "channels.restrictSponsoredMessages", "channels.searchPosts", "channels.setBoostsToUnblockRestrictions", "channels.setDiscussionGroup", "channels.setEmojiStickers", "channels.setMainProfileTab", "channels.setStickers", "channels.toggleAntiSpam", "channels.toggleAutotranslation", "channels.toggleForum", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.toggleUsername", "channels.toggleViewForumAsMessages", "channels.updateColor", "channels.updateEmojiStatus", "channels.updatePaidMessagesPrice", "channels.updateUsername", "chatlists.checkChatlistInvite", "chatlists.deleteExportedInvite", "chatlists.editExportedInvite", "chatlists.exportChatlistInvite", "chatlists.getChatlistUpdates", "chatlists.getExportedInvites", "chatlists.getLeaveChatlistSuggestions", "chatlists.hideChatlistUpdates", "chatlists.joinChatlistInvite", "chatlists.joinChatlistUpdates", "chatlists.leaveChatlist", "contacts.acceptContact", "contacts.addContact", "contacts.block", "contacts.blockFromReplies", "contacts.deleteByPhones", "contacts.deleteContacts", "contacts.editCloseFriends", "contacts.exportContactToken", "contacts.getBirthdays", "contacts.getBlocked", "contacts.getContactIDs", "contacts.getContacts", "contacts.getLocated", "contacts.getSaved", "contacts.getSponsoredPeers", "contacts.getStatuses", "contacts.getTopPeers", "contacts.importContactToken", "contacts.importContacts", "contacts.resetSaved", "contacts.resetTopPeerRating", "contacts.resolvePhone", "contacts.resolveUsername", "contacts.search", "contacts.setBlocked", "contacts.toggleTopPeers", "contacts.unblock", "contacts.updateContactNote", "folders.editPeerFolders", "fragment.getCollectibleInfo", "help.acceptTermsOfService", "help.dismissSuggestion", "help.editUserInfo", "help.getAppUpdate", "help.getCdnConfig", "help.getInviteText", "help.getPassportConfig", "help.getPeerColors", "help.getPeerProfileColors", "help.getPremiumPromo", "help.getPromoData", "help.getRecentMeUrls", "help.getSupport", "help.getSupportName", "help.getTermsOfServiceUpdate", "help.getTimezonesList", "help.getUserInfo", "help.hidePromoData", "help.setBotUpdatesStatus", "messages.acceptEncryption", "messages.acceptUrlAuth", "messages.addChatUser", "messages.addPollAnswer", "messages.appendTodoList", "messages.checkChatInvite", "messages.checkHistoryImport", "messages.checkHistoryImportPeer", "messages.checkQuickReplyShortcut", "messages.checkUrlAuthMatchCode", "messages.clearAllDrafts", "messages.clearRecentReactions", "messages.clearRecentStickers", "messages.clickSponsoredMessage", "messages.composeMessageWithAI", "messages.createChat", "messages.createForumTopic", "messages.declineUrlAuth", "messages.deleteChat", "messages.deleteChatUser", "messages.deleteExportedChatInvite", "messages.deleteFactCheck", "messages.deleteHistory", "messages.deleteMessages", "messages.deleteParticipantReaction", "messages.deleteParticipantReactions", "messages.deletePhoneCallHistory", "messages.deletePollAnswer", "messages.deleteQuickReplyMessages", "messages.deleteQuickReplyShortcut", "messages.deleteRevokedExportedChatInvites", "messages.deleteSavedHistory", "messages.deleteScheduledMessages", "messages.deleteTopicHistory", "messages.discardEncryption", "messages.editChatAbout", "messages.editChatAdmin", "messages.editChatCreator", "messages.editChatDefaultBannedRights", "messages.editChatParticipantRank", "messages.editChatPhoto", "messages.editChatTitle", "messages.editExportedChatInvite", "messages.editFactCheck", "messages.editForumTopic", "messages.editInlineBotMessage", "messages.editMessage", "messages.editQuickReplyShortcut", "messages.exportChatInvite", "messages.faveSticker", "messages.forwardMessages", "messages.getAdminsWithInvites", "messages.getAllDrafts", "messages.getAllStickers", "messages.getArchivedStickers", "messages.getAttachMenuBot", "messages.getAttachMenuBots", "messages.getAttachedStickers", "messages.getAvailableEffects", "messages.getAvailableReactions", "messages.getBotApp", "messages.getBotCallbackAnswer", "messages.getChatInviteImporters", "messages.getChats", "messages.getCommonChats", "messages.getCustomEmojiDocuments", "messages.getDefaultHistoryTTL", "messages.getDefaultTagReactions", "messages.getDhConfig", "messages.getDialogFilters", "messages.getDialogUnreadMarks", "messages.getDialogs", "messages.getDiscussionMessage", "messages.getDocumentByHash", "messages.getEmojiGameInfo", "messages.getEmojiGroups", "messages.getEmojiKeywords", "messages.getEmojiKeywordsDifference", "messages.getEmojiKeywordsLanguages", "messages.getEmojiProfilePhotoGroups", "messages.getEmojiStatusGroups", "messages.getEmojiStickerGroups", "messages.getEmojiStickers", "messages.getEmojiURL", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getExtendedMedia", "messages.getFactCheck", "messages.getFavedStickers", "messages.getFeaturedEmojiStickers", "messages.getFeaturedStickers", "messages.getForumTopics", "messages.getForumTopicsByID", "messages.getFullChat", "messages.getFutureChatCreatorAfterLeave", "messages.getGameHighScores", "messages.getHistory", "messages.getInlineBotResults", "messages.getInlineGameHighScores", "messages.getMaskStickers", "messages.getMessageEditData", "messages.getMessageReactionsList", "messages.getMessageReadParticipants", "messages.getMessages", "messages.getMessagesReactions", "messages.getMessagesViews", "messages.getMyStickers", "messages.getOldFeaturedStickers", "messages.getOnlines", "messages.getOutboxReadDate", "messages.getPaidReactionPrivacy", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getPersonalChannelHistory", "messages.getPinnedDialogs", "messages.getPinnedSavedDialogs", "messages.getPollResults", "messages.getPollVotes", "messages.getPreparedInlineMessage", "messages.getQuickReplies", "messages.getQuickReplyMessages", "messages.getRecentLocations", "messages.getRecentReactions", "messages.getRecentStickers", "messages.getReplies", "messages.getRichMessage", "messages.getSavedDialogs", "messages.getSavedDialogsByID", "messages.getSavedGifs", "messages.getSavedHistory", "messages.getSavedReactionTags", "messages.getScheduledHistory", "messages.getScheduledMessages", "messages.getSearchCounters", "messages.getSearchResultsCalendar", "messages.getSearchResultsPositions", "messages.getSplitRanges", "messages.getSponsoredMessages", "messages.getStickerSet", "messages.getStickers", "messages.getSuggestedDialogFilters", "messages.getTopReactions", "messages.getUnreadMentions", "messages.getUnreadPollVotes", "messages.getUnreadReactions", "messages.getWebPage", "messages.getWebPagePreview", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.hidePeerSettingsBar", "messages.importChatInvite", "messages.initHistoryImport", "messages.installStickerSet", "messages.markDialogUnread", "messages.migrateChat", "messages.prolongWebView", "messages.rateTranscribedAudio", "messages.readDiscussion", "messages.readEncryptedHistory", "messages.readFeaturedStickers", "messages.readHistory", "messages.readMentions", "messages.readMessageContents", "messages.readPollVotes", "messages.readReactions", "messages.readSavedHistory", "messages.receivedMessages", "messages.receivedQueue", "messages.reorderPinnedDialogs", "messages.reorderPinnedForumTopics", "messages.reorderPinnedSavedDialogs", "messages.reorderQuickReplies", "messages.reorderStickerSets", "messages.report", "messages.reportEncryptedSpam", "messages.reportMessagesDelivery", "messages.reportMusicListen", "messages.reportReaction", "messages.reportReadMetrics", "messages.reportSpam", "messages.reportSponsoredMessage", "messages.requestAppWebView", "messages.requestEncryption", "messages.requestMainWebView", "messages.requestSimpleWebView", "messages.requestUrlAuth", "messages.requestWebView", "messages.saveDefaultSendAs", "messages.saveDraft", "messages.saveGif", "messages.savePreparedInlineMessage", "messages.saveRecentSticker", "messages.search", "messages.searchCustomEmoji", "messages.searchEmojiStickerSets", "messages.searchGlobal", "messages.searchSentMedia", "messages.searchStickerSets", "messages.searchStickers", "messages.sendBotRequestedPeer", "messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendQuickReplyMessages", "messages.sendReaction", "messages.sendScheduledMessages", "messages.sendScreenshotNotification", "messages.sendVote", "messages.sendWebViewData", "messages.sendWebViewResultMessage", "messages.setBotCallbackAnswer", "messages.setBotGuestChatResult", "messages.setBotPrecheckoutResults", "messages.setBotShippingResults", "messages.setChatAvailableReactions", "messages.setChatTheme", "messages.setChatWallPaper", "messages.setDefaultHistoryTTL", "messages.setDefaultReaction", "messages.setEncryptedTyping", "messages.setGameScore", "messages.setHistoryTTL", "messages.setInlineBotResults", "messages.setInlineGameScore", "messages.setTyping", "messages.startBot", "messages.startHistoryImport", "messages.summarizeText", "messages.toggleBotInAttachMenu", "messages.toggleDialogFilterTags", "messages.toggleDialogPin", "messages.toggleNoForwards", "messages.togglePaidReactionPrivacy", "messages.togglePeerTranslations", "messages.toggleSavedDialogPin", "messages.toggleStickerSets", "messages.toggleSuggestedPostApproval", "messages.toggleTodoCompleted", "messages.transcribeAudio", "messages.translateText", "messages.uninstallStickerSet", "messages.unpinAllMessages", "messages.updateDialogFilter", "messages.updateDialogFiltersOrder", "messages.updatePinnedForumTopic", "messages.updatePinnedMessage", "messages.updateSavedReactionTag", "messages.uploadEncryptedFile", "messages.uploadImportedMedia", "messages.uploadMedia", "messages.viewSponsoredMessage", "payments.applyGiftCode", "payments.botCancelStarsSubscription", "payments.changeStarsSubscription", "payments.checkCanSendGift", "payments.checkGiftCode", "payments.clearSavedInfo", "payments.connectStarRefBot", "payments.convertStarGift", "payments.craftStarGift", "payments.createStarGiftCollection", "payments.deleteStarGiftCollection", "payments.editConnectedStarRefBot", "payments.exportInvoice", "payments.fulfillStarsSubscription", "payments.getBankCardData", "payments.getConnectedStarRefBot", "payments.getConnectedStarRefBots", "payments.getCraftStarGifts", "payments.getGiveawayInfo", "payments.getPaymentReceipt", "payments.getPremiumGiftCodeOptions", "payments.getResaleStarGifts", "payments.getSavedInfo", "payments.getSavedStarGift", "payments.getSavedStarGifts", "payments.getStarGiftActiveAuctions", "payments.getStarGiftAuctionAcquiredGifts", "payments.getStarGiftAuctionState", "payments.getStarGiftCollections", "payments.getStarGiftUpgradeAttributes", "payments.getStarGiftUpgradePreview", "payments.getStarGiftWithdrawalUrl", "payments.getStarGifts", "payments.getStarsGiftOptions", "payments.getStarsGiveawayOptions", "payments.getStarsRevenueAdsAccountUrl", "payments.getStarsRevenueStats", "payments.getStarsRevenueWithdrawalUrl", "payments.getStarsStatus", "payments.getStarsSubscriptions", "payments.getStarsTopupOptions", "payments.getStarsTransactions", "payments.getStarsTransactionsByID", "payments.getSuggestedStarRefBots", "payments.getUniqueStarGift", "payments.getUniqueStarGiftValueInfo", "payments.launchPrepaidGiveaway", "payments.refundStarsCharge", "payments.reorderStarGiftCollections", "payments.resolveStarGiftOffer", "payments.saveStarGift", "payments.sendStarGiftOffer", "payments.sendStarsForm", "payments.toggleChatStarGiftNotifications", "payments.toggleStarGiftsPinnedToTop", "payments.transferStarGift", "payments.updateStarGiftCollection", "payments.updateStarGiftPrice", "payments.upgradeStarGift", "payments.validateRequestedInfo", "phone.acceptCall", "phone.checkGroupCall", "phone.confirmCall", "phone.createConferenceCall", "phone.createGroupCall", "phone.declineConferenceCallInvite", "phone.deleteConferenceCallParticipants", "phone.deleteGroupCallMessages", "phone.deleteGroupCallParticipantMessages", "phone.discardCall", "phone.discardGroupCall", "phone.editGroupCallParticipant", "phone.editGroupCallTitle", "phone.exportGroupCallInvite", "phone.getCallConfig", "phone.getGroupCall", "phone.getGroupCallChainBlocks", "phone.getGroupCallJoinAs", "phone.getGroupCallStars", "phone.getGroupCallStreamChannels", "phone.getGroupCallStreamRtmpUrl", "phone.getGroupParticipants", "phone.inviteConferenceCallParticipant", "phone.inviteToGroupCall", "phone.joinGroupCall", "phone.joinGroupCallPresentation", "phone.leaveGroupCall", "phone.leaveGroupCallPresentation", "phone.receivedCall", "phone.requestCall", "phone.saveCallDebug", "phone.saveCallLog", "phone.saveDefaultGroupCallJoinAs", "phone.saveDefaultSendAs", "phone.sendConferenceCallBroadcast", "phone.sendGroupCallEncryptedMessage", "phone.sendGroupCallMessage", "phone.sendSignalingData", "phone.setCallRating", "phone.startScheduledGroupCall", "phone.toggleGroupCallRecord", "phone.toggleGroupCallSettings", "phone.toggleGroupCallStartSubscription", "photos.deletePhotos", "photos.getUserPhotos", "photos.updateProfilePhoto", "photos.uploadContactProfilePhoto", "photos.uploadProfilePhoto", "premium.applyBoost", "premium.getBoostsList", "premium.getBoostsStatus", "premium.getMyBoosts", "premium.getUserBoosts", "smsjobs.finishJob", "smsjobs.getSmsJob", "smsjobs.getStatus", "smsjobs.isEligibleToJoin", "smsjobs.join", "smsjobs.leave", "smsjobs.updateSettings", "stats.getBroadcastStats", "stats.getMegagroupStats", "stats.getMessagePublicForwards", "stats.getMessageStats", "stats.getPollStats", "stats.getStoryPublicForwards", "stats.getStoryStats", "stats.loadAsyncGraph", "stickers.addStickerToSet", "stickers.changeSticker", "stickers.changeStickerPosition", "stickers.checkShortName", "stickers.createStickerSet", "stickers.deleteStickerSet", "stickers.removeStickerFromSet", "stickers.renameStickerSet", "stickers.replaceSticker", "stickers.setStickerSetThumb", "stickers.suggestShortName", "stories.activateStealthMode", "stories.canSendStory", "stories.createAlbum", "stories.deleteAlbum", "stories.deleteStories", "stories.editStory", "stories.exportStoryLink", "stories.getAlbumStories", "stories.getAlbums", "stories.getAllReadPeerStories", "stories.getAllStories", "stories.getChatsToSend", "stories.getPeerMaxIDs", "stories.getPeerStories", "stories.getPinnedStories", "stories.getStoriesArchive", "stories.getStoriesByID", "stories.getStoriesViews", "stories.getStoryReactionsList", "stories.getStoryViewsList", "stories.incrementStoryViews", "stories.readStories", "stories.reorderAlbums", "stories.report", "stories.searchPosts", "stories.sendReaction", "stories.sendStory", "stories.startLive", "stories.toggleAllStoriesHidden", "stories.togglePeerStoriesHidden", "stories.togglePinned", "stories.togglePinnedToTop", "stories.updateAlbum", "updates.getChannelDifference", "updates.getDifference", "updates.getState", "upload.getCdnFile", "upload.getCdnFileHashes", "upload.getFile", "upload.getFileHashes", "upload.getWebFile", "upload.reuploadCdnFile", "upload.saveBigFilePart", "upload.saveFilePart", "users.getFullUser", "users.getRequirementsToContact", "users.getSavedMusic", "users.getSavedMusicByID", "users.getUsers", "users.setSecureValueErrors", "users.suggestBirthday"]
+    },
+    "AUTH_KEY_UNSYNCHRONIZED": {
+      "codes": [500],
+      "methods": ["auth.checkPassword"]
+    },
+    "AUTH_RESTART": {
+      "codes": [500],
+      "methods": ["auth.exportLoginToken", "auth.finishPasskeyLogin", "auth.initPasskeyLogin", "auth.sendCode", "auth.signIn"]
+    },
+    "AUTH_RESTART_%d": {
+      "codes": [500],
+      "methods": ["auth.sendCode"]
+    },
+    "AUTH_TOKEN_ALREADY_ACCEPTED": {
+      "codes": [400],
+      "methods": ["auth.acceptLoginToken", "auth.importLoginToken"]
+    },
+    "AUTH_TOKEN_EXCEPTION": {
+      "codes": [400],
+      "methods": ["auth.acceptLoginToken"]
+    },
+    "AUTH_TOKEN_EXPIRED": {
+      "codes": [400],
+      "methods": ["auth.acceptLoginToken", "auth.importLoginToken"]
+    },
+    "AUTH_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["auth.importLoginToken"]
+    },
+    "AUTH_TOKEN_INVALIDX": {
+      "codes": [400],
+      "methods": ["auth.acceptLoginToken", "auth.importLoginToken"]
+    },
+    "AUTOARCHIVE_NOT_AVAILABLE": {
+      "codes": [400],
+      "methods": ["account.setGlobalPrivacySettings"]
+    },
+    "BALANCE_TOO_LOW": {
+      "codes": [400],
+      "methods": ["messages.sendMessage", "messages.sendPaidReaction", "payments.sendStarsForm"]
+    },
+    "BANK_CARD_NUMBER_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getBankCardData"]
+    },
+    "BANNED_RIGHTS_INVALID": {
+      "codes": [400, 406],
+      "methods": ["channels.editBanned", "messages.editChatDefaultBannedRights"]
+    },
+    "BIRTHDAY_ALREADY": {
+      "codes": [400],
+      "methods": ["users.suggestBirthday"]
+    },
+    "BIRTHDAY_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateBirthday"]
+    },
+    "BOOSTS_EMPTY": {
+      "codes": [400],
+      "methods": ["premium.applyBoost"]
+    },
+    "BOOSTS_REQUIRED": {
+      "codes": [400],
+      "methods": ["channels.updateColor", "stories.canSendStory", "stories.sendStory"]
+    },
+    "BOOST_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["stories.applyBoost", "stories.canApplyBoost"]
+    },
+    "BOOST_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "BOTS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.inviteToChannel"]
+    },
+    "BOT_ACCESS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["account.setGlobalPrivacySettings", "messages.deleteMessages", "payments.getPaymentForm", "payments.getStarsStatus", "payments.sendStarsForm", "stories.deleteStories", "stories.sendStory"]
+    },
+    "BOT_ALREADY_DISABLED": {
+      "codes": [400],
+      "methods": ["account.disablePeerConnectedBot"]
+    },
+    "BOT_APP_BOT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getBotApp", "messages.requestAppWebView"]
+    },
+    "BOT_APP_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getBotApp", "messages.requestAppWebView"]
+    },
+    "BOT_APP_SHORTNAME_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getBotApp", "messages.requestAppWebView"]
+    },
+    "BOT_BUSINESS_MISSING": {
+      "codes": [400],
+      "methods": ["account.updateConnectedBot"]
+    },
+    "BOT_CHANNELS_NA": {
+      "codes": [400],
+      "methods": ["channels.editAdmin"]
+    },
+    "BOT_COMMAND_DESCRIPTION_INVALID": {
+      "codes": [400],
+      "methods": ["bots.setBotCommands"]
+    },
+    "BOT_COMMAND_INVALID": {
+      "codes": [400],
+      "methods": ["bots.setBotCommands"]
+    },
+    "BOT_CREATE_LIMIT_EXCEEDED": {
+      "codes": [400],
+      "methods": ["bots.createBot"]
+    },
+    "BOT_DOMAIN_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMessage"]
+    },
+    "BOT_FALLBACK_UNSUPPORTED": {
+      "codes": [400],
+      "methods": ["photos.updateProfilePhoto"]
+    },
+    "BOT_FORUM_CREATE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.createForumTopic"]
+    },
+    "BOT_GAMES_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "BOT_GROUPS_BLOCKED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.inviteToChannel", "messages.addChatUser"]
+    },
+    "BOT_GUARD_NOT_SUPPORTED": {
+      "codes": [403],
+      "methods": ["bots.setJoinChatResults"]
+    },
+    "BOT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["account.confirmBotConnection", "bots.getRequestedWebViewButton"]
+    },
+    "BOT_INLINE_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.getInlineBotResults"]
+    },
+    "BOT_INVALID": {
+      "codes": [400],
+      "methods": ["account.acceptAuthorization", "account.getAuthorizationForm", "bots.addPreviewMedia", "bots.allowSendMessage", "bots.canSendMessage", "bots.checkDownloadFileParams", "bots.deletePreviewMedia", "bots.editAccessSettings", "bots.editPreviewMedia", "bots.exportBotToken", "bots.getAccessSettings", "bots.getBotInfo", "bots.getBotRecommendations", "bots.getPreviewInfo", "bots.getPreviewMedias", "bots.invokeWebViewCustomMethod", "bots.reorderPreviewMedias", "bots.reorderUsernames", "bots.setBotInfo", "bots.setCustomVerification", "bots.toggleUserEmojiStatusPermission", "bots.toggleUsername", "bots.updateStarRefProgram", "messages.editMessage", "messages.getAttachMenuBot", "messages.getInlineBotResults", "messages.prolongWebView", "messages.requestMainWebView", "messages.requestSimpleWebView", "messages.requestWebView", "messages.sendMessage", "messages.sendWebViewData", "messages.startBot", "messages.toggleBotInAttachMenu", "photos.uploadProfilePhoto"]
+    },
+    "BOT_INVOICE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "BOT_METHOD_INVALID": {
+      "codes": [400],
+      "methods": []
+    },
+    "BOT_NOT_CONNECTED_YET": {
+      "codes": [400],
+      "methods": ["account.disablePeerConnectedBot"]
+    },
+    "BOT_ONESIDE_NOT_AVAIL": {
+      "codes": [400],
+      "methods": ["messages.updatePinnedMessage"]
+    },
+    "BOT_PAYMENTS_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "BOT_RESPONSE_TIMEOUT": {
+      "codes": [400],
+      "methods": ["messages.getBotCallbackAnswer", "messages.getInlineBotResults"]
+    },
+    "BOT_SCORE_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["messages.setGameScore"]
+    },
+    "BOT_VERIFIER_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["bots.setCustomVerification"]
+    },
+    "BOT_WEBVIEW_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.requestWebView"]
+    },
+    "BROADCAST_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.getMessageReactionsList", "messages.getPollVotes"]
+    },
+    "BROADCAST_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.setDiscussionGroup"]
+    },
+    "BROADCAST_PUBLIC_VOTERS_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia"]
+    },
+    "BROADCAST_REQUIRED": {
+      "codes": [400],
+      "methods": ["stats.getBroadcastStats"]
+    },
+    "BUSINESS_ADDRESS_ACTIVE": {
+      "codes": [406],
+      "methods": ["contacts.getLocated"]
+    },
+    "BUSINESS_CONNECTION_INVALID": {
+      "codes": [400],
+      "methods": ["account.setGlobalPrivacySettings", "account.updateProfile", "messages.deleteMessages", "messages.editMessage", "messages.readHistory", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.setTyping", "messages.updatePinnedMessage", "payments.convertStarGift", "payments.exportInvoice", "payments.getPaymentForm", "payments.getSavedStarGifts", "payments.getStarsStatus", "payments.sendStarsForm", "payments.transferStarGift", "payments.upgradeStarGift", "stories.deleteStories"]
+    },
+    "BUSINESS_CONNECTION_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["account.acceptAuthorization", "account.cancelPasswordEmail", "account.changeAuthorizationSettings", "account.changePhone", "account.checkUsername", "account.clearRecentEmojiStatuses", "account.confirmBotConnection", "account.confirmPasswordEmail", "account.confirmPhone", "account.createBusinessChatLink", "account.createTheme", "account.declinePasswordReset", "account.deleteAutoSaveExceptions", "account.deleteBusinessChatLink", "account.deletePasskey", "account.deleteSecureValue", "account.deleteWebBrowserSettingsExceptions", "account.disablePeerConnectedBot", "account.editBusinessChatLink", "account.finishTakeoutSession", "account.getAccountTTL", "account.getAllSecureValues", "account.getAuthorizationForm", "account.getAuthorizations", "account.getAutoDownloadSettings", "account.getAutoSaveSettings", "account.getBotBusinessConnection", "account.getBusinessChatLinks", "account.getChannelDefaultEmojiStatuses", "account.getChannelRestrictedStatusEmojis", "account.getChatThemes", "account.getCollectibleEmojiStatuses", "account.getConnectedBots", "account.getContactSignUpNotification", "account.getContentSettings", "account.getDefaultBackgroundEmojis", "account.getDefaultEmojiStatuses", "account.getDefaultGroupPhotoEmojis", "account.getDefaultProfilePhotoEmojis", "account.getGlobalPrivacySettings", "account.getMultiWallPapers", "account.getNotifyExceptions", "account.getNotifySettings", "account.getPaidMessagesRevenue", "account.getPasskeys", "account.getPassword", "account.getPasswordSettings", "account.getPrivacy", "account.getReactionsNotifySettings", "account.getRecentEmojiStatuses", "account.getSavedMusicIds", "account.getSavedRingtones", "account.getSecureValue", "account.getTheme", "account.getThemes", "account.getTmpPassword", "account.getUniqueGiftChatThemes", "account.getWallPaper", "account.getWallPapers", "account.getWebAuthorizations", "account.getWebBrowserSettings", "account.initPasskeyRegistration", "account.initTakeoutSession", "account.installTheme", "account.installWallPaper", "account.invalidateSignInCodes", "account.registerDevice", "account.registerPasskey", "account.reorderUsernames", "account.reportPeer", "account.reportProfilePhoto", "account.resendPasswordEmail", "account.resetNotifySettings", "account.resetWallPapers", "account.resetWebAuthorization", "account.resetWebAuthorizations", "account.resolveBusinessChatLink", "account.saveAutoDownloadSettings", "account.saveAutoSaveSettings", "account.saveMusic", "account.saveRingtone", "account.saveSecureValue", "account.saveTheme", "account.saveWallPaper", "account.sendChangePhoneCode", "account.sendConfirmPhoneCode", "account.sendVerifyEmailCode", "account.sendVerifyPhoneCode", "account.setAccountTTL", "account.setAuthorizationTTL", "account.setContactSignUpNotification", "account.setContentSettings", "account.setGlobalPrivacySettings", "account.setMainProfileTab", "account.setPrivacy", "account.setReactionsNotifySettings", "account.toggleConnectedBotPaused", "account.toggleNoPaidMessagesException", "account.toggleSponsoredMessages", "account.toggleUsername", "account.toggleWebBrowserSettingsException", "account.unregisterDevice", "account.updateBirthday", "account.updateBusinessAwayMessage", "account.updateBusinessGreetingMessage", "account.updateBusinessIntro", "account.updateBusinessLocation", "account.updateBusinessWorkHours", "account.updateColor", "account.updateConnectedBot", "account.updateDeviceLocked", "account.updateEmojiStatus", "account.updateNotifySettings", "account.updatePasswordSettings", "account.updatePersonalChannel", "account.updateProfile", "account.updateStatus", "account.updateTheme", "account.updateWebBrowserSettings", "account.uploadRingtone", "account.uploadTheme", "account.uploadWallPaper", "account.verifyEmail", "account.verifyPhone", "aicompose.createTone", "aicompose.deleteTone", "aicompose.getTone", "aicompose.getToneExample", "aicompose.getTones", "aicompose.saveTone", "aicompose.updateTone", "auth.acceptLoginToken", "auth.bindTempAuthKey", "auth.cancelCode", "auth.checkPaidAuth", "auth.checkPassword", "auth.checkRecoveryPassword", "auth.exportAuthorization", "auth.exportLoginToken", "auth.finishPasskeyLogin", "auth.importAuthorization", "auth.importBotAuthorization", "auth.importLoginToken", "auth.importWebTokenAuthorization", "auth.initPasskeyLogin", "auth.recoverPassword", "auth.reportMissingCode", "auth.requestFirebaseSms", "auth.requestPasswordRecovery", "auth.resendCode", "auth.resetLoginEmail", "auth.sendCode", "auth.signIn", "auth.signUp", "bots.addPreviewMedia", "bots.allowSendMessage", "bots.answerWebhookJSONQuery", "bots.canSendMessage", "bots.checkDownloadFileParams", "bots.checkUsername", "bots.createBot", "bots.deletePreviewMedia", "bots.editAccessSettings", "bots.editPreviewMedia", "bots.exportBotToken", "bots.getAccessSettings", "bots.getAdminedBots", "bots.getBotCommands", "bots.getBotInfo", "bots.getBotMenuButton", "bots.getBotRecommendations", "bots.getPopularAppBots", "bots.getPreviewInfo", "bots.getPreviewMedias", "bots.getRequestedWebViewButton", "bots.invokeWebViewCustomMethod", "bots.reorderPreviewMedias", "bots.reorderUsernames", "bots.requestWebViewButton", "bots.resetBotCommands", "bots.sendCustomRequest", "bots.setBotBroadcastDefaultAdminRights", "bots.setBotCommands", "bots.setBotGroupDefaultAdminRights", "bots.setBotInfo", "bots.setBotMenuButton", "bots.setCustomVerification", "bots.setJoinChatResults", "bots.toggleUserEmojiStatusPermission", "bots.toggleUsername", "bots.updateStarRefProgram", "bots.updateUserEmojiStatus", "channels.checkSearchPostsFlood", "channels.checkUsername", "channels.convertToGigagroup", "channels.createChannel", "channels.createForumTopic", "channels.deactivateAllUsernames", "channels.deleteChannel", "channels.deleteHistory", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.deleteTopicHistory", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.editForumTopic", "channels.editLocation", "channels.editPhoto", "channels.editTitle", "channels.exportMessageLink", "channels.getAdminLog", "channels.getAdminedPublicChannels", "channels.getChannelRecommendations", "channels.getChannels", "channels.getForumTopics", "channels.getForumTopicsByID", "channels.getFullChannel", "channels.getFutureCreatorAfterLeave", "channels.getGroupsForDiscussion", "channels.getInactiveChannels", "channels.getLeftChannels", "channels.getMessageAuthor", "channels.getMessages", "channels.getParticipant", "channels.getParticipants", "channels.getSendAs", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "channels.readHistory", "channels.readMessageContents", "channels.reorderPinnedForumTopics", "channels.reorderUsernames", "channels.reportAntiSpamFalsePositive", "channels.reportSpam", "channels.restrictSponsoredMessages", "channels.searchPosts", "channels.setBoostsToUnblockRestrictions", "channels.setDiscussionGroup", "channels.setEmojiStickers", "channels.setMainProfileTab", "channels.setStickers", "channels.toggleAntiSpam", "channels.toggleAutotranslation", "channels.toggleForum", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.toggleUsername", "channels.toggleViewForumAsMessages", "channels.updateColor", "channels.updateEmojiStatus", "channels.updatePaidMessagesPrice", "channels.updatePinnedForumTopic", "channels.updateUsername", "chatlists.checkChatlistInvite", "chatlists.deleteExportedInvite", "chatlists.editExportedInvite", "chatlists.exportChatlistInvite", "chatlists.getChatlistUpdates", "chatlists.getExportedInvites", "chatlists.getLeaveChatlistSuggestions", "chatlists.hideChatlistUpdates", "chatlists.joinChatlistInvite", "chatlists.joinChatlistUpdates", "chatlists.leaveChatlist", "contacts.acceptContact", "contacts.addContact", "contacts.block", "contacts.blockFromReplies", "contacts.deleteByPhones", "contacts.deleteContacts", "contacts.editCloseFriends", "contacts.exportContactToken", "contacts.getBirthdays", "contacts.getBlocked", "contacts.getContactIDs", "contacts.getContacts", "contacts.getLocated", "contacts.getSaved", "contacts.getSponsoredPeers", "contacts.getStatuses", "contacts.getTopPeers", "contacts.importContactToken", "contacts.importContacts", "contacts.resetSaved", "contacts.resetTopPeerRating", "contacts.resolvePhone", "contacts.resolveUsername", "contacts.search", "contacts.setBlocked", "contacts.toggleTopPeers", "contacts.unblock", "contacts.updateContactNote", "folders.editPeerFolders", "fragment.getCollectibleInfo", "help.acceptTermsOfService", "help.dismissSuggestion", "help.editUserInfo", "help.getAppConfig", "help.getAppUpdate", "help.getCdnConfig", "help.getConfig", "help.getCountriesList", "help.getDeepLinkInfo", "help.getInviteText", "help.getNearestDc", "help.getPassportConfig", "help.getPeerColors", "help.getPeerProfileColors", "help.getPremiumPromo", "help.getPromoData", "help.getRecentMeUrls", "help.getSupport", "help.getSupportName", "help.getTermsOfServiceUpdate", "help.getTimezonesList", "help.getUserInfo", "help.hidePromoData", "help.saveAppLog", "help.setBotUpdatesStatus", "langpack.getDifference", "langpack.getLangPack", "langpack.getLanguage", "langpack.getLanguages", "langpack.getStrings", "messages.acceptEncryption", "messages.acceptUrlAuth", "messages.addChatUser", "messages.addPollAnswer", "messages.appendTodoList", "messages.checkChatInvite", "messages.checkHistoryImport", "messages.checkHistoryImportPeer", "messages.checkQuickReplyShortcut", "messages.checkUrlAuthMatchCode", "messages.clearAllDrafts", "messages.clearRecentReactions", "messages.clearRecentStickers", "messages.clickSponsoredMessage", "messages.composeMessageWithAI", "messages.createChat", "messages.createForumTopic", "messages.declineUrlAuth", "messages.deleteChat", "messages.deleteChatUser", "messages.deleteExportedChatInvite", "messages.deleteFactCheck", "messages.deleteHistory", "messages.deleteMessages", "messages.deleteParticipantReaction", "messages.deleteParticipantReactions", "messages.deletePhoneCallHistory", "messages.deletePollAnswer", "messages.deleteQuickReplyMessages", "messages.deleteQuickReplyShortcut", "messages.deleteRevokedExportedChatInvites", "messages.deleteSavedHistory", "messages.deleteScheduledMessages", "messages.deleteTopicHistory", "messages.discardEncryption", "messages.editChatAbout", "messages.editChatAdmin", "messages.editChatCreator", "messages.editChatDefaultBannedRights", "messages.editChatParticipantRank", "messages.editChatPhoto", "messages.editChatTitle", "messages.editExportedChatInvite", "messages.editFactCheck", "messages.editForumTopic", "messages.editInlineBotMessage", "messages.editMessage", "messages.editQuickReplyShortcut", "messages.exportChatInvite", "messages.faveSticker", "messages.forwardMessages", "messages.getAdminsWithInvites", "messages.getAllDrafts", "messages.getAllStickers", "messages.getArchivedStickers", "messages.getAttachMenuBot", "messages.getAttachMenuBots", "messages.getAttachedStickers", "messages.getAvailableEffects", "messages.getAvailableReactions", "messages.getBotApp", "messages.getBotCallbackAnswer", "messages.getChatInviteImporters", "messages.getChats", "messages.getCommonChats", "messages.getCustomEmojiDocuments", "messages.getDefaultHistoryTTL", "messages.getDefaultTagReactions", "messages.getDhConfig", "messages.getDialogFilters", "messages.getDialogUnreadMarks", "messages.getDialogs", "messages.getDiscussionMessage", "messages.getDocumentByHash", "messages.getEmojiGameInfo", "messages.getEmojiGroups", "messages.getEmojiKeywords", "messages.getEmojiKeywordsDifference", "messages.getEmojiKeywordsLanguages", "messages.getEmojiProfilePhotoGroups", "messages.getEmojiStatusGroups", "messages.getEmojiStickerGroups", "messages.getEmojiStickers", "messages.getEmojiURL", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getExtendedMedia", "messages.getFactCheck", "messages.getFavedStickers", "messages.getFeaturedEmojiStickers", "messages.getFeaturedStickers", "messages.getForumTopics", "messages.getForumTopicsByID", "messages.getFullChat", "messages.getFutureChatCreatorAfterLeave", "messages.getGameHighScores", "messages.getHistory", "messages.getInlineBotResults", "messages.getInlineGameHighScores", "messages.getMaskStickers", "messages.getMessageEditData", "messages.getMessageReactionsList", "messages.getMessageReadParticipants", "messages.getMessages", "messages.getMessagesReactions", "messages.getMessagesViews", "messages.getMyStickers", "messages.getOldFeaturedStickers", "messages.getOnlines", "messages.getOutboxReadDate", "messages.getPaidReactionPrivacy", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getPersonalChannelHistory", "messages.getPinnedDialogs", "messages.getPinnedSavedDialogs", "messages.getPollResults", "messages.getPollVotes", "messages.getPreparedInlineMessage", "messages.getQuickReplies", "messages.getQuickReplyMessages", "messages.getRecentLocations", "messages.getRecentReactions", "messages.getRecentStickers", "messages.getReplies", "messages.getRichMessage", "messages.getSavedDialogs", "messages.getSavedDialogsByID", "messages.getSavedGifs", "messages.getSavedHistory", "messages.getSavedReactionTags", "messages.getScheduledHistory", "messages.getScheduledMessages", "messages.getSearchCounters", "messages.getSearchResultsCalendar", "messages.getSearchResultsPositions", "messages.getSplitRanges", "messages.getSponsoredMessages", "messages.getStickerSet", "messages.getStickers", "messages.getSuggestedDialogFilters", "messages.getTopReactions", "messages.getUnreadMentions", "messages.getUnreadPollVotes", "messages.getUnreadReactions", "messages.getWebPage", "messages.getWebPagePreview", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.hidePeerSettingsBar", "messages.importChatInvite", "messages.initHistoryImport", "messages.installStickerSet", "messages.markDialogUnread", "messages.migrateChat", "messages.prolongWebView", "messages.rateTranscribedAudio", "messages.readDiscussion", "messages.readEncryptedHistory", "messages.readFeaturedStickers", "messages.readHistory", "messages.readMentions", "messages.readMessageContents", "messages.readPollVotes", "messages.readReactions", "messages.readSavedHistory", "messages.receivedMessages", "messages.receivedQueue", "messages.reorderPinnedDialogs", "messages.reorderPinnedForumTopics", "messages.reorderPinnedSavedDialogs", "messages.reorderQuickReplies", "messages.reorderStickerSets", "messages.report", "messages.reportEncryptedSpam", "messages.reportMessagesDelivery", "messages.reportMusicListen", "messages.reportReaction", "messages.reportReadMetrics", "messages.reportSpam", "messages.reportSponsoredMessage", "messages.requestAppWebView", "messages.requestEncryption", "messages.requestMainWebView", "messages.requestSimpleWebView", "messages.requestUrlAuth", "messages.requestWebView", "messages.saveDefaultSendAs", "messages.saveDraft", "messages.saveGif", "messages.savePreparedInlineMessage", "messages.saveRecentSticker", "messages.search", "messages.searchCustomEmoji", "messages.searchEmojiStickerSets", "messages.searchGlobal", "messages.searchSentMedia", "messages.searchStickerSets", "messages.searchStickers", "messages.sendBotRequestedPeer", "messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendQuickReplyMessages", "messages.sendReaction", "messages.sendScheduledMessages", "messages.sendScreenshotNotification", "messages.sendVote", "messages.sendWebViewData", "messages.sendWebViewResultMessage", "messages.setBotCallbackAnswer", "messages.setBotGuestChatResult", "messages.setBotPrecheckoutResults", "messages.setBotShippingResults", "messages.setChatAvailableReactions", "messages.setChatTheme", "messages.setChatWallPaper", "messages.setDefaultHistoryTTL", "messages.setDefaultReaction", "messages.setEncryptedTyping", "messages.setGameScore", "messages.setHistoryTTL", "messages.setInlineBotResults", "messages.setInlineGameScore", "messages.setTyping", "messages.startBot", "messages.startHistoryImport", "messages.summarizeText", "messages.toggleBotInAttachMenu", "messages.toggleDialogFilterTags", "messages.toggleDialogPin", "messages.toggleNoForwards", "messages.togglePaidReactionPrivacy", "messages.togglePeerTranslations", "messages.toggleSavedDialogPin", "messages.toggleStickerSets", "messages.toggleSuggestedPostApproval", "messages.toggleTodoCompleted", "messages.transcribeAudio", "messages.translateText", "messages.uninstallStickerSet", "messages.unpinAllMessages", "messages.updateDialogFilter", "messages.updateDialogFiltersOrder", "messages.updatePinnedForumTopic", "messages.updatePinnedMessage", "messages.updateSavedReactionTag", "messages.uploadEncryptedFile", "messages.uploadImportedMedia", "messages.uploadMedia", "messages.viewSponsoredMessage", "payments.applyGiftCode", "payments.assignAppStoreTransaction", "payments.assignPlayMarketTransaction", "payments.botCancelStarsSubscription", "payments.canPurchaseStore", "payments.changeStarsSubscription", "payments.checkCanSendGift", "payments.checkGiftCode", "payments.clearSavedInfo", "payments.connectStarRefBot", "payments.convertStarGift", "payments.craftStarGift", "payments.createStarGiftCollection", "payments.deleteStarGiftCollection", "payments.editConnectedStarRefBot", "payments.exportInvoice", "payments.fulfillStarsSubscription", "payments.getBankCardData", "payments.getConnectedStarRefBot", "payments.getConnectedStarRefBots", "payments.getCraftStarGifts", "payments.getGiveawayInfo", "payments.getPaymentForm", "payments.getPaymentReceipt", "payments.getPremiumGiftCodeOptions", "payments.getResaleStarGifts", "payments.getSavedInfo", "payments.getSavedStarGift", "payments.getSavedStarGifts", "payments.getStarGiftActiveAuctions", "payments.getStarGiftAuctionAcquiredGifts", "payments.getStarGiftAuctionState", "payments.getStarGiftCollections", "payments.getStarGiftUpgradeAttributes", "payments.getStarGiftUpgradePreview", "payments.getStarGiftWithdrawalUrl", "payments.getStarGifts", "payments.getStarsGiftOptions", "payments.getStarsGiveawayOptions", "payments.getStarsRevenueAdsAccountUrl", "payments.getStarsRevenueStats", "payments.getStarsRevenueWithdrawalUrl", "payments.getStarsStatus", "payments.getStarsSubscriptions", "payments.getStarsTopupOptions", "payments.getStarsTransactions", "payments.getStarsTransactionsByID", "payments.getSuggestedStarRefBots", "payments.getUniqueStarGift", "payments.getUniqueStarGiftValueInfo", "payments.launchPrepaidGiveaway", "payments.refundStarsCharge", "payments.reorderStarGiftCollections", "payments.saveStarGift", "payments.sendPaymentForm", "payments.sendStarGiftOffer", "payments.sendStarsForm", "payments.toggleChatStarGiftNotifications", "payments.toggleStarGiftsPinnedToTop", "payments.transferStarGift", "payments.updateStarGiftCollection", "payments.updateStarGiftPrice", "payments.upgradeStarGift", "payments.validateRequestedInfo", "phone.acceptCall", "phone.checkGroupCall", "phone.confirmCall", "phone.createConferenceCall", "phone.createGroupCall", "phone.declineConferenceCallInvite", "phone.deleteConferenceCallParticipants", "phone.deleteGroupCallMessages", "phone.deleteGroupCallParticipantMessages", "phone.discardCall", "phone.discardGroupCall", "phone.editGroupCallParticipant", "phone.editGroupCallTitle", "phone.exportGroupCallInvite", "phone.getCallConfig", "phone.getGroupCall", "phone.getGroupCallChainBlocks", "phone.getGroupCallJoinAs", "phone.getGroupCallStars", "phone.getGroupCallStreamChannels", "phone.getGroupCallStreamRtmpUrl", "phone.getGroupParticipants", "phone.inviteConferenceCallParticipant", "phone.inviteToGroupCall", "phone.joinGroupCall", "phone.joinGroupCallPresentation", "phone.leaveGroupCall", "phone.leaveGroupCallPresentation", "phone.receivedCall", "phone.requestCall", "phone.saveCallDebug", "phone.saveCallLog", "phone.saveDefaultGroupCallJoinAs", "phone.saveDefaultSendAs", "phone.sendConferenceCallBroadcast", "phone.sendGroupCallEncryptedMessage", "phone.sendGroupCallMessage", "phone.sendSignalingData", "phone.setCallRating", "phone.startScheduledGroupCall", "phone.toggleGroupCallRecord", "phone.toggleGroupCallSettings", "phone.toggleGroupCallStartSubscription", "photos.deletePhotos", "photos.getUserPhotos", "photos.uploadContactProfilePhoto", "premium.applyBoost", "premium.getBoostsList", "premium.getBoostsStatus", "premium.getMyBoosts", "premium.getUserBoosts", "smsjobs.finishJob", "smsjobs.getSmsJob", "smsjobs.getStatus", "smsjobs.isEligibleToJoin", "smsjobs.join", "smsjobs.leave", "smsjobs.updateSettings", "stats.getBroadcastStats", "stats.getMegagroupStats", "stats.getMessagePublicForwards", "stats.getMessageStats", "stats.getPollStats", "stats.getStoryPublicForwards", "stats.getStoryStats", "stats.loadAsyncGraph", "stickers.addStickerToSet", "stickers.changeSticker", "stickers.changeStickerPosition", "stickers.checkShortName", "stickers.createStickerSet", "stickers.deleteStickerSet", "stickers.removeStickerFromSet", "stickers.renameStickerSet", "stickers.replaceSticker", "stickers.setStickerSetThumb", "stickers.suggestShortName", "stories.activateStealthMode", "stories.canSendStory", "stories.createAlbum", "stories.deleteAlbum", "stories.deleteStories", "stories.editStory", "stories.exportStoryLink", "stories.getAlbumStories", "stories.getAlbums", "stories.getAllReadPeerStories", "stories.getAllStories", "stories.getChatsToSend", "stories.getPeerMaxIDs", "stories.getPeerStories", "stories.getPinnedStories", "stories.getStoriesArchive", "stories.getStoriesByID", "stories.getStoriesViews", "stories.getStoryReactionsList", "stories.getStoryViewsList", "stories.incrementStoryViews", "stories.readStories", "stories.reorderAlbums", "stories.report", "stories.searchPosts", "stories.sendReaction", "stories.sendStory", "stories.startLive", "stories.toggleAllStoriesHidden", "stories.togglePeerStoriesHidden", "stories.togglePinned", "stories.togglePinnedToTop", "stories.updateAlbum", "updates.getChannelDifference", "updates.getDifference", "updates.getState", "upload.getCdnFile", "upload.getCdnFileHashes", "upload.getFile", "upload.getFileHashes", "upload.getWebFile", "upload.reuploadCdnFile", "upload.saveBigFilePart", "upload.saveFilePart", "users.getFullUser", "users.getRequirementsToContact", "users.getSavedMusic", "users.getSavedMusicByID", "users.getUsers", "users.setSecureValueErrors", "users.suggestBirthday"]
+    },
+    "BUSINESS_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.setTyping", "messages.updatePinnedMessage"]
+    },
+    "BUSINESS_PEER_USAGE_MISSING": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMessage", "messages.setTyping"]
+    },
+    "BUSINESS_RECIPIENTS_EMPTY": {
+      "codes": [400],
+      "methods": ["account.updateConnectedBot"]
+    },
+    "BUSINESS_WORK_HOURS_EMPTY": {
+      "codes": [400],
+      "methods": ["account.updateBusinessWorkHours"]
+    },
+    "BUSINESS_WORK_HOURS_PERIOD_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateBusinessWorkHours"]
+    },
+    "BUTTON_COPY_TEXT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "BUTTON_DATA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editInlineBotMessage", "messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "BUTTON_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "BUTTON_INVALID": {
+      "codes": [400],
+      "methods": ["bots.requestWebViewButton", "bots.setBotMenuButton"]
+    },
+    "BUTTON_POS_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "BUTTON_TEXT_INVALID": {
+      "codes": [400],
+      "methods": ["bots.setBotMenuButton"]
+    },
+    "BUTTON_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "BUTTON_URL_INVALID": {
+      "codes": [400],
+      "methods": ["bots.setBotMenuButton", "messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "BUTTON_USER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "BUTTON_USER_PRIVACY_RESTRICTED": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "CALL_ALREADY_ACCEPTED": {
+      "codes": [400],
+      "methods": ["phone.acceptCall", "phone.discardCall"]
+    },
+    "CALL_ALREADY_DECLINED": {
+      "codes": [400],
+      "methods": ["phone.acceptCall", "phone.confirmCall", "phone.receivedCall"]
+    },
+    "CALL_NOT_ACTIVE": {
+      "codes": [400],
+      "methods": ["phone.sendSignalingData"]
+    },
+    "CALL_OCCUPY_FAILED": {
+      "codes": [400, 500],
+      "methods": ["phone.acceptCall", "phone.discardCall"]
+    },
+    "CALL_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["phone.acceptCall", "phone.confirmCall", "phone.discardCall", "phone.receivedCall", "phone.saveCallDebug", "phone.saveCallLog", "phone.sendSignalingData", "phone.setCallRating"]
+    },
+    "CALL_PROTOCOL_COMPAT_LAYER_INVALID": {
+      "codes": [406],
+      "methods": ["phone.acceptCall"]
+    },
+    "CALL_PROTOCOL_FLAGS_INVALID": {
+      "codes": [400],
+      "methods": ["phone.acceptCall", "phone.requestCall"]
+    },
+    "CALL_PROTOCOL_LAYER_INVALID": {
+      "codes": [400],
+      "methods": ["phone.acceptCall", "phone.requestCall"]
+    },
+    "CDN_METHOD_INVALID": {
+      "codes": [400],
+      "methods": ["invokeWithLayer", "updates.getDifference", "upload.getCdnFileHashes", "upload.getFile", "upload.reuploadCdnFile"]
+    },
+    "CDN_UPLOAD_TIMEOUT": {
+      "codes": [500],
+      "methods": ["upload.reuploadCdnFile"]
+    },
+    "CHANNELS_ADMIN_LOCATED_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.createChannel", "channels.getAdminedPublicChannels"]
+    },
+    "CHANNELS_ADMIN_PUBLIC_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.checkUsername", "channels.editCreator", "channels.getAdminedPublicChannels", "channels.updateUsername", "messages.editChatCreator"]
+    },
+    "CHANNELS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.createChannel", "channels.joinChannel", "chatlists.joinChatlistInvite", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.importChatInvite", "messages.migrateChat"]
+    },
+    "CHANNEL_FORUM_MISSING": {
+      "codes": [400],
+      "methods": ["channels.createForumTopic", "channels.deleteTopicHistory", "channels.editForumTopic", "channels.getForumTopics", "channels.getForumTopicsByID", "channels.updatePinnedForumTopic", "messages.createForumTopic", "messages.getForumTopics"]
+    },
+    "CHANNEL_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.convertToGigagroup", "messages.getFutureChatCreatorAfterLeave"]
+    },
+    "CHANNEL_INVALID": {
+      "codes": [400],
+      "methods": ["account.getNotifySettings", "account.updateNotifySettings", "channels.checkUsername", "channels.clickSponsoredMessage", "channels.convertToGigagroup", "channels.createForumTopic", "channels.deactivateAllUsernames", "channels.deleteChannel", "channels.deleteHistory", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.deleteTopicHistory", "channels.deleteUserHistory", "channels.editAbout", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.editForumTopic", "channels.editLocation", "channels.editPhoto", "channels.editTitle", "channels.exportInvite", "channels.exportMessageLink", "channels.getAdminLog", "channels.getChannelRecommendations", "channels.getChannels", "channels.getForumTopics", "channels.getForumTopicsByID", "channels.getFullChannel", "channels.getFutureCreatorAfterLeave", "channels.getMessageAuthor", "channels.getMessages", "channels.getParticipant", "channels.getParticipants", "channels.getSendAs", "channels.getSponsoredMessages", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "channels.readHistory", "channels.readMessageContents", "channels.reorderPinnedForumTopics", "channels.reorderUsernames", "channels.reportAntiSpamFalsePositive", "channels.reportSpam", "channels.reportSponsoredMessage", "channels.restrictSponsoredMessages", "channels.setBoostsToUnblockRestrictions", "channels.setDiscussionGroup", "channels.setEmojiStickers", "channels.setMainProfileTab", "channels.setStickers", "channels.toggleAntiSpam", "channels.toggleAutotranslation", "channels.toggleForum", "channels.toggleInvites", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.toggleUsername", "channels.toggleViewForumAsMessages", "channels.updateColor", "channels.updateEmojiStatus", "channels.updatePaidMessagesPrice", "channels.updatePinnedForumTopic", "channels.updatePinnedMessage", "channels.updateUsername", "channels.viewSponsoredMessage", "chatlists.editExportedInvite", "chatlists.exportChatlistInvite", "folders.editPeerFolders", "messages.createForumTopic", "messages.deleteScheduledMessages", "messages.deleteTopicHistory", "messages.editChatAbout", "messages.editChatDefaultBannedRights", "messages.editForumTopic", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getBotCallbackAnswer", "messages.getChatInviteImporters", "messages.getDiscussionMessage", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getForumTopics", "messages.getForumTopicsByID", "messages.getHistory", "messages.getInlineBotResults", "messages.getMessageReactionsList", "messages.getMessagesReactions", "messages.getMessagesViews", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getReplies", "messages.getScheduledMessages", "messages.getSponsoredMessages", "messages.getUnreadMentions", "messages.hideAllChatJoinRequests", "messages.importChatInvite", "messages.readMentions", "messages.reorderPinnedForumTopics", "messages.report", "messages.saveDefaultSendAs", "messages.search", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendReaction", "messages.sendVote", "messages.setTyping", "messages.updatePinnedForumTopic", "messages.uploadMedia", "payments.getStarsRevenueStats", "phone.getGroupCallJoinAs", "premium.getBoostsStatus", "stats.getBroadcastRevenueStats", "stats.getBroadcastRevenueTransactions", "stats.getBroadcastStats", "stats.getMegagroupStats", "stats.getMessagePublicForwards", "stats.getMessageStats", "stats.getStoryStats", "stories.canSendStory", "stories.deleteStories", "stories.getBoostersList", "stories.getPeerStories", "stories.getPinnedStories", "stories.getStoriesByID", "stories.getStoriesViews", "stories.sendStory", "updates.getChannelDifference", "updates.getDifference", "upload.getFile", "users.getFullUser", "users.getUsers"]
+    },
+    "CHANNEL_MONOFORUM_UNSUPPORTED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.editCreator", "channels.getForumTopics", "channels.getParticipants", "channels.inviteToChannel", "channels.joinChannel", "channels.updatePaidMessagesPrice", "messages.exportChatInvite", "messages.getPeerSettings", "messages.sendMessage", "messages.setTyping", "stories.startLive", "users.getUsers"]
+    },
+    "CHANNEL_PARICIPANT_MISSING": {
+      "codes": [400],
+      "methods": ["channels.deleteHistory"]
+    },
+    "CHANNEL_PRIVATE": {
+      "codes": [400, 406],
+      "methods": ["account.getNotifySettings", "account.reportPeer", "account.updateNotifySettings", "channels.checkUsername", "channels.deleteChannel", "channels.deleteHistory", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.deleteUserHistory", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.editPhoto", "channels.editTitle", "channels.exportMessageLink", "channels.getAdminLog", "channels.getChannelRecommendations", "channels.getChannels", "channels.getForumTopics", "channels.getFullChannel", "channels.getMessages", "channels.getParticipant", "channels.getParticipants", "channels.getSendAs", "channels.getSponsoredMessages", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "channels.readHistory", "channels.readMessageContents", "channels.togglePreHistoryHidden", "channels.toggleUsername", "channels.updateUsername", "channels.viewSponsoredMessage", "chatlists.exportChatlistInvite", "contacts.addContact", "contacts.block", "contacts.unblock", "folders.editPeerFolders", "messages.checkChatInvite", "messages.deleteHistory", "messages.editChatAbout", "messages.editChatCreator", "messages.editChatDefaultBannedRights", "messages.editExportedChatInvite", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getBotCallbackAnswer", "messages.getChatInviteImporters", "messages.getCommonChats", "messages.getDiscussionMessage", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getHistory", "messages.getInlineBotResults", "messages.getMessagesReactions", "messages.getMessagesViews", "messages.getOnlines", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getReplies", "messages.getSponsoredMessages", "messages.getUnreadMentions", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.importChatInvite", "messages.readHistory", "messages.readMentions", "messages.report", "messages.reportSpam", "messages.search", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendReaction", "messages.sendVote", "messages.setTyping", "messages.toggleDialogPin", "messages.updatePinnedMessage", "messages.uploadMedia", "payments.getStarsRevenueStats", "phone.createGroupCall", "photos.getUserPhotos", "premium.getBoostsStatus", "stats.getBroadcastStats", "stories.getPeerStories", "stories.getStoriesByID", "stories.getStoriesViews", "updates.getChannelDifference", "updates.getDifference", "upload.getFile", "users.getFullUser", "users.getUsers"]
+    },
+    "CHANNEL_PUBLIC_GROUP_NA": {
+      "codes": [403],
+      "methods": ["channels.getFullChannel", "channels.leaveChannel", "updates.getChannelDifference"]
+    },
+    "CHANNEL_TOO_BIG": {
+      "codes": [400],
+      "methods": ["channels.deleteHistory"]
+    },
+    "CHANNEL_TOO_LARGE": {
+      "codes": [400, 406],
+      "methods": ["channels.deleteChannel"]
+    },
+    "CHARGE_ALREADY_REFUNDED": {
+      "codes": [400],
+      "methods": ["payments.refundStarsCharge"]
+    },
+    "CHARGE_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["payments.refundStarsCharge"]
+    },
+    "CHARGE_ID_INVALID": {
+      "codes": [400],
+      "methods": ["payments.botCancelStarsSubscription"]
+    },
+    "CHATLINKS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["account.createBusinessChatLink"]
+    },
+    "CHATLINK_SLUG_EMPTY": {
+      "codes": [400],
+      "methods": ["account.deleteBusinessChatLink", "account.editBusinessChatLink", "account.resolveBusinessChatLink"]
+    },
+    "CHATLINK_SLUG_EXPIRED": {
+      "codes": [400],
+      "methods": ["account.deleteBusinessChatLink", "account.resolveBusinessChatLink"]
+    },
+    "CHATLISTS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["chatlists.exportChatlistInvite", "chatlists.joinChatlistInvite"]
+    },
+    "CHATLIST_EXCLUDE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.updateDialogFilter"]
+    },
+    "CHAT_ABOUT_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["channels.editAbout", "messages.editChatAbout"]
+    },
+    "CHAT_ABOUT_TOO_LONG": {
+      "codes": [400],
+      "methods": ["channels.createChannel", "channels.editAbout", "messages.editChatAbout"]
+    },
+    "CHAT_ACTION_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.deleteFactCheck", "messages.editFactCheck"]
+    },
+    "CHAT_ADMIN_INVITE_REQUIRED": {
+      "codes": [403],
+      "methods": ["channels.editAdmin"]
+    },
+    "CHAT_ADMIN_REQUIRED": {
+      "codes": [400, 403],
+      "methods": ["channels.convertToGigagroup", "channels.deleteChannel", "channels.deleteHistory", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.deleteUserHistory", "channels.editAbout", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.editForumTopic", "channels.editLocation", "channels.editPhoto", "channels.editTitle", "channels.exportInvite", "channels.getAdminLog", "channels.getParticipant", "channels.getParticipants", "channels.inviteToChannel", "channels.reportSpam", "channels.setDiscussionGroup", "channels.toggleForum", "channels.toggleInvites", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.toggleUsername", "channels.updatePinnedMessage", "channels.updateUsername", "chatlists.exportChatlistInvite", "messages.addChatUser", "messages.checkHistoryImportPeer", "messages.deleteChat", "messages.deleteChatUser", "messages.deleteExportedChatInvite", "messages.deleteHistory", "messages.editChatAbout", "messages.editChatCreator", "messages.editChatDefaultBannedRights", "messages.editChatTitle", "messages.editExportedChatInvite", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getAdminsWithInvites", "messages.getChatInviteImporters", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getMessageEditData", "messages.getSavedHistory", "messages.getScheduledHistory", "messages.getScheduledMessages", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.initHistoryImport", "messages.migrateChat", "messages.readSavedHistory", "messages.saveDraft", "messages.search", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.setChatAvailableReactions", "messages.setHistoryTTL", "messages.setTyping", "messages.startBot", "messages.startHistoryImport", "messages.toggleNoForwards", "messages.unpinAllMessages", "messages.updatePinnedMessage", "messages.uploadImportedMedia", "messages.uploadMedia", "payments.getStarsTransactions", "phone.createGroupCall", "phone.getGroupCallStreamRtmpUrl", "phone.joinGroupCall", "premium.getBoostsList", "stats.getBroadcastRevenueStats", "stats.getBroadcastStats", "stats.getMegagroupStats", "stats.getMessagePublicForwards", "stats.getMessageStats", "stories.canSendStory", "stories.getBoostersList", "stories.getStoriesArchive", "stories.sendStory", "stories.startLive"]
+    },
+    "CHAT_DISCUSSION_UNALLOWED": {
+      "codes": [400],
+      "methods": ["channels.toggleForum"]
+    },
+    "CHAT_FORBIDDEN": {
+      "codes": [403],
+      "methods": []
+    },
+    "CHAT_FORWARDS_RESTRICTED": {
+      "codes": [400, 406],
+      "methods": ["messages.editMessage", "messages.forwardMessages", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "CHAT_GUEST_SEND_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "CHAT_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.discardEncryption"]
+    },
+    "CHAT_ID_GENERATE_FAILED": {
+      "codes": [500],
+      "methods": ["messages.createChat"]
+    },
+    "CHAT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.checkUsername", "channels.getSendAs", "channels.setStickers", "channels.toggleForum", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.updatePinnedMessage", "folders.editPeerFolders", "messages.acceptEncryption", "messages.addChatUser", "messages.deleteChat", "messages.deleteChatUser", "messages.deleteHistory", "messages.editChatAbout", "messages.editChatAdmin", "messages.editChatDefaultBannedRights", "messages.editChatPhoto", "messages.editChatTitle", "messages.exportChatInvite", "messages.forwardMessage", "messages.forwardMessages", "messages.getChats", "messages.getExportedChatInvites", "messages.getFullChat", "messages.getHistory", "messages.getMessagesViews", "messages.getOnlines", "messages.migrateChat", "messages.readDiscussion", "messages.readEncryptedHistory", "messages.readHistory", "messages.reportEncryptedSpam", "messages.search", "messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService", "messages.sendMessage", "messages.setEncryptedTyping", "messages.setTyping", "messages.toggleChatAdmins", "messages.updateDialogFilter", "messages.uploadEncryptedFile", "messages.uploadMedia"]
+    },
+    "CHAT_INVALID": {
+      "codes": [400, 500],
+      "methods": ["channels.createChannel", "channels.editPhoto", "channels.editTitle", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "messages.addChatUser", "messages.createChat", "messages.importChatInvite", "messages.migrateChat", "messages.updatePinnedMessage"]
+    },
+    "CHAT_INVITE_PERMANENT": {
+      "codes": [400],
+      "methods": ["messages.editExportedChatInvite"]
+    },
+    "CHAT_LINK_EXISTS": {
+      "codes": [400],
+      "methods": ["channels.togglePreHistoryHidden"]
+    },
+    "CHAT_MEMBER_ADD_FAILED": {
+      "codes": [400],
+      "methods": ["channels.editCreator", "channels.inviteToChannel", "messages.addChatUser", "messages.createChat", "messages.editChatCreator"]
+    },
+    "CHAT_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["channels.deleteChannel", "channels.editCreator", "channels.editLocation", "channels.editPhoto", "channels.editTitle", "channels.getChannelRecommendations", "channels.getFullChannel", "channels.getMessages", "channels.getSponsoredMessages", "channels.reorderUsernames", "channels.toggleAntiSpam", "channels.toggleForum", "channels.toggleInvites", "channels.toggleJoinRequest", "channels.toggleJoinToSend", "channels.toggleParticipantsHidden", "channels.togglePreHistoryHidden", "channels.toggleSignatures", "channels.toggleSlowMode", "channels.toggleUsername", "channels.updatePaidMessagesPrice", "channels.updatePinnedMessage", "channels.updateUsername", "messages.editChatAbout", "messages.editChatDefaultBannedRights", "messages.editChatPhoto", "messages.editChatTitle", "messages.getDialogs", "messages.getHistory", "messages.getMessagesViews", "messages.setChatAvailableReactions", "messages.setHistoryTTL", "messages.toggleChatAdmins", "messages.toggleNoForwards", "messages.unpinAllMessages", "messages.updatePinnedMessage", "updates.getChannelDifference", "updates.getDifference"]
+    },
+    "CHAT_PUBLIC_REQUIRED": {
+      "codes": [400],
+      "methods": ["channels.toggleJoinRequest"]
+    },
+    "CHAT_RESTRICTED": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.uploadMedia"]
+    },
+    "CHAT_REVOKE_DATE_UNSUPPORTED": {
+      "codes": [400],
+      "methods": ["messages.deleteHistory"]
+    },
+    "CHAT_SEND_AUDIOS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia"]
+    },
+    "CHAT_SEND_DOCS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendMedia"]
+    },
+    "CHAT_SEND_GAME_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult"]
+    },
+    "CHAT_SEND_GIFS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.editMessage", "messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia"]
+    },
+    "CHAT_SEND_INLINE_FORBIDDEN": {
+      "codes": [400, 403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult"]
+    },
+    "CHAT_SEND_MEDIA_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMultiMedia"]
+    },
+    "CHAT_SEND_PHOTOS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMultiMedia"]
+    },
+    "CHAT_SEND_PLAIN_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "CHAT_SEND_POLL_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendMedia"]
+    },
+    "CHAT_SEND_ROUNDVIDEOS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.sendMedia"]
+    },
+    "CHAT_SEND_STICKERS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia"]
+    },
+    "CHAT_SEND_VIDEOS_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMultiMedia"]
+    },
+    "CHAT_SEND_VOICES_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia"]
+    },
+    "CHAT_SEND_WEBPAGE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.forwardMessages"]
+    },
+    "CHAT_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["channels.createChannel", "channels.editTitle", "messages.createChat", "messages.editChatTitle"]
+    },
+    "CHAT_TOO_BIG": {
+      "codes": [400],
+      "methods": ["messages.getMessageReadParticipants", "messages.getMessagesReadParticipants"]
+    },
+    "CHAT_TYPE_INVALID": {
+      "codes": [403],
+      "methods": ["phone.inviteToGroupCall"]
+    },
+    "CHAT_WRITE_FORBIDDEN": {
+      "codes": [400, 403],
+      "methods": ["channels.convertToGigagroup", "channels.createForumTopic", "channels.deleteChannel", "channels.deleteParticipantHistory", "channels.deleteTopicHistory", "channels.deleteUserHistory", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.editPhoto", "channels.editTitle", "channels.getAdminLog", "channels.inviteToChannel", "channels.setDiscussionGroup", "channels.updatePinnedForumTopic", "channels.updateUsername", "invokeWithLayer", "messages.addChatUser", "messages.editChatAbout", "messages.editChatDefaultBannedRights", "messages.editExportedChatInvite", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getAdminsWithInvites", "messages.getChatInviteImporters", "messages.getDialogs", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getMessageEditData", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.requestWebView", "messages.saveDraft", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendReaction", "messages.setTyping", "messages.startBot", "messages.updatePinnedMessage", "messages.uploadMedia", "payments.getStarsRevenueAdsAccountUrl", "phone.joinGroupCall", "updates.getChannelDifference", "updates.getDifference"]
+    },
+    "CODE_EMPTY": {
+      "codes": [400],
+      "methods": ["auth.checkRecoveryPassword", "auth.recoverPassword"]
+    },
+    "CODE_HASH_INVALID": {
+      "codes": [400],
+      "methods": ["account.confirmPhone"]
+    },
+    "CODE_INVALID": {
+      "codes": [400],
+      "methods": ["account.confirmPasswordEmail", "account.verifyEmail"]
+    },
+    "COLLECTIBLE_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateEmojiStatus", "fragment.getCollectibleInfo"]
+    },
+    "COLLECTIBLE_NOT_FOUND": {
+      "codes": [400],
+      "methods": ["fragment.getCollectibleInfo"]
+    },
+    "COLLECTION_ID_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getSavedStarGifts"]
+    },
+    "COLOR_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateColor"]
+    },
+    "CONNECTION_API_ID_INVALID": {
+      "codes": [400],
+      "methods": ["help.getConfig", "invokeWithLayer"]
+    },
+    "CONNECTION_APP_VERSION_EMPTY": {
+      "codes": [400],
+      "methods": ["help.getConfig"]
+    },
+    "CONNECTION_DEVICE_MODEL_EMPTY": {
+      "codes": [400],
+      "methods": []
+    },
+    "CONNECTION_ID_INVALID": {
+      "codes": [400],
+      "methods": ["account.getBotBusinessConnection"]
+    },
+    "CONNECTION_LANG_PACK_INVALID": {
+      "codes": [400],
+      "methods": []
+    },
+    "CONNECTION_LAYER_INVALID": {
+      "codes": [400],
+      "methods": ["contacts.resolveUsername", "help.getConfig", "initConnection", "invokeWithLayer"]
+    },
+    "CONNECTION_NOT_INITED": {
+      "codes": [400],
+      "methods": []
+    },
+    "CONNECTION_SYSTEM_EMPTY": {
+      "codes": [400],
+      "methods": []
+    },
+    "CONNECTION_SYSTEM_LANG_CODE_EMPTY": {
+      "codes": [400],
+      "methods": []
+    },
+    "CONTACT_ADD_MISSING": {
+      "codes": [400],
+      "methods": ["contacts.acceptContact"]
+    },
+    "CONTACT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["contacts.acceptContact", "contacts.addContact", "contacts.block", "contacts.deleteContact", "contacts.unblock", "contacts.updateContactNote"]
+    },
+    "CONTACT_MISSING": {
+      "codes": [400],
+      "methods": ["contacts.updateContactNote", "photos.uploadContactProfilePhoto"]
+    },
+    "CONTACT_NAME_EMPTY": {
+      "codes": [400],
+      "methods": ["contacts.addContact"]
+    },
+    "CONTACT_REQ_MISSING": {
+      "codes": [400],
+      "methods": ["contacts.acceptContact"]
+    },
+    "CREATE_CALL_FAILED": {
+      "codes": [400],
+      "methods": ["phone.createGroupCall"]
+    },
+    "CREDENTIAL_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerPasskey", "auth.finishPasskeyLogin"]
+    },
+    "CURRENCY_TOTAL_AMOUNT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "payments.exportInvoice"]
+    },
+    "CUSTOM_REACTIONS_TOO_MANY": {
+      "codes": [400],
+      "methods": ["messages.sendReaction"]
+    },
+    "DATA_HASH_SIZE_INVALID": {
+      "codes": [400],
+      "methods": ["users.setSecureValueErrors"]
+    },
+    "DATA_INVALID": {
+      "codes": [400],
+      "methods": ["help.getConfig", "messages.getBotCallbackAnswer", "messages.sendEncrypted", "messages.sendEncryptedService"]
+    },
+    "DATA_JSON_INVALID": {
+      "codes": [400],
+      "methods": ["bots.answerWebhookJSONQuery", "bots.invokeWebViewCustomMethod", "bots.sendCustomRequest", "help.acceptTermsOfService", "payments.assignPlayMarketTransaction", "phone.joinGroupCall", "phone.saveCallDebug"]
+    },
+    "DATA_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService"]
+    },
+    "DATE_EMPTY": {
+      "codes": [400],
+      "methods": ["updates.getDifference"]
+    },
+    "DC_ID_INVALID": {
+      "codes": [400],
+      "methods": ["auth.exportAuthorization"]
+    },
+    "DH_G_A_INVALID": {
+      "codes": [400],
+      "methods": ["messages.requestEncryption"]
+    },
+    "DOCUMENT_INVALID": {
+      "codes": [400],
+      "methods": ["account.createBusinessChatLink", "account.saveMusic", "account.updateColor", "account.updateEmojiStatus", "channels.createForumTopic", "channels.editForumTopic", "messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.sendReaction", "messages.setChatAvailableReactions", "messages.setInlineBotResults", "upload.getWebFile"]
+    },
+    "EDIT_BOT_INVITE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["messages.editExportedChatInvite"]
+    },
+    "EDIT_MESSAGE_TEMP_RESTRICTED": {
+      "codes": [406],
+      "methods": ["messages.editMessage"]
+    },
+    "EFFECT_CHAT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMessage"]
+    },
+    "EFFECT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMultiMedia"]
+    },
+    "EMAIL_HASH_EXPIRED": {
+      "codes": [400],
+      "methods": ["account.cancelPasswordEmail", "account.confirmPasswordEmail", "account.resendPasswordEmail"]
+    },
+    "EMAIL_INSTALL_MISSING": {
+      "codes": [400],
+      "methods": ["auth.resendCode", "auth.resetLoginEmail"]
+    },
+    "EMAIL_INVALID": {
+      "codes": [400],
+      "methods": ["account.sendVerifyEmailCode", "account.updatePasswordSettings", "account.verifyEmail"]
+    },
+    "EMAIL_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["account.sendVerifyEmailCode", "account.verifyEmail"]
+    },
+    "EMAIL_NOT_SETUP": {
+      "codes": [400],
+      "methods": ["account.sendVerifyEmailCode"]
+    },
+    "EMAIL_UNCONFIRMED": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings"]
+    },
+    "EMAIL_UNCONFIRMED_%d": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings"]
+    },
+    "EMAIL_VERIFY_EXPIRED": {
+      "codes": [400],
+      "methods": ["account.verifyEmail"]
+    },
+    "EMOJI_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setChatTheme"]
+    },
+    "EMOJI_MARKUP_INVALID": {
+      "codes": [400],
+      "methods": ["photos.uploadProfilePhoto"]
+    },
+    "EMOJI_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["messages.setChatTheme"]
+    },
+    "EMOTICON_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.getStickers", "messages.searchCustomEmoji"]
+    },
+    "EMOTICON_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "EMOTICON_STICKERPACK_MISSING": {
+      "codes": [400],
+      "methods": ["messages.getStickerSet"]
+    },
+    "ENCRYPTED_MESSAGE_INVALID": {
+      "codes": [400],
+      "methods": ["auth.bindTempAuthKey"]
+    },
+    "ENCRYPTION_ALREADY_ACCEPTED": {
+      "codes": [400],
+      "methods": ["messages.acceptEncryption", "messages.discardEncryption"]
+    },
+    "ENCRYPTION_ALREADY_DECLINED": {
+      "codes": [400],
+      "methods": ["messages.acceptEncryption", "messages.discardEncryption"]
+    },
+    "ENCRYPTION_DECLINED": {
+      "codes": [400],
+      "methods": ["messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService", "messages.sendMessage"]
+    },
+    "ENCRYPTION_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.discardEncryption", "messages.sendEncryptedService"]
+    },
+    "ENTITIES_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMessage"]
+    },
+    "ENTITY_BOUNDS_INVALID": {
+      "codes": [400],
+      "methods": ["help.editUserInfo", "messages.editInlineBotMessage", "messages.editMessage", "messages.getWebPagePreview", "messages.saveDraft", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "ENTITY_DATE_FORMAT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "ENTITY_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "ENTITY_DATE_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "ENTITY_MENTION_USER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "ERROR_TEXT_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setBotPrecheckoutResults"]
+    },
+    "EXPIRES_AT_INVALID": {
+      "codes": [400],
+      "methods": ["auth.bindTempAuthKey"]
+    },
+    "EXPIRE_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.exportChatInvite"]
+    },
+    "EXPORT_CARD_INVALID": {
+      "codes": [400],
+      "methods": ["contacts.importCard"]
+    },
+    "EXTENDED_MEDIA_AMOUNT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "EXTENDED_MEDIA_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "EXTENDED_MEDIA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "EXTENDED_MEDIA_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "EXTERNAL_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "FILEREF_UPGRADE_NEEDED": {
+      "codes": [406],
+      "methods": ["upload.getFile"]
+    },
+    "FILE_CONTENT_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "FILE_EMTPY": {
+      "codes": [400],
+      "methods": ["messages.sendEncryptedFile"]
+    },
+    "FILE_ID_INVALID": {
+      "codes": [400],
+      "methods": ["upload.getFile"]
+    },
+    "FILE_MIGRATE_%d": {
+      "codes": [400],
+      "methods": []
+    },
+    "FILE_PARTS_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "messages.editMessage", "messages.sendMedia", "messages.uploadMedia", "photos.updateProfilePhoto", "photos.uploadProfilePhoto", "upload.saveBigFilePart"]
+    },
+    "FILE_PART_%d_MISSING": {
+      "codes": [400],
+      "methods": []
+    },
+    "FILE_PART_EMPTY": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart", "upload.saveFilePart"]
+    },
+    "FILE_PART_INVALID": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart", "upload.saveFilePart"]
+    },
+    "FILE_PART_LENGTH_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.uploadMedia"]
+    },
+    "FILE_PART_SIZE_CHANGED": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart"]
+    },
+    "FILE_PART_SIZE_INVALID": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart"]
+    },
+    "FILE_PART_TOO_BIG": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart"]
+    },
+    "FILE_PART_TOO_SMALL": {
+      "codes": [400],
+      "methods": ["upload.saveBigFilePart"]
+    },
+    "FILE_REFERENCE_%d_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMultiMedia"]
+    },
+    "FILE_REFERENCE_%d_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.sendMultiMedia"]
+    },
+    "FILE_REFERENCE_%d_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMultiMedia"]
+    },
+    "FILE_REFERENCE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "upload.getFile"]
+    },
+    "FILE_REFERENCE_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "upload.getFile"]
+    },
+    "FILE_REFERENCE_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "upload.getFile"]
+    },
+    "FILE_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "FILE_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["upload.getCdnFile", "upload.getCdnFileHashes", "upload.reuploadCdnFile"]
+    },
+    "FILTER_ID_INVALID": {
+      "codes": [400],
+      "methods": ["chatlists.deleteExportedInvite", "chatlists.editExportedInvite", "chatlists.exportChatlistInvite", "chatlists.getChatlistUpdates", "chatlists.getExportedInvites", "chatlists.getLeaveChatlistSuggestions", "chatlists.hideChatlistUpdates", "chatlists.joinChatlistUpdates", "chatlists.leaveChatlist", "messages.updateDialogFilter"]
+    },
+    "FILTER_INCLUDE_EMPTY": {
+      "codes": [400],
+      "methods": ["chatlists.joinChatlistInvite", "chatlists.joinChatlistUpdates", "messages.updateDialogFilter"]
+    },
+    "FILTER_NOT_SUPPORTED": {
+      "codes": [400],
+      "methods": ["chatlists.deleteExportedInvite", "chatlists.editExportedInvite", "chatlists.exportChatlistInvite", "chatlists.getChatlistUpdates", "chatlists.getLeaveChatlistSuggestions", "chatlists.hideChatlistUpdates", "messages.getSearchResultsCalendar", "messages.searchSentMedia"]
+    },
+    "FILTER_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.updateDialogFilter"]
+    },
+    "FIRSTNAME_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateProfile", "auth.signUp"]
+    },
+    "FLOOD_PREMIUM_WAIT_%d": {
+      "codes": [420],
+      "methods": ["upload.getFile"]
+    },
+    "FLOOD_WAIT_%d": {
+      "codes": [420],
+      "methods": []
+    },
+    "FOLDER_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["folders.deleteFolder"]
+    },
+    "FOLDER_ID_INVALID": {
+      "codes": [400],
+      "methods": ["folders.deleteFolder", "folders.editPeerFolders", "messages.getDialogs", "messages.getPinnedDialogs", "messages.searchGlobal"]
+    },
+    "FORM_EXPIRED": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "FORM_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "FORM_SUBMIT_DUPLICATE": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "FORM_UNSUPPORTED": {
+      "codes": [400],
+      "methods": ["payments.sendPaymentForm", "payments.sendStarsForm"]
+    },
+    "FORUM_ENABLED": {
+      "codes": [400],
+      "methods": ["channels.convertToGigagroup", "channels.togglePreHistoryHidden"]
+    },
+    "FRESH_CHANGE_ADMINS_FORBIDDEN": {
+      "codes": [400, 406],
+      "methods": ["channels.editAdmin"]
+    },
+    "FRESH_CHANGE_PHONE_FORBIDDEN": {
+      "codes": [406],
+      "methods": ["account.sendChangePhoneCode"]
+    },
+    "FRESH_RESET_AUTHORISATION_FORBIDDEN": {
+      "codes": [406],
+      "methods": ["account.initPasskeyRegistration", "account.resetAuthorization", "account.setAuthorizationTTL", "auth.resetAuthorizations"]
+    },
+    "FROM_MESSAGE_BOT_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.sendMessage", "updates.getChannelDifference", "users.getUsers"]
+    },
+    "FROM_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.search"]
+    },
+    "FROZEN_METHOD_INVALID": {
+      "codes": [420],
+      "methods": ["channels.deleteMessages", "channels.joinChannel", "channels.searchPosts"]
+    },
+    "FROZEN_PARTICIPANT_MISSING": {
+      "codes": [400],
+      "methods": ["channels.getMessages", "messages.getHistory", "messages.getPeerDialogs", "updates.getChannelDifference"]
+    },
+    "GAME_BOT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "GENERAL_MODIFY_ICON_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["channels.editForumTopic"]
+    },
+    "GEO_POINT_INVALID": {
+      "codes": [400],
+      "methods": ["contacts.getLocated"]
+    },
+    "GIFT_MONTHS_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "GIFT_SLUG_EXPIRED": {
+      "codes": [400],
+      "methods": ["payments.applyGiftCode", "payments.checkGiftCode"]
+    },
+    "GIFT_SLUG_INVALID": {
+      "codes": [400],
+      "methods": ["payments.applyGiftCode", "payments.checkGiftCode"]
+    },
+    "GIFT_STARS_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "GIF_CONTENT_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "GIF_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.saveGif"]
+    },
+    "GRAPH_EXPIRED_RELOAD": {
+      "codes": [400],
+      "methods": ["stats.loadAsyncGraph"]
+    },
+    "GRAPH_INVALID_RELOAD": {
+      "codes": [400],
+      "methods": ["stats.loadAsyncGraph"]
+    },
+    "GRAPH_OUTDATED_RELOAD": {
+      "codes": [400],
+      "methods": ["stats.loadAsyncGraph"]
+    },
+    "GROUPCALL_ALREADY_DISCARDED": {
+      "codes": [400],
+      "methods": ["phone.createGroupCall", "phone.discardGroupCall", "phone.discardGroupCallRequest"]
+    },
+    "GROUPCALL_ALREADY_STARTED": {
+      "codes": [403],
+      "methods": ["phone.startScheduledGroupCall", "phone.toggleGroupCallStartSubscription"]
+    },
+    "GROUPCALL_CHANGE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["phone.toggleGroupCallSettings"]
+    },
+    "GROUPCALL_FORBIDDEN": {
+      "codes": [400, 403],
+      "methods": ["messages.setTyping", "phone.discardGroupCall", "phone.editGroupCallParticipant", "phone.editGroupCallTitle", "phone.getGroupCall", "phone.inviteToGroupCall", "phone.joinGroupCall", "phone.toggleGroupCallRecord", "phone.toggleGroupCallSettings", "phone.toggleGroupCallStartSubscription"]
+    },
+    "GROUPCALL_INVALID": {
+      "codes": [400],
+      "methods": ["phone.checkGroupCall", "phone.deleteConferenceCallParticipants", "phone.deleteGroupCallMessages", "phone.deleteGroupCallParticipantMessages", "phone.discardGroupCall", "phone.editGroupCallParticipant", "phone.editGroupCallTitle", "phone.exportGroupCallInvite", "phone.getGroupCall", "phone.getGroupCallChainBlocks", "phone.getGroupCallStars", "phone.getGroupCallStreamChannels", "phone.getGroupParticipants", "phone.inviteConferenceCallParticipant", "phone.inviteToGroupCall", "phone.joinGroupCall", "phone.joinGroupCallPresentation", "phone.leaveGroupCall", "phone.leaveGroupCallPresentation", "phone.saveDefaultSendAs", "phone.sendConferenceCallBroadcast", "phone.sendGroupCallEncryptedMessage", "phone.sendGroupCallMessage", "phone.startScheduledGroupCall", "phone.toggleGroupCallRecord", "phone.toggleGroupCallSettings", "phone.toggleGroupCallStartSubscription"]
+    },
+    "GROUPCALL_JOIN_MISSING": {
+      "codes": [400],
+      "methods": ["phone.checkGroupCall", "phone.getGroupCallStreamChannels", "phone.sendGroupCallMessage"]
+    },
+    "GROUPCALL_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["phone.toggleGroupCallRecord", "phone.toggleGroupCallSettings"]
+    },
+    "GROUPCALL_SSRC_DUPLICATE_MUCH": {
+      "codes": [400],
+      "methods": ["phone.joinGroupCall"]
+    },
+    "GROUPED_MEDIA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages"]
+    },
+    "HASHTAG_INVALID": {
+      "codes": [400],
+      "methods": ["stories.searchPosts"]
+    },
+    "HASH_INVALID": {
+      "codes": [400],
+      "methods": ["account.changeAuthorizationSettings", "account.resetAuthorization", "account.resetWebAuthorization", "account.sendConfirmPhoneCode"]
+    },
+    "HASH_SIZE_INVALID": {
+      "codes": [400],
+      "methods": ["users.setSecureValueErrors"]
+    },
+    "HIDE_REQUESTER_MISSING": {
+      "codes": [400],
+      "methods": ["messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest"]
+    },
+    "ID_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.getPreparedInlineMessage"]
+    },
+    "ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getPreparedInlineMessage"]
+    },
+    "IMAGE_PROCESS_FAILED": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "messages.editChatPhoto", "messages.editMessage", "messages.sendMedia", "messages.uploadMedia", "photos.updateProfilePhoto", "photos.uploadProfilePhoto", "stories.sendStory"]
+    },
+    "IMPORT_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.initHistoryImport"]
+    },
+    "IMPORT_FORMAT_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.initHistoryImport"]
+    },
+    "IMPORT_FORMAT_UNRECOGNIZED": {
+      "codes": [400],
+      "methods": ["messages.checkHistoryImport", "messages.initHistoryImport"]
+    },
+    "IMPORT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.startHistoryImport", "messages.uploadImportedMedia"]
+    },
+    "IMPORT_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["contacts.importContactToken"]
+    },
+    "INLINE_BOT_REQUIRED": {
+      "codes": [403],
+      "methods": ["messages.editMessage"]
+    },
+    "INLINE_RESULT_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.sendInlineBotResult"]
+    },
+    "INPUT_CHATLIST_INVALID": {
+      "codes": [400],
+      "methods": ["chatlists.getChatlistUpdates"]
+    },
+    "INPUT_CONSTRUCTOR_INVALID": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_FETCH_ERROR": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_FETCH_FAIL": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "INPUT_FILTER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.search", "messages.searchGlobal"]
+    },
+    "INPUT_LAYER_INVALID": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_METHOD_INVALID": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_PEERS_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.getPeerDialogs"]
+    },
+    "INPUT_PURPOSE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.assignAppStoreTransaction", "payments.canPurchaseStore"]
+    },
+    "INPUT_REQUEST_TOO_LONG": {
+      "codes": [400],
+      "methods": []
+    },
+    "INPUT_STARS_AMOUNT_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "INPUT_STARS_NANOS_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "INPUT_TEXT_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.translateText"]
+    },
+    "INPUT_TEXT_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.summarizeText", "messages.translateText"]
+    },
+    "INPUT_USER_DEACTIVATED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.inviteToChannel", "channels.reportSpam", "contacts.block", "messages.addChatUser", "messages.createChat", "messages.deleteChatUser", "messages.editChatCreator", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getInlineBotResults", "messages.hideChatJoinRequest", "messages.requestEncryption", "messages.requestWebView", "messages.saveDraft", "messages.search", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendScreenshotNotification", "messages.setTyping", "messages.startBot", "messages.unpinAllMessages", "messages.updatePinnedMessage", "messages.uploadMedia", "payments.getStarsGiftOptions", "phone.requestCall"]
+    },
+    "INVITES_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["chatlists.exportChatlistInvite"]
+    },
+    "INVITE_FORBIDDEN_WITH_JOINAS": {
+      "codes": [400],
+      "methods": ["phone.inviteToGroupCall"]
+    },
+    "INVITE_HASH_EMPTY": {
+      "codes": [400],
+      "methods": ["channels.joinChannel", "messages.checkChatInvite", "messages.importChatInvite"]
+    },
+    "INVITE_HASH_EXPIRED": {
+      "codes": [400, 406],
+      "methods": ["channels.exportInvite", "channels.joinChannel", "invokeWithLayer", "messages.checkChatInvite", "messages.deleteExportedChatInvite", "messages.editExportedChatInvite", "messages.getChatInviteImporters", "messages.getExportedChatInvite", "messages.hideAllChatJoinRequests", "messages.importChatInvite"]
+    },
+    "INVITE_HASH_INVALID": {
+      "codes": [400],
+      "methods": ["channels.joinChannel", "messages.checkChatInvite", "messages.importChatInvite"]
+    },
+    "INVITE_REQUEST_SENT": {
+      "codes": [400],
+      "methods": ["channels.joinChannel", "messages.importChatInvite"]
+    },
+    "INVITE_REVOKED_MISSING": {
+      "codes": [400],
+      "methods": ["messages.deleteExportedChatInvite"]
+    },
+    "INVITE_SLUG_EMPTY": {
+      "codes": [400],
+      "methods": ["chatlists.checkChatlistInvite", "chatlists.editExportedInvite", "chatlists.joinChatlistInvite"]
+    },
+    "INVITE_SLUG_EXPIRED": {
+      "codes": [400],
+      "methods": ["chatlists.checkChatlistInvite", "chatlists.deleteExportedInvite", "chatlists.editExportedInvite", "chatlists.joinChatlistInvite"]
+    },
+    "INVITE_SLUG_INVALID": {
+      "codes": [400],
+      "methods": ["chatlists.deleteExportedInvite"]
+    },
+    "INVOICE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendPaymentForm", "payments.sendStarGiftOffer"]
+    },
+    "INVOICE_PAYLOAD_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "payments.exportInvoice"]
+    },
+    "JOIN_AS_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["phone.joinGroupCall", "phone.saveDefaultGroupCallJoinAs"]
+    },
+    "LANGUAGE_INVALID": {
+      "codes": [400],
+      "methods": ["langpack.getLangPack"]
+    },
+    "LANG_CODE_INVALID": {
+      "codes": [400],
+      "methods": ["bots.getBotInfo", "bots.resetBotCommands", "bots.setBotCommands"]
+    },
+    "LANG_CODE_NOT_SUPPORTED": {
+      "codes": [400],
+      "methods": ["langpack.getLangPack", "langpack.getLanguage", "langpack.getStrings"]
+    },
+    "LANG_PACK_INVALID": {
+      "codes": [400],
+      "methods": ["langpack.getDifference", "langpack.getLangPack", "langpack.getLanguage", "langpack.getLanguages", "langpack.getStrings"]
+    },
+    "LASTNAME_INVALID": {
+      "codes": [400],
+      "methods": ["auth.signUp"]
+    },
+    "LIMIT_INVALID": {
+      "codes": [400],
+      "methods": ["upload.getFile"]
+    },
+    "LIMIT_PER_POST_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setChatAvailableReactions"]
+    },
+    "LINK_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["channels.setDiscussionGroup"]
+    },
+    "LOCATION_INVALID": {
+      "codes": [400],
+      "methods": ["photos.updateProfilePhoto", "upload.getFile", "upload.getFileHashes", "upload.getWebFile", "upload.reuploadCdnFile"]
+    },
+    "MANAGER_INVALID": {
+      "codes": [400],
+      "methods": ["bots.createBot"]
+    },
+    "MANAGER_PERMISSION_MISSING": {
+      "codes": [400],
+      "methods": ["bots.createBot"]
+    },
+    "MAX_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.deleteHistory", "messages.readEncryptedHistory"]
+    },
+    "MAX_ID_INVALID": {
+      "codes": [400],
+      "methods": ["photos.getUserPhotos", "stories.readStories"]
+    },
+    "MAX_QTS_INVALID": {
+      "codes": [400],
+      "methods": ["messages.receivedQueue"]
+    },
+    "MD5_CHECKSUM_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendEncryptedFile", "messages.sendMedia"]
+    },
+    "MEDIA_ALREADY_PAID": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "MEDIA_CAPTION_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMultiMedia", "messages.setInlineBotResults", "stories.sendStory"]
+    },
+    "MEDIA_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.forwardMessages", "messages.getAttachedStickers", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMultiMedia", "stories.sendStory"]
+    },
+    "MEDIA_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "stories.sendStory"]
+    },
+    "MEDIA_GROUPED_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage"]
+    },
+    "MEDIA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMultiMedia", "messages.uploadImportedMedia", "messages.uploadMedia", "payments.exportInvoice"]
+    },
+    "MEDIA_NEW_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage"]
+    },
+    "MEDIA_PREV_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage"]
+    },
+    "MEDIA_TTL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage"]
+    },
+    "MEDIA_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["stories.sendStory"]
+    },
+    "MEDIA_VIDEO_STORY_MISSING": {
+      "codes": [400],
+      "methods": ["stories.sendStory"]
+    },
+    "MEGAGROUP_GEO_REQUIRED": {
+      "codes": [400],
+      "methods": ["channels.editLocation"]
+    },
+    "MEGAGROUP_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.setDiscussionGroup"]
+    },
+    "MEGAGROUP_PREHISTORY_HIDDEN": {
+      "codes": [400],
+      "methods": ["channels.setDiscussionGroup"]
+    },
+    "MEGAGROUP_REQUIRED": {
+      "codes": [400],
+      "methods": ["channels.editLocation", "stats.getMegagroupStats"]
+    },
+    "MESSAGE_AUTHOR_REQUIRED": {
+      "codes": [403],
+      "methods": ["messages.editMessage", "messages.getMessageEditData"]
+    },
+    "MESSAGE_DELETE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["channels.deleteMessages", "messages.deleteMessages", "messages.deleteScheduledMessages"]
+    },
+    "MESSAGE_EDIT_TIME_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.editMessage"]
+    },
+    "MESSAGE_EMPTY": {
+      "codes": [400],
+      "methods": ["auth.sendInvites", "messages.composeMessageWithAI", "messages.editMessage", "messages.getWebPagePreview", "messages.sendMedia", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "MESSAGE_IDS_EMPTY": {
+      "codes": [400],
+      "methods": ["channels.getMessages", "messages.forwardMessages"]
+    },
+    "MESSAGE_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.exportMessageLink", "messages.appendTodoList", "messages.deleteHistory", "messages.deleteMessages", "messages.editInlineBotMessage", "messages.editMessage", "messages.forwardMessage", "messages.forwardMessages", "messages.getBotCallbackAnswer", "messages.getGameHighScores", "messages.getInlineGameHighScores", "messages.getMessageEditData", "messages.getMessages", "messages.getMessagesReadParticipants", "messages.getOutboxReadDate", "messages.getPollResults", "messages.getRichMessage", "messages.getSponsoredMessages", "messages.sendBotRequestedPeer", "messages.sendPaidReaction", "messages.sendReaction", "messages.sendScheduledMessages", "messages.sendVote", "messages.setGameScore", "messages.setInlineGameScore", "messages.updatePinnedMessage", "payments.convertStarGift", "payments.getGiveawayInfo", "payments.getPaymentForm", "payments.getPaymentReceipt", "payments.resolveStarGiftOffer", "payments.saveStarGift", "payments.sendPaymentForm", "payments.transferStarGift", "payments.upgradeStarGift", "payments.validateRequestedInfo", "phone.declineConferenceCallInvite", "stats.getMessagePublicForwards", "stats.getMessageStats"]
+    },
+    "MESSAGE_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["messages.editInlineBotMessage", "messages.editMessage", "messages.sendReaction"]
+    },
+    "MESSAGE_NOT_READ_YET": {
+      "codes": [400],
+      "methods": ["messages.getOutboxReadDate"]
+    },
+    "MESSAGE_POLL_CLOSED": {
+      "codes": [400],
+      "methods": ["messages.sendVote"]
+    },
+    "MESSAGE_REQUIRED": {
+      "codes": [400],
+      "methods": ["messages.report"]
+    },
+    "MESSAGE_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.setBotCallbackAnswer", "messages.setInlineBotResults", "messages.setTyping", "messages.updateDialogFilter", "payments.getPaymentForm"]
+    },
+    "MESSAGE_TOO_OLD": {
+      "codes": [400],
+      "methods": ["messages.getOutboxReadDate"]
+    },
+    "METHOD_INVALID": {
+      "codes": [400, 404],
+      "methods": ["bots.invokeWebViewCustomMethod", "bots.sendCustomRequest", "messages.searchGifs", "upload.getCdnFile"]
+    },
+    "MIN_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.deleteHistory"]
+    },
+    "MONTH_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "MSG_ID_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateNotifySettings", "channels.checkUsername", "channels.deleteMessages", "channels.deleteParticipantHistory", "channels.deleteUserHistory", "channels.editAdmin", "channels.editBanned", "channels.exportMessageLink", "channels.getAdminLog", "channels.getChannels", "channels.getFullChannel", "channels.getMessages", "channels.getParticipant", "channels.getParticipants", "channels.getSponsoredMessages", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "channels.readHistory", "channels.readMessageContents", "channels.reportSpam", "contacts.acceptContact", "contacts.addContact", "contacts.block", "contacts.blockFromReplies", "contacts.deleteContacts", "contacts.unblock", "help.getConfig", "messages.addChatUser", "messages.deleteHistory", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessages", "messages.getBotCallbackAnswer", "messages.getCommonChats", "messages.getDiscussionMessage", "messages.getHistory", "messages.getInlineBotResults", "messages.getMessageReactionsList", "messages.getMessageReadParticipants", "messages.getMessages", "messages.getMessagesReactions", "messages.getMessagesViews", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getPollVotes", "messages.getReplies", "messages.getSponsoredMessages", "messages.getUnreadMentions", "messages.hideChatJoinRequest", "messages.importChatInvite", "messages.readDiscussion", "messages.readHistory", "messages.readMentions", "messages.reportReaction", "messages.reportSpam", "messages.requestAppWebView", "messages.requestWebView", "messages.saveDraft", "messages.search", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendReaction", "messages.sendVote", "messages.setTyping", "messages.startBot", "messages.summarizeText", "messages.transcribeAudio", "messages.translateText", "messages.updateDialogFilter", "messages.uploadMedia", "payments.getPaymentForm", "payments.getSavedStarGifts", "photos.getUserPhotos", "stories.getPeerStories", "stories.getStoriesByID", "updates.getChannelDifference", "updates.getDifference", "upload.getFile", "upload.saveFilePart", "users.getFullUser", "users.getUsers"]
+    },
+    "MSG_TOO_OLD": {
+      "codes": [400],
+      "methods": ["messages.getMessageReadParticipants"]
+    },
+    "MSG_VOICE_MISSING": {
+      "codes": [400],
+      "methods": ["messages.transcribeAudio"]
+    },
+    "MSG_VOICE_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.transcribeAudio"]
+    },
+    "MSG_WAIT_FAILED": {
+      "codes": [400, 500],
+      "methods": ["messages.editMessage", "messages.readEncryptedHistory", "messages.receivedQueue", "messages.sendEncrypted", "messages.sendEncryptedFile", "messages.sendEncryptedService", "messages.sendMessage"]
+    },
+    "MSG_WAIT_TIMEOUT": {
+      "codes": [-503],
+      "methods": []
+    },
+    "MULTI_MEDIA_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.sendMultiMedia"]
+    },
+    "NAME_INVALID": {
+      "codes": [400],
+      "methods": ["bots.createBot"]
+    },
+    "NEED_ACTION_MISSING": {
+      "codes": [400],
+      "methods": ["photos.uploadContactProfilePhoto"]
+    },
+    "NETWORK_MIGRATE_%d": {
+      "codes": [303],
+      "methods": []
+    },
+    "NEW_SALT_INVALID": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings"]
+    },
+    "NEW_SETTINGS_EMPTY": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings"]
+    },
+    "NEW_SETTINGS_INVALID": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings", "auth.recoverPassword"]
+    },
+    "NEXT_OFFSET_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "NOGENERAL_HIDE_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["channels.editForumTopic"]
+    },
+    "NOT_ELIGIBLE": {
+      "codes": [400, 403],
+      "methods": ["smsjobs.isEligibleToJoin", "smsjobs.join"]
+    },
+    "NOT_JOINED": {
+      "codes": [400],
+      "methods": ["smsjobs.getStatus", "smsjobs.leave", "smsjobs.updateSettings"]
+    },
+    "NO_PAYMENT_NEEDED": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "OAUTH_REQUEST_INVALID": {
+      "codes": [500],
+      "methods": ["messages.requestUrlAuth"]
+    },
+    "OFFSET_INVALID": {
+      "codes": [400],
+      "methods": ["upload.getFile"]
+    },
+    "OFFSET_PEER_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.searchPosts", "messages.getDialogs"]
+    },
+    "OPTIONS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.sendVote"]
+    },
+    "OPTION_INVALID": {
+      "codes": [400],
+      "methods": ["messages.report", "messages.sendVote"]
+    },
+    "ORDER_INVALID": {
+      "codes": [400],
+      "methods": ["account.reorderUsernames"]
+    },
+    "PACK_SHORT_NAME_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "PACK_SHORT_NAME_OCCUPIED": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "PACK_TITLE_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "PACK_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "PARENT_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["account.getPaidMessagesRevenue", "account.toggleNoPaidMessagesException", "messages.getSavedHistory", "messages.readSavedHistory"]
+    },
+    "PARTICIPANTS_TOO_FEW": {
+      "codes": [400],
+      "methods": ["channels.convertToGigagroup", "channels.setStickers", "channels.toggleParticipantsHidden"]
+    },
+    "PARTICIPANT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.deleteParticipantHistory", "channels.editBanned", "channels.getParticipant"]
+    },
+    "PARTICIPANT_JOIN_MISSING": {
+      "codes": [400, 403],
+      "methods": ["phone.editGroupCallParticipant", "phone.joinGroupCallPresentation"]
+    },
+    "PARTICIPANT_VERSION_OUTDATED": {
+      "codes": [400],
+      "methods": ["phone.requestCall"]
+    },
+    "PASSKEY_ORIGIN_MISMATCH": {
+      "codes": [400],
+      "methods": ["account.registerPasskey", "auth.finishPasskeyLogin"]
+    },
+    "PASSWORD_EMPTY": {
+      "codes": [400],
+      "methods": ["account.resetPassword", "auth.requestPasswordRecovery"]
+    },
+    "PASSWORD_HASH_INVALID": {
+      "codes": [400],
+      "methods": ["account.checkPassword", "account.deleteAccount", "account.getPasswordSettings", "account.getTmpPassword", "account.updatePasswordSettings", "auth.checkPassword", "channels.editCreator", "messages.editChatCreator", "payments.getStarGiftWithdrawalUrl", "payments.getStarsRevenueWithdrawalUrl", "stats.getBroadcastRevenueWithdrawalUrl"]
+    },
+    "PASSWORD_MISSING": {
+      "codes": [400],
+      "methods": ["channels.editCreator", "messages.editChatCreator", "messages.getBotCallbackAnswer", "payments.getStarsRevenueWithdrawalUrl", "stats.getBroadcastRevenueWithdrawalUrl"]
+    },
+    "PASSWORD_RECOVERY_EXPIRED": {
+      "codes": [400],
+      "methods": ["auth.checkRecoveryPassword"]
+    },
+    "PASSWORD_RECOVERY_NA": {
+      "codes": [400],
+      "methods": ["auth.requestPasswordRecovery"]
+    },
+    "PASSWORD_REQUIRED": {
+      "codes": [400],
+      "methods": ["account.saveSecureValue"]
+    },
+    "PASSWORD_TOO_FRESH_%d": {
+      "codes": [400],
+      "methods": ["channels.editCreator", "messages.editChatCreator", "payments.getStarGiftWithdrawalUrl", "payments.getStarsRevenueWithdrawalUrl", "stats.getBroadcastRevenueWithdrawalUrl"]
+    },
+    "PAYMENT_CREDENTIALS_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendPaymentForm"]
+    },
+    "PAYMENT_PROVIDER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "payments.exportInvoice"]
+    },
+    "PAYMENT_REQUIRED": {
+      "codes": [400],
+      "methods": ["payments.transferStarGift", "payments.upgradeStarGift"]
+    },
+    "PAYMENT_UNSUPPORTED": {
+      "codes": [406],
+      "methods": ["messages.forwardMessages", "messages.sendMessage"]
+    },
+    "PEERS_LIST_EMPTY": {
+      "codes": [400],
+      "methods": ["chatlists.editExportedInvite", "chatlists.exportChatlistInvite"]
+    },
+    "PEER_FLOOD": {
+      "codes": [400],
+      "methods": []
+    },
+    "PEER_HISTORY_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.toggleDialogPin"]
+    },
+    "PEER_ID_INVALID": {
+      "codes": [400, 403, 404, 406],
+      "methods": ["account.disablePeerConnectedBot", "account.getNotifySettings", "account.reportPeer", "account.reportProfilePhoto", "account.saveAutoSaveSettings", "account.toggleConnectedBotPaused", "account.updateNotifySettings", "bots.setBotCommands", "bots.setCustomVerification", "channels.checkUsername", "channels.editAdmin", "channels.editBanned", "channels.editPhoto", "channels.getSendAs", "channels.joinChannel", "contacts.block", "contacts.resetTopPeerRating", "contacts.unblock", "messages.addChatUser", "messages.addPollAnswer", "messages.appendTodoList", "messages.checkHistoryImportPeer", "messages.createForumTopic", "messages.deleteChat", "messages.deleteChatUser", "messages.deleteExportedChatInvite", "messages.deleteFactCheck", "messages.deleteHistory", "messages.deleteParticipantReaction", "messages.deleteParticipantReactions", "messages.deletePollAnswer", "messages.deleteRevokedExportedChatInvites", "messages.deleteSavedHistory", "messages.deleteScheduledMessages", "messages.editChatAbout", "messages.editChatAdmin", "messages.editChatDefaultBannedRights", "messages.editChatParticipantRank", "messages.editChatPhoto", "messages.editChatTitle", "messages.editExportedChatInvite", "messages.editFactCheck", "messages.editMessage", "messages.exportChatInvite", "messages.forwardMessage", "messages.forwardMessages", "messages.getAdminsWithInvites", "messages.getBotCallbackAnswer", "messages.getChatInviteImporters", "messages.getChats", "messages.getDiscussionMessage", "messages.getExportedChatInvite", "messages.getExportedChatInvites", "messages.getFactCheck", "messages.getFullChat", "messages.getGameHighScores", "messages.getHistory", "messages.getMessageEditData", "messages.getMessageReadParticipants", "messages.getMessagesViews", "messages.getOnlines", "messages.getOutboxReadDate", "messages.getPeerDialogs", "messages.getPeerSettings", "messages.getPollResults", "messages.getReplies", "messages.getSavedHistory", "messages.getSavedReactionTags", "messages.getScheduledHistory", "messages.getScheduledMessages", "messages.getSearchCounters", "messages.getSearchResultsCalendar", "messages.getSearchResultsPositions", "messages.getStatsURL", "messages.getUnreadMentions", "messages.getUnreadPollVotes", "messages.getUnreadReactions", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.hidePeerSettingsBar", "messages.hideReportSpam", "messages.importChatInvite", "messages.initHistoryImport", "messages.markDialogUnread", "messages.migrateChat", "messages.readDiscussion", "messages.readHistory", "messages.readMentions", "messages.readPollVotes", "messages.readReactions", "messages.reorderPinnedDialogs", "messages.report", "messages.reportMessagesDelivery", "messages.reportReaction", "messages.reportSpam", "messages.requestWebView", "messages.saveDefaultSendAs", "messages.saveDraft", "messages.search", "messages.sendBotRequestedPeer", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction", "messages.sendQuickReplyMessages", "messages.sendReaction", "messages.sendScheduledMessages", "messages.sendScreenshotNotification", "messages.sendVote", "messages.setChatAvailableReactions", "messages.setChatTheme", "messages.setChatWallPaper", "messages.setGameScore", "messages.setHistoryTTL", "messages.setTyping", "messages.startBot", "messages.startHistoryImport", "messages.summarizeText", "messages.toggleDialogPin", "messages.toggleNoForwards", "messages.togglePaidReactionPrivacy", "messages.togglePeerTranslations", "messages.toggleSavedDialogPin", "messages.toggleSuggestedPostApproval", "messages.toggleTodoCompleted", "messages.transcribeAudio", "messages.translateText", "messages.unpinAllMessages", "messages.updateDialogFilter", "messages.updatePinnedMessage", "messages.uploadMedia", "payments.changeStarsSubscription", "payments.createStarGiftCollection", "payments.deleteStarGiftCollection", "payments.fulfillStarsSubscription", "payments.getConnectedStarRefBot", "payments.getGiveawayInfo", "payments.getPaymentForm", "payments.getSavedStarGifts", "payments.getStarGiftCollections", "payments.getStarsRevenueAdsAccountUrl", "payments.getStarsRevenueStats", "payments.getStarsStatus", "payments.getStarsSubscriptions", "payments.getStarsTransactions", "payments.getStarsTransactionsByID", "payments.getSuggestedStarRefBots", "payments.launchPrepaidGiveaway", "payments.reorderStarGiftCollections", "payments.sendPaymentForm", "payments.sendStarGiftOffer", "payments.sendStarsForm", "payments.toggleChatStarGiftNotifications", "payments.toggleStarGiftsPinnedToTop", "payments.transferStarGift", "payments.updateStarGiftCollection", "payments.validateRequestedInfo", "phone.createGroupCall", "phone.getGroupCallJoinAs", "phone.getGroupCallStreamRtmpUrl", "phone.saveDefaultGroupCallJoinAs", "premium.applyBoost", "premium.getBoostsList", "premium.getBoostsStatus", "premium.getUserBoosts", "stats.getBroadcastRevenueStats", "stats.getBroadcastRevenueTransactions", "stats.getMessagePublicForwards", "stats.getMessageStats", "stats.getPollStats", "stats.getStoryPublicForwards", "stats.getStoryStats", "stickers.createStickerSet", "stories.applyBoost", "stories.canApplyBoost", "stories.canSendStory", "stories.createAlbum", "stories.deleteAlbum", "stories.deleteStories", "stories.editStory", "stories.exportStoryLink", "stories.getAlbumStories", "stories.getAlbums", "stories.getBoostersList", "stories.getBoostsStatus", "stories.getPeerStories", "stories.getPinnedStories", "stories.getStoriesArchive", "stories.getStoriesByID", "stories.getStoriesViews", "stories.getStoryReactionsList", "stories.getStoryViewsList", "stories.incrementStoryViews", "stories.readStories", "stories.reorderAlbums", "stories.report", "stories.sendReaction", "stories.sendStory", "stories.startLive", "stories.togglePeerStoriesHidden", "stories.togglePinned", "stories.togglePinnedToTop", "stories.updateAlbum", "upload.getFile", "users.getUsers"]
+    },
+    "PEER_ID_NOT_SUPPORTED": {
+      "codes": [400],
+      "methods": ["messages.search"]
+    },
+    "PEER_TYPES_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "PERSISTENT_TIMESTAMP_EMPTY": {
+      "codes": [400],
+      "methods": ["updates.getChannelDifference", "updates.getDifference"]
+    },
+    "PERSISTENT_TIMESTAMP_INVALID": {
+      "codes": [400],
+      "methods": ["updates.getChannelDifference", "updates.getDifference"]
+    },
+    "PERSISTENT_TIMESTAMP_OUTDATED": {
+      "codes": [500],
+      "methods": ["updates.getChannelDifference"]
+    },
+    "PHONE_CODE_EMPTY": {
+      "codes": [400],
+      "methods": ["account.changePhone", "account.confirmPhone", "account.sendVerifyEmailCode", "account.verifyPhone", "auth.requestFirebaseSms", "auth.resendCode", "auth.signIn", "auth.signUp"]
+    },
+    "PHONE_CODE_EXPIRED": {
+      "codes": [400],
+      "methods": ["account.changePhone", "account.verifyEmail", "account.verifyPhone", "auth.cancelCode", "auth.resendCode", "auth.signIn", "auth.signUp"]
+    },
+    "PHONE_CODE_HASH_EMPTY": {
+      "codes": [400],
+      "methods": ["auth.resendCode"]
+    },
+    "PHONE_CODE_INVALID": {
+      "codes": [400],
+      "methods": ["account.changePhone", "auth.signIn", "auth.signUp"]
+    },
+    "PHONE_HASH_EXPIRED": {
+      "codes": [400],
+      "methods": ["account.sendVerifyEmailCode"]
+    },
+    "PHONE_MIGRATE_%d": {
+      "codes": [303],
+      "methods": []
+    },
+    "PHONE_NOT_OCCUPIED": {
+      "codes": [400],
+      "methods": ["contacts.resolvePhone"]
+    },
+    "PHONE_NUMBER_APP_SIGNUP_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["auth.sendCode"]
+    },
+    "PHONE_NUMBER_BANNED": {
+      "codes": [400],
+      "methods": ["account.sendChangePhoneCode", "auth.checkPhone", "auth.sendCode"]
+    },
+    "PHONE_NUMBER_FLOOD": {
+      "codes": [400],
+      "methods": ["auth.sendCode", "auth.signUp"]
+    },
+    "PHONE_NUMBER_INVALID": {
+      "codes": [400, 406],
+      "methods": ["account.changePhone", "account.sendChangePhoneCode", "account.sendVerifyEmailCode", "account.sendVerifyPhoneCode", "account.verifyEmail", "account.verifyPhone", "auth.cancelCode", "auth.checkPaidAuth", "auth.checkPhone", "auth.reportMissingCode", "auth.requestFirebaseSms", "auth.resendCode", "auth.resetLoginEmail", "auth.sendCode", "auth.signIn", "auth.signUp"]
+    },
+    "PHONE_NUMBER_OCCUPIED": {
+      "codes": [400],
+      "methods": ["account.changePhone", "account.sendChangePhoneCode", "auth.signUp"]
+    },
+    "PHONE_NUMBER_UNOCCUPIED": {
+      "codes": [400],
+      "methods": ["auth.signIn"]
+    },
+    "PHONE_PASSWORD_FLOOD": {
+      "codes": [406],
+      "methods": ["auth.sendCode"]
+    },
+    "PHONE_PASSWORD_PROTECTED": {
+      "codes": [400],
+      "methods": ["auth.sendCode"]
+    },
+    "PHOTO_CONTENT_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "PHOTO_CONTENT_URL_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "PHOTO_CROP_FILE_MISSING": {
+      "codes": [400],
+      "methods": ["photos.uploadProfilePhoto"]
+    },
+    "PHOTO_CROP_SIZE_SMALL": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "messages.editChatPhoto", "photos.updateProfilePhoto", "photos.uploadProfilePhoto"]
+    },
+    "PHOTO_EXT_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "messages.editChatPhoto", "messages.editMessage", "messages.sendMedia", "messages.uploadMedia", "photos.updateProfilePhoto", "photos.uploadProfilePhoto"]
+    },
+    "PHOTO_FILE_MISSING": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "photos.uploadProfilePhoto"]
+    },
+    "PHOTO_ID_INVALID": {
+      "codes": [400],
+      "methods": ["photos.updateProfilePhoto"]
+    },
+    "PHOTO_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "messages.editChatPhoto", "messages.setInlineBotResults", "photos.uploadProfilePhoto"]
+    },
+    "PHOTO_INVALID_DIMENSIONS": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.uploadMedia", "stories.sendStory"]
+    },
+    "PHOTO_SAVE_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.uploadMedia"]
+    },
+    "PHOTO_THUMB_URL_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "PINNED_DIALOGS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.getDialogs", "messages.sendMessage", "messages.toggleDialogPin", "updates.getChannelDifference"]
+    },
+    "PINNED_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.updatePinnedForumTopic"]
+    },
+    "PINNED_TOPIC_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["channels.updatePinnedForumTopic"]
+    },
+    "PIN_RESTRICTED": {
+      "codes": [400],
+      "methods": ["messages.updatePinnedMessage"]
+    },
+    "POLL_ANSWERS_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "POLL_ANSWER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "POLL_COUNTRY_RESTRICTED": {
+      "codes": [406],
+      "methods": ["messages.sendVote"]
+    },
+    "POLL_MEMBER_RESTRICTED": {
+      "codes": [406],
+      "methods": ["messages.sendVote"]
+    },
+    "POLL_OPTION_DUPLICATE": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "POLL_OPTION_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMessage"]
+    },
+    "POLL_QUESTION_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "POLL_VOTE_REQUIRED": {
+      "codes": [403],
+      "methods": ["messages.getPollVotes"]
+    },
+    "PRECHECKOUT_FAILED": {
+      "codes": [406],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "PREMIUM_ACCOUNT_REQUIRED": {
+      "codes": [400, 403],
+      "methods": ["account.createBusinessChatLink", "account.editBusinessChatLink", "account.setGlobalPrivacySettings", "account.updateColor", "account.updateEmojiStatus", "channels.createForumTopic", "channels.reportSponsoredMessage", "channels.searchPosts", "messages.checkQuickReplyShortcut", "messages.createForumTopic", "messages.editQuickReplyShortcut", "messages.forwardMessages", "messages.reorderQuickReplies", "messages.sendMedia", "messages.sendMessage", "messages.sendQuickReplyMessages", "messages.sendReaction", "messages.toggleDialogFilterTags", "messages.transcribeAudio", "messages.updateSavedReactionTag", "stories.activateStealthMode", "stories.applyBoost", "stories.canApplyBoost", "stories.canSendStory", "stories.sendStory"]
+    },
+    "PREMIUM_CURRENTLY_UNAVAILABLE": {
+      "codes": [406],
+      "methods": ["payments.canPurchasePremium", "payments.canPurchaseStore"]
+    },
+    "PREMIUM_PURPOSE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "PREMIUM_SUB_ACTIVE_UNTIL_%d": {
+      "codes": [420],
+      "methods": ["payments.applyGiftCode"]
+    },
+    "PREVIOUS_CHAT_IMPORT_ACTIVE_WAIT_%dMIN": {
+      "codes": [406],
+      "methods": ["messages.initHistoryImport"]
+    },
+    "PRICING_CHAT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.exportChatInvite"]
+    },
+    "PRIVACY_KEY_INVALID": {
+      "codes": [400],
+      "methods": ["account.getPrivacy", "account.setPrivacy"]
+    },
+    "PRIVACY_PREMIUM_REQUIRED": {
+      "codes": [403, 406],
+      "methods": ["messages.forwardMessages", "messages.requestWebView", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "PRIVACY_TOO_LONG": {
+      "codes": [400],
+      "methods": ["account.setPrivacy"]
+    },
+    "PRIVACY_VALUE_INVALID": {
+      "codes": [400],
+      "methods": ["account.setPrivacy"]
+    },
+    "PUBLIC_BROADCAST_EXPECTED": {
+      "codes": [400],
+      "methods": ["account.updatePersonalChannel"]
+    },
+    "PUBLIC_CHANNEL_MISSING": {
+      "codes": [403],
+      "methods": ["phone.exportGroupCallInvite"]
+    },
+    "PUBLIC_KEY_INVALID": {
+      "codes": [400],
+      "methods": ["phone.joinGroupCall"]
+    },
+    "PUBLIC_KEY_REQUIRED": {
+      "codes": [400],
+      "methods": ["account.acceptAuthorization", "account.getAuthorizationForm"]
+    },
+    "PURPOSE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "QUERY_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendInlineBotResult"]
+    },
+    "QUERY_ID_INVALID": {
+      "codes": [400],
+      "methods": ["bots.answerWebhookJSONQuery", "messages.sendWebViewResultMessage", "messages.setBotCallbackAnswer", "messages.setBotShippingResults", "messages.setInlineBotResults"]
+    },
+    "QUERY_TOO_SHORT": {
+      "codes": [400],
+      "methods": ["contacts.search"]
+    },
+    "QUICK_REPLIES_BOT_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "QUICK_REPLIES_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "QUIZ_ANSWER_MISSING": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages"]
+    },
+    "QUIZ_CORRECT_ANSWERS_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "QUIZ_CORRECT_ANSWERS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "QUIZ_CORRECT_ANSWER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "QUIZ_MULTIPLE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "QUOTE_TEXT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "RAISE_HAND_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["phone.editGroupCallParticipant"]
+    },
+    "RANDOM_ID_DUPLICATE": {
+      "codes": [400, 500],
+      "methods": ["messages.forwardMessages", "messages.requestEncryption", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendScheduledMessages", "messages.startBot", "phone.requestCall", "updates.getDifference"]
+    },
+    "RANDOM_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction"]
+    },
+    "RANDOM_ID_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.sendPaidReaction"]
+    },
+    "RANDOM_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages"]
+    },
+    "RANDOM_LENGTH_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getDhConfig"]
+    },
+    "RANGES_INVALID": {
+      "codes": [400],
+      "methods": ["updates.getChannelDifference"]
+    },
+    "REACTIONS_COUNT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendPaidReaction"]
+    },
+    "REACTIONS_TOO_MANY": {
+      "codes": [400],
+      "methods": ["messages.sendReaction"]
+    },
+    "REACTION_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendReaction", "messages.togglePaidReactionPrivacy"]
+    },
+    "REACTION_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendReaction", "messages.setChatAvailableReactions", "messages.setDefaultReaction", "messages.updateSavedReactionTag", "stories.sendReaction", "stories.sendStory"]
+    },
+    "RECEIPT_EMPTY": {
+      "codes": [400],
+      "methods": ["payments.assignAppStoreTransaction"]
+    },
+    "REPLY_MARKUP_BUY_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "REPLY_MARKUP_GAME_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "REPLY_MARKUP_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage", "messages.setInlineBotResults"]
+    },
+    "REPLY_MARKUP_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "REPLY_MESSAGES_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "REPLY_MESSAGE_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMessage", "messages.sendScreenshotNotification"]
+    },
+    "REPLY_TO_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "REPLY_TO_MONOFORUM_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "REPLY_TO_USER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "REQUEST_MSG_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.toggleNoForwards"]
+    },
+    "REQUEST_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["upload.reuploadCdnFile"]
+    },
+    "RESELL_STARS_TOO_FEW": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "RESELL_STARS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "RESET_REQUEST_MISSING": {
+      "codes": [400],
+      "methods": ["account.declinePasswordReset"]
+    },
+    "RESULTS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "RESULT_ID_DUPLICATE": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "RESULT_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendInlineBotResult"]
+    },
+    "RESULT_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.savePreparedInlineMessage", "messages.sendInlineBotResult", "messages.setInlineBotResults"]
+    },
+    "RESULT_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "REVOTE_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["messages.sendVote"]
+    },
+    "RIGHTS_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["bots.setBotBroadcastDefaultAdminRights", "bots.setBotGroupDefaultAdminRights"]
+    },
+    "RIGHT_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["channels.editAdmin"]
+    },
+    "RINGTONE_INVALID": {
+      "codes": [400],
+      "methods": ["account.saveRingtone"]
+    },
+    "RINGTONE_MIME_INVALID": {
+      "codes": [400],
+      "methods": ["account.uploadRingtone"]
+    },
+    "RSA_DECRYPT_FAILED": {
+      "codes": [400],
+      "methods": ["upload.getCdnFileHashes", "upload.reuploadCdnFile"]
+    },
+    "SAVED_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["payments.convertStarGift", "payments.craftStarGift", "payments.getSavedStarGift", "payments.saveStarGift", "payments.transferStarGift", "payments.updateStarGiftPrice", "payments.upgradeStarGift"]
+    },
+    "SCHEDULE_BOT_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "SCHEDULE_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "phone.createGroupCall"]
+    },
+    "SCHEDULE_DATE_TOO_LATE": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "SCHEDULE_STATUS_PRIVATE": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "SCHEDULE_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "SCORE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setGameScore"]
+    },
+    "SEARCH_QUERY_EMPTY": {
+      "codes": [400],
+      "methods": ["contacts.getSponsoredPeers", "contacts.search", "messages.search", "messages.searchGifs", "messages.searchGlobal"]
+    },
+    "SEARCH_WITH_LINK_NOT_SUPPORTED": {
+      "codes": [400],
+      "methods": ["messages.getChatInviteImporters"]
+    },
+    "SECONDS_INVALID": {
+      "codes": [400],
+      "methods": ["channels.toggleSlowMode"]
+    },
+    "SECURE_SECRET_REQUIRED": {
+      "codes": [400],
+      "methods": ["account.saveSecureValue"]
+    },
+    "SELF_DELETE_RESTRICTED": {
+      "codes": [400],
+      "methods": ["messages.deleteMessages"]
+    },
+    "SEND_AS_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.requestWebView", "messages.saveDefaultSendAs", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendPaidReaction"]
+    },
+    "SEND_CODE_UNAVAILABLE": {
+      "codes": [406],
+      "methods": ["auth.resendCode"]
+    },
+    "SEND_MEDIA_INVALID": {
+      "codes": [500],
+      "methods": ["messages.sendInlineBotResult"]
+    },
+    "SEND_MESSAGE_GAME_INVALID": {
+      "codes": [400],
+      "methods": ["messages.savePreparedInlineMessage"]
+    },
+    "SEND_MESSAGE_MEDIA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "SEND_MESSAGE_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "SENSITIVE_CHANGE_FORBIDDEN": {
+      "codes": [403],
+      "methods": ["account.setContentSettings"]
+    },
+    "SESSION_EXPIRED": {
+      "codes": [401],
+      "methods": []
+    },
+    "SESSION_PASSWORD_NEEDED": {
+      "codes": [401],
+      "methods": []
+    },
+    "SESSION_REVOKED": {
+      "codes": [401],
+      "methods": []
+    },
+    "SESSION_TOO_FRESH_%d": {
+      "codes": [400],
+      "methods": ["channels.editCreator", "messages.editChatCreator", "payments.getStarGiftWithdrawalUrl", "payments.getStarsRevenueWithdrawalUrl", "stats.getBroadcastRevenueWithdrawalUrl"]
+    },
+    "SETTINGS_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateNotifySettings"]
+    },
+    "SHA256_HASH_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getDocumentByHash"]
+    },
+    "SHORTCUT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.deleteQuickReplyMessages", "messages.deleteQuickReplyShortcut", "messages.editQuickReplyShortcut", "messages.getQuickReplyMessages"]
+    },
+    "SHORT_NAME_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.checkShortName"]
+    },
+    "SHORT_NAME_OCCUPIED": {
+      "codes": [400],
+      "methods": ["stickers.checkShortName"]
+    },
+    "SIGN_IN_FAILED": {
+      "codes": [500],
+      "methods": ["auth.signIn"]
+    },
+    "SLOTS_EMPTY": {
+      "codes": [400],
+      "methods": ["premium.applyBoost"]
+    },
+    "SLOWMODE_MULTI_MSGS_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages"]
+    },
+    "SLOWMODE_WAIT_%d": {
+      "codes": [420],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "SLUG_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "SMSJOB_ID_INVALID": {
+      "codes": [400],
+      "methods": ["smsjobs.finishJob", "smsjobs.getSmsJob"]
+    },
+    "SMS_CODE_CREATE_FAILED": {
+      "codes": [400],
+      "methods": ["auth.sendCode"]
+    },
+    "SRP_A_INVALID": {
+      "codes": [400],
+      "methods": ["account.getTmpPassword"]
+    },
+    "SRP_ID_INVALID": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings", "auth.checkPassword", "channels.editCreator", "messages.editChatCreator"]
+    },
+    "SRP_PASSWORD_CHANGED": {
+      "codes": [400],
+      "methods": ["account.updatePasswordSettings", "auth.checkPassword"]
+    },
+    "STARGIFT_ALREADY_CONVERTED": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.upgradeStarGift"]
+    },
+    "STARGIFT_ALREADY_REFUNDED": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "STARGIFT_ALREADY_UPGRADED": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm", "payments.upgradeStarGift"]
+    },
+    "STARGIFT_ATTRIBUTE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getResaleStarGifts"]
+    },
+    "STARGIFT_EXPORT_IN_PROGRESS": {
+      "codes": [406],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "STARGIFT_INVALID": {
+      "codes": [400],
+      "methods": ["payments.checkCanSendGift", "payments.getCraftStarGifts", "payments.getPaymentForm", "payments.getResaleStarGifts", "payments.getStarGiftAuctionAcquiredGifts", "payments.getStarGiftAuctionState", "payments.getStarGiftUpgradeAttributes", "payments.getStarGiftUpgradePreview"]
+    },
+    "STARGIFT_MESSAGE_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "STARGIFT_NOT_FOUND": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm", "payments.transferStarGift", "payments.updateStarGiftPrice"]
+    },
+    "STARGIFT_NOT_OWNER": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.transferStarGift"]
+    },
+    "STARGIFT_NOT_UNIQUE": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.transferStarGift"]
+    },
+    "STARGIFT_OBJECT_INVALID": {
+      "codes": [400],
+      "methods": ["payments.saveStarGift"]
+    },
+    "STARGIFT_OFFER_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "STARGIFT_OFFER_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["payments.sendStarGiftOffer"]
+    },
+    "STARGIFT_OWNER_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.getSavedStarGift", "payments.saveStarGift", "payments.sendStarsForm", "payments.transferStarGift"]
+    },
+    "STARGIFT_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["payments.convertStarGift", "payments.getPaymentForm", "payments.transferStarGift"]
+    },
+    "STARGIFT_RESELL_CURRENCY_NOT_ALLOWED": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "STARGIFT_RESELL_TOO_EARLY_%d": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "STARGIFT_SLUG_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.getSavedStarGift", "payments.getUniqueStarGift", "payments.getUniqueStarGiftValueInfo", "payments.sendStarGiftOffer", "payments.sendStarsForm"]
+    },
+    "STARGIFT_TRANSFER_TOO_EARLY_%d": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.transferStarGift"]
+    },
+    "STARGIFT_UPGRADE_UNAVAILABLE": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.getStarGiftUpgradePreview", "payments.upgradeStarGift"]
+    },
+    "STARGIFT_USAGE_LIMITED": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "STARGIFT_USER_USAGE_LIMITED": {
+      "codes": [400],
+      "methods": ["payments.sendStarsForm"]
+    },
+    "STARREF_AWAITING_END": {
+      "codes": [400],
+      "methods": ["bots.updateStarRefProgram"]
+    },
+    "STARREF_EXPIRED": {
+      "codes": [400],
+      "methods": ["contacts.resolveUsername"]
+    },
+    "STARREF_HASH_REVOKED": {
+      "codes": [400],
+      "methods": ["payments.editConnectedStarRefBot"]
+    },
+    "STARREF_PERMILLE_INVALID": {
+      "codes": [400],
+      "methods": ["bots.updateStarRefProgram"]
+    },
+    "STARREF_PERMILLE_TOO_LOW": {
+      "codes": [400],
+      "methods": ["bots.updateStarRefProgram"]
+    },
+    "STARS_AMOUNT_INVALID": {
+      "codes": [400],
+      "methods": ["channels.updatePaidMessagesPrice"]
+    },
+    "STARS_FORM_AMOUNT_MISMATCH": {
+      "codes": [406],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "STARS_INVOICE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "payments.exportInvoice"]
+    },
+    "STARS_PAYMENT_REQUIRED": {
+      "codes": [400],
+      "methods": ["messages.importChatInvite"]
+    },
+    "START_PARAM_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults", "messages.startBot"]
+    },
+    "START_PARAM_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults", "messages.startBot"]
+    },
+    "START_PARAM_TOO_LONG": {
+      "codes": [400],
+      "methods": ["messages.startBot"]
+    },
+    "STATS_MIGRATE_%d": {
+      "codes": [303],
+      "methods": []
+    },
+    "STICKERPACK_STICKERS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["stickers.addStickerToSet"]
+    },
+    "STICKERSET_INVALID": {
+      "codes": [400, 406],
+      "methods": ["messages.getStickerSet", "messages.installStickerSet", "messages.uninstallStickerSet", "stickers.addStickerToSet", "stickers.deleteStickerSet", "stickers.renameStickerSet", "stickers.setStickerSetThumb"]
+    },
+    "STICKERSET_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": []
+    },
+    "STICKERSET_OWNER_ANONYMOUS": {
+      "codes": [406],
+      "methods": ["channels.setStickers"]
+    },
+    "STICKERS_EMPTY": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKERS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["stickers.addStickerToSet"]
+    },
+    "STICKER_DOCUMENT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "STICKER_EMOJI_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_GIF_DIMENSIONS": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.faveSticker", "messages.saveRecentSticker"]
+    },
+    "STICKER_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.changeSticker", "stickers.changeStickerPosition", "stickers.removeStickerFromSet", "stickers.replaceSticker"]
+    },
+    "STICKER_MIME_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editPhoto", "photos.uploadProfilePhoto"]
+    },
+    "STICKER_PNG_DIMENSIONS": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_PNG_NOPNG": {
+      "codes": [400],
+      "methods": ["stickers.addStickerToSet", "stickers.createStickerSet"]
+    },
+    "STICKER_TGS_NODOC": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_TGS_NOTGS": {
+      "codes": [400],
+      "methods": ["stickers.addStickerToSet", "stickers.createStickerSet"]
+    },
+    "STICKER_THUMB_PNG_NOPNG": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet", "stickers.setStickerSetThumb"]
+    },
+    "STICKER_THUMB_TGS_NOTGS": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet", "stickers.setStickerSetThumb"]
+    },
+    "STICKER_VIDEO_BIG": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_VIDEO_NODOC": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STICKER_VIDEO_NOWEBM": {
+      "codes": [400],
+      "methods": ["stickers.createStickerSet"]
+    },
+    "STORIES_NEVER_CREATED": {
+      "codes": [400],
+      "methods": ["messages.sendMessage", "stats.getStoryStats", "stories.getStoriesByID", "stories.readStories", "stories.sendReaction"]
+    },
+    "STORIES_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["stories.canSendStory", "stories.sendStory"]
+    },
+    "STORY_ID_EMPTY": {
+      "codes": [400],
+      "methods": ["stories.deleteStories", "stories.exportStoryLink", "stories.getStoriesByID", "stories.getStoriesViews", "stories.incrementStoryViews", "stories.sendReaction"]
+    },
+    "STORY_ID_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.sendMessage", "messages.sendScreenshotNotification", "stories.getStoryViewsList", "stories.sendReaction", "stories.togglePinnedToTop"]
+    },
+    "STORY_LIVE_ALREADY_%d": {
+      "codes": [400],
+      "methods": ["stories.startLive"]
+    },
+    "STORY_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["stories.editStory"]
+    },
+    "STORY_PERIOD_INVALID": {
+      "codes": [400],
+      "methods": ["stories.sendStory"]
+    },
+    "STORY_SEND_FLOOD_MONTHLY_%d": {
+      "codes": [400],
+      "methods": ["stories.canSendStory"]
+    },
+    "STORY_SEND_FLOOD_WEEKLY_%d": {
+      "codes": [400],
+      "methods": ["stories.canSendStory"]
+    },
+    "SUBSCRIPTION_EXPORT_MISSING": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "SUBSCRIPTION_ID_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getStarsTransactions"]
+    },
+    "SUBSCRIPTION_PERIOD_INVALID": {
+      "codes": [400],
+      "methods": ["messages.exportChatInvite"]
+    },
+    "SUGGESTED_POST_AMOUNT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMessage"]
+    },
+    "SUGGESTED_POST_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "SWITCH_PM_TEXT_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "SWITCH_WEBVIEW_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "TAKEOUT_INIT_DELAY_%d": {
+      "codes": [420],
+      "methods": ["account.initTakeoutSession"]
+    },
+    "TAKEOUT_INVALID": {
+      "codes": [400],
+      "methods": ["channels.getLeftChannels", "contacts.getSaved", "messages.getDialogs", "messages.getHistory", "messages.search"]
+    },
+    "TAKEOUT_REQUIRED": {
+      "codes": [400, 403],
+      "methods": ["account.finishTakeoutSession", "channels.getLeftChannels", "contacts.getSaved"]
+    },
+    "TASK_ALREADY_EXISTS": {
+      "codes": [400],
+      "methods": ["auth.resetLoginEmail"]
+    },
+    "TEMP_AUTH_KEY_ALREADY_BOUND": {
+      "codes": [400],
+      "methods": ["auth.bindTempAuthKey"]
+    },
+    "TEMP_AUTH_KEY_EMPTY": {
+      "codes": [400],
+      "methods": ["auth.bindTempAuthKey"]
+    },
+    "TERMS_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "TEXTDRAFT_PEER_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setTyping"]
+    },
+    "THEME_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["account.uploadTheme"]
+    },
+    "THEME_FORMAT_INVALID": {
+      "codes": [400],
+      "methods": ["account.getTheme"]
+    },
+    "THEME_INVALID": {
+      "codes": [400],
+      "methods": ["account.getTheme", "account.saveTheme", "account.updateTheme"]
+    },
+    "THEME_MIME_INVALID": {
+      "codes": [400],
+      "methods": ["account.createTheme", "account.uploadTheme"]
+    },
+    "THEME_PARAMS_INVALID": {
+      "codes": [400],
+      "methods": ["messages.requestAppWebView", "messages.requestWebView"]
+    },
+    "THEME_SLUG_INVALID": {
+      "codes": [400],
+      "methods": ["account.getTheme"]
+    },
+    "THEME_TITLE_INVALID": {
+      "codes": [400],
+      "methods": ["account.createTheme"]
+    },
+    "TIMEZONE_INVALID": {
+      "codes": [400],
+      "methods": ["account.updateBusinessWorkHours"]
+    },
+    "TITLE_INVALID": {
+      "codes": [400],
+      "methods": ["stickers.suggestShortName"]
+    },
+    "TMP_PASSWORD_DISABLED": {
+      "codes": [400],
+      "methods": ["account.getTmpPassword"]
+    },
+    "TMP_PASSWORD_INVALID": {
+      "codes": [400],
+      "methods": ["payments.sendPaymentForm"]
+    },
+    "TODO_ITEMS_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia"]
+    },
+    "TODO_ITEMS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "TODO_ITEM_DUPLICATE": {
+      "codes": [400],
+      "methods": ["messages.appendTodoList", "messages.editMessage", "messages.sendMedia"]
+    },
+    "TODO_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["messages.appendTodoList"]
+    },
+    "TOKEN_EMPTY": {
+      "codes": [400],
+      "methods": ["account.registerDevice"]
+    },
+    "TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerDevice", "account.unregisterDevice"]
+    },
+    "TOKEN_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerDevice"]
+    },
+    "TOPICS_EMPTY": {
+      "codes": [400],
+      "methods": ["channels.getForumTopicsByID", "messages.getForumTopicsByID"]
+    },
+    "TOPIC_CLOSED": {
+      "codes": [400, 406],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "TOPIC_CLOSE_SEPARATELY": {
+      "codes": [400],
+      "methods": ["channels.editForumTopic", "messages.editForumTopic"]
+    },
+    "TOPIC_DELETED": {
+      "codes": [400, 406],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia"]
+    },
+    "TOPIC_HIDE_SEPARATELY": {
+      "codes": [400],
+      "methods": ["channels.editForumTopic"]
+    },
+    "TOPIC_ID_INVALID": {
+      "codes": [400],
+      "methods": ["channels.deleteTopicHistory", "channels.editForumTopic", "channels.updatePinnedForumTopic", "messages.getDiscussionMessage", "messages.getReplies"]
+    },
+    "TOPIC_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["channels.editForumTopic", "messages.editForumTopic"]
+    },
+    "TOPIC_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["channels.createForumTopic"]
+    },
+    "TO_ID_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getPaymentForm", "payments.sendStarsForm"]
+    },
+    "TO_LANG_INVALID": {
+      "codes": [400],
+      "methods": ["messages.translateText"]
+    },
+    "TRANSACTION_ID_INVALID": {
+      "codes": [400],
+      "methods": ["payments.getStarsTransactionsByID"]
+    },
+    "TRANSCRIPTION_FAILED": {
+      "codes": [400],
+      "methods": ["messages.transcribeAudio"]
+    },
+    "TRANSLATE_REQ_FAILED": {
+      "codes": [500],
+      "methods": ["messages.translateText"]
+    },
+    "TRANSLATE_REQ_QUOTA_EXCEEDED": {
+      "codes": [400],
+      "methods": ["messages.translateText"]
+    },
+    "TRANSLATIONS_DISABLED": {
+      "codes": [406],
+      "methods": ["messages.translateText"]
+    },
+    "TRANSLATION_TIMEOUT": {
+      "codes": [500],
+      "methods": ["messages.translateText"]
+    },
+    "TTL_DAYS_INVALID": {
+      "codes": [400],
+      "methods": ["account.setAccountTTL", "account.setAuthorizationTTL"]
+    },
+    "TTL_MEDIA_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "TTL_PERIOD_INVALID": {
+      "codes": [400],
+      "methods": ["channels.createChannel", "messages.createChat", "messages.setDefaultHistoryTTL", "messages.setHistoryTTL"]
+    },
+    "TYPES_EMPTY": {
+      "codes": [400],
+      "methods": ["contacts.getTopPeers"]
+    },
+    "Timeout": {
+      "codes": [-503],
+      "methods": ["messages.getBotCallbackAnswer", "messages.getInlineBotResults"]
+    },
+    "UNSUPPORTED": {
+      "codes": [400],
+      "methods": ["account.toggleNoPaidMessagesException"]
+    },
+    "UNTIL_DATE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editChatDefaultBannedRights", "payments.getPaymentForm"]
+    },
+    "UPDATE_APP_TO_LOGIN": {
+      "codes": [406],
+      "methods": ["auth.sendCode", "auth.signIn"]
+    },
+    "URL_EXPIRED": {
+      "codes": [400],
+      "methods": ["messages.requestUrlAuth"]
+    },
+    "URL_INVALID": {
+      "codes": [400],
+      "methods": ["account.toggleWebBrowserSettingsException", "messages.checkUrlAuthMatchCode", "messages.declineUrlAuth", "messages.requestSimpleWebView", "messages.requestUrlAuth", "messages.requestWebView", "messages.setBotCallbackAnswer", "messages.setInlineBotResults"]
+    },
+    "USAGE_LIMIT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.editExportedChatInvite", "messages.exportChatInvite"]
+    },
+    "USERNAMES_ACTIVE_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["account.toggleUsername", "channels.toggleUsername"]
+    },
+    "USERNAME_INVALID": {
+      "codes": [400],
+      "methods": ["account.checkUsername", "account.toggleUsername", "account.updateUsername", "bots.checkUsername", "bots.createBot", "channels.checkUsername", "channels.toggleUsername", "channels.updateUsername", "contacts.resolveUsername", "help.getConfig", "updates.getDifference"]
+    },
+    "USERNAME_NOT_MODIFIED": {
+      "codes": [400],
+      "methods": ["account.reorderUsernames", "account.toggleUsername", "account.updateUsername", "bots.reorderUsernames", "bots.toggleUsername", "channels.toggleUsername", "channels.updateUsername"]
+    },
+    "USERNAME_NOT_OCCUPIED": {
+      "codes": [400],
+      "methods": ["contacts.resolveUsername"]
+    },
+    "USERNAME_OCCUPIED": {
+      "codes": [400],
+      "methods": ["account.checkUsername", "account.updateUsername", "bots.checkUsername", "bots.createBot", "channels.checkUsername", "channels.updateUsername", "users.getFullUser"]
+    },
+    "USERNAME_PURCHASE_AVAILABLE": {
+      "codes": [400],
+      "methods": ["account.checkUsername", "account.updateUsername", "channels.checkUsername", "channels.updateUsername"]
+    },
+    "USERNAME_SUFFIX_MISSING": {
+      "codes": [400],
+      "methods": ["bots.checkUsername", "bots.createBot"]
+    },
+    "USERPIC_PRIVACY_REQUIRED": {
+      "codes": [406],
+      "methods": ["contacts.getLocated"]
+    },
+    "USERPIC_UPLOAD_REQUIRED": {
+      "codes": [400, 406],
+      "methods": ["contacts.getLocated"]
+    },
+    "USERS_TOO_FEW": {
+      "codes": [400],
+      "methods": ["messages.createChat"]
+    },
+    "USERS_TOO_MUCH": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.editCreator", "channels.inviteToChannel", "channels.joinChannel", "messages.addChatUser", "messages.editChatCreator", "messages.importChatInvite"]
+    },
+    "USER_ADMIN_INVALID": {
+      "codes": [400],
+      "methods": ["channels.editBanned"]
+    },
+    "USER_ALREADY_INVITED": {
+      "codes": [400],
+      "methods": ["phone.inviteToGroupCall"]
+    },
+    "USER_ALREADY_PARTICIPANT": {
+      "codes": [400],
+      "methods": ["channels.joinChannel", "messages.addChatUser", "messages.hideChatJoinRequest", "messages.importChatInvite"]
+    },
+    "USER_BANNED_IN_CHANNEL": {
+      "codes": [400, 403],
+      "methods": ["channels.getChannels", "channels.getMessages", "channels.inviteToChannel", "channels.joinChannel", "channels.leaveChannel", "messages.editMessage", "messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.sendReaction", "messages.setTyping", "messages.updatePinnedMessage", "messages.uploadMedia", "updates.getChannelDifference", "users.getUsers"]
+    },
+    "USER_BLOCKED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.inviteToChannel"]
+    },
+    "USER_BOT": {
+      "codes": [400],
+      "methods": ["channels.inviteToChannel"]
+    },
+    "USER_BOT_INVALID": {
+      "codes": [400, 403],
+      "methods": ["bots.getBotInfo", "bots.setBotInfo", "messages.setBotGuestChatResult", "messages.setInlineBotResults"]
+    },
+    "USER_BOT_REQUIRED": {
+      "codes": [400],
+      "methods": ["bots.answerWebhookJSONQuery", "bots.editAccessSettings", "bots.exportBotToken", "bots.getAccessSettings", "bots.getBotCommands", "bots.getBotMenuButton", "bots.requestWebViewButton", "bots.resetBotCommands", "bots.sendCustomRequest", "bots.setBotBroadcastDefaultAdminRights", "bots.setBotCommands", "bots.setBotGroupDefaultAdminRights", "bots.setBotMenuButton", "bots.setJoinChatResults", "bots.updateUserEmojiStatus", "help.setBotUpdatesStatus", "messages.getGameHighScores", "messages.getInlineGameHighScores", "messages.getPersonalChannelHistory", "messages.savePreparedInlineMessage", "messages.sendWebViewResultMessage", "messages.setBotCallbackAnswer", "messages.setBotGuestChatResult", "messages.setBotPrecheckoutResults", "messages.setBotShippingResults", "messages.setGameScore", "messages.setInlineBotResults", "messages.setInlineGameScore", "payments.exportInvoice", "payments.refundStarsCharge", "users.setSecureValueErrors"]
+    },
+    "USER_BOT_TO_BOT_DISABLED": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage"]
+    },
+    "USER_CHANNELS_TOO_MUCH": {
+      "codes": [400, 403],
+      "methods": ["channels.editAdmin", "channels.editCreator", "channels.inviteToChannel", "channels.joinChannel", "messages.editChatCreator", "messages.hideAllChatJoinRequests", "messages.hideChatJoinRequest", "messages.importChatInvite"]
+    },
+    "USER_CREATOR": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.leaveChannel"]
+    },
+    "USER_DEACTIVATED": {
+      "codes": [401],
+      "methods": []
+    },
+    "USER_DEACTIVATED_BAN": {
+      "codes": [401],
+      "methods": []
+    },
+    "USER_DELETED": {
+      "codes": [403],
+      "methods": ["messages.sendEncryptedService"]
+    },
+    "USER_DISALLOWED_STARGIFTS": {
+      "codes": [403],
+      "methods": ["payments.getPaymentForm"]
+    },
+    "USER_GIFT_UNAVAILABLE": {
+      "codes": [400],
+      "methods": ["payments.canPurchasePremium", "payments.getStarsGiftOptions"]
+    },
+    "USER_ID_INVALID": {
+      "codes": [400],
+      "methods": ["account.addNoPaidMessagesException", "account.getPaidMessagesRevenue", "account.toggleNoPaidMessagesException", "auth.importAuthorization", "bots.requestWebViewButton", "bots.setBotCommands", "bots.updateUserEmojiStatus", "channels.deleteUserHistory", "channels.editAdmin", "channels.editBanned", "channels.editCreator", "channels.getParticipant", "channels.inviteToChannel", "channels.reportSpam", "messages.addChatUser", "messages.deleteChatUser", "messages.editChatAdmin", "messages.getCommonChats", "messages.getPersonalChannelHistory", "messages.hideChatJoinRequest", "messages.reportReaction", "messages.requestEncryption", "messages.savePreparedInlineMessage", "messages.search", "payments.botCancelStarsSubscription", "payments.canPurchasePremium", "payments.convertStarGift", "payments.getStarsGiftOptions", "payments.getUserStarGifts", "payments.refundStarsCharge", "payments.saveStarGift", "payments.sendStarsForm", "phone.editGroupCallParticipant", "phone.requestCall", "photos.getUserPhotos", "photos.uploadContactProfilePhoto", "stickers.createStickerSet", "stories.getPinnedStories", "stories.getUserStories", "users.getFullUser", "users.getSavedMusic", "users.getSavedMusicByID", "users.setSecureValueErrors", "users.suggestBirthday"]
+    },
+    "USER_INVALID": {
+      "codes": [400, 403],
+      "methods": ["help.editUserInfo", "help.getSupportName", "help.getUserInfo"]
+    },
+    "USER_IS_BLOCKED": {
+      "codes": [400, 403],
+      "methods": ["messages.addChatUser", "messages.forwardMessages", "messages.requestEncryption", "messages.sendEncrypted", "messages.sendEncryptedService", "messages.sendMedia", "messages.sendMessage", "messages.sendMultiMedia", "messages.setTyping", "phone.requestCall"]
+    },
+    "USER_IS_BOT": {
+      "codes": [400],
+      "methods": ["messages.forwardMessages", "messages.sendMedia", "messages.sendMessage", "messages.setTyping"]
+    },
+    "USER_KICKED": {
+      "codes": [400],
+      "methods": ["channels.editAdmin", "channels.inviteToChannel"]
+    },
+    "USER_MIGRATE_%d": {
+      "codes": [303],
+      "methods": []
+    },
+    "USER_NOT_MUTUAL_CONTACT": {
+      "codes": [400, 403],
+      "methods": ["channels.editAdmin", "channels.editCreator", "channels.inviteToChannel", "messages.addChatUser", "messages.checkHistoryImportPeer", "messages.editChatCreator", "messages.initHistoryImport"]
+    },
+    "USER_NOT_PARTICIPANT": {
+      "codes": [400, 403],
+      "methods": ["channels.getParticipant", "channels.leaveChannel", "messages.deleteChatUser", "messages.editChatAdmin", "phone.inviteToGroupCall", "updates.getDifference"]
+    },
+    "USER_PERMISSION_DENIED": {
+      "codes": [403],
+      "methods": ["bots.updateUserEmojiStatus"]
+    },
+    "USER_PRIVACY_RESTRICTED": {
+      "codes": [403],
+      "methods": ["channels.editAdmin", "channels.editCreator", "channels.inviteToChannel", "help.getConfig", "messages.addChatUser", "messages.editChatCreator", "messages.getOutboxReadDate", "phone.requestCall"]
+    },
+    "USER_PUBLIC_MISSING": {
+      "codes": [400],
+      "methods": ["stories.exportStoryLink"]
+    },
+    "USER_RESTRICTED": {
+      "codes": [403, 406],
+      "methods": ["channels.createChannel", "channels.editAdmin", "messages.createChat"]
+    },
+    "USER_VOLUME_INVALID": {
+      "codes": [400],
+      "methods": ["phone.editGroupCallParticipant"]
+    },
+    "VENUE_ID_INVALID": {
+      "codes": [400],
+      "methods": ["stories.sendStory"]
+    },
+    "VIDEO_CONTENT_TYPE_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.setInlineBotResults"]
+    },
+    "VIDEO_DURATION_INVALID": {
+      "codes": [400],
+      "methods": ["stories.sendStory"]
+    },
+    "VIDEO_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["photos.uploadProfilePhoto"]
+    },
+    "VIDEO_PAUSE_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["phone.editGroupCallParticipant"]
+    },
+    "VIDEO_STOP_FORBIDDEN": {
+      "codes": [400],
+      "methods": ["phone.editGroupCallParticipant"]
+    },
+    "VIDEO_TITLE_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "VOICE_MESSAGES_FORBIDDEN": {
+      "codes": [400, 403],
+      "methods": ["messages.forwardMessages", "messages.sendInlineBotResult", "messages.sendMedia", "messages.uploadMedia"]
+    },
+    "WALLPAPER_FILE_INVALID": {
+      "codes": [400],
+      "methods": ["account.uploadWallPaper"]
+    },
+    "WALLPAPER_INVALID": {
+      "codes": [400],
+      "methods": ["account.getMultiWallPapers", "account.getWallPaper", "account.installWallPaper", "account.saveWallPaper", "messages.setChatWallPaper"]
+    },
+    "WALLPAPER_MIME_INVALID": {
+      "codes": [400],
+      "methods": ["account.uploadWallPaper"]
+    },
+    "WALLPAPER_NOT_FOUND": {
+      "codes": [400],
+      "methods": ["messages.setChatWallPaper"]
+    },
+    "WC_CONVERT_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.getWebPage", "messages.sendMessage"]
+    },
+    "WEBAPP_REQ_ID_INVALID": {
+      "codes": [400],
+      "methods": ["bots.getRequestedWebViewButton"]
+    },
+    "WEBAUTH_TOKEN_EXPIRED": {
+      "codes": [400],
+      "methods": ["auth.importWebTokenAuthorization"]
+    },
+    "WEBDOCUMENT_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "WEBDOCUMENT_MIME_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia", "messages.setInlineBotResults", "payments.exportInvoice"]
+    },
+    "WEBDOCUMENT_SIZE_TOO_BIG": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "WEBDOCUMENT_URL_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults", "payments.exportInvoice"]
+    },
+    "WEBDOCUMENT_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.setInlineBotResults"]
+    },
+    "WEBPAGE_CURL_FAILED": {
+      "codes": [400],
+      "methods": ["messages.sendInlineBotResult", "messages.sendMedia", "messages.uploadMedia"]
+    },
+    "WEBPAGE_MEDIA_EMPTY": {
+      "codes": [400],
+      "methods": ["messages.sendInlineBotResult", "messages.sendMedia"]
+    },
+    "WEBPAGE_NOT_FOUND": {
+      "codes": [400],
+      "methods": ["messages.editMessage", "messages.sendMedia"]
+    },
+    "WEBPAGE_URL_INVALID": {
+      "codes": [400],
+      "methods": ["messages.sendMedia"]
+    },
+    "WEBPUSH_AUTH_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerDevice"]
+    },
+    "WEBPUSH_KEY_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerDevice"]
+    },
+    "WEBPUSH_TOKEN_INVALID": {
+      "codes": [400],
+      "methods": ["account.registerDevice"]
+    },
+    "YOUR_PRIVACY_RESTRICTED": {
+      "codes": [403],
+      "methods": ["messages.getOutboxReadDate"]
+    },
+    "YOU_BLOCKED_USER": {
+      "codes": [400],
+      "methods": ["messages.addChatUser", "messages.forwardMessage", "messages.forwardMessages", "messages.requestWebView", "messages.sendInlineBotResult", "messages.sendMedia", "messages.sendMessage", "messages.sendScreenshotNotification"]
+    }
+  }
+}

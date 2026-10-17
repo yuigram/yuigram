@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Webhook handling and its framework adapters.
  *
@@ -28,5 +30,11 @@ export {
   type WebhookRequest,
   type WebhookResponse,
 } from './handler.js'
+export {
+  type KoaAdapterOptions,
+  type KoaContext,
+  type KoaMiddleware,
+  koaWebhook,
+} from './koa.js'
 export { type NodeAdapterOptions, type NodeListener, nodeWebhook } from './node.js'
 export { type FetchHandler, type WebAdapterOptions, webWebhook } from './web.js'

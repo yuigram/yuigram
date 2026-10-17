@@ -1,9 +1,11 @@
 // GENERATED FILE — do not edit.
 // Per-event context field shapes
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { UpdateEventKind } from './events.js'
-import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
+import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RefundedUpgradedGiftInfo, RichMessage, ShippingAddress, ShippingQuery, StakeDice, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
 
 /**
  * Fields carried by `BotSubscriptionUpdated`, projected onto the context for
@@ -21,9 +23,9 @@ export interface BotSubscriptionUpdatedEventFields {
    */
   readonly invoice_payload: string
   /**
-   * The new state of the subscription. Currently, it can be one of “canceled” if
-   * the user canceled the subscription, “active” if the user re-enabled a
-   * previously canceled subscription, or “failed” if payment for the
+   * The new state of the subscription. Currently, it can be one of "canceled" if
+   * the user canceled the subscription, "active" if the user re-enabled a
+   * previously canceled subscription, or "failed" if payment for the
    * subscription failed.
    */
   readonly state: string
@@ -57,13 +59,13 @@ export interface BusinessConnectionEventFields {
    */
   readonly date: number
   /**
-   * Rights of the business bot
-   */
-  readonly rights?: BusinessBotRights | undefined
-  /**
    * True, if the connection is active
    */
   readonly is_enabled: boolean
+  /**
+   * Rights of the business bot
+   */
+  readonly rights?: BusinessBotRights | undefined
 }
 
 /**
@@ -88,47 +90,6 @@ export interface BusinessMessagesDeletedEventFields {
    * account
    */
   readonly message_ids: number[]
-}
-
-/**
- * Fields carried by `CallbackQuery`, projected onto the context for the
- * `callback_query` event: `callback_query`.
- */
-export interface CallbackQueryEventFields {
-  /** The whole payload, under a domain name. */
-  readonly query: CallbackQuery
-
-  /** Who caused this. Telegram spells it `from` on this payload. */
-  readonly sender: User
-
-  /**
-   * Unique identifier for this query
-   */
-  readonly id: string
-  /**
-   * Message sent by the bot with the callback button that originated the query
-   */
-  readonly message?: MaybeInaccessibleMessage | undefined
-  /**
-   * Identifier of the message sent via the bot in inline mode, that originated
-   * the query
-   */
-  readonly inline_message_id?: string | undefined
-  /**
-   * Global identifier, uniquely corresponding to the chat to which the message
-   * with the callback button was sent. Useful for high scores in games.
-   */
-  readonly chat_instance: string
-  /**
-   * Data associated with the callback button. Be aware that the message
-   * originated the query can contain no callback buttons with this data.
-   */
-  readonly data?: string | undefined
-  /**
-   * Short name of a Game to be returned, serves as the unique identifier for the
-   * game
-   */
-  readonly game_short_name?: string | undefined
 }
 
 /**
@@ -256,11 +217,11 @@ export interface ChatMemberUpdatedEventFields {
    * True, if the user joined the chat after sending a direct join request
    * without using an invite link and being approved by an administrator
    */
-  readonly via_join_request?: boolean | undefined
+  readonly via_join_request?: true | undefined
   /**
    * True, if the user joined the chat via a chat folder invite link
    */
-  readonly via_chat_folder_invite_link?: boolean | undefined
+  readonly via_chat_folder_invite_link?: true | undefined
 }
 
 /**
@@ -275,10 +236,6 @@ export interface ChosenInlineResultEventFields {
   readonly sender: User
 
   /**
-   * The unique identifier for the result that was chosen
-   */
-  readonly result_id: string
-  /**
    * Sender location, only for bots that require user location
    */
   readonly location?: Location | undefined
@@ -292,6 +249,10 @@ export interface ChosenInlineResultEventFields {
    * The query that was used to obtain the result
    */
   readonly query: string
+  /**
+   * The unique identifier for the result that was chosen
+   */
+  readonly result_id: string
 }
 
 /**
@@ -310,25 +271,25 @@ export interface InlineQueryEventFields {
    */
   readonly id: string
   /**
-   * Text of the query (up to 256 characters)
+   * Sender location, only for bots that request user location
+   */
+  readonly location?: Location | undefined
+  /**
+   * Type of the chat from which the inline query was sent. Can be either
+   * "sender" for a private chat with the inline query sender, "private",
+   * "group", "supergroup", or "channel". The chat type should be always known
+   * for requests sent from official clients and most third-party clients, unless
+   * the request was sent from a secret chat.
+   */
+  readonly chat_type?: string | undefined
+  /**
+   * Text of the query, 0-256 characters
    */
   readonly query: string
   /**
    * Offset of the results to be returned, can be controlled by the bot
    */
   readonly offset: string
-  /**
-   * Type of the chat from which the inline query was sent. Can be either
-   * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
-   * for requests sent from official clients and most third-party clients, unless
-   * the request was sent from a secret chat.
-   */
-  readonly chat_type?: string | undefined
-  /**
-   * Sender location, only for bots that request user location
-   */
-  readonly location?: Location | undefined
 }
 
 /**
@@ -362,6 +323,19 @@ export interface MessageEventFields {
   readonly sender: User | undefined
 
   /**
+   * Unique identifier of the business connection from which the message was
+   * received. If non-empty, the message belongs to a chat of the corresponding
+   * business account that is independent from any potential bot chat which might
+   * share the same identifier.
+   */
+  readonly business_connection_id?: string | undefined
+  /**
+   * The bot that actually sent the message on behalf of the business account.
+   * Available only for outgoing messages sent on behalf of the connected
+   * business account.
+   */
+  readonly sender_business_bot?: User | undefined
+  /**
    * Unique message identifier inside this chat; 0 for ephemeral messages. In
    * specific instances (e.g., a message containing a video sent to a big chat),
    * the server might automatically schedule a message instead of sending it
@@ -370,14 +344,16 @@ export interface MessageEventFields {
    */
   readonly message_id: number
   /**
-   * Unique identifier of a message thread or forum topic to which the message
-   * belongs; for supergroups and private chats only
+   * For ephemeral messages, identifier of the ephemeral message inside this
+   * chat. The identifier may be reused for another ephemeral message after the
+   * message is deleted or expires.
    */
-  readonly message_thread_id?: number | undefined
+  readonly ephemeral_message_id?: number | undefined
   /**
-   * Information about the direct messages chat topic that contains the message
+   * Signature of the post author for messages in channels, or the custom title
+   * of an anonymous group administrator
    */
-  readonly direct_messages_topic?: DirectMessagesTopic | undefined
+  readonly author_signature?: string | undefined
   /**
    * Sender of the message when sent on behalf of a chat. For example, the
    * supergroup itself for messages sent by its anonymous administrators or a
@@ -388,62 +364,31 @@ export interface MessageEventFields {
    */
   readonly sender_chat?: Chat | undefined
   /**
-   * If the sender of the message boosted the chat, the number of boosts added by
-   * the user
+   * Chat the message belongs to
    */
-  readonly sender_boost_count?: number | undefined
-  /**
-   * The bot that actually sent the message on behalf of the business account.
-   * Available only for outgoing messages sent on behalf of the connected
-   * business account.
-   */
-  readonly sender_business_bot?: User | undefined
-  /**
-   * Tag or custom title of the sender of the message; for supergroups only
-   */
-  readonly sender_tag?: string | undefined
-  /**
-   * For ephemeral messages, the user who received the message
-   */
-  readonly receiver_user?: User | undefined
-  /**
-   * For ephemeral messages, identifier of the ephemeral message inside this
-   * chat. The identifier may be reused for another ephemeral message after the
-   * message is deleted or expires.
-   */
-  readonly ephemeral_message_id?: number | undefined
+  readonly chat: Chat
   /**
    * Date the message was sent in Unix time. It is always a positive number,
    * representing a valid date.
    */
   readonly date: number
   /**
-   * The unique identifier for the guest query. Use this identifier with the
-   * method answerGuestQuery to send a response message. If non-empty, the
-   * message belongs to the chat where the guest bot was summoned, which may not
-   * coincide with other existing bot chats sharing the same identifier.
+   * Date the message was last edited in Unix time
    */
-  readonly guest_query_id?: string | undefined
+  readonly edit_date?: number | undefined
   /**
-   * Unique identifier of the business connection from which the message was
-   * received. If non-empty, the message belongs to a chat of the corresponding
-   * business account that is independent from any potential bot chat which might
-   * share the same identifier.
+   * Unique identifier of a message thread or forum topic to which the message
+   * belongs; for supergroups and private chats only
    */
-  readonly business_connection_id?: string | undefined
+  readonly message_thread_id?: number | undefined
   /**
-   * Chat the message belongs to
+   * For ephemeral messages, the user who received the message
    */
-  readonly chat: Chat
+  readonly receiver_user?: User | undefined
   /**
    * Information about the original message for forwarded messages
    */
   readonly forward_origin?: MessageOrigin | undefined
-  /**
-   * True, if the message is sent to a topic in a forum supergroup or a private
-   * chat with the bot
-   */
-  readonly is_topic_message?: true | undefined
   /**
    * True, if the message is a channel post that was automatically forwarded to
    * the connected discussion group
@@ -467,10 +412,6 @@ export interface MessageEventFields {
    */
   readonly quote?: TextQuote | undefined
   /**
-   * For replies to a story, the original story
-   */
-  readonly reply_to_story?: Story | undefined
-  /**
    * Identifier of the specific checklist task that is being replied to
    */
   readonly reply_to_checklist_task_id?: number | undefined
@@ -479,52 +420,21 @@ export interface MessageEventFields {
    */
   readonly reply_to_poll_option_id?: string | undefined
   /**
-   * Bot through which the message was sent
+   * For replies to a story, the original story
    */
-  readonly via_bot?: User | undefined
-  /**
-   * For a message sent by a guest bot, this is the user whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_user?: User | undefined
-  /**
-   * For a message sent by a guest bot, this is the chat whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_chat?: Chat | undefined
-  /**
-   * Date the message was last edited in Unix time
-   */
-  readonly edit_date?: number | undefined
-  /**
-   * True, if the message can't be forwarded
-   */
-  readonly has_protected_content?: true | undefined
-  /**
-   * True, if the message was sent by an implicit action, for example, as an away
-   * or a greeting business message, or as a scheduled message
-   */
-  readonly is_from_offline?: true | undefined
-  /**
-   * True, if the message is a paid post. Note that such posts must not be
-   * deleted for 24 hours to receive the payment and can't be edited.
-   */
-  readonly is_paid_post?: true | undefined
+  readonly reply_to_story?: Story | undefined
   /**
    * The unique identifier inside this chat of a media message group this message
    * belongs to
    */
   readonly media_group_id?: string | undefined
   /**
-   * Signature of the post author for messages in channels, or the custom title
-   * of an anonymous group administrator
+   * The unique identifier for the guest query. Use this identifier with the
+   * method answerGuestQuery to send a response message. If non-empty, the
+   * message belongs to the chat where the guest bot was summoned, which may not
+   * coincide with other existing bot chats sharing the same identifier.
    */
-  readonly author_signature?: string | undefined
-  /**
-   * The number of Telegram Stars that were paid by the sender of the message to
-   * send it
-   */
-  readonly paid_star_count?: number | undefined
+  readonly guest_query_id?: string | undefined
   /**
    * For text messages, the actual UTF-8 text of the message
    */
@@ -540,16 +450,6 @@ export interface MessageEventFields {
    */
   readonly link_preview_options?: LinkPreviewOptions | undefined
   /**
-   * Information about suggested post parameters if the message is a suggested
-   * post in a channel direct messages chat. If the message is an approved or
-   * declined suggested post, then it can't be edited.
-   */
-  readonly suggested_post_info?: SuggestedPostInfo | undefined
-  /**
-   * Unique identifier of the message effect added to the message
-   */
-  readonly effect_id?: string | undefined
-  /**
    * Message is a rich formatted message
    */
   readonly rich_message?: RichMessage | undefined
@@ -559,46 +459,9 @@ export interface MessageEventFields {
    */
   readonly animation?: Animation | undefined
   /**
-   * Message is an audio file, information about the file
-   */
-  readonly audio?: Audio | undefined
-  /**
    * Message is a general file, information about the file
    */
   readonly document?: Document | undefined
-  /**
-   * Message is a live photo, information about the live photo. For backward
-   * compatibility, when this field is set, the photo field will also be set.
-   */
-  readonly live_photo?: LivePhoto | undefined
-  /**
-   * Message contains paid media; information about the paid media
-   */
-  readonly paid_media?: PaidMediaInfo | undefined
-  /**
-   * Message is a photo, available sizes of the photo
-   */
-  readonly photo?: PhotoSize[] | undefined
-  /**
-   * Message is a sticker, information about the sticker
-   */
-  readonly sticker?: Sticker | undefined
-  /**
-   * Message is a forwarded story
-   */
-  readonly story?: Story | undefined
-  /**
-   * Message is a video, information about the video
-   */
-  readonly video?: Video | undefined
-  /**
-   * Message is a video note, information about the video message
-   */
-  readonly video_note?: VideoNote | undefined
-  /**
-   * Message is a voice message, information about the file
-   */
-  readonly voice?: Voice | undefined
   /**
    * Caption for the animation, audio, document, paid media, photo, video or
    * voice
@@ -618,9 +481,47 @@ export interface MessageEventFields {
    */
   readonly has_media_spoiler?: true | undefined
   /**
-   * Message is a checklist
+   * Message is an audio file, information about the file
    */
-  readonly checklist?: Checklist | undefined
+  readonly audio?: Audio | undefined
+  /**
+   * Message contains paid media; information about the paid media
+   */
+  readonly paid_media?: PaidMediaInfo | undefined
+  /**
+   * Message is a live photo, information about the live photo. For backward
+   * compatibility, when this field is set, the photo field will also be set.
+   */
+  readonly live_photo?: LivePhoto | undefined
+  /**
+   * Message is a photo, available sizes of the photo
+   */
+  readonly photo?: PhotoSize[] | undefined
+  /**
+   * Message is a sticker, information about the sticker
+   */
+  readonly sticker?: Sticker | undefined
+  /**
+   * Message is a video, information about the video
+   */
+  readonly video?: Video | undefined
+  /**
+   * Message is a video note, information about the video message
+   */
+  readonly video_note?: VideoNote | undefined
+  /**
+   * Message is a voice message, information about the file
+   */
+  readonly voice?: Voice | undefined
+  /**
+   * Message is a shared location, information about the location
+   */
+  readonly location?: Location | undefined
+  /**
+   * Message is a venue, information about the venue. For backward compatibility,
+   * when this field is set, the location field will also be set.
+   */
+  readonly venue?: Venue | undefined
   /**
    * Message is a shared contact, information about the contact
    */
@@ -628,7 +529,7 @@ export interface MessageEventFields {
   /**
    * Message is a dice with random value
    */
-  readonly dice?: Dice | undefined
+  readonly dice?: Dice | StakeDice | undefined
   /**
    * Message is a game, information about the game. More about games »
    */
@@ -638,44 +539,42 @@ export interface MessageEventFields {
    */
   readonly poll?: Poll | undefined
   /**
-   * Message is a venue, information about the venue. For backward compatibility,
-   * when this field is set, the location field will also be set.
+   * Message is a forwarded story
    */
-  readonly venue?: Venue | undefined
+  readonly story?: Story | undefined
   /**
-   * Message is a shared location, information about the location
+   * Message is a checklist
    */
-  readonly location?: Location | undefined
+  readonly checklist?: Checklist | undefined
   /**
-   * New members that were added to the group or supergroup and information about
-   * them (the bot itself may be one of these members)
+   * Message is an invoice for a payment, information about the invoice. More
+   * about payments »
    */
-  readonly new_chat_members?: User[] | undefined
+  readonly invoice?: Invoice | undefined
   /**
-   * A member was removed from the group, information about them (this member may
-   * be the bot itself)
+   * Service message: video chat scheduled
    */
-  readonly left_chat_member?: User | undefined
+  readonly video_chat_scheduled?: VideoChatScheduled | undefined
   /**
-   * Service message: chat owner has left
+   * Service message: video chat started
    */
-  readonly chat_owner_left?: ChatOwnerLeft | undefined
+  readonly video_chat_started?: VideoChatStarted | undefined
   /**
-   * Service message: chat owner has changed
+   * Service message: video chat ended
    */
-  readonly chat_owner_changed?: ChatOwnerChanged | undefined
+  readonly video_chat_ended?: VideoChatEnded | undefined
   /**
-   * A chat title was changed to this value
+   * Service message: new participants invited to a video chat
    */
-  readonly new_chat_title?: string | undefined
+  readonly video_chat_participants_invited?: VideoChatParticipantsInvited | undefined
   /**
-   * A chat photo was change to this value
+   * Service message: answer option was added to a poll
    */
-  readonly new_chat_photo?: PhotoSize[] | undefined
+  readonly poll_option_added?: PollOptionAdded | undefined
   /**
-   * Service message: the chat photo was deleted
+   * Service message: answer option was deleted from a poll
    */
-  readonly delete_chat_photo?: true | undefined
+  readonly poll_option_deleted?: PollOptionDeleted | undefined
   /**
    * Service message: the group has been created
    */
@@ -695,9 +594,47 @@ export interface MessageEventFields {
    */
   readonly channel_chat_created?: true | undefined
   /**
-   * Service message: auto-delete timer settings changed in the chat
+   * A chat title was changed to this value
    */
-  readonly message_auto_delete_timer_changed?: MessageAutoDeleteTimerChanged | undefined
+  readonly new_chat_title?: string | undefined
+  /**
+   * A chat photo was change to this value
+   */
+  readonly new_chat_photo?: PhotoSize[] | undefined
+  /**
+   * Service message: the chat photo was deleted
+   */
+  readonly delete_chat_photo?: true | undefined
+  /**
+   * Service message: chat owner has left
+   */
+  readonly chat_owner_left?: ChatOwnerLeft | undefined
+  /**
+   * Service message: chat owner has changed
+   */
+  readonly chat_owner_changed?: ChatOwnerChanged | undefined
+  /**
+   * New members that were added to the group or supergroup and information about
+   * them (the bot itself may be one of these members)
+   */
+  readonly new_chat_members?: User[] | undefined
+  /**
+   * Service message: chat was joined by a user from a Community
+   */
+  readonly community_chat_joined?: CommunityChatJoined | undefined
+  /**
+   * A member was removed from the group, information about them (this member may
+   * be the bot itself)
+   */
+  readonly left_chat_member?: User | undefined
+  /**
+   * Service message: chat or bot added to a Community
+   */
+  readonly community_chat_added?: CommunityChatAdded | undefined
+  /**
+   * Service message: chat or bot removed from a Community
+   */
+  readonly community_chat_removed?: CommunityChatRemoved | undefined
   /**
    * The group has been migrated to a supergroup with the specified identifier.
    * This number may have more than 32 significant bits and some programming
@@ -721,90 +658,17 @@ export interface MessageEventFields {
    */
   readonly pinned_message?: MaybeInaccessibleMessage | undefined
   /**
-   * Message is an invoice for a payment, information about the invoice. More
-   * about payments »
-   */
-  readonly invoice?: Invoice | undefined
-  /**
-   * Message is a service message about a successful payment, information about
-   * the payment. More about payments »
-   */
-  readonly successful_payment?: SuccessfulPayment | undefined
-  /**
-   * Message is a service message about a refunded payment, information about the
-   * payment. More about payments »
-   */
-  readonly refunded_payment?: RefundedPayment | undefined
-  /**
-   * Service message: users were shared with the bot
-   */
-  readonly users_shared?: UsersShared | undefined
-  /**
-   * Service message: a chat was shared with the bot
-   */
-  readonly chat_shared?: ChatShared | undefined
-  /**
-   * Service message: a regular gift was sent or received
-   */
-  readonly gift?: GiftInfo | undefined
-  /**
-   * Service message: a unique gift was sent or received
-   */
-  readonly unique_gift?: UniqueGiftInfo | undefined
-  /**
-   * Service message: upgrade of a gift was purchased after the gift was sent
-   */
-  readonly gift_upgrade_sent?: GiftInfo | undefined
-  /**
-   * The domain name of the website on which the user has logged in. More about
-   * Telegram Login »
-   */
-  readonly connected_website?: string | undefined
-  /**
-   * Service message: the user allowed the bot to write messages after adding it
-   * to the attachment or side menu, launching a Web App from a link, or
-   * accepting an explicit request from a Web App sent by the method
-   * requestWriteAccess
-   */
-  readonly write_access_allowed?: WriteAccessAllowed | undefined
-  /**
-   * Telegram Passport data
-   */
-  readonly passport_data?: PassportData | undefined
-  /**
-   * Service message: a user in the chat triggered another user's proximity alert
-   * while sharing Live Location
-   */
-  readonly proximity_alert_triggered?: ProximityAlertTriggered | undefined
-  /**
-   * Service message: user boosted the chat
-   */
-  readonly boost_added?: ChatBoostAdded | undefined
-  /**
    * Service message: chat background set
    */
   readonly chat_background_set?: ChatBackground | undefined
   /**
-   * Service message: some tasks in a checklist were marked as done or not done
+   * Service message: auto-delete timer settings changed in the chat
    */
-  readonly checklist_tasks_done?: ChecklistTasksDone | undefined
+  readonly message_auto_delete_timer_changed?: MessageAutoDeleteTimerChanged | undefined
   /**
-   * Service message: tasks were added to a checklist
+   * Service message: user boosted the chat
    */
-  readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
-  /**
-   * Service message: chat added to a Community
-   */
-  readonly community_chat_added?: CommunityChatAdded | undefined
-  /**
-   * Service message: chat removed from a Community
-   */
-  readonly community_chat_removed?: CommunityChatRemoved | undefined
-  /**
-   * Service message: the price for paid messages in the corresponding direct
-   * messages chat of a channel has changed
-   */
-  readonly direct_message_price_changed?: DirectMessagePriceChanged | undefined
+  readonly boost_added?: ChatBoostAdded | undefined
   /**
    * Service message: forum topic created
    */
@@ -830,6 +694,20 @@ export interface MessageEventFields {
    */
   readonly general_forum_topic_unhidden?: GeneralForumTopicUnhidden | undefined
   /**
+   * Service message: user created a bot that will be managed by the current bot
+   */
+  readonly managed_bot_created?: ManagedBotCreated | undefined
+  /**
+   * Message is a service message about a successful payment, information about
+   * the payment. More about payments »
+   */
+  readonly successful_payment?: SuccessfulPayment | undefined
+  /**
+   * Message is a service message about a refunded payment, information about the
+   * payment. More about payments »
+   */
+  readonly refunded_payment?: RefundedPayment | undefined
+  /**
    * Service message: a scheduled giveaway was created
    */
   readonly giveaway_created?: GiveawayCreated | undefined
@@ -838,37 +716,50 @@ export interface MessageEventFields {
    */
   readonly giveaway?: Giveaway | undefined
   /**
-   * A giveaway with public winners was completed
-   */
-  readonly giveaway_winners?: GiveawayWinners | undefined
-  /**
    * Service message: a giveaway without public winners was completed
    */
   readonly giveaway_completed?: GiveawayCompleted | undefined
   /**
-   * Service message: user created a bot that will be managed by the current bot
+   * A giveaway with public winners was completed
    */
-  readonly managed_bot_created?: ManagedBotCreated | undefined
+  readonly giveaway_winners?: GiveawayWinners | undefined
+  /**
+   * Service message: upgrade of a gift was purchased after the gift was sent
+   */
+  readonly gift_upgrade_sent?: GiftInfo | undefined
+  /**
+   * Service message: a regular gift was sent or received
+   */
+  readonly gift?: GiftInfo | RefundedUpgradedGiftInfo | undefined
+  /**
+   * Service message: a unique gift was sent or received
+   */
+  readonly unique_gift?: UniqueGiftInfo | undefined
   /**
    * Service message: the price for paid messages has changed in the chat
    */
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
   /**
-   * Service message: answer option was added to a poll
+   * Service message: the price for paid messages in the corresponding direct
+   * messages chat of a channel has changed
    */
-  readonly poll_option_added?: PollOptionAdded | undefined
+  readonly direct_message_price_changed?: DirectMessagePriceChanged | undefined
   /**
-   * Service message: answer option was deleted from a poll
+   * Service message: some tasks in a checklist were marked as done or not done
    */
-  readonly poll_option_deleted?: PollOptionDeleted | undefined
+  readonly checklist_tasks_done?: ChecklistTasksDone | undefined
   /**
-   * Service message: a suggested post was approved
+   * Service message: tasks were added to a checklist
    */
-  readonly suggested_post_approved?: SuggestedPostApproved | undefined
+  readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
   /**
    * Service message: approval of a suggested post has failed
    */
   readonly suggested_post_approval_failed?: SuggestedPostApprovalFailed | undefined
+  /**
+   * Service message: a suggested post was approved
+   */
+  readonly suggested_post_approved?: SuggestedPostApproved | undefined
   /**
    * Service message: a suggested post was declined
    */
@@ -882,30 +773,126 @@ export interface MessageEventFields {
    */
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
   /**
-   * Service message: video chat scheduled
+   * Service message: users were shared with the bot
    */
-  readonly video_chat_scheduled?: VideoChatScheduled | undefined
+  readonly users_shared?: UsersShared | undefined
   /**
-   * Service message: video chat started
+   * Service message: a chat was shared with the bot
    */
-  readonly video_chat_started?: VideoChatStarted | undefined
+  readonly chat_shared?: ChatShared | undefined
   /**
-   * Service message: video chat ended
+   * The domain name of the website on which the user has logged in. More about
+   * Telegram Login »
    */
-  readonly video_chat_ended?: VideoChatEnded | undefined
+  readonly connected_website?: string | undefined
   /**
-   * Service message: new participants invited to a video chat
+   * Service message: the user allowed the bot to write messages after adding it
+   * to the attachment or side menu, launching a Web App from a link, or
+   * accepting an explicit request from a Web App sent by the method
+   * requestWriteAccess
    */
-  readonly video_chat_participants_invited?: VideoChatParticipantsInvited | undefined
+  readonly write_access_allowed?: WriteAccessAllowed | undefined
   /**
    * Service message: data sent by a Web App
    */
   readonly web_app_data?: WebAppData | undefined
   /**
+   * Telegram Passport data
+   */
+  readonly passport_data?: PassportData | undefined
+  /**
+   * Service message: a user in the chat triggered another user's proximity alert
+   * while sharing Live Location
+   */
+  readonly proximity_alert_triggered?: ProximityAlertTriggered | undefined
+  /**
    * Inline keyboard attached to the message. login_url buttons are represented
    * as ordinary url buttons.
    */
   readonly reply_markup?: InlineKeyboardMarkup | undefined
+  /**
+   * Bot through which the message was sent
+   */
+  readonly via_bot?: User | undefined
+  /**
+   * For a message sent by a guest bot, this is the user whose original message
+   * triggered the bot's response
+   */
+  readonly guest_bot_caller_user?: User | undefined
+  /**
+   * For a message sent by a guest bot, this is the chat whose original message
+   * triggered the bot's response
+   */
+  readonly guest_bot_caller_chat?: Chat | undefined
+  /**
+   * True, if the message can't be forwarded
+   */
+  readonly has_protected_content?: true | undefined
+  /**
+   * True, if the message is sent to a topic in a forum supergroup or a private
+   * chat with the bot
+   */
+  readonly is_topic_message?: true | undefined
+  /**
+   * Information about the direct messages chat topic that contains the message
+   */
+  readonly direct_messages_topic?: DirectMessagesTopic | undefined
+  /**
+   * True, if the message was sent by an implicit action, for example, as an away
+   * or a greeting business message, or as a scheduled message
+   */
+  readonly is_from_offline?: true | undefined
+  /**
+   * Unique identifier of the message effect added to the message
+   */
+  readonly effect_id?: string | undefined
+  /**
+   * If the sender of the message boosted the chat, the number of boosts added by
+   * the user
+   */
+  readonly sender_boost_count?: number | undefined
+  /**
+   * Tag or custom title of the sender of the message; for supergroups only
+   */
+  readonly sender_tag?: string | undefined
+  /**
+   * The number of Telegram Stars that were paid by the sender of the message to
+   * send it
+   */
+  readonly paid_star_count?: number | undefined
+  /**
+   * True, if the message is a paid post. Note that such posts must not be
+   * deleted for 24 hours to receive the payment and can't be edited.
+   */
+  readonly is_paid_post?: true | undefined
+  /**
+   * Information about suggested post parameters if the message is a suggested
+   * post in a channel direct messages chat. If the message is an approved or
+   * declined suggested post, then it can't be edited.
+   */
+  readonly suggested_post_info?: SuggestedPostInfo | undefined
+}
+
+/**
+ * Fields carried by `MessageGenerationStopped`, projected onto the context for
+ * the `stopped_message_generation` event: `stopped_message_generation`.
+ */
+export interface MessageGenerationStoppedEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: MessageGenerationStopped
+
+  /**
+   * Chat in which the message is generated
+   */
+  readonly chat: Chat
+  /**
+   * Unique identifier of the message thread in which the message is generated
+   */
+  readonly message_thread_id?: number | undefined
+  /**
+   * Unique identifier of the message draft which was stopped
+   */
+  readonly draft_id: string
 }
 
 /**
@@ -1050,6 +1037,14 @@ export interface PollEventFields {
    */
   readonly total_voter_count: number
   /**
+   * Amount of time in seconds the poll will be active after creation
+   */
+  readonly open_period?: number | undefined
+  /**
+   * Point in time (Unix timestamp) when the poll will be automatically closed
+   */
+  readonly close_date?: number | undefined
+  /**
    * True, if the poll is closed
    */
   readonly is_closed: boolean
@@ -1057,10 +1052,6 @@ export interface PollEventFields {
    * True, if the poll is anonymous
    */
   readonly is_anonymous: boolean
-  /**
-   * Poll type, currently can be “regular” or “quiz”
-   */
-  readonly type: string
   /**
    * True, if the poll allows multiple answers
    */
@@ -1076,11 +1067,22 @@ export interface PollEventFields {
   readonly members_only: boolean
   /**
    * A list of two-letter ISO 3166-1 alpha-2 country codes indicating the
-   * countries from which users can vote in the poll. The country code “FT” is
+   * countries from which users can vote in the poll. The country code "FT" is
    * used for users with anonymous numbers. If omitted, then users from any
    * country can participate in the poll.
    */
   readonly country_codes?: string[] | undefined
+  /**
+   * Poll type, currently can be "regular" or "quiz"
+   */
+  readonly type: string
+  /**
+   * Deprecated, use correct_option_ids instead. The 0-based identifier of the
+   * correct answer option. Available only for polls in quiz mode with exactly
+   * one correct answer option which are closed or were sent (not forwarded) by
+   * the bot or to the private chat with the bot.
+   */
+  readonly correct_option_id?: number | undefined
   /**
    * Array of 0-based identifiers of the correct answer options. Available only
    * for polls in quiz mode which are closed or were sent (not forwarded) by the
@@ -1101,14 +1103,6 @@ export interface PollEventFields {
    * Media added to the quiz explanation
    */
   readonly explanation_media?: PollMedia | undefined
-  /**
-   * Amount of time in seconds the poll will be active after creation
-   */
-  readonly open_period?: number | undefined
-  /**
-   * Point in time (Unix timestamp) when the poll will be automatically closed
-   */
-  readonly close_date?: number | undefined
   /**
    * Description of the poll; for polls inside the Message object only
    */
@@ -1141,7 +1135,7 @@ export interface PreCheckoutQueryEventFields {
    */
   readonly id: string
   /**
-   * Three-letter ISO 4217 currency code, or “XTR” for payments in Telegram Stars
+   * Three-letter ISO 4217 currency code, or "XTR" for payments in Telegram Stars
    */
   readonly currency: string
   /**
@@ -1199,7 +1193,6 @@ export interface EventFieldsByKind {
   'business_message': MessageEventFields
   'business_message_edited': MessageEventFields
   'business_messages_deleted': BusinessMessagesDeletedEventFields
-  'callback_query': CallbackQueryEventFields
   'channel_post': MessageEventFields
   'channel_post_edited': MessageEventFields
   'chat_boost': ChatBoostUpdatedEventFields
@@ -1220,6 +1213,7 @@ export interface EventFieldsByKind {
   'pre_checkout_query': PreCheckoutQueryEventFields
   'purchased_paid_media': PaidMediaPurchasedEventFields
   'shipping_query': ShippingQueryEventFields
+  'stopped_message_generation': MessageGenerationStoppedEventFields
   'subscription': BotSubscriptionUpdatedEventFields
 }
 
@@ -1232,7 +1226,6 @@ export const PAYLOAD_ALIASES = {
   'business_message': 'message',
   'business_message_edited': 'message',
   'business_messages_deleted': 'deletion',
-  'callback_query': 'query',
   'channel_post': 'message',
   'channel_post_edited': 'message',
   'chat_boost': 'boostUpdate',
@@ -1253,5 +1246,6 @@ export const PAYLOAD_ALIASES = {
   'pre_checkout_query': 'preCheckoutQuery',
   'purchased_paid_media': 'purchase',
   'shipping_query': 'shippingQuery',
+  'stopped_message_generation': 'payload',
   'subscription': 'subscription',
 } as const satisfies Readonly<Record<UpdateEventKind, string>>

@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Telegram Passport
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 /**
  * Describes Telegram Passport data shared with the bot by the user.
@@ -58,71 +60,72 @@ export interface PassportFile {
  */
 export interface EncryptedPassportElement {
   /**
-   * Element type. One of “personal_details”, “passport”, “driver_license”,
-   * “identity_card”, “internal_passport”, “address”, “utility_bill”,
-   * “bank_statement”, “rental_agreement”, “passport_registration”,
-   * “temporary_registration”, “phone_number”, “email”.
+   * Element type. Currently, can be "personal_details", "passport",
+   * "driver_license", "identity_card", "internal_passport", "address",
+   * "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration", "temporary_registration", "phone_number", or
+   * "email".
    */
   readonly type: string
 
   /**
+   * User's verified phone number; available only for "phone_number" type
+   */
+  readonly phone_number?: string | undefined
+
+  /**
+   * User's verified email address; available only for "email" type
+   */
+  readonly email?: string | undefined
+
+  /**
    * Base64-encoded encrypted Telegram Passport element data provided by the
-   * user; available only for “personal_details”, “passport”, “driver_license”,
-   * “identity_card”, “internal_passport” and “address” types. Can be decrypted
+   * user; available only for "personal_details", "passport", "driver_license",
+   * "identity_card", "internal_passport" and "address" types. Can be decrypted
    * and verified using the accompanying EncryptedCredentials.
    */
   readonly data?: string | undefined
 
   /**
-   * User's verified phone number; available only for “phone_number” type
-   */
-  readonly phone_number?: string | undefined
-
-  /**
-   * User's verified email address; available only for “email” type
-   */
-  readonly email?: string | undefined
-
-  /**
    * Array of encrypted files with documents provided by the user; available only
-   * for “utility_bill”, “bank_statement”, “rental_agreement”,
-   * “passport_registration” and “temporary_registration” types. Files can be
+   * for "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration" and "temporary_registration" types. Files can be
    * decrypted and verified using the accompanying EncryptedCredentials.
    */
   readonly files?: PassportFile[] | undefined
 
   /**
+   * Array of encrypted files with translated versions of documents provided by
+   * the user; available if requested for "passport", "driver_license",
+   * "identity_card", "internal_passport", "utility_bill", "bank_statement",
+   * "rental_agreement", "passport_registration" and "temporary_registration"
+   * types. Files can be decrypted and verified using the accompanying
+   * EncryptedCredentials.
+   */
+  readonly translation?: PassportFile[] | undefined
+
+  /**
    * Encrypted file with the front side of the document, provided by the user;
-   * available only for “passport”, “driver_license”, “identity_card” and
-   * “internal_passport”. The file can be decrypted and verified using the
+   * available only for "passport", "driver_license", "identity_card" and
+   * "internal_passport". The file can be decrypted and verified using the
    * accompanying EncryptedCredentials.
    */
   readonly front_side?: PassportFile | undefined
 
   /**
    * Encrypted file with the reverse side of the document, provided by the user;
-   * available only for “driver_license” and “identity_card”. The file can be
+   * available only for "driver_license" and "identity_card". The file can be
    * decrypted and verified using the accompanying EncryptedCredentials.
    */
   readonly reverse_side?: PassportFile | undefined
 
   /**
    * Encrypted file with the selfie of the user holding a document, provided by
-   * the user; available if requested for “passport”, “driver_license”,
-   * “identity_card” and “internal_passport”. The file can be decrypted and
+   * the user; available if requested for "passport", "driver_license",
+   * "identity_card" and "internal_passport". The file can be decrypted and
    * verified using the accompanying EncryptedCredentials.
    */
   readonly selfie?: PassportFile | undefined
-
-  /**
-   * Array of encrypted files with translated versions of documents provided by
-   * the user; available if requested for “passport”, “driver_license”,
-   * “identity_card”, “internal_passport”, “utility_bill”, “bank_statement”,
-   * “rental_agreement”, “passport_registration” and “temporary_registration”
-   * types. Files can be decrypted and verified using the accompanying
-   * EncryptedCredentials.
-   */
-  readonly translation?: PassportFile[] | undefined
 
   /**
    * Base64-encoded element hash for using in PassportElementErrorUnspecified
@@ -159,7 +162,7 @@ export interface EncryptedCredentials {
 
 /**
  * This object represents an error in the Telegram Passport element which was
- * submitted that should be resolved by the user. It should be one of:
+ * submitted that should be resolved by the user. Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#passportelementerror
  */
@@ -182,31 +185,31 @@ export type PassportElementError =
  */
 export interface PassportElementErrorDataField {
   /**
-   * Error source, must be data
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the error, one of
-   * “personal_details”, “passport”, “driver_license”, “identity_card”,
-   * “internal_passport”, “address”
+   * The section of the user's Telegram Passport which has the error, must be one
+   * of "personal_details", "passport", "driver_license", "identity_card",
+   * "internal_passport", or "address"
    */
   readonly type: string
-
-  /**
-   * Name of the data field which has the error
-   */
-  readonly field_name: string
-
-  /**
-   * Base64-encoded data hash
-   */
-  readonly data_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be data
+   */
+  readonly source: string
+
+  /**
+   * Data hash, Base64-encoded
+   */
+  readonly data_hash: string
+
+  /**
+   * Name of the data field which has the error
+   */
+  readonly field_name: string
 }
 
 /**
@@ -218,25 +221,25 @@ export interface PassportElementErrorDataField {
  */
 export interface PassportElementErrorFrontSide {
   /**
-   * Error source, must be front_side
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the issue, one of
-   * “passport”, “driver_license”, “identity_card”, “internal_passport”
+   * The section of the user's Telegram Passport which has the issue, must be one
+   * of "passport", "driver_license", "identity_card", or "internal_passport"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded hash of the file with the front side of the document
-   */
-  readonly file_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be front_side
+   */
+  readonly source: string
+
+  /**
+   * Hash of the file with the front side of the document, Base64-encoded
+   */
+  readonly file_hash: string
 }
 
 /**
@@ -247,25 +250,25 @@ export interface PassportElementErrorFrontSide {
  */
 export interface PassportElementErrorReverseSide {
   /**
-   * Error source, must be reverse_side
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the issue, one of
-   * “driver_license”, “identity_card”
+   * The section of the user's Telegram Passport which has the issue, must be one
+   * of "driver_license" or "identity_card"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded hash of the file with the reverse side of the document
-   */
-  readonly file_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be reverse_side
+   */
+  readonly source: string
+
+  /**
+   * Hash of the file with the reverse side of the document, Base64-encoded
+   */
+  readonly file_hash: string
 }
 
 /**
@@ -276,25 +279,25 @@ export interface PassportElementErrorReverseSide {
  */
 export interface PassportElementErrorSelfie {
   /**
-   * Error source, must be selfie
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the issue, one of
-   * “passport”, “driver_license”, “identity_card”, “internal_passport”
+   * The section of the user's Telegram Passport which has the issue, must be one
+   * of "passport", "driver_license", "identity_card", or "internal_passport"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded hash of the file with the selfie
-   */
-  readonly file_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be selfie
+   */
+  readonly source: string
+
+  /**
+   * Hash of the file with the selfie, Base64-encoded
+   */
+  readonly file_hash: string
 }
 
 /**
@@ -305,26 +308,26 @@ export interface PassportElementErrorSelfie {
  */
 export interface PassportElementErrorFile {
   /**
-   * Error source, must be file
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the issue, one of
-   * “utility_bill”, “bank_statement”, “rental_agreement”,
-   * “passport_registration”, “temporary_registration”
+   * The section of the user's Telegram Passport which has the issue, must be one
+   * of "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration", or "temporary_registration"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded file hash
-   */
-  readonly file_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be file
+   */
+  readonly source: string
+
+  /**
+   * File hash, Base64-encoded
+   */
+  readonly file_hash: string
 }
 
 /**
@@ -335,26 +338,26 @@ export interface PassportElementErrorFile {
  */
 export interface PassportElementErrorFiles {
   /**
-   * Error source, must be files
-   */
-  readonly source: string
-
-  /**
-   * The section of the user's Telegram Passport which has the issue, one of
-   * “utility_bill”, “bank_statement”, “rental_agreement”,
-   * “passport_registration”, “temporary_registration”
+   * The section of the user's Telegram Passport which has the issue, must be one
+   * of "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration", or "temporary_registration"
    */
   readonly type: string
-
-  /**
-   * List of base64-encoded file hashes
-   */
-  readonly file_hashes: string[]
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be files
+   */
+  readonly source: string
+
+  /**
+   * List of file hashes, each element Base64-encoded
+   */
+  readonly file_hashes: string[]
 }
 
 /**
@@ -365,27 +368,27 @@ export interface PassportElementErrorFiles {
  */
 export interface PassportElementErrorTranslationFile {
   /**
-   * Error source, must be translation_file
-   */
-  readonly source: string
-
-  /**
-   * Type of element of the user's Telegram Passport which has the issue, one of
-   * “passport”, “driver_license”, “identity_card”, “internal_passport”,
-   * “utility_bill”, “bank_statement”, “rental_agreement”,
-   * “passport_registration”, “temporary_registration”
+   * Type of element of the user's Telegram Passport which has the issue, must be
+   * one of "passport", "driver_license", "identity_card", "internal_passport",
+   * "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration", or "temporary_registration"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded file hash
-   */
-  readonly file_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be translation_file
+   */
+  readonly source: string
+
+  /**
+   * File hash, Base64-encoded
+   */
+  readonly file_hash: string
 }
 
 /**
@@ -396,27 +399,27 @@ export interface PassportElementErrorTranslationFile {
  */
 export interface PassportElementErrorTranslationFiles {
   /**
-   * Error source, must be translation_files
-   */
-  readonly source: string
-
-  /**
-   * Type of element of the user's Telegram Passport which has the issue, one of
-   * “passport”, “driver_license”, “identity_card”, “internal_passport”,
-   * “utility_bill”, “bank_statement”, “rental_agreement”,
-   * “passport_registration”, “temporary_registration”
+   * Type of element of the user's Telegram Passport which has the issue, must be
+   * one of "passport", "driver_license", "identity_card", "internal_passport",
+   * "utility_bill", "bank_statement", "rental_agreement",
+   * "passport_registration", or "temporary_registration"
    */
   readonly type: string
-
-  /**
-   * List of base64-encoded file hashes
-   */
-  readonly file_hashes: string[]
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be translation_files
+   */
+  readonly source: string
+
+  /**
+   * List of file hashes, each element Base64-encoded
+   */
+  readonly file_hashes: string[]
 }
 
 /**
@@ -427,22 +430,26 @@ export interface PassportElementErrorTranslationFiles {
  */
 export interface PassportElementErrorUnspecified {
   /**
-   * Error source, must be unspecified
-   */
-  readonly source: string
-
-  /**
-   * Type of element of the user's Telegram Passport which has the issue
+   * Type of element of the user's Telegram Passport which has the issue, must be
+   * one of "personal_details", "passport", "driver_license", "identity_card",
+   * "internal_passport", "address", "utility_bill", "bank_statement",
+   * "rental_agreement", "passport_registration", "temporary_registration",
+   * "phone_number", or "email"
    */
   readonly type: string
-
-  /**
-   * Base64-encoded element hash
-   */
-  readonly element_hash: string
 
   /**
    * Error message
    */
   readonly message: string
+
+  /**
+   * Error source, must be unspecified
+   */
+  readonly source: string
+
+  /**
+   * Element hash, Base64-encoded
+   */
+  readonly element_hash: string
 }

@@ -1,0 +1,55 @@
+// GENERATED FILE — do not edit.
+// Wire layout for bots
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// SPDX-License-Identifier: MIT AND BSL-1.0
+// Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
+
+import type { TlEntry } from '../../../tl/schema.js'
+
+/** 44 combinators. */
+export const ENTRIES: readonly TlEntry[] = [
+  { id: 0xdd1fbf93, n: 'bots.accessSettings', f: [{ n: 'flags', b: 1 }, { n: 'restricted', t: 'true', c: 'flags', i: 0 }, { n: 'add_users', t: { v: 'obj' }, c: 'flags', i: 1 }] },
+  { id: 0x17aeb75a, n: 'bots.addPreviewMedia', f: [{ n: 'bot', t: 'obj' }, { n: 'lang_code', t: 'string' }, { n: 'media', t: 'obj' }] },
+  { id: 0xf132e3ef, n: 'bots.allowSendMessage', f: [{ n: 'bot', t: 'obj' }] },
+  { id: 0xe6213f4d, n: 'bots.answerWebhookJSONQuery', f: [{ n: 'query_id', t: 'long' }, { n: 'data', t: 'obj' }] },
+  { id: 0xe8a775b0, n: 'bots.botInfo', f: [{ n: 'name', t: 'string' }, { n: 'about', t: 'string' }, { n: 'description', t: 'string' }] },
+  { id: 0x1359f4e6, n: 'bots.canSendMessage', f: [{ n: 'bot', t: 'obj' }] },
+  { id: 0x50077589, n: 'bots.checkDownloadFileParams', f: [{ n: 'bot', t: 'obj' }, { n: 'file_name', t: 'string' }, { n: 'url', t: 'string' }] },
+  { id: 0x87f2219b, n: 'bots.checkUsername', f: [{ n: 'username', t: 'string' }] },
+  { id: 0xe5b17f2b, n: 'bots.createBot', f: [{ n: 'flags', b: 1 }, { n: 'via_deeplink', t: 'true', c: 'flags', i: 0 }, { n: 'name', t: 'string' }, { n: 'username', t: 'string' }, { n: 'manager_id', t: 'obj' }] },
+  { id: 0x2d0135b3, n: 'bots.deletePreviewMedia', f: [{ n: 'bot', t: 'obj' }, { n: 'lang_code', t: 'string' }, { n: 'media', t: { v: 'obj' } }] },
+  { id: 0x31813cd8, n: 'bots.editAccessSettings', f: [{ n: 'flags', b: 1 }, { n: 'restricted', t: 'true', c: 'flags', i: 0 }, { n: 'bot', t: 'obj' }, { n: 'add_users', t: { v: 'obj' }, c: 'flags', i: 1 }] },
+  { id: 0x8525606f, n: 'bots.editPreviewMedia', f: [{ n: 'bot', t: 'obj' }, { n: 'lang_code', t: 'string' }, { n: 'media', t: 'obj' }, { n: 'new_media', t: 'obj' }] },
+  { id: 0xbd0d99eb, n: 'bots.exportBotToken', f: [{ n: 'bot', t: 'obj' }, { n: 'revoke', t: 'bool' }] },
+  { id: 0x3c60b621, n: 'bots.exportedBotToken', f: [{ n: 'token', t: 'string' }] },
+  { id: 0x213853a3, n: 'bots.getAccessSettings', f: [{ n: 'bot', t: 'obj' }] },
+  { id: 0xb0711d83, n: 'bots.getAdminedBots', f: [] },
+  { id: 0xe34c0dd6, n: 'bots.getBotCommands', f: [{ n: 'scope', t: 'obj' }, { n: 'lang_code', t: 'string' }] },
+  { id: 0xdcd914fd, n: 'bots.getBotInfo', f: [{ n: 'flags', b: 1 }, { n: 'bot', t: 'obj', c: 'flags', i: 0 }, { n: 'lang_code', t: 'string' }] },
+  { id: 0x9c60eb28, n: 'bots.getBotMenuButton', f: [{ n: 'user_id', t: 'obj' }] },
+  { id: 0xa1b70815, n: 'bots.getBotRecommendations', f: [{ n: 'bot', t: 'obj' }] },
+  { id: 0xc2510192, n: 'bots.getPopularAppBots', f: [{ n: 'offset', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0x423ab3ad, n: 'bots.getPreviewInfo', f: [{ n: 'bot', t: 'obj' }, { n: 'lang_code', t: 'string' }] },
+  { id: 0xa2a5594d, n: 'bots.getPreviewMedias', f: [{ n: 'bot', t: 'obj' }] },
+  { id: 0xbf25b7f3, n: 'bots.getRequestedWebViewButton', f: [{ n: 'bot', t: 'obj' }, { n: 'webapp_req_id', t: 'string' }] },
+  { id: 0x087fc5e7, n: 'bots.invokeWebViewCustomMethod', f: [{ n: 'bot', t: 'obj' }, { n: 'custom_method', t: 'string' }, { n: 'params', t: 'obj' }] },
+  { id: 0x1991b13b, n: 'bots.popularAppBots', f: [{ n: 'flags', b: 1 }, { n: 'next_offset', t: 'string', c: 'flags', i: 0 }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x0ca71d64, n: 'bots.previewInfo', f: [{ n: 'media', t: { v: 'obj' } }, { n: 'lang_codes', t: { v: 'string' } }] },
+  { id: 0xb627f3aa, n: 'bots.reorderPreviewMedias', f: [{ n: 'bot', t: 'obj' }, { n: 'lang_code', t: 'string' }, { n: 'order', t: { v: 'obj' } }] },
+  { id: 0x9709b1c2, n: 'bots.reorderUsernames', f: [{ n: 'bot', t: 'obj' }, { n: 'order', t: { v: 'string' } }] },
+  { id: 0x31a2a35e, n: 'bots.requestWebViewButton', f: [{ n: 'user_id', t: 'obj' }, { n: 'button', t: 'obj' }] },
+  { id: 0xf13bbcd7, n: 'bots.requestedButton', f: [{ n: 'webapp_req_id', t: 'string' }] },
+  { id: 0x3d8de0f9, n: 'bots.resetBotCommands', f: [{ n: 'scope', t: 'obj' }, { n: 'lang_code', t: 'string' }] },
+  { id: 0xaa2769ed, n: 'bots.sendCustomRequest', f: [{ n: 'custom_method', t: 'string' }, { n: 'params', t: 'obj' }] },
+  { id: 0x788464e1, n: 'bots.setBotBroadcastDefaultAdminRights', f: [{ n: 'admin_rights', t: 'obj' }] },
+  { id: 0x0517165a, n: 'bots.setBotCommands', f: [{ n: 'scope', t: 'obj' }, { n: 'lang_code', t: 'string' }, { n: 'commands', t: { v: 'obj' } }] },
+  { id: 0x925ec9ea, n: 'bots.setBotGroupDefaultAdminRights', f: [{ n: 'admin_rights', t: 'obj' }] },
+  { id: 0x10cf3123, n: 'bots.setBotInfo', f: [{ n: 'flags', b: 1 }, { n: 'bot', t: 'obj', c: 'flags', i: 2 }, { n: 'lang_code', t: 'string' }, { n: 'name', t: 'string', c: 'flags', i: 3 }, { n: 'about', t: 'string', c: 'flags', i: 0 }, { n: 'description', t: 'string', c: 'flags', i: 1 }] },
+  { id: 0x4504d54f, n: 'bots.setBotMenuButton', f: [{ n: 'user_id', t: 'obj' }, { n: 'button', t: 'obj' }] },
+  { id: 0x8b89dfbd, n: 'bots.setCustomVerification', f: [{ n: 'flags', b: 1 }, { n: 'enabled', t: 'true', c: 'flags', i: 1 }, { n: 'bot', t: 'obj', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'custom_description', t: 'string', c: 'flags', i: 2 }] },
+  { id: 0xe71a4810, n: 'bots.setJoinChatResults', f: [{ n: 'query_id', t: 'long' }, { n: 'result', t: 'obj' }] },
+  { id: 0x06de6392, n: 'bots.toggleUserEmojiStatusPermission', f: [{ n: 'bot', t: 'obj' }, { n: 'enabled', t: 'bool' }] },
+  { id: 0x053ca973, n: 'bots.toggleUsername', f: [{ n: 'bot', t: 'obj' }, { n: 'username', t: 'string' }, { n: 'active', t: 'bool' }] },
+  { id: 0x778b5ab3, n: 'bots.updateStarRefProgram', f: [{ n: 'flags', b: 1 }, { n: 'bot', t: 'obj' }, { n: 'commission_permille', t: 'int' }, { n: 'duration_months', t: 'int', c: 'flags', i: 0 }] },
+  { id: 0xed9f30c5, n: 'bots.updateUserEmojiStatus', f: [{ n: 'user_id', t: 'obj' }, { n: 'emoji_status', t: 'obj' }] },
+]

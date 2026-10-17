@@ -11,6 +11,9 @@
     },
     {
       "path": "../bot-api"
+    },
+    {
+      "path": "../mtproto"
     }
   ]
 }

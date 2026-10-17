@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * File downloads.
  *
@@ -7,14 +9,21 @@
  * `file_id` is a bare string. Making the caller unwrap those by hand would be
  * busywork the framework exists to remove.
  *
+ * The bot's methods and a message's `download` use only what reaches the file
+ * over the transport — `getFileUrl`, `fetchFileStream`, `collect` — and never
+ * the forms that read or write a disk, so a bundle holding a bot drops those
+ * and needs nothing a worker or a page lacks (`docs/runtimes.md` §3,
+ * `tools/bench/test/portability.test.ts`).
+ *
  * **No error here carries the URL.** Telegram's file endpoint requires the bot
  * token in the path, so an error mentioning the URL is an error carrying a
  * credential — and error objects are the most common way one reaches a log
  * aggregator.
  */
 
-import { ConfigError, NetworkError, ValidationError } from '@yuigram/core'
 import type { RawApi } from './api.js'
+import { ConfigError, NetworkError, ValidationError } from './core.js'
+import { readFileStream, writeFileStream } from './files-node.js'
 import type { File, PhotoSize } from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 
@@ -148,17 +157,22 @@ export async function getFileUrl(deps: DownloadDeps, target: DownloadTarget): Pr
   return deps.client.fileUrl(filePath)
 }
 
-/** Open a byte stream for a target. */
-export async function downloadStream(
+/**
+ * Open a file as bytes arriving over the transport.
+ *
+ * Refuses a local Bot API server's file, which is a path on that server's disk
+ * rather than something to fetch; the forms that read a disk take it.
+ */
+export async function fetchFileStream(
   deps: DownloadDeps,
   target: DownloadTarget,
 ): Promise<ReadableStream<Uint8Array>> {
   const url = await getFileUrl(deps, target)
 
   if (deps.local === true) {
-    const { createReadStream } = await import('node:fs')
-    const { Readable } = await import('node:stream')
-    return Readable.toWeb(createReadStream(url)) as ReadableStream<Uint8Array>
+    throw new ConfigError(
+      "a local Bot API server's files are paths on its disk; read them with download(bot.files, target) or downloadToFile(bot.files, path, target)",
+    )
   }
 
   if (deps.client.fetchFile === undefined) {
@@ -179,9 +193,8 @@ export async function downloadStream(
   return response.body
 }
 
-/** Download a file into memory. */
-export async function download(deps: DownloadDeps, target: DownloadTarget): Promise<Uint8Array> {
-  const stream = await downloadStream(deps, target)
+/** Read a stream to its end, into one array. */
+export async function collect(stream: AsyncIterable<Uint8Array>): Promise<Uint8Array> {
   const chunks: Uint8Array[] = []
   let total = 0
 
@@ -201,6 +214,25 @@ export async function download(deps: DownloadDeps, target: DownloadTarget): Prom
 }
 
 /**
+ * Open a byte stream for a target.
+ *
+ * Against a local Bot API server the file is a path on that server's disk and
+ * is read from there; otherwise it arrives over the transport.
+ */
+export async function downloadStream(
+  deps: DownloadDeps,
+  target: DownloadTarget,
+): Promise<ReadableStream<Uint8Array>> {
+  if (deps.local === true) return await readFileStream(await getFileUrl(deps, target))
+  return await fetchFileStream(deps, target)
+}
+
+/** Download a file into memory. */
+export async function download(deps: DownloadDeps, target: DownloadTarget): Promise<Uint8Array> {
+  return await collect(await downloadStream(deps, target))
+}
+
+/**
  * Download straight to disk.
  *
  * Streams rather than buffering, so a large file does not have to fit in
@@ -211,12 +243,7 @@ export async function downloadToFile(
   path: string,
   target: DownloadTarget,
 ): Promise<void> {
-  const stream = await downloadStream(deps, target)
-  const { createWriteStream } = await import('node:fs')
-  const { Readable } = await import('node:stream')
-  const { pipeline } = await import('node:stream/promises')
-
-  await pipeline(Readable.fromWeb(stream), createWriteStream(path))
+  await writeFileStream(path, await downloadStream(deps, target))
 }
 
 /** Fetch a file's metadata without downloading it. */

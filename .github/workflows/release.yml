@@ -5,8 +5,8 @@ name: Release
 # that pull request is merged publishes what it contains. Reviewing that pull
 # request is the last point at which a version number can still be changed.
 #
-# Switch to `push: branches: [main]` once 0.1.0 is out, so the version pull
-# request opens by itself whenever a changeset lands on main.
+# Switch to `push: branches: [master]` now that 0.1.0 is out, so the version
+# pull request opens by itself whenever a changeset lands on the default branch.
 on:
   workflow_dispatch:
 

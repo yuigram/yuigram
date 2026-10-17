@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Package smoke test.
  *
@@ -29,7 +31,7 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('..', import.meta.url))
 
 /** Packages that are published, in dependency order. */
-const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram']
+const PACKAGES = ['core', 'bot-api', 'mtproto', 'yuigram', 'sqlite', 'redis']
 
 /** Consumer module resolutions worth proving, since each resolves types differently. */
 const RESOLUTIONS = [

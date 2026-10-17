@@ -1,0 +1,55 @@
+// GENERATED FILE — do not edit.
+// Wire layout for stories
+// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// SPDX-License-Identifier: MIT AND BSL-1.0
+// Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
+
+import type { TlEntry } from '../../../tl/schema.js'
+
+/** 44 combinators. */
+export const ENTRIES: readonly TlEntry[] = [
+  { id: 0x57bbd166, n: 'stories.activateStealthMode', f: [{ n: 'flags', b: 1 }, { n: 'past', t: 'true', c: 'flags', i: 0 }, { n: 'future', t: 'true', c: 'flags', i: 1 }] },
+  { id: 0xc3987a3a, n: 'stories.albums', f: [{ n: 'hash', t: 'long' }, { n: 'albums', t: { v: 'obj' } }] },
+  { id: 0x564edaeb, n: 'stories.albumsNotModified', f: [] },
+  { id: 0x6efc5e81, n: 'stories.allStories', f: [{ n: 'flags', b: 1 }, { n: 'has_more', t: 'true', c: 'flags', i: 0 }, { n: 'count', t: 'int' }, { n: 'state', t: 'string' }, { n: 'peer_stories', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }, { n: 'stealth_mode', t: 'obj' }] },
+  { id: 0x1158fe3e, n: 'stories.allStoriesNotModified', f: [{ n: 'flags', b: 1 }, { n: 'state', t: 'string' }, { n: 'stealth_mode', t: 'obj' }] },
+  { id: 0x30eb63f0, n: 'stories.canSendStory', f: [{ n: 'peer', t: 'obj' }] },
+  { id: 0xc387c04e, n: 'stories.canSendStoryCount', f: [{ n: 'count_remains', t: 'int' }] },
+  { id: 0xa36396e5, n: 'stories.createAlbum', f: [{ n: 'peer', t: 'obj' }, { n: 'title', t: 'string' }, { n: 'stories', t: { v: 'int' } }] },
+  { id: 0x8d3456d0, n: 'stories.deleteAlbum', f: [{ n: 'peer', t: 'obj' }, { n: 'album_id', t: 'int' }] },
+  { id: 0xae59db5f, n: 'stories.deleteStories', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
+  { id: 0x2c63a72b, n: 'stories.editStory', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'id', t: 'int' }, { n: 'media', t: 'obj', c: 'flags', i: 0 }, { n: 'media_areas', t: { v: 'obj' }, c: 'flags', i: 3 }, { n: 'caption', t: 'string', c: 'flags', i: 1 }, { n: 'entities', t: { v: 'obj' }, c: 'flags', i: 1 }, { n: 'privacy_rules', t: { v: 'obj' }, c: 'flags', i: 2 }, { n: 'music', t: 'obj', c: 'flags', i: 4 }] },
+  { id: 0x7b8def20, n: 'stories.exportStoryLink', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: 'int' }] },
+  { id: 0xe2de7737, n: 'stories.foundStories', f: [{ n: 'flags', b: 1 }, { n: 'count', t: 'int' }, { n: 'stories', t: { v: 'obj' } }, { n: 'next_offset', t: 'string', c: 'flags', i: 0 }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0xac806d61, n: 'stories.getAlbumStories', f: [{ n: 'peer', t: 'obj' }, { n: 'album_id', t: 'int' }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }] },
+  { id: 0x25b3eac7, n: 'stories.getAlbums', f: [{ n: 'peer', t: 'obj' }, { n: 'hash', t: 'long' }] },
+  { id: 0x9b5ae7f9, n: 'stories.getAllReadPeerStories', f: [] },
+  { id: 0xeeb0d625, n: 'stories.getAllStories', f: [{ n: 'flags', b: 1 }, { n: 'next', t: 'true', c: 'flags', i: 1 }, { n: 'hidden', t: 'true', c: 'flags', i: 2 }, { n: 'state', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0xa56a8b60, n: 'stories.getChatsToSend', f: [] },
+  { id: 0x78499170, n: 'stories.getPeerMaxIDs', f: [{ n: 'id', t: { v: 'obj' } }] },
+  { id: 0x2c4ada50, n: 'stories.getPeerStories', f: [{ n: 'peer', t: 'obj' }] },
+  { id: 0x5821a5dc, n: 'stories.getPinnedStories', f: [{ n: 'peer', t: 'obj' }, { n: 'offset_id', t: 'int' }, { n: 'limit', t: 'int' }] },
+  { id: 0xb4352016, n: 'stories.getStoriesArchive', f: [{ n: 'peer', t: 'obj' }, { n: 'offset_id', t: 'int' }, { n: 'limit', t: 'int' }] },
+  { id: 0x5774ca74, n: 'stories.getStoriesByID', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
+  { id: 0x28e16cc8, n: 'stories.getStoriesViews', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
+  { id: 0xb9b2881f, n: 'stories.getStoryReactionsList', f: [{ n: 'flags', b: 1 }, { n: 'forwards_first', t: 'true', c: 'flags', i: 2 }, { n: 'peer', t: 'obj' }, { n: 'id', t: 'int' }, { n: 'reaction', t: 'obj', c: 'flags', i: 0 }, { n: 'offset', t: 'string', c: 'flags', i: 1 }, { n: 'limit', t: 'int' }] },
+  { id: 0x7ed23c57, n: 'stories.getStoryViewsList', f: [{ n: 'flags', b: 1 }, { n: 'just_contacts', t: 'true', c: 'flags', i: 0 }, { n: 'reactions_first', t: 'true', c: 'flags', i: 2 }, { n: 'forwards_first', t: 'true', c: 'flags', i: 3 }, { n: 'peer', t: 'obj' }, { n: 'q', t: 'string', c: 'flags', i: 1 }, { n: 'id', t: 'int' }, { n: 'offset', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0xb2028afb, n: 'stories.incrementStoryViews', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
+  { id: 0xcae68768, n: 'stories.peerStories', f: [{ n: 'stories', t: 'obj' }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0xa556dac8, n: 'stories.readStories', f: [{ n: 'peer', t: 'obj' }, { n: 'max_id', t: 'int' }] },
+  { id: 0x8535fbd9, n: 'stories.reorderAlbums', f: [{ n: 'peer', t: 'obj' }, { n: 'order', t: { v: 'int' } }] },
+  { id: 0x19d8eb45, n: 'stories.report', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }, { n: 'option', t: 'bytes' }, { n: 'message', t: 'string' }] },
+  { id: 0xd1810907, n: 'stories.searchPosts', f: [{ n: 'flags', b: 1 }, { n: 'hashtag', t: 'string', c: 'flags', i: 0 }, { n: 'area', t: 'obj', c: 'flags', i: 1 }, { n: 'peer', t: 'obj', c: 'flags', i: 2 }, { n: 'offset', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0x7fd736b2, n: 'stories.sendReaction', f: [{ n: 'flags', b: 1 }, { n: 'add_to_recent', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'story_id', t: 'int' }, { n: 'reaction', t: 'obj' }] },
+  { id: 0x8f9e6898, n: 'stories.sendStory', f: [{ n: 'flags', b: 1 }, { n: 'pinned', t: 'true', c: 'flags', i: 2 }, { n: 'noforwards', t: 'true', c: 'flags', i: 4 }, { n: 'fwd_modified', t: 'true', c: 'flags', i: 7 }, { n: 'peer', t: 'obj' }, { n: 'media', t: 'obj' }, { n: 'media_areas', t: { v: 'obj' }, c: 'flags', i: 5 }, { n: 'caption', t: 'string', c: 'flags', i: 0 }, { n: 'entities', t: { v: 'obj' }, c: 'flags', i: 1 }, { n: 'privacy_rules', t: { v: 'obj' } }, { n: 'random_id', t: 'long' }, { n: 'period', t: 'int', c: 'flags', i: 3 }, { n: 'fwd_from_id', t: 'obj', c: 'flags', i: 6 }, { n: 'fwd_from_story', t: 'int', c: 'flags', i: 6 }, { n: 'albums', t: { v: 'int' }, c: 'flags', i: 8 }, { n: 'music', t: 'obj', c: 'flags', i: 9 }] },
+  { id: 0xd069ccde, n: 'stories.startLive', f: [{ n: 'flags', b: 1 }, { n: 'pinned', t: 'true', c: 'flags', i: 2 }, { n: 'noforwards', t: 'true', c: 'flags', i: 4 }, { n: 'rtmp_stream', t: 'true', c: 'flags', i: 5 }, { n: 'peer', t: 'obj' }, { n: 'caption', t: 'string', c: 'flags', i: 0 }, { n: 'entities', t: { v: 'obj' }, c: 'flags', i: 1 }, { n: 'privacy_rules', t: { v: 'obj' } }, { n: 'random_id', t: 'long' }, { n: 'messages_enabled', t: 'bool', c: 'flags', i: 6 }, { n: 'send_paid_messages_stars', t: 'long', c: 'flags', i: 7 }] },
+  { id: 0x63c3dd0a, n: 'stories.stories', f: [{ n: 'flags', b: 1 }, { n: 'count', t: 'int' }, { n: 'stories', t: { v: 'obj' } }, { n: 'pinned_to_top', t: { v: 'int' }, c: 'flags', i: 0 }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0xaa5f789c, n: 'stories.storyReactionsList', f: [{ n: 'flags', b: 1 }, { n: 'count', t: 'int' }, { n: 'reactions', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }, { n: 'next_offset', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0xde9eed1d, n: 'stories.storyViews', f: [{ n: 'views', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
+  { id: 0x59d78fc5, n: 'stories.storyViewsList', f: [{ n: 'flags', b: 1 }, { n: 'count', t: 'int' }, { n: 'views_count', t: 'int' }, { n: 'forwards_count', t: 'int' }, { n: 'reactions_count', t: 'int' }, { n: 'views', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }, { n: 'next_offset', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0x7c2557c4, n: 'stories.toggleAllStoriesHidden', f: [{ n: 'hidden', t: 'bool' }] },
+  { id: 0xbd0415c4, n: 'stories.togglePeerStoriesHidden', f: [{ n: 'peer', t: 'obj' }, { n: 'hidden', t: 'bool' }] },
+  { id: 0x9a75a1ef, n: 'stories.togglePinned', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }, { n: 'pinned', t: 'bool' }] },
+  { id: 0x0b297e9b, n: 'stories.togglePinnedToTop', f: [{ n: 'peer', t: 'obj' }, { n: 'id', t: { v: 'int' } }] },
+  { id: 0x5e5259b6, n: 'stories.updateAlbum', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'album_id', t: 'int' }, { n: 'title', t: 'string', c: 'flags', i: 0 }, { n: 'delete_stories', t: { v: 'int' }, c: 'flags', i: 1 }, { n: 'add_stories', t: { v: 'int' }, c: 'flags', i: 2 }, { n: 'order', t: { v: 'int' }, c: 'flags', i: 3 }] },
+]

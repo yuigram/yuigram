@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Store composition.
  *
@@ -6,7 +8,7 @@
  * persistent one, which matters because session reads happen on every update.
  */
 
-import type { DescribedKV, KV, KVInfo, SetOptions } from './types.js'
+import type { DescribedKV, KV, KVInfo, LeasableKV, LeaseOptions, SetOptions } from './types.js'
 
 /** Prefix every key, so several consumers can share one store safely. */
 export function namespaced<V>(store: KV<V>, prefix: string): DescribedKV<V> {
@@ -34,7 +36,25 @@ export function namespaced<V>(store: KV<V>, prefix: string): DescribedKV<V> {
         yield key.slice(prefix.length)
       }
     },
+
+    // Passed through where the store has it: an area of an area is still an
+    // area of the store underneath, and the lease is that store's to enforce.
+    ...(canLease(store)
+      ? { lease: (area: string, options: LeaseOptions) => store.lease(scope(area), options) }
+      : {}),
   }
+}
+
+/**
+ * Whether a store can lease areas of itself, fenced by the store.
+ *
+ * Only a view that adds nothing between the caller and the store passes the
+ * capability on: {@link namespaced} does. {@link tiered} and an encrypting
+ * store do not, because a lease's writes go straight to the store beneath and
+ * would skip the cache or the encryption.
+ */
+export function canLease<V>(store: KV<V>): store is LeasableKV<V> {
+  return typeof (store as Partial<LeasableKV<V>>).lease === 'function'
 }
 
 /**

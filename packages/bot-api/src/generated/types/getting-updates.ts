@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Getting updates
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
+import type { BotSubscriptionUpdated, BusinessCallbackQuery, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, InlineCallbackQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
 import type { ChosenInlineResult, InlineQuery } from './inline-mode.js'
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './payments.js'
 
@@ -49,50 +51,6 @@ export interface Update {
   readonly edited_channel_post?: Message | undefined
 
   /**
-   * The bot was connected to or disconnected from a business account, or a user
-   * edited an existing connection with the bot
-   */
-  readonly business_connection?: BusinessConnection | undefined
-
-  /**
-   * New message from a connected business account
-   */
-  readonly business_message?: Message | undefined
-
-  /**
-   * New version of a message from a connected business account
-   */
-  readonly edited_business_message?: Message | undefined
-
-  /**
-   * Messages were deleted from a connected business account
-   */
-  readonly deleted_business_messages?: BusinessMessagesDeleted | undefined
-
-  /**
-   * New guest message. The bot can use the field Message.guest_query_id and the
-   * method answerGuestQuery to send a message in response.
-   */
-  readonly guest_message?: Message | undefined
-
-  /**
-   * A reaction to a message was changed by a user. The bot must be an
-   * administrator in the chat and must explicitly specify "message_reaction" in
-   * the list of allowed_updates to receive these updates. The update isn't
-   * received for reactions set by bots.
-   */
-  readonly message_reaction?: MessageReactionUpdated | undefined
-
-  /**
-   * Reactions to a message with anonymous reactions were changed. The bot must
-   * be an administrator in the chat and must explicitly specify
-   * "message_reaction_count" in the list of allowed_updates to receive these
-   * updates. The updates are grouped and can be sent with delay up to a few
-   * minutes.
-   */
-  readonly message_reaction_count?: MessageReactionCountUpdated | undefined
-
-  /**
    * New incoming inline query
    */
   readonly inline_query?: InlineQuery | undefined
@@ -107,7 +65,7 @@ export interface Update {
   /**
    * New incoming callback query
    */
-  readonly callback_query?: CallbackQuery | undefined
+  readonly callback_query?: CallbackQuery | BusinessCallbackQuery | InlineCallbackQuery | undefined
 
   /**
    * New incoming shipping query. Only for invoices with flexible price.
@@ -118,12 +76,6 @@ export interface Update {
    * New incoming pre-checkout query. Contains full information about checkout.
    */
   readonly pre_checkout_query?: PreCheckoutQuery | undefined
-
-  /**
-   * A user purchased paid media with a non-empty payload sent by the bot in a
-   * non-channel chat
-   */
-  readonly purchased_paid_media?: PaidMediaPurchased | undefined
 
   /**
    * New poll state. Bots receive only updates about manually stopped polls and
@@ -169,15 +121,70 @@ export interface Update {
   readonly removed_chat_boost?: ChatBoostRemoved | undefined
 
   /**
+   * A reaction to a message was changed by a user. The bot must be an
+   * administrator in the chat and must explicitly specify "message_reaction" in
+   * the list of allowed_updates to receive these updates. The update isn't
+   * received for reactions set by bots.
+   */
+  readonly message_reaction?: MessageReactionUpdated | undefined
+
+  /**
+   * Reactions to a message with anonymous reactions were changed. The bot must
+   * be an administrator in the chat and must explicitly specify
+   * "message_reaction_count" in the list of allowed_updates to receive these
+   * updates. The updates are grouped and can be sent with delay up to a few
+   * minutes.
+   */
+  readonly message_reaction_count?: MessageReactionCountUpdated | undefined
+
+  /**
+   * The bot was connected to or disconnected from a business account, or a user
+   * edited an existing connection with the bot
+   */
+  readonly business_connection?: BusinessConnection | undefined
+
+  /**
+   * New message from a connected business account
+   */
+  readonly business_message?: Message | undefined
+
+  /**
+   * New version of a message from a connected business account
+   */
+  readonly edited_business_message?: Message | undefined
+
+  /**
+   * Messages were deleted from a connected business account
+   */
+  readonly deleted_business_messages?: BusinessMessagesDeleted | undefined
+
+  /**
+   * A user purchased paid media with a non-empty payload sent by the bot in a
+   * non-channel chat
+   */
+  readonly purchased_paid_media?: PaidMediaPurchased | undefined
+
+  /**
    * A new bot was created to be managed by the bot, or token or owner of a
    * managed bot was changed
    */
   readonly managed_bot?: ManagedBotUpdated | undefined
 
   /**
+   * New guest message. The bot can use the field Message.guest_query_id and the
+   * method answerGuestQuery to send a message in response.
+   */
+  readonly guest_message?: Message | undefined
+
+  /**
    * User payment subscription has changed
    */
   readonly subscription?: BotSubscriptionUpdated | undefined
+
+  /**
+   * A user asked the bot to stop the generation of a message
+   */
+  readonly stopped_message_generation?: MessageGenerationStopped | undefined
 }
 
 /**
@@ -202,11 +209,6 @@ export interface WebhookInfo {
   readonly pending_update_count: number
 
   /**
-   * Currently used webhook IP address
-   */
-  readonly ip_address?: string | undefined
-
-  /**
    * Unix time for the most recent error that happened when trying to deliver an
    * update via webhook
    */
@@ -219,20 +221,25 @@ export interface WebhookInfo {
   readonly last_error_message?: string | undefined
 
   /**
-   * Unix time of the most recent error that happened when trying to synchronize
-   * available updates with Telegram datacenters
-   */
-  readonly last_synchronization_error_date?: number | undefined
-
-  /**
    * The maximum allowed number of simultaneous HTTPS connections to the webhook
    * for update delivery
    */
   readonly max_connections?: number | undefined
 
   /**
+   * Currently used webhook IP address
+   */
+  readonly ip_address?: string | undefined
+
+  /**
    * A list of update types the bot is subscribed to. Defaults to all update
    * types except chat_member, message_reaction, and message_reaction_count.
    */
   readonly allowed_updates?: string[] | undefined
+
+  /**
+   * Unix time of the most recent error that happened when trying to synchronize
+   * available updates with Telegram datacenters
+   */
+  readonly last_synchronization_error_date?: number | undefined
 }
