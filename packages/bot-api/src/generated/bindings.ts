@@ -83,7 +83,7 @@ export const CHAT_BOUND = {
   sendDocument: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendGame: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendGift: ['chat_id'],
-  sendInvoice: ['chat_id', 'message_thread_id'],
+  sendInvoice: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendLivePhoto: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendLocation: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendMediaGroup: ['chat_id', 'message_thread_id', 'business_connection_id'],
