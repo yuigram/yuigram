@@ -30,9 +30,9 @@ export interface GetUpdatesParams {
   limit?: number | undefined
 
   /**
-   * Timeout in seconds for long polling. Defaults to 0, i.e. usual short
-   * polling. Should be positive, short polling should be used for testing
-   * purposes only.
+   * Timeout in seconds for long polling, 0 for usual short polling. Should be
+   * positive, short polling should be used for testing purposes only. Defaults
+   * to 0.
    */
   timeout?: number | undefined
 
@@ -56,16 +56,18 @@ export interface GetUpdatesParams {
  */
 export interface SetWebhookParams {
   /**
-   * HTTPS URL to send updates to. Use an empty string to remove webhook
-   * integration.
+   * URL to send updates to, must be an HTTPS URL or empty. Use an empty string
+   * to remove webhook integration.
    */
   url: string
 
   /**
-   * Upload your public key certificate so that the root certificate in use can
-   * be checked. See our self-signed guide for details.
+   * The maximum allowed number of simultaneous HTTPS connections to the webhook
+   * for update delivery, 1-100, defaults to 40. Use lower values to limit the
+   * load on your bot's server, and higher values to increase your bot's
+   * throughput.
    */
-  certificate?: InputFile | undefined
+  max_connections?: number | undefined
 
   /**
    * The fixed IP address which will be used to send webhook requests instead of
@@ -74,12 +76,24 @@ export interface SetWebhookParams {
   ip_address?: string | undefined
 
   /**
-   * The maximum allowed number of simultaneous HTTPS connections to the webhook
-   * for update delivery, 1-100. Defaults to 40. Use lower values to limit the
-   * load on your bot's server, and higher values to increase your bot's
-   * throughput.
+   * A secret token to be sent in a header "X-Telegram-Bot-Api-Secret-Token" in
+   * every webhook request, 1-256 characters, only A-Z, a-z, 0-9, _ and - are
+   * allowed. The header is useful to ensure that the request comes from a
+   * webhook set by you.
    */
-  max_connections?: number | undefined
+  secret_token?: string | undefined
+
+  /**
+   * Pass True to drop all pending updates
+   */
+  drop_pending_updates?: boolean | undefined
+
+  /**
+   * Upload your public key certificate so that the root certificate in use can
+   * be checked. See our self-signed guide for details. If a String, must start
+   * with "attach://".
+   */
+  certificate?: InputFile | string | undefined
 
   /**
    * A JSON-serialized list of the update types you want your bot to receive. For
@@ -92,19 +106,6 @@ export interface SetWebhookParams {
    * so unwanted updates may be received for a short period of time.
    */
   allowed_updates?: string[] | undefined
-
-  /**
-   * Pass True to drop all pending updates
-   */
-  drop_pending_updates?: boolean | undefined
-
-  /**
-   * A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in
-   * every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, _
-   * and - are allowed. The header is useful to ensure that the request comes
-   * from a webhook set by you.
-   */
-  secret_token?: string | undefined
 }
 
 /**

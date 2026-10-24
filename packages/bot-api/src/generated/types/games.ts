@@ -19,20 +19,10 @@ export interface Game {
   readonly title: string
 
   /**
-   * Description of the game
-   */
-  readonly description: string
-
-  /**
-   * Photo that will be displayed in the game message in chats
-   */
-  readonly photo: PhotoSize[]
-
-  /**
-   * Brief description of the game or high scores included in the game message.
-   * Can be automatically edited to include current high scores for the game when
-   * the bot calls setGameScore, or manually edited using editMessageText. 0-4096
-   * characters.
+   * Brief description of the game or high scores included in the game message,
+   * 0-4096 characters. Can be automatically edited to include current high
+   * scores for the game when the bot calls setGameScore, or manually edited
+   * using editMessageText.
    */
   readonly text?: string | undefined
 
@@ -41,6 +31,16 @@ export interface Game {
    * etc.
    */
   readonly text_entities?: MessageEntity[] | undefined
+
+  /**
+   * Description of the game
+   */
+  readonly description: string
+
+  /**
+   * Photo that will be displayed in the game message in chats
+   */
+  readonly photo: PhotoSize[]
 
   /**
    * Animation that will be displayed in the game message in chats. Upload via

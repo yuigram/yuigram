@@ -4,7 +4,7 @@
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
 
 /**
  * Event kinds produced by a top-level `Update` field.
@@ -208,7 +208,7 @@ export interface UpdatePayloads {
   "business_message": Message
   "business_message_edited": Message
   "business_messages_deleted": BusinessMessagesDeleted
-  "callback_query": CallbackQuery
+  "callback_query": unknown
   "channel_post": Message
   "channel_post_edited": Message
   "chat_boost": ChatBoostUpdated

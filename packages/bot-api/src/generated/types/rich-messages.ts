@@ -4,7 +4,7 @@
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { Animation, Audio, CopyTextButton, DisabledButton, Document, InputMediaAnimation, InputMediaAudio, InputMediaDocument, InputMediaPhoto, InputMediaVideo, InputMediaVoiceNote, Location, LoginUrl, PhotoSize, SwitchInlineQueryChosenChat, User, Video, Voice, WebAppInfo } from './available-types.js'
+import type { Animation, Audio, CopyTextButton, DisabledButton, Document, InputLocation, InputMedia, InputMediaAnimation, InputMediaAudio, InputMediaDocument, InputMediaPhoto, InputMediaVideo, InputMediaVoiceNote, Location, LoginUrl, PhotoSize, SwitchInlineQueryChosenChat, User, Video, Voice, WebAppInfo } from './available-types.js'
 
 /**
  * Rich formatted message.
@@ -20,7 +20,7 @@ export interface RichMessage {
   /**
    * True, if the rich message must be shown right-to-left
    */
-  readonly is_rtl?: boolean | undefined
+  readonly is_rtl?: true | undefined
 }
 
 /**
@@ -31,16 +31,21 @@ export interface RichMessage {
  */
 export interface InputRichMessage {
   /**
+   * Pass True if the rich message must be shown right-to-left
+   */
+  readonly is_rtl?: boolean | undefined
+
+  /**
+   * Pass True to skip automatic detection of entities (e.g., URLs, email
+   * addresses, username mentions, hashtags, cashtags, bot commands, or phone
+   * numbers) in the text
+   */
+  readonly skip_entity_detection?: boolean | undefined
+
+  /**
    * Content of the rich message to send described as a list of blocks
    */
   readonly blocks?: InputRichBlock[] | undefined
-
-  /**
-   * Content of the rich message to send described using HTML formatting. See
-   * rich message formatting options for more details. Use media field to specify
-   * the media used in the message.
-   */
-  readonly html?: string | undefined
 
   /**
    * Content of the rich message to send described using Markdown formatting. See
@@ -56,16 +61,11 @@ export interface InputRichMessage {
   readonly media?: InputRichMessageMedia[] | undefined
 
   /**
-   * Pass True if the rich message must be shown right-to-left
+   * Content of the rich message to send described using HTML formatting. See
+   * rich message formatting options for more details. Use media field to specify
+   * the media used in the message.
    */
-  readonly is_rtl?: boolean | undefined
-
-  /**
-   * Pass True to skip automatic detection of entities (e.g., URLs, email
-   * addresses, username mentions, hashtags, cashtags, bot commands, or phone
-   * numbers) in the text
-   */
-  readonly skip_entity_detection?: boolean | undefined
+  readonly html?: string | undefined
 }
 
 /**
@@ -76,8 +76,8 @@ export interface InputRichMessage {
 export interface InputRichMessageMedia {
   /**
    * Unique identifier of the media used in a tg://photo?id=, tg://video?id=,
-   * tg://document?id=, or tg://audio?id= link. 1-64 characters, only A-Z, a-z,
-   * 0-9, _ and - are allowed.
+   * tg://document?id=, or tg://audio?id= link, 1-64 characters, only A-Z, a-z,
+   * 0-9, _ and - are allowed
    */
   readonly id: string
 
@@ -85,7 +85,7 @@ export interface InputRichMessageMedia {
    * The media to be sent. Everything except the media itself and its properties
    * is ignored.
    */
-  readonly media: InputMediaAnimation | InputMediaAudio | InputMediaDocument | InputMediaPhoto | InputMediaVideo | InputMediaVoiceNote
+  readonly media: InputMedia | InputMediaVoiceNote
 }
 
 /**
@@ -102,10 +102,10 @@ export interface RichMessageButton {
   readonly text: RichText
 
   /**
-   * Style of the button. Must be one of “danger”, “success”, “primary”, or
-   * “link” (the button is shown as a regular link without borders). Apps may use
+   * Style of the button. Must be one of "danger", "success", "primary", or
+   * "link" (the button is shown as a regular link without borders). Apps may use
    * theme-specific colors for the button background and text based on the style.
-   * The style “link” is allowed only for callback buttons.
+   * The style "link" is allowed only for callback buttons.
    */
   readonly style?: string | undefined
 
@@ -117,12 +117,6 @@ export interface RichMessageButton {
   readonly url?: string | undefined
 
   /**
-   * Data to be sent in a callback query to the bot when the button is pressed,
-   * 1-64 bytes
-   */
-  readonly callback_data?: string | undefined
-
-  /**
    * Description of the Web App that will be launched when the user presses the
    * button. The Web App will be able to send an arbitrary message on behalf of
    * the user using the method answerWebAppQuery. Available only in private chats
@@ -132,11 +126,20 @@ export interface RichMessageButton {
   readonly web_app?: WebAppInfo | undefined
 
   /**
-   * An HTTPS URL used to automatically authorize the user. Can be used as a
-   * replacement for the Telegram Login Widget. Not supported for ephemeral
-   * messages.
+   * Data to be sent in a callback query to the bot when the button is pressed,
+   * 1-64 bytes
    */
-  readonly login_url?: LoginUrl | undefined
+  readonly callback_data?: string | undefined
+
+  /**
+   * If set, pressing the button will insert the bot's username and the specified
+   * inline query in the current chat's input field. May be empty, in which case
+   * only the bot's username will be inserted. This offers a quick way for the
+   * user to open your bot in inline mode in the same chat - good for selecting
+   * something from multiple options. Not supported in channels and for messages
+   * sent in channel direct messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query_current_chat?: string | undefined
 
   /**
    * If set, pressing the button will prompt the user to select one of their
@@ -146,15 +149,6 @@ export interface RichMessageButton {
    * messages chats and on behalf of a business account.
    */
   readonly switch_inline_query?: string | undefined
-
-  /**
-   * If set, pressing the button will insert the bot's username and the specified
-   * inline query in the current chat's input field. May be empty, in which case
-   * only the bot's username will be inserted. Not supported in channels and for
-   * messages sent in channel direct messages chats and on behalf of a business
-   * account.
-   */
-  readonly switch_inline_query_current_chat?: string | undefined
 
   /**
    * If set, pressing the button will prompt the user to select one of their
@@ -177,8 +171,8 @@ export interface RichMessageButton {
 }
 
 /**
- * This object represents a rich formatted text. Currently, it can be either a
- * String for plain text, an Array of RichText, or any of the following types:
+ * This object represents a rich formatted text. Currently, it can be one of It
+ * can also be a String for plain text, or an Array of RichText.
  *
  * @see https://corefork.telegram.org/bots/api#richtext
  */
@@ -219,7 +213,7 @@ export type RichText =
  */
 export interface RichTextBold {
   /**
-   * Type of the rich text, always “bold”
+   * Type of the rich text, always "bold"
    */
   readonly type: string
 
@@ -236,7 +230,7 @@ export interface RichTextBold {
  */
 export interface RichTextItalic {
   /**
-   * Type of the rich text, always “italic”
+   * Type of the rich text, always "italic"
    */
   readonly type: string
 
@@ -253,7 +247,7 @@ export interface RichTextItalic {
  */
 export interface RichTextUnderline {
   /**
-   * Type of the rich text, always “underline”
+   * Type of the rich text, always "underline"
    */
   readonly type: string
 
@@ -270,7 +264,7 @@ export interface RichTextUnderline {
  */
 export interface RichTextStrikethrough {
   /**
-   * Type of the rich text, always “strikethrough”
+   * Type of the rich text, always "strikethrough"
    */
   readonly type: string
 
@@ -287,7 +281,7 @@ export interface RichTextStrikethrough {
  */
 export interface RichTextSpoiler {
   /**
-   * Type of the rich text, always “spoiler”
+   * Type of the rich text, always "spoiler"
    */
   readonly type: string
 
@@ -304,7 +298,7 @@ export interface RichTextSpoiler {
  */
 export interface RichTextDateTime {
   /**
-   * Type of the rich text, always “date_time”
+   * Type of the rich text, always "date_time"
    */
   readonly type: string
 
@@ -332,7 +326,7 @@ export interface RichTextDateTime {
  */
 export interface RichTextTextMention {
   /**
-   * Type of the rich text, always “text_mention”
+   * Type of the rich text, always "text_mention"
    */
   readonly type: string
 
@@ -354,7 +348,7 @@ export interface RichTextTextMention {
  */
 export interface RichTextSubscript {
   /**
-   * Type of the rich text, always “subscript”
+   * Type of the rich text, always "subscript"
    */
   readonly type: string
 
@@ -371,7 +365,7 @@ export interface RichTextSubscript {
  */
 export interface RichTextSuperscript {
   /**
-   * Type of the rich text, always “superscript”
+   * Type of the rich text, always "superscript"
    */
   readonly type: string
 
@@ -388,7 +382,7 @@ export interface RichTextSuperscript {
  */
 export interface RichTextMarked {
   /**
-   * Type of the rich text, always “marked”
+   * Type of the rich text, always "marked"
    */
   readonly type: string
 
@@ -405,7 +399,7 @@ export interface RichTextMarked {
  */
 export interface RichTextCode {
   /**
-   * Type of the rich text, always “code”
+   * Type of the rich text, always "code"
    */
   readonly type: string
 
@@ -422,7 +416,7 @@ export interface RichTextCode {
  */
 export interface RichTextCustomEmoji {
   /**
-   * Type of the rich text, always “custom_emoji”
+   * Type of the rich text, always "custom_emoji"
    */
   readonly type: string
 
@@ -445,7 +439,7 @@ export interface RichTextCustomEmoji {
  */
 export interface RichTextMathematicalExpression {
   /**
-   * Type of the rich text, always “mathematical_expression”
+   * Type of the rich text, always "mathematical_expression"
    */
   readonly type: string
 
@@ -462,7 +456,7 @@ export interface RichTextMathematicalExpression {
  */
 export interface RichTextUrl {
   /**
-   * Type of the rich text, always “url”
+   * Type of the rich text, always "url"
    */
   readonly type: string
 
@@ -484,7 +478,7 @@ export interface RichTextUrl {
  */
 export interface RichTextEmailAddress {
   /**
-   * Type of the rich text, always “email_address”
+   * Type of the rich text, always "email_address"
    */
   readonly type: string
 
@@ -506,7 +500,7 @@ export interface RichTextEmailAddress {
  */
 export interface RichTextPhoneNumber {
   /**
-   * Type of the rich text, always “phone_number”
+   * Type of the rich text, always "phone_number"
    */
   readonly type: string
 
@@ -528,7 +522,7 @@ export interface RichTextPhoneNumber {
  */
 export interface RichTextBankCardNumber {
   /**
-   * Type of the rich text, always “bank_card_number”
+   * Type of the rich text, always "bank_card_number"
    */
   readonly type: string
 
@@ -550,7 +544,7 @@ export interface RichTextBankCardNumber {
  */
 export interface RichTextMention {
   /**
-   * Type of the rich text, always “mention”
+   * Type of the rich text, always "mention"
    */
   readonly type: string
 
@@ -572,7 +566,7 @@ export interface RichTextMention {
  */
 export interface RichTextHashtag {
   /**
-   * Type of the rich text, always “hashtag”
+   * Type of the rich text, always "hashtag"
    */
   readonly type: string
 
@@ -594,7 +588,7 @@ export interface RichTextHashtag {
  */
 export interface RichTextCashtag {
   /**
-   * Type of the rich text, always “cashtag”
+   * Type of the rich text, always "cashtag"
    */
   readonly type: string
 
@@ -616,7 +610,7 @@ export interface RichTextCashtag {
  */
 export interface RichTextBotCommand {
   /**
-   * Type of the rich text, always “bot_command”
+   * Type of the rich text, always "bot_command"
    */
   readonly type: string
 
@@ -638,7 +632,7 @@ export interface RichTextBotCommand {
  */
 export interface RichTextButton {
   /**
-   * Type of the rich text, always “button”
+   * Type of the rich text, always "button"
    */
   readonly type: string
 
@@ -655,7 +649,7 @@ export interface RichTextButton {
  */
 export interface RichTextAnchor {
   /**
-   * Type of the rich text, always “anchor”
+   * Type of the rich text, always "anchor"
    */
   readonly type: string
 
@@ -672,7 +666,7 @@ export interface RichTextAnchor {
  */
 export interface RichTextAnchorLink {
   /**
-   * Type of the rich text, always “anchor_link”
+   * Type of the rich text, always "anchor_link"
    */
   readonly type: string
 
@@ -695,7 +689,7 @@ export interface RichTextAnchorLink {
  */
 export interface RichTextReference {
   /**
-   * Type of the rich text, always “reference”
+   * Type of the rich text, always "reference"
    */
   readonly type: string
 
@@ -717,7 +711,7 @@ export interface RichTextReference {
  */
 export interface RichTextReferenceLink {
   /**
-   * Type of the rich text, always “reference_link”
+   * Type of the rich text, always "reference_link"
    */
   readonly type: string
 
@@ -776,14 +770,14 @@ export interface RichBlockTableCell {
   readonly rowspan?: number | undefined
 
   /**
-   * Horizontal cell content alignment. Currently, must be one of “left”,
-   * “center”, or “right”.
+   * Horizontal cell content alignment, currently can be "left", "center", or
+   * "right"
    */
   readonly align: string
 
   /**
-   * Vertical cell content alignment. Currently, must be one of “top”, “middle”,
-   * or “bottom”.
+   * Vertical cell content alignment, currently can be "top", "middle", or
+   * "bottom"
    */
   readonly valign: string
 }
@@ -815,21 +809,21 @@ export interface RichBlockListItem {
   readonly is_checked?: true | undefined
 
   /**
+   * For ordered lists, the type of the item label; must be one of "a" for
+   * lowercase letters, "A" for uppercase letters, "i" for lowercase Roman
+   * numerals, "I" for uppercase Roman numerals, or "1" for decimal numbers
+   */
+  readonly type?: string | undefined
+
+  /**
    * For ordered lists, the numeric value of the item label
    */
   readonly value?: number | undefined
-
-  /**
-   * For ordered lists, the type of the item label; must be one of “a” for
-   * lowercase letters, “A” for uppercase letters, “i” for lowercase Roman
-   * numerals, “I” for uppercase Roman numerals, or “1” for decimal numbers
-   */
-  readonly type?: string | undefined
 }
 
 /**
  * This object represents a block in a rich formatted message. Currently, it
- * can be any of the following types:
+ * can be one of
  *
  * @see https://corefork.telegram.org/bots/api#richblock
  */
@@ -855,7 +849,6 @@ export type RichBlock =
   | RichBlockSectionHeading
   | RichBlockSlideshow
   | RichBlockTable
-  | RichBlockThinking
   | RichBlockVideo
   | RichBlockVoiceNote
 
@@ -866,7 +859,7 @@ export type RichBlock =
  */
 export interface RichBlockParagraph {
   /**
-   * Type of the block, always “paragraph”
+   * Type of the block, always "paragraph"
    */
   readonly type: string
 
@@ -884,7 +877,7 @@ export interface RichBlockParagraph {
  */
 export interface RichBlockSectionHeading {
   /**
-   * Type of the block, always “heading”
+   * Type of the block, always "heading"
    */
   readonly type: string
 
@@ -894,7 +887,7 @@ export interface RichBlockSectionHeading {
   readonly text: RichText
 
   /**
-   * Relative size of the text font; 1-6, 1 is the largest, 6 is the smallest
+   * Relative size of the text font, 1-6; 1 is the largest, 6 is the smallest
    */
   readonly size: number
 }
@@ -907,7 +900,7 @@ export interface RichBlockSectionHeading {
  */
 export interface RichBlockPreformatted {
   /**
-   * Type of the block, always “pre”
+   * Type of the block, always "pre"
    */
   readonly type: string
 
@@ -929,7 +922,7 @@ export interface RichBlockPreformatted {
  */
 export interface RichBlockFooter {
   /**
-   * Type of the block, always “footer”
+   * Type of the block, always "footer"
    */
   readonly type: string
 
@@ -946,7 +939,7 @@ export interface RichBlockFooter {
  */
 export interface RichBlockDivider {
   /**
-   * Type of the block, always “divider”
+   * Type of the block, always "divider"
    */
   readonly type: string
 }
@@ -959,7 +952,7 @@ export interface RichBlockDivider {
  */
 export interface RichBlockMathematicalExpression {
   /**
-   * Type of the block, always “mathematical_expression”
+   * Type of the block, always "mathematical_expression"
    */
   readonly type: string
 
@@ -977,7 +970,7 @@ export interface RichBlockMathematicalExpression {
  */
 export interface RichBlockAnchor {
   /**
-   * Type of the block, always “anchor”
+   * Type of the block, always "anchor"
    */
   readonly type: string
 
@@ -995,7 +988,7 @@ export interface RichBlockAnchor {
  */
 export interface RichBlockList {
   /**
-   * Type of the block, always “list”
+   * Type of the block, always "list"
    */
   readonly type: string
 
@@ -1012,7 +1005,7 @@ export interface RichBlockList {
  */
 export interface RichBlockBlockQuotation {
   /**
-   * Type of the block, always “blockquote”
+   * Type of the block, always "blockquote"
    */
   readonly type: string
 
@@ -1035,7 +1028,7 @@ export interface RichBlockBlockQuotation {
  */
 export interface RichBlockExpandableBlockQuotation {
   /**
-   * Type of the block, always “expandable_blockquote”
+   * Type of the block, always "expandable_blockquote"
    */
   readonly type: string
 
@@ -1058,7 +1051,7 @@ export interface RichBlockExpandableBlockQuotation {
  */
 export interface RichBlockPullQuotation {
   /**
-   * Type of the block, always “pullquote”
+   * Type of the block, always "pullquote"
    */
   readonly type: string
 
@@ -1080,7 +1073,7 @@ export interface RichBlockPullQuotation {
  */
 export interface RichBlockCollage {
   /**
-   * Type of the block, always “collage”
+   * Type of the block, always "collage"
    */
   readonly type: string
 
@@ -1102,7 +1095,7 @@ export interface RichBlockCollage {
  */
 export interface RichBlockSlideshow {
   /**
-   * Type of the block, always “slideshow”
+   * Type of the block, always "slideshow"
    */
   readonly type: string
 
@@ -1124,7 +1117,7 @@ export interface RichBlockSlideshow {
  */
 export interface RichBlockTable {
   /**
-   * Type of the block, always “table”
+   * Type of the block, always "table"
    */
   readonly type: string
 
@@ -1132,6 +1125,11 @@ export interface RichBlockTable {
    * Cells of the table
    */
   readonly cells: RichBlockTableCell[][]
+
+  /**
+   * Caption of the table
+   */
+  readonly caption?: RichText | undefined
 
   /**
    * True, if the table has borders
@@ -1147,11 +1145,6 @@ export interface RichBlockTable {
    * True, if table cells have smaller indents
    */
   readonly is_compact?: true | undefined
-
-  /**
-   * Caption of the table
-   */
-  readonly caption?: RichText | undefined
 }
 
 /**
@@ -1162,7 +1155,7 @@ export interface RichBlockTable {
  */
 export interface RichBlockDetails {
   /**
-   * Type of the block, always “details”
+   * Type of the block, always "details"
    */
   readonly type: string
 
@@ -1189,7 +1182,7 @@ export interface RichBlockDetails {
  */
 export interface RichBlockMap {
   /**
-   * Type of the block, always “map”
+   * Type of the block, always "map"
    */
   readonly type: string
 
@@ -1227,7 +1220,7 @@ export interface RichBlockMap {
  */
 export interface RichBlockButtons {
   /**
-   * Type of the block, always “buttons”
+   * Type of the block, always "buttons"
    */
   readonly type: string
 
@@ -1237,8 +1230,8 @@ export interface RichBlockButtons {
   readonly buttons: RichMessageButton[]
 
   /**
-   * Horizontal alignment of the buttons. Currently, must be one of “left”,
-   * “center”, or “right”.
+   * Horizontal alignment of the buttons, currently can be "left", "center", or
+   * "right"
    */
   readonly align?: string | undefined
 }
@@ -1250,7 +1243,7 @@ export interface RichBlockButtons {
  */
 export interface RichBlockAnimation {
   /**
-   * Type of the block, always “animation”
+   * Type of the block, always "animation"
    */
   readonly type: string
 
@@ -1260,14 +1253,14 @@ export interface RichBlockAnimation {
   readonly animation: Animation
 
   /**
-   * True, if the media preview is covered by a spoiler animation
-   */
-  readonly has_spoiler?: true | undefined
-
-  /**
    * Caption of the block
    */
   readonly caption?: RichBlockCaption | undefined
+
+  /**
+   * True, if the media preview is covered by a spoiler animation
+   */
+  readonly has_spoiler?: true | undefined
 }
 
 /**
@@ -1277,7 +1270,7 @@ export interface RichBlockAnimation {
  */
 export interface RichBlockAudio {
   /**
-   * Type of the block, always “audio”
+   * Type of the block, always "audio"
    */
   readonly type: string
 
@@ -1300,7 +1293,7 @@ export interface RichBlockAudio {
  */
 export interface RichBlockDocument {
   /**
-   * Type of the block, always “document”
+   * Type of the block, always "document"
    */
   readonly type: string
 
@@ -1322,7 +1315,7 @@ export interface RichBlockDocument {
  */
 export interface RichBlockPhoto {
   /**
-   * Type of the block, always “photo”
+   * Type of the block, always "photo"
    */
   readonly type: string
 
@@ -1332,14 +1325,14 @@ export interface RichBlockPhoto {
   readonly photo: PhotoSize[]
 
   /**
-   * True, if the media preview is covered by a spoiler animation
-   */
-  readonly has_spoiler?: true | undefined
-
-  /**
    * Caption of the block
    */
   readonly caption?: RichBlockCaption | undefined
+
+  /**
+   * True, if the media preview is covered by a spoiler animation
+   */
+  readonly has_spoiler?: true | undefined
 }
 
 /**
@@ -1349,7 +1342,7 @@ export interface RichBlockPhoto {
  */
 export interface RichBlockVideo {
   /**
-   * Type of the block, always “video”
+   * Type of the block, always "video"
    */
   readonly type: string
 
@@ -1359,14 +1352,14 @@ export interface RichBlockVideo {
   readonly video: Video
 
   /**
-   * True, if the media preview is covered by a spoiler animation
-   */
-  readonly has_spoiler?: true | undefined
-
-  /**
    * Caption of the block
    */
   readonly caption?: RichBlockCaption | undefined
+
+  /**
+   * True, if the media preview is covered by a spoiler animation
+   */
+  readonly has_spoiler?: true | undefined
 }
 
 /**
@@ -1376,7 +1369,7 @@ export interface RichBlockVideo {
  */
 export interface RichBlockVoiceNote {
   /**
-   * Type of the block, always “voice_note”
+   * Type of the block, always "voice_note"
    */
   readonly type: string
 
@@ -1392,24 +1385,646 @@ export interface RichBlockVoiceNote {
 }
 
 /**
- * A block with a “Thinking…” placeholder, corresponding to the custom HTML tag
- * <tg-thinking>. The block may be used only in sendRichMessageDraft, therefore
- * it can't be received in messages. See https://t.me/addemoji/AIActions for
- * examples of custom emoji that are recommended for usage in the block.
+ * This object represents a button in a RichMessage. Exactly one of the fields
+ * other than text and style must be used to specify the type of the button.
  *
- * @see https://corefork.telegram.org/bots/api#richblockthinking
+ * @see https://corefork.telegram.org/bots/api#inputrichmessagebutton
  */
-export interface RichBlockThinking {
+export interface InputRichMessageButton {
   /**
-   * Type of the block, always “thinking”
+   * Text of the button. May contain only plain text, RichTextCustomEmoji and
+   * InputRichTextDateTime entities.
+   */
+  readonly text: InputRichText
+
+  /**
+   * Style of the button. Must be one of "danger", "success", "primary", or
+   * "link" (the button is shown as a regular link without borders). Apps may use
+   * theme-specific colors for the button background and text based on the style.
+   * The style "link" is allowed only for callback buttons.
+   */
+  readonly style?: string | undefined
+
+  /**
+   * HTTP or tg:// URL to be opened when the button is pressed. Links
+   * tg://user?id=<user_id> can be used to mention a user by their identifier
+   * without using a username, if this is allowed by their privacy settings.
+   */
+  readonly url?: string | undefined
+
+  /**
+   * Description of the Web App that will be launched when the user presses the
+   * button. The Web App will be able to send an arbitrary message on behalf of
+   * the user using the method answerWebAppQuery. Available only in private chats
+   * between a user and the bot. Not supported for messages sent on behalf of a
+   * business account.
+   */
+  readonly web_app?: WebAppInfo | undefined
+
+  /**
+   * Data to be sent in a callback query to the bot when the button is pressed,
+   * 1-64 bytes
+   */
+  readonly callback_data?: string | undefined
+
+  /**
+   * If set, pressing the button will insert the bot's username and the specified
+   * inline query in the current chat's input field. May be empty, in which case
+   * only the bot's username will be inserted. This offers a quick way for the
+   * user to open your bot in inline mode in the same chat - good for selecting
+   * something from multiple options. Not supported in channels and for messages
+   * sent in channel direct messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query_current_chat?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats, open that chat and insert the bot's username and the specified inline
+   * query in the input field. May be empty, in which case just the bot's
+   * username will be inserted. Not supported for messages sent in channel direct
+   * messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats of the specified type, open that chat and insert the bot's username
+   * and the specified inline query in the input field. Not supported for
+   * messages sent in channel direct messages chats and on behalf of a business
+   * account.
+   */
+  readonly switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat | undefined
+
+  /**
+   * A button that copies the specified text to the clipboard
+   */
+  readonly copy_text?: CopyTextButton | undefined
+
+  /**
+   * If set, then the button is disabled and does nothing
+   */
+  readonly disabled?: DisabledButton | undefined
+
+  /**
+   * An HTTPS URL used to automatically authorize the user. Can be used as a
+   * replacement for the Telegram Login Widget. Not supported for ephemeral
+   * messages.
+   */
+  readonly login_url?: LoginUrl | undefined
+}
+
+/**
+ * This object represents a rich formatted text. Currently, it can be one of It
+ * can also be a String for plain text, or an Array of InputRichText.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtext
+ */
+export type InputRichText =
+  | InputRichTextAnchorLink
+  | InputRichTextBankCardNumber
+  | InputRichTextBold
+  | InputRichTextBotCommand
+  | InputRichTextButton
+  | InputRichTextCashtag
+  | InputRichTextCode
+  | InputRichTextDateTime
+  | InputRichTextEmailAddress
+  | InputRichTextHashtag
+  | InputRichTextItalic
+  | InputRichTextMarked
+  | InputRichTextMention
+  | InputRichTextPhoneNumber
+  | InputRichTextReference
+  | InputRichTextReferenceLink
+  | InputRichTextSpoiler
+  | InputRichTextStrikethrough
+  | InputRichTextSubscript
+  | InputRichTextSuperscript
+  | InputRichTextTextMention
+  | InputRichTextUnderline
+  | InputRichTextUrl
+  | RichTextAnchor
+  | RichTextCustomEmoji
+  | RichTextMathematicalExpression
+
+/**
+ * A bold text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextbold
+ */
+export interface InputRichTextBold {
+  /**
+   * Type of the rich text, always "bold"
    */
   readonly type: string
 
   /**
-   * Text of the block. See https://t.me/addemoji/AIActions for examples of
-   * custom emoji that are recommended for usage in the block.
+   * The text
    */
-  readonly text: RichText
+  readonly text: InputRichText
+}
+
+/**
+ * An italicized text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextitalic
+ */
+export interface InputRichTextItalic {
+  /**
+   * Type of the rich text, always "italic"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * An underlined text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextunderline
+ */
+export interface InputRichTextUnderline {
+  /**
+   * Type of the rich text, always "underline"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A strikethrough text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextstrikethrough
+ */
+export interface InputRichTextStrikethrough {
+  /**
+   * Type of the rich text, always "strikethrough"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A text covered by a spoiler.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextspoiler
+ */
+export interface InputRichTextSpoiler {
+  /**
+   * Type of the rich text, always "spoiler"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * Formatted date and time.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextdatetime
+ */
+export interface InputRichTextDateTime {
+  /**
+   * Type of the rich text, always "date_time"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The Unix time associated with the entity
+   */
+  readonly unix_time: number
+
+  /**
+   * The string that defines the formatting of the date and time. See date-time
+   * entity formatting for more details. Must be "r", or an optional "w",
+   * followed by an optional "d" or "D", followed by an optional "t" or "T".
+   */
+  readonly date_time_format: string
+}
+
+/**
+ * A mention of a Telegram user by their identifier.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtexttextmention
+ */
+export interface InputRichTextTextMention {
+  /**
+   * Type of the rich text, always "text_mention"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The mentioned user
+   */
+  readonly user: User
+}
+
+/**
+ * A subscript text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextsubscript
+ */
+export interface InputRichTextSubscript {
+  /**
+   * Type of the rich text, always "subscript"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A superscript text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextsuperscript
+ */
+export interface InputRichTextSuperscript {
+  /**
+   * Type of the rich text, always "superscript"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A marked text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextmarked
+ */
+export interface InputRichTextMarked {
+  /**
+   * Type of the rich text, always "marked"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A monowidth text.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextcode
+ */
+export interface InputRichTextCode {
+  /**
+   * Type of the rich text, always "code"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+}
+
+/**
+ * A text with a link.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtexturl
+ */
+export interface InputRichTextUrl {
+  /**
+   * Type of the rich text, always "url"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * URL of the link
+   */
+  readonly url: string
+}
+
+/**
+ * A text with an email address.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextemailaddress
+ */
+export interface InputRichTextEmailAddress {
+  /**
+   * Type of the rich text, always "email_address"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The email address
+   */
+  readonly email_address: string
+}
+
+/**
+ * A text with a phone number.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextphonenumber
+ */
+export interface InputRichTextPhoneNumber {
+  /**
+   * Type of the rich text, always "phone_number"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The phone number
+   */
+  readonly phone_number: string
+}
+
+/**
+ * A text with a bank card number.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextbankcardnumber
+ */
+export interface InputRichTextBankCardNumber {
+  /**
+   * Type of the rich text, always "bank_card_number"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The bank card number
+   */
+  readonly bank_card_number: string
+}
+
+/**
+ * A mention by a username.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextmention
+ */
+export interface InputRichTextMention {
+  /**
+   * Type of the rich text, always "mention"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The username
+   */
+  readonly username: string
+}
+
+/**
+ * A hashtag.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtexthashtag
+ */
+export interface InputRichTextHashtag {
+  /**
+   * Type of the rich text, always "hashtag"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The hashtag
+   */
+  readonly hashtag: string
+}
+
+/**
+ * A cashtag.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextcashtag
+ */
+export interface InputRichTextCashtag {
+  /**
+   * Type of the rich text, always "cashtag"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The cashtag
+   */
+  readonly cashtag: string
+}
+
+/**
+ * A bot command.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextbotcommand
+ */
+export interface InputRichTextBotCommand {
+  /**
+   * Type of the rich text, always "bot_command"
+   */
+  readonly type: string
+
+  /**
+   * The text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The bot command
+   */
+  readonly bot_command: string
+}
+
+/**
+ * A button.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextbutton
+ */
+export interface InputRichTextButton {
+  /**
+   * Type of the rich text, always "button"
+   */
+  readonly type: string
+
+  /**
+   * The button
+   */
+  readonly button: InputRichMessageButton
+}
+
+/**
+ * A link to an anchor.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextanchorlink
+ */
+export interface InputRichTextAnchorLink {
+  /**
+   * Type of the rich text, always "anchor_link"
+   */
+  readonly type: string
+
+  /**
+   * The link text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The name of the anchor. If the name is empty, then the link brings back to
+   * the top of the message.
+   */
+  readonly anchor_name: string
+}
+
+/**
+ * A reference.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextreference
+ */
+export interface InputRichTextReference {
+  /**
+   * Type of the rich text, always "reference"
+   */
+  readonly type: string
+
+  /**
+   * Text of the reference
+   */
+  readonly text: InputRichText
+
+  /**
+   * The name of the reference
+   */
+  readonly name: string
+}
+
+/**
+ * A link to a reference.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichtextreferencelink
+ */
+export interface InputRichTextReferenceLink {
+  /**
+   * Type of the rich text, always "reference_link"
+   */
+  readonly type: string
+
+  /**
+   * The link text
+   */
+  readonly text: InputRichText
+
+  /**
+   * The name of the reference
+   */
+  readonly reference_name: string
+}
+
+/**
+ * Caption of a rich formatted block.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichblockcaption
+ */
+export interface InputRichBlockCaption {
+  /**
+   * Block caption
+   */
+  readonly text: InputRichText
+
+  /**
+   * Block credit which corresponds to the HTML tag <cite>
+   */
+  readonly credit?: InputRichText | undefined
+}
+
+/**
+ * Cell in a table.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputrichblocktablecell
+ */
+export interface InputRichBlockTableCell {
+  /**
+   * Text in the cell. If omitted, then the cell is invisible.
+   */
+  readonly text?: InputRichText | undefined
+
+  /**
+   * True, if the cell is a header cell
+   */
+  readonly is_header?: boolean | undefined
+
+  /**
+   * The number of columns the cell spans if it is bigger than 1
+   */
+  readonly colspan?: number | undefined
+
+  /**
+   * The number of rows the cell spans if it is bigger than 1
+   */
+  readonly rowspan?: number | undefined
+
+  /**
+   * Horizontal cell content alignment, currently can be "left", "center", or
+   * "right", defaults to "left", or "center" if is_header is True
+   */
+  readonly align?: string | undefined
+
+  /**
+   * Vertical cell content alignment, currently can be "top", "middle", or
+   * "bottom", defaults to "middle"
+   */
+  readonly valign?: string | undefined
 }
 
 /**
@@ -1426,12 +2041,12 @@ export interface InputRichBlockListItem {
   /**
    * Pass True if the item has a checkbox
    */
-  readonly has_checkbox?: true | undefined
+  readonly has_checkbox?: boolean | undefined
 
   /**
    * Pass True if the item has a checked checkbox
    */
-  readonly is_checked?: true | undefined
+  readonly is_checked?: boolean | undefined
 
   /**
    * For ordered lists, the numeric value of the item label
@@ -1439,16 +2054,16 @@ export interface InputRichBlockListItem {
   readonly value?: number | undefined
 
   /**
-   * For ordered lists, the type of the item label; must be one of “a” for
-   * lowercase letters, “A” for uppercase letters, “i” for lowercase Roman
-   * numerals, “I” for uppercase Roman numerals, or “1” for decimal numbers
+   * For ordered lists, the type of the item label; must be one of "a" for
+   * lowercase letters, "A" for uppercase letters, "i" for lowercase Roman
+   * numerals, "I" for uppercase Roman numerals, or "1" for decimal numbers
    */
   readonly type?: string | undefined
 }
 
 /**
  * This object represents a block in a rich formatted message to be sent.
- * Currently, it can be any of the following types:
+ * Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#inputrichblock
  */
@@ -1485,14 +2100,14 @@ export type InputRichBlock =
  */
 export interface InputRichBlockParagraph {
   /**
-   * Type of the block, always “paragraph”
+   * Type of the block, must be paragraph
    */
   readonly type: string
 
   /**
    * Text of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 }
 
 /**
@@ -1503,17 +2118,17 @@ export interface InputRichBlockParagraph {
  */
 export interface InputRichBlockSectionHeading {
   /**
-   * Type of the block, always “heading”
+   * Type of the block, must be heading
    */
   readonly type: string
 
   /**
    * Text of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 
   /**
-   * Relative size of the text font; 1-6, 1 is the largest, 6 is the smallest
+   * Relative size of the text font, 1-6; 1 is the largest, 6 is the smallest
    */
   readonly size: number
 }
@@ -1526,14 +2141,14 @@ export interface InputRichBlockSectionHeading {
  */
 export interface InputRichBlockPreformatted {
   /**
-   * Type of the block, always “pre”
+   * Type of the block, must be pre
    */
   readonly type: string
 
   /**
    * Text of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 
   /**
    * The programming language of the text
@@ -1548,14 +2163,14 @@ export interface InputRichBlockPreformatted {
  */
 export interface InputRichBlockFooter {
   /**
-   * Type of the block, always “footer”
+   * Type of the block, must be footer
    */
   readonly type: string
 
   /**
    * Text of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 }
 
 /**
@@ -1565,7 +2180,7 @@ export interface InputRichBlockFooter {
  */
 export interface InputRichBlockDivider {
   /**
-   * Type of the block, always “divider”
+   * Type of the block, must be divider
    */
   readonly type: string
 }
@@ -1578,7 +2193,7 @@ export interface InputRichBlockDivider {
  */
 export interface InputRichBlockMathematicalExpression {
   /**
-   * Type of the block, always “mathematical_expression”
+   * Type of the block, must be mathematical_expression
    */
   readonly type: string
 
@@ -1596,7 +2211,7 @@ export interface InputRichBlockMathematicalExpression {
  */
 export interface InputRichBlockAnchor {
   /**
-   * Type of the block, always “anchor”
+   * Type of the block, must be anchor
    */
   readonly type: string
 
@@ -1614,7 +2229,7 @@ export interface InputRichBlockAnchor {
  */
 export interface InputRichBlockList {
   /**
-   * Type of the block, always “list”
+   * Type of the block, must be list
    */
   readonly type: string
 
@@ -1631,7 +2246,7 @@ export interface InputRichBlockList {
  */
 export interface InputRichBlockBlockQuotation {
   /**
-   * Type of the block, always “blockquote”
+   * Type of the block, must be blockquote
    */
   readonly type: string
 
@@ -1643,7 +2258,7 @@ export interface InputRichBlockBlockQuotation {
   /**
    * Credit of the block
    */
-  readonly credit?: RichText | undefined
+  readonly credit?: InputRichText | undefined
 }
 
 /**
@@ -1654,19 +2269,19 @@ export interface InputRichBlockBlockQuotation {
  */
 export interface InputRichBlockExpandableBlockQuotation {
   /**
-   * Type of the block, always “expandable_blockquote”
+   * Type of the block, must be expandable_blockquote
    */
   readonly type: string
 
   /**
    * Content of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 
   /**
    * Credit of the block
    */
-  readonly credit?: RichText | undefined
+  readonly credit?: InputRichText | undefined
 }
 
 /**
@@ -1677,19 +2292,19 @@ export interface InputRichBlockExpandableBlockQuotation {
  */
 export interface InputRichBlockPullQuotation {
   /**
-   * Type of the block, always “pullquote”
+   * Type of the block, must be pullquote
    */
   readonly type: string
 
   /**
    * Text of the block
    */
-  readonly text: RichText
+  readonly text: InputRichText
 
   /**
    * Credit of the block
    */
-  readonly credit?: RichText | undefined
+  readonly credit?: InputRichText | undefined
 }
 
 /**
@@ -1699,7 +2314,7 @@ export interface InputRichBlockPullQuotation {
  */
 export interface InputRichBlockCollage {
   /**
-   * Type of the block, always “collage”
+   * Type of the block, must be collage
    */
   readonly type: string
 
@@ -1711,7 +2326,7 @@ export interface InputRichBlockCollage {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1721,7 +2336,7 @@ export interface InputRichBlockCollage {
  */
 export interface InputRichBlockSlideshow {
   /**
-   * Type of the block, always “slideshow”
+   * Type of the block, must be slideshow
    */
   readonly type: string
 
@@ -1733,7 +2348,7 @@ export interface InputRichBlockSlideshow {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1743,34 +2358,34 @@ export interface InputRichBlockSlideshow {
  */
 export interface InputRichBlockTable {
   /**
-   * Type of the block, always “table”
+   * Type of the block, must be table
    */
   readonly type: string
 
   /**
    * Cells of the table
    */
-  readonly cells: RichBlockTableCell[][]
-
-  /**
-   * Pass True if the table has borders
-   */
-  readonly is_bordered?: true | undefined
-
-  /**
-   * Pass True if the table is striped
-   */
-  readonly is_striped?: true | undefined
-
-  /**
-   * Pass True if table cells must have smaller indents
-   */
-  readonly is_compact?: true | undefined
+  readonly cells: InputRichBlockTableCell[][]
 
   /**
    * Caption of the table
    */
-  readonly caption?: RichText | undefined
+  readonly caption?: InputRichText | undefined
+
+  /**
+   * Pass True if the table has borders
+   */
+  readonly is_bordered?: boolean | undefined
+
+  /**
+   * Pass True if the table is striped
+   */
+  readonly is_striped?: boolean | undefined
+
+  /**
+   * Pass True if table cells must have smaller indents
+   */
+  readonly is_compact?: boolean | undefined
 }
 
 /**
@@ -1781,14 +2396,14 @@ export interface InputRichBlockTable {
  */
 export interface InputRichBlockDetails {
   /**
-   * Type of the block, always “details”
+   * Type of the block, must be details
    */
   readonly type: string
 
   /**
    * Always shown summary of the block
    */
-  readonly summary: RichText
+  readonly summary: InputRichText
 
   /**
    * Content of the block
@@ -1798,7 +2413,7 @@ export interface InputRichBlockDetails {
   /**
    * Pass True if the content of the block is visible by default
    */
-  readonly is_open?: true | undefined
+  readonly is_open?: boolean | undefined
 }
 
 /**
@@ -1810,34 +2425,34 @@ export interface InputRichBlockDetails {
  */
 export interface InputRichBlockMap {
   /**
-   * Type of the block, always “map”
+   * Type of the block, must be map
    */
   readonly type: string
 
   /**
    * Location of the center of the map
    */
-  readonly location: Location
+  readonly location: InputLocation
 
   /**
-   * Map zoom level; 0-24
+   * Map zoom level, 0-24
    */
   readonly zoom?: number | undefined
 
   /**
-   * Map width; 0-10000
+   * Map width, 0-10000
    */
   readonly width?: number | undefined
 
   /**
-   * Map height; 0-10000
+   * Map height, 0-10000
    */
   readonly height?: number | undefined
 
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1848,18 +2463,18 @@ export interface InputRichBlockMap {
  */
 export interface InputRichBlockButtons {
   /**
-   * Type of the block, always “buttons”
+   * Type of the block, must be buttons
    */
   readonly type: string
 
   /**
-   * List of 1-8 buttons to send
+   * List of buttons to send, 1-8 elements
    */
-  readonly buttons: RichMessageButton[]
+  readonly buttons: InputRichMessageButton[]
 
   /**
-   * Horizontal alignment of the buttons. Currently, must be one of “left”,
-   * “center”, or “right”.
+   * Horizontal alignment of the buttons, must be one of "left", "center", or
+   * "right"
    */
   readonly align?: string | undefined
 }
@@ -1871,7 +2486,7 @@ export interface InputRichBlockButtons {
  */
 export interface InputRichBlockAnimation {
   /**
-   * Type of the block, always “animation”
+   * Type of the block, must be animation
    */
   readonly type: string
 
@@ -1883,7 +2498,7 @@ export interface InputRichBlockAnimation {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1893,7 +2508,7 @@ export interface InputRichBlockAnimation {
  */
 export interface InputRichBlockAudio {
   /**
-   * Type of the block, always “audio”
+   * Type of the block, must be audio
    */
   readonly type: string
 
@@ -1905,7 +2520,7 @@ export interface InputRichBlockAudio {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1916,7 +2531,7 @@ export interface InputRichBlockAudio {
  */
 export interface InputRichBlockDocument {
   /**
-   * Type of the block, always “document”
+   * Type of the block, must be document
    */
   readonly type: string
 
@@ -1928,7 +2543,7 @@ export interface InputRichBlockDocument {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1938,7 +2553,7 @@ export interface InputRichBlockDocument {
  */
 export interface InputRichBlockPhoto {
   /**
-   * Type of the block, always “photo”
+   * Type of the block, must be photo
    */
   readonly type: string
 
@@ -1950,7 +2565,7 @@ export interface InputRichBlockPhoto {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1960,7 +2575,7 @@ export interface InputRichBlockPhoto {
  */
 export interface InputRichBlockVideo {
   /**
-   * Type of the block, always “video”
+   * Type of the block, must be video
    */
   readonly type: string
 
@@ -1972,7 +2587,7 @@ export interface InputRichBlockVideo {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
@@ -1982,7 +2597,7 @@ export interface InputRichBlockVideo {
  */
 export interface InputRichBlockVoiceNote {
   /**
-   * Type of the block, always “voice_note”
+   * Type of the block, must be voice_note
    */
   readonly type: string
 
@@ -1994,20 +2609,21 @@ export interface InputRichBlockVoiceNote {
   /**
    * Caption of the block
    */
-  readonly caption?: RichBlockCaption | undefined
+  readonly caption?: InputRichBlockCaption | undefined
 }
 
 /**
- * A block with a “Thinking…” placeholder, corresponding to the custom HTML tag
- * <tg-thinking>. The block may be used only in sendRichMessageDraft, therefore
- * it can't be received in messages. See https://t.me/addemoji/AIActions for
- * examples of custom emoji that are recommended for usage in the block.
+ * A block with a "Thinking..." placeholder, corresponding to the custom HTML
+ * tag <tg-thinking>. The block may be used only in sendRichMessageDraft,
+ * therefore it can't be received in messages. See
+ * https://t.me/addemoji/AIActions for examples of custom emoji that are
+ * recommended for usage in the block.
  *
  * @see https://corefork.telegram.org/bots/api#inputrichblockthinking
  */
 export interface InputRichBlockThinking {
   /**
-   * Type of the block, always “thinking”
+   * Type of the block, must be thinking
    */
   readonly type: string
 
@@ -2015,5 +2631,5 @@ export interface InputRichBlockThinking {
    * Text of the block. See https://t.me/addemoji/AIActions for examples of
    * custom emoji that are recommended for usage in the block.
    */
-  readonly text: RichText
+  readonly text: InputRichText
 }
