@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The convenience layer, at the type level.
  *

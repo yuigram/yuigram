@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Inline mode
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { InlineQueryResult, InlineQueryResultsButton } from '../types/index.js'
 
@@ -11,20 +13,9 @@ import type { InlineQueryResult, InlineQueryResultsButton } from '../types/index
  */
 export interface AnswerInlineQueryParams {
   /**
-   * Unique identifier for the answered query
+   * Unique identifier for the answered query, must be a decimal integer
    */
   inline_query_id: string
-
-  /**
-   * A JSON-serialized Array of results for the inline query
-   */
-  results: InlineQueryResult[]
-
-  /**
-   * The maximum amount of time in seconds that the result of the inline query
-   * may be cached on the server. Defaults to 300.
-   */
-  cache_time?: number | undefined
 
   /**
    * Pass True if results may be cached on the server side only for the user that
@@ -34,10 +25,15 @@ export interface AnswerInlineQueryParams {
   is_personal?: boolean | undefined
 
   /**
+   * The maximum amount of time in seconds that the result of the inline query
+   * may be cached on the server. Defaults to 300.
+   */
+  cache_time?: number | undefined
+
+  /**
    * Pass the offset that a client should send in the next query with the same
    * text to receive more results. Pass an empty string if there are no more
-   * results or if you don't support pagination. Offset length can't exceed 64
-   * bytes.
+   * results or if you don't support pagination. Must be 0-64 bytes long.
    */
   next_offset?: string | undefined
 
@@ -46,4 +42,9 @@ export interface AnswerInlineQueryParams {
    * results
    */
   button?: InlineQueryResultsButton | undefined
+
+  /**
+   * A JSON-serialized Array of results for the inline query, at most 50 elements
+   */
+  results: InlineQueryResult[]
 }

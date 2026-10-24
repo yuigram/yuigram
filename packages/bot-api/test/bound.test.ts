@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The generated bound-method surface.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Session behaviour.
  *
@@ -205,6 +207,29 @@ describe('loading', () => {
 
     expect(await storage.get('1')).toEqual({ count: 1 })
     expect(await storage.get('2')).toEqual({ count: 2 })
+  })
+
+  it('keeps every digit of a 64-bit key', async () => {
+    // An account's peer identifiers are 64-bit. A key that passed through a
+    // number would round, and two users would share one session.
+    const storage = memory<Data>()
+    const mw = createSession<Ctx & { peer: bigint }, Data>({
+      storage,
+      key: (c) => c.peer,
+      initial: () => ({ count: 0 }),
+    })
+
+    await run(
+      [
+        mw,
+        (c) => {
+          c.session = { count: 7 }
+        },
+      ],
+      { ...ctx(1), peer: 9_007_199_254_740_993n },
+    )
+
+    expect(await storage.get('9007199254740993')).toEqual({ count: 7 })
   })
 })
 
@@ -488,5 +513,24 @@ describe('userChatKey', () => {
   it('still produces a key when only one is present', () => {
     expect(userChatKey({ kind: 'message', chat: { id: 1 } })).toBe('1:nosender')
     expect(userChatKey({ kind: 'message', sender: { id: 2 } })).toBe('nochat:2')
+  })
+
+  it('keeps an MTProto user and basic group of the same number apart, with every digit', () => {
+    const inPrivate = userChatKey({
+      kind: 'message',
+      chat: { kind: 'user', id: 5n },
+      sender: { kind: 'user', id: 5n },
+    })
+    const inGroup = userChatKey({
+      kind: 'message',
+      chat: { kind: 'chat', id: 5n },
+      sender: { kind: 'user', id: 5n },
+    })
+
+    expect(inPrivate).toBe('user:5:user:5')
+    expect(inGroup).toBe('chat:5:user:5')
+    expect(
+      userChatKey({ kind: 'message', chat: { kind: 'channel', id: 9_007_199_254_740_993n } }),
+    ).toBe('channel:9007199254740993:nosender')
   })
 })

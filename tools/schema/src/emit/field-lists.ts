@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Which fields a payload leaves optional.
  *

@@ -1,7 +1,7 @@
 # @yuigram/core
 
 [![npm](https://img.shields.io/npm/v/@yuigram/core.svg)](https://www.npmjs.com/package/@yuigram/core)
-[![licence](https://img.shields.io/npm/l/@yuigram/core.svg)](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[![licence](https://img.shields.io/npm/l/@yuigram/core.svg)](https://github.com/yuigram/yuigram/blob/master/LICENSE)
 
 The transport-agnostic core of [Yuigram](https://github.com/yuigram/yuigram): dispatch,
 middleware, filters, the context contract, sessions, storage, errors and logging.
@@ -20,4 +20,4 @@ Node.js 22 or newer. ESM only. Zero runtime dependencies.
 
 ## Licence
 
-[MIT](https://github.com/yuigram/yuigram/blob/main/LICENSE)
+[MIT](https://github.com/yuigram/yuigram/blob/master/LICENSE)

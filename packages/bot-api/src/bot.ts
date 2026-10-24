@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The Bot API client.
  *
@@ -21,14 +23,22 @@
  * works through the `yuigram` façade rather than only the internal package.
  */
 
+import { type ApiHook, createApi, type RawApi } from './api.js'
+import type { ParsedCommand } from './command.js'
 import {
   type AnyFilter,
   ContextExtender,
+  type CustomEvent,
+  createCustomEvent,
   createLogger,
   Dispatcher,
   type ErrorHandler,
+  type EventAddress,
+  type EventDefinition,
   type FilterMeta,
+  isEventDefinition,
   Lifecycle,
+  LifecycleError,
   type Logger,
   type Middleware,
   type MiddlewareHost,
@@ -36,9 +46,16 @@ import {
   type Plugin,
   PluginRegistry,
   type UseOptions,
-} from '@yuigram/core'
-import { type ApiHook, createApi, type RawApi } from './api.js'
-import type { ParsedCommand } from './command.js'
+  ValidationError,
+} from './core.js'
+import type { MethodDefaults } from './defaults.js'
+import {
+  collect,
+  type DownloadDeps,
+  type DownloadTarget,
+  fetchFileStream,
+  getFileUrl as fileUrlOf,
+} from './download.js'
 import {
   type AnyEventContext,
   type CallbackQueryContext,
@@ -49,11 +66,34 @@ import {
   type TextMessageContext,
 } from './events/index.js'
 import { ALL_UPDATE_TYPES, type BotEventKind, KIND_SUBSCRIPTIONS } from './generated/events.js'
+import type {
+  GetBusinessAccountGiftsParams,
+  GetChatGiftsParams,
+  GetUserGiftsParams,
+} from './generated/methods/index.js'
 import { type GeneratedRegistrations, REGISTRATIONS } from './generated/registrations.js'
-import type { Update, User } from './generated/types/index.js'
+import type {
+  Audio,
+  OwnedGift,
+  PhotoSize,
+  StarTransaction,
+  Update,
+  User,
+} from './generated/types/index.js'
 import type { HttpClient } from './http/client.js'
 import { fetchClient } from './http/fetch-client.js'
 import { normalizeUpdate } from './normalize.js'
+import {
+  businessGifts,
+  chatGifts,
+  type GiftFilters,
+  type PageOptions,
+  type Pages,
+  profileAudios,
+  profilePhotos,
+  starTransactions,
+  userGifts,
+} from './paginate.js'
 import { createPolling, type Polling } from './polling.js'
 import {
   type RegistrationTarget,
@@ -62,7 +102,16 @@ import {
   registerText,
 } from './registration.js'
 import { anyUpdate, isRouter, type Router, type RouterThisClientCanHost } from './router.js'
-import { createWebhookHandler, type WebhookHandler, type WebhookOptions } from './webhook/index.js'
+// Named directly rather than through the barrel beside it. The barrel also
+// re-exports the framework adapters, and a static edge to it makes every
+// program that imports a bot evaluate the express, fastify, Node and Fetch
+// glue — none of which is on this package's main entry point, and none of
+// which a program that never serves a webhook has any use for.
+import {
+  createWebhookHandler,
+  type WebhookHandler,
+  type WebhookOptions,
+} from './webhook/handler.js'
 
 /** Options accepted when building a client. */
 export interface BotOptions {
@@ -72,12 +121,26 @@ export interface BotOptions {
   readonly baseUrl?: string
   /** Whether `baseUrl` points at a local Bot API server. */
   readonly local?: boolean
+  /**
+   * Talk to Telegram's test environment rather than production, with a token
+   * from the test environment's BotFather. The same switch as an account's
+   * `testMode`. Ignored when `client` is given, which decides for itself.
+   */
+  readonly testMode?: boolean
   /** Name used in logs. */
   readonly name?: string
   /** Logger. Defaults to a console logger at `info`. */
   readonly log?: Logger
-  /** Merged into every API call. */
-  readonly defaults?: Readonly<Record<string, unknown>>
+  /**
+   * Parameters this bot's calls start from.
+   *
+   * `'*'` sets parameters for every method that takes them — `parse_mode`,
+   * `link_preview_options`, `disable_notification`, `protect_content`,
+   * `allow_paid_broadcast`, `message_effect_id`, `business_connection_id` — and
+   * a method's own key sets any of its parameters. What a call passes wins,
+   * including `false`, `null` and `undefined`.
+   */
+  readonly defaults?: MethodDefaults
   /**
    * Update kinds to subscribe to, or `'auto'` to derive them from the
    * registered handlers.
@@ -177,7 +240,13 @@ export class Bot<Ext = unknown> {
   readonly #plugins = new PluginRegistry<Bot<Ext>>()
   readonly #extender = new ContextExtender()
   readonly #lifecycle: Lifecycle
+  /** Installed by an application that holds this bot. See `surround`. */
+  #surrounding: Middleware<AnyEventContext & Ext> | undefined
+  /** Kinds of the application's own events, which are not subscribed to. */
+  readonly #customKinds = new Set<string>()
   readonly #options: BotOptions
+  /** What a download needs: this bot's API and the transport its calls go through. */
+  readonly #files: DownloadDeps
 
   #polling: Polling | undefined
   #pollOptions: PollOptions = {}
@@ -203,9 +272,10 @@ export class Bot<Ext = unknown> {
   /**
    * Build a client from a bot token.
    *
-   * The usual way in. The name says which credential is being used, which is
-   * what lets `Bot.fromMtproto` and `Account.fromSession` join it later without
-   * any of them growing a mode flag.
+   * The usual way in. The name says which credential is being used, as
+   * `Account.fromSession` and `Account.fromString` do, so no constructor grows a
+   * mode flag. A bot that signs in over MTProto is an `Account`:
+   * `account.signInAsBot(token)`.
    */
   static fromToken<Ext = unknown>(token: string, options: BotOptions = {}): Bot<Ext> {
     return new Bot<Ext>(token, options)
@@ -240,6 +310,7 @@ export class Bot<Ext = unknown> {
         token,
         ...(options.baseUrl === undefined ? {} : { baseUrl: options.baseUrl }),
         ...(options.local === undefined ? {} : { local: options.local }),
+        ...(options.testMode === undefined ? {} : { testMode: options.testMode }),
       })
 
     this.api = createApi({
@@ -250,6 +321,15 @@ export class Bot<Ext = unknown> {
       // `hook` can be called after construction.
       hooks: this.#hooks,
     })
+
+    // The transport is kept for files rather than rebuilt from the token, so a
+    // download goes where this bot's calls go — through a client it was given,
+    // or reading the paths a local Bot API server hands back.
+    this.#files = {
+      api: this.api,
+      client,
+      ...(options.local === undefined ? {} : { local: options.local }),
+    }
 
     this.#lifecycle = new Lifecycle({
       onStart: () => this.#startPolling(),
@@ -321,9 +401,67 @@ export class Bot<Ext = unknown> {
    */
   on<F extends FilterMeta>(match: F, handler: EventHandler<FilterContext<F> & Ext>): this
 
-  on(match: string | readonly string[] | AnyFilter, handler: EventHandler<never>): this {
+  /**
+   * Register a handler for an event the application raises with
+   * {@link Bot.emit}. The handler receives the payload it was emitted with.
+   */
+  on<P>(event: EventDefinition<P>, handler: EventHandler<CustomEvent<P> & Ext>): this
+
+  on(
+    match: string | readonly string[] | AnyFilter | EventDefinition<unknown>,
+    handler: EventHandler<never>,
+  ): this {
+    if (isEventDefinition(match)) {
+      this.#customKind(match)
+      this.#dispatcher.on(match.kind, handler as never)
+      return this
+    }
     this.#dispatcher.on(match, handler as never)
     return this
+  }
+
+  /**
+   * Raise an event of the application's own, and run this bot's middleware
+   * and handlers for it.
+   *
+   * Dispatched as an update is — plugins installed first, the same
+   * middleware, the same error handling, and tracked so that `stop()` waits
+   * for it — but it is not one: it has no update identifier and moves no
+   * polling offset. `address` names who it concerns, so a session keyed by
+   * chat and sender loads for it. Resolves once the handlers have run; an
+   * error in them goes where a handler's error for an update would.
+   */
+  async emit<P>(event: EventDefinition<P>, payload: P, address?: EventAddress): Promise<void> {
+    this.#customKind(event)
+    const work = this.#emit(event, payload, address)
+    this.#lifecycle.track(work)
+    await work
+  }
+
+  async #emit<P>(event: EventDefinition<P>, payload: P, address?: EventAddress): Promise<void> {
+    if (this.#plugins.pending > 0) await this.#installPlugins()
+
+    const context = this.#extender.apply(
+      createCustomEvent(event, payload, { client: this, log: this.#log }, address) as object,
+    ) as AnyEventContext & Ext
+
+    if (this.#surrounding === undefined) {
+      await this.#dispatcher.dispatch(context)
+      return
+    }
+    await this.#surrounding(context, async () => {
+      await this.#dispatcher.dispatch(context)
+    })
+  }
+
+  /** Accept an event kind of the application's, refusing one Telegram also sends. */
+  #customKind(event: EventDefinition<unknown>): void {
+    if (Object.hasOwn(KIND_SUBSCRIPTIONS, event.kind)) {
+      throw new ValidationError(
+        `'${event.kind}' is a kind of update Telegram sends; name an application's event something else`,
+      )
+    }
+    this.#customKinds.add(event.kind)
   }
 
   /** Register a handler that runs once, then removes itself. */
@@ -500,11 +638,127 @@ export class Bot<Ext = unknown> {
       createEventContext({
         normalized,
         api: this.api,
+        client: this,
         log: this.#log,
+        files: this.#files,
       }) as object,
     ) as AnyEventContext & Ext
 
-    await this.#dispatcher.dispatch(context)
+    if (this.#surrounding === undefined) {
+      await this.#dispatcher.dispatch(context)
+
+      return
+    }
+
+    // Outside the dispatcher entirely, so what an application installs
+    // surrounds this client's own middleware rather than sorting into it.
+    await this.#surrounding(context, async () => {
+      await this.#dispatcher.dispatch(context)
+    })
+  }
+
+  /**
+   * A user's profile photos, newest first, each as the sizes it comes in.
+   *
+   * Read a page at a time as the loop asks: `limit` stops after that many,
+   * `pageSize` is how many to ask for at once, `signal` stops the walk.
+   * `.collect()` reads the rest, with the total Telegram gave.
+   */
+  profilePhotos(
+    userId: number,
+    options?: PageOptions & { readonly offset?: number },
+  ): Pages<readonly PhotoSize[]> {
+    return profilePhotos(this.api, userId, options)
+  }
+
+  /** A user's profile audios, read a page at a time. */
+  profileAudios(
+    userId: number,
+    options?: PageOptions & { readonly offset?: number },
+  ): Pages<Audio> {
+    return profileAudios(this.api, userId, options)
+  }
+
+  /** This bot's star transactions, newest first, read a page at a time. */
+  starTransactions(options?: PageOptions & { readonly offset?: number }): Pages<StarTransaction> {
+    return starTransactions(this.api, options)
+  }
+
+  /** The gifts a user displays, read a page at a time, filtered as `getUserGifts` filters. */
+  userGifts(
+    userId: number,
+    options?: PageOptions & { readonly cursor?: string } & GiftFilters<GetUserGiftsParams>,
+  ): Pages<OwnedGift> {
+    return userGifts(this.api, userId, options)
+  }
+
+  /** The gifts a chat has received, read a page at a time. */
+  chatGifts(
+    chatId: number | string,
+    options?: PageOptions & { readonly cursor?: string } & GiftFilters<GetChatGiftsParams>,
+  ): Pages<OwnedGift> {
+    return chatGifts(this.api, chatId, options)
+  }
+
+  /** The gifts a connected business account has received, read a page at a time. */
+  businessGifts(
+    businessConnectionId: string,
+    options?: PageOptions & {
+      readonly cursor?: string
+    } & GiftFilters<GetBusinessAccountGiftsParams>,
+  ): Pages<OwnedGift> {
+    return businessGifts(this.api, businessConnectionId, options)
+  }
+
+  /**
+   * Fetch a file this bot can name, through this bot's own transport.
+   *
+   * ```ts
+   * const bytes = await bot.download(message.photo)   // the largest size
+   * ```
+   *
+   * The target is anything that carries a `file_id` — a bare identifier, a
+   * `Document`, a `File` from `getFile` (which saves a round trip), or a photo's
+   * size list, of which the largest is taken.
+   *
+   * Over the transport only. Writing to a path, and reading a local Bot API
+   * server's files — paths on its disk — need a filesystem, which a bot bundled
+   * for a worker or a page does not have; the functions take them, given
+   * {@link Bot.files}:
+   *
+   * ```ts
+   * await downloadToFile(bot.files, './report.pdf', message.document)
+   * ```
+   */
+  async download(target: DownloadTarget): Promise<Uint8Array> {
+    return await collect(await this.downloadStream(target))
+  }
+
+  /** Open a file as a stream of bytes, without holding all of it at once. */
+  async downloadStream(target: DownloadTarget): Promise<ReadableStream<Uint8Array>> {
+    return await fetchFileStream(this.#files, target)
+  }
+
+  /**
+   * What the download functions need from this bot: its API and the transport
+   * it was built with, including whether that is a local Bot API server.
+   *
+   * For `download`, `downloadStream`, `downloadToFile` and `getFileUrl`, so a
+   * download goes where this bot's calls go without rebuilding the transport.
+   */
+  get files(): DownloadDeps {
+    return this.#files
+  }
+
+  /**
+   * Where a file can be fetched from.
+   *
+   * **The URL contains this bot's token**, because Telegram's file endpoint
+   * requires it: treat it as the credential it is. Do not log it, and do not
+   * hand it to anyone who should not be able to act as this bot.
+   */
+  async getFileUrl(target: DownloadTarget): Promise<string> {
+    return await fileUrlOf(this.#files, target)
   }
 
   /**
@@ -568,6 +822,32 @@ export class Bot<Ext = unknown> {
         this.#lifecycle.track(work)
       },
     })
+  }
+
+  /**
+   * Bring the bot up by the mechanism it was configured for.
+   *
+   * Polling, which is the mechanism a bot that is asked to start rather than
+   * mounted is running. A webhook deployment is handed to a server instead and
+   * never asks anything to start, so it does not come through here.
+   */
+  async start(): Promise<void> {
+    await this.poll()
+  }
+
+  /**
+   * Put middleware around everything this bot dispatches.
+   *
+   * How an application reaches outside a client. Installed once: a bot already
+   * held by one application being added to another has two owners, and the
+   * second would silently replace the first's middleware.
+   */
+  surround(middleware: Middleware<AnyEventContext & Ext>): void {
+    if (this.#surrounding !== undefined) {
+      throw new LifecycleError(`the bot '${this.name}' is already held by an application`)
+    }
+
+    this.#surrounding = middleware
   }
 
   /**
@@ -679,6 +959,9 @@ export class Bot<Ext = unknown> {
     const fields = new Set<string>()
 
     for (const kind of coverage.kinds) {
+      // Raised by the application, never sent by Telegram: nothing to ask for.
+      if (this.#customKinds.has(kind)) continue
+
       const subscription = KIND_SUBSCRIPTIONS[kind]
 
       if (subscription === undefined) {

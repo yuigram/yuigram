@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The Bot client, end to end.
  *

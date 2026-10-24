@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Structural redaction of secrets.
  *

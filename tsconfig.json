@@ -15,10 +15,25 @@
       "path": "packages/yuigram"
     },
     {
+      "path": "packages/sqlite"
+    },
+    {
+      "path": "packages/redis"
+    },
+    {
+      "path": "tools/bench"
+    },
+    {
+      "path": "tools/live"
+    },
+    {
       "path": "tools/invariants"
     },
     {
       "path": "tools/schema"
+    },
+    {
+      "path": "tools/tl"
     },
     {
       "path": "examples"

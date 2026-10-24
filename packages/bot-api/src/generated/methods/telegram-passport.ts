@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Telegram Passport
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { PassportElementError } from '../types/index.js'
 
@@ -11,7 +13,7 @@ import type { PassportElementError } from '../types/index.js'
  */
 export interface SetPassportDataErrorsParams {
   /**
-   * User identifier
+   * User identifier, at least 1
    */
   user_id: number
 

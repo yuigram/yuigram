@@ -6,8 +6,7 @@ The recommendation is **not one of the three proposals unchanged**. Proposal A i
 because it reads best and is the most predictable, but two of its weaknesses — client surface
 size and rigidity — are solved by borrowing from B and C rather than accepting them.
 
-Every decision below is marked **Decided** where the reasoning is conclusive, or **Needs your
-approval** where it is a genuine judgement call that changes what the framework feels like.
+Each decision below is marked **Decided** and carries the reasoning that settled it.
 
 ---
 
@@ -115,6 +114,10 @@ method, not a new shape.
 
 **Status: Decided.** `Account` was already settled in `naming.md`; this extends the same
 reasoning to construction.
+
+**Superseded in part.** A bot signed in over MTProto became an `Account` —
+`account.signInAsBot(token)` — rather than a second kind of `Bot`: what it can call is MTProto's
+surface, not the Bot API's ([api-design.md](api-design.md) §1). `Bot.fromMtproto` does not exist.
 
 ---
 
@@ -364,7 +367,11 @@ the client's own method surface, so there is one source of truth as in mtcute. W
 does — and what having two transports requires — is state the rule as something a generator
 enforces rather than a convention a maintainer follows.
 
-**Status: Decided**, and implemented for the Bot API subsystem.
+**Status: Decided**, and implemented for both subsystems. On MTProto the context surface is
+`event.here`, nested because TL names its methods inside namespaces, and it carries exactly the
+methods the schema addresses by `peer`. The peer comes from what the account wrote down when the
+update arrived, so a bound call reaches no network to find one; naming anybody else stays on
+`Account.resolve`.
 
 ---
 
@@ -393,7 +400,91 @@ and different resolvers, not a different design.
 is less readable than an emitted signature. Accepted: the parameter documentation still comes
 through from the generated `XParams` interface, which is where a developer actually reads it.
 
-**Status: Decided**, and implemented.
+**Status: Decided**, and implemented for both subsystems. The MTProto surface takes the same
+approach a step further: there is no emitted table at all, because the classification the Bot
+API's table encodes — which parameters the context supplies — is already visible in the
+generated method signatures. A method that names a `peer` is bound; one that does not is absent
+from the surface rather than present and certain to fail. One mapping over the generated
+methods, and nothing generated per method.
+
+---
+
+## Decision 13 — An upload source is one interface, not a union of inputs
+
+**Problem.** [mtproto-plan.md](mtproto-plan.md) §3.9 promises `account.upload()` "and the
+source model", and names nothing else about it. The transfer layer has always had an internal
+notion of where bytes come from; what a caller passes was never settled. Nothing can be
+implemented until it is, because every remaining question — whether a size is required, whether
+a source may be read twice, who owns the filename — is a question about that type.
+
+**Alternatives.**
+
+1. Accept the Bot API's `media` sources. They are the sources this project already has, and
+   §13 of [api-design.md](api-design.md) reads as though they were meant to be shared.
+2. Accept a union of byte-ish things — `Uint8Array`, a stream, an async iterable — the way the
+   Bot API's `isInputFile` does.
+3. Accept one structural interface: something that knows its length, if it has one, and can be
+   read at an offset.
+
+**Decision.** Option 3.
+
+```ts
+interface UploadSource {
+  readonly size?: number
+  read(offset: number, length: number): Promise<Uint8Array>
+}
+```
+
+**Reasoning.** Option 1 is not available: `media` lives in `@yuigram/bot-api`, and the
+`layer-boundaries` invariant forbids the MTProto subsystem from importing it. Making it
+available means moving the source model into `core`, which is an architectural change to a
+released package in service of a feature that does not exist yet — sending media through an
+account. That change may well be right later; it is not this.
+
+Option 2 is the one to be careful about, because it is familiar. The Bot API accepts a union
+because its transport sends one multipart body and can stream anything into it. MTProto sends
+*numbered parts*, and when the length is known it sends several at once — which requires
+reading at an arbitrary offset, something a stream cannot do. A union would therefore accept
+inputs that silently lose parallelism, or would have to buffer them to restore it. Accepting
+what the transport can actually use, and letting the caller adapt, keeps that visible.
+
+The interface also happens to encode the distinction the protocol already draws, which is why
+it needs no second flag: a source that reports a size can be read at any offset, so its parts
+go out together; a source that does not is read in order, which is what discovering the end
+consists of. [mtproto.md](mtproto.md) §11 requires exactly that split.
+
+**Trade-offs.** The commonest case — bytes already in memory — costs the caller two lines
+rather than none:
+
+```ts
+const source = { size: bytes.length, read: async (at, n) => bytes.subarray(at, at + n) }
+```
+
+Accepted. A convenience that produces sources belongs with the `media` namespace whenever that
+moves somewhere both transports can reach, and adding one to `Account` first would put the same
+concept in two places.
+
+**Settled with it**, because implementation needs each and nothing else does:
+
+- **Lifetime.** The source belongs to the caller. Nothing retains it after the call, and it
+  holds no reference to the account.
+- **Consumption.** Each part is read once. A source with a size may be read at any offset and
+  in any order; one without is read at ascending, contiguous offsets, so a one-shot stream can
+  ignore the offset it is given.
+- **Filename.** Optional, and a hint Telegram records rather than a path. Nothing derives it,
+  and nothing on this path touches a filesystem.
+- **Destination.** The account's own datacenter. A caller does not choose one: uploads have no
+  equivalent of the datacenter a download's location names, and the connection pools already
+  default to the datacenter the client belongs to.
+- **Result.** What the transfer layer returns — the reference that names the uploaded file,
+  with the identifier, part count, size and datacenter it came to. Reshaping it here would put
+  a second vocabulary between the caller and the method the reference is for.
+- **Cancellation.** An `AbortSignal`, which the transfer already honours between parts.
+
+**Left unspecified deliberately.** Progress reporting: the transfer layer has no notion of it,
+and inventing one would be designing an API rather than exposing a contract.
+
+**Status: Decided.**
 
 ---
 
@@ -411,7 +502,7 @@ bot.onError((error, event) => event.log.error('handler failed', { error }))
 await bot.poll()
 ```
 
-Against the test from the review — *can a first-time reader tell what kind of client this is,
+Against the readability test — *can a first-time reader tell what kind of client this is,
 how it authenticated, what it listens to, and how it is running?*
 
 - **What kind of client**: `Bot` ✓
@@ -440,9 +531,10 @@ A named factory for the common case, a plain constructor for full configuration.
 other.
 
 **Applied to Yuigram:** `Bot.fromToken(token)` is the documented path; `new Bot({ … })` stays
-for the case where every option is being set. `Bot.fromMtproto` and `Account.fromSession` join
-the factory set, which is where Yuigram's three client kinds are expressed and where the
-reference has nothing to say — it implements one transport.
+for the case where every option is being set. `Account.fromSession` and `Account.fromString`
+join the factory set, which is where Yuigram's client kinds are expressed and where the
+reference has nothing to say — it implements one transport. (The MTProto bot planned here as
+`Bot.fromMtproto` became `account.signInAsBot`; see Decision 3.)
 
 **Decision 2 closed:** static factories, plus a constructor.
 
@@ -466,7 +558,7 @@ The shared message object exposes **435 members** — `reply`, `send`, `edit`, `
 (`banChatMember`, `setChatTitle`, `promoteChatMember`), around 120 `hasX` predicates and a set
 of `isPrivate` / `isGroup` / `isReply` shape tests. The file is generated: 9,302 lines.
 
-**This overturns my earlier recommendation.** §6 argued for wrapping a modest set on the grounds
+**This overturns the position in §6.** That section argued for wrapping a modest set on the grounds
 that every wrapper is a maintenance commitment for years. That argument assumed the wrappers
 were hand-written. Generated from the same schema that already produces the method surface, the
 marginal cost of the two-hundredth wrapper is zero, and the reasoning against breadth
@@ -510,58 +602,37 @@ problem, answered by the capability matrix in `unified-model.md` and by §10 abo
 
 ---
 
-## Previously open, now closed
-
-All three questions are answered above:
+## The three structural questions
 
 | Question | Answer | Basis |
 |---|---|---|
 | Break the API now? | **Yes** | Reasoning below; nothing in the reference argues otherwise |
 | Factories or functions? | **Static factories, plus a constructor** | Evidence 1 |
-| How far to wrap? | **Broadly, by generation** | Evidence 3 — reverses the earlier recommendation |
+| How far to wrap? | **Broadly, by generation** | Evidence 3 |
 
 ### On breaking now
 
-`0.1.0` was published hours before this review. The two critical defects are structural, there
+`0.1.0` is newly published. The two critical defects are structural, there
 are no dependents, and the cost of a breaking change is at its historic minimum — it only rises.
 A compatibility shim for an API with no users is pure cost. The alternative is freezing
 `ctx.text ?? ''` into every example on the front page, permanently.
 
 ---
 
-## Superseded
+## Positions the evidence overturned
 
-Three questions were left open in the first draft of this document, with recommendations
-attached. All three are now closed above, and one recommendation was reversed.
+Two of the three questions had an obvious answer that the working reference contradicted.
 
-| Question | First recommendation | Final decision | Why it changed |
+| Question | Obvious answer | Decision | Why it differs |
 |---|---|---|---|
-| A. Break the API now? | Yes | **Yes** | Unchanged |
+| A. Break the API now? | Yes | **Yes** | No difference |
 | B. Factories or functions? | Static factories | **Static factories, plus a constructor** | A working reference keeps both: a factory for the common case, a constructor for full configuration |
-| C. How far to wrap the domain? | Narrowly — reply, edit, delete, forward, react, pin | **Broadly, by generation** | **Reversed.** The argument for restraint was that each wrapper is a hand-maintained commitment. Generated from the schema, that cost is zero, and the argument goes with it |
+| C. How far to wrap the domain? | Narrowly — reply, edit, delete, forward, react, pin | **Broadly, by generation** | The argument for restraint is that each wrapper is a hand-maintained commitment. Generated from the schema, that cost is zero, and the argument goes with it |
 
-Recording C explicitly because the reversal matters: the original reasoning was sound *given its
-premise*, and the premise was wrong. "Every wrapper is a liability" holds for wrappers someone
-has to write and keep writing. It does not hold for wrappers emitted from the same schema that
-already produces the method surface, and which regenerate the day Telegram changes something.
+C is worth recording explicitly, because the restraint argument is sound *given its premise* and
+the premise does not hold here. "Every wrapper is a liability" is true of wrappers someone has
+to write and keep writing. It is not true of wrappers emitted from the same schema that already
+produces the method surface, and which regenerate the day Telegram changes something.
 
-The lesson generalises beyond this decision. Several of the constraints that felt binding during
-the first design pass were assumptions about what is expensive, not facts about what is
-possible.
-
----
-
-## What happens after approval
-
-Nothing is implemented yet, and nothing should be until A is answered. If you approve, the
-sequence is:
-
-1. Freeze this API on paper — worked examples for all three client kinds
-2. Type-level prototype: context types and `on()` narrowing, compiled but not wired
-3. Rewrite `Bot` against it; keep dispatch, filters, sessions, storage and errors as they are
-4. Regenerate context types from the schema
-5. Update examples, README and docs
-6. Publish `0.2.0` with a migration note
-
-Steps 1 and 2 are where the design is genuinely validated — if the types do not come out clean,
-the API is wrong and it is cheap to find out there.
+That generalises past this one decision: several constraints that read as binding are
+assumptions about what is expensive rather than facts about what is possible.

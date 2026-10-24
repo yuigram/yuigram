@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * 01 — A basic bot.
  *

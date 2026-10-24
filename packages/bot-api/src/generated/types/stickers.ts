@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Stickers
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { File, PhotoSize } from './available-types.js'
 
@@ -11,24 +13,6 @@ import type { File, PhotoSize } from './available-types.js'
  */
 export interface Sticker {
   /**
-   * Identifier for this file, which can be used to download or reuse the file
-   */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
-
-  /**
-   * Type of the sticker, currently one of “regular”, “mask”, “custom_emoji”. The
-   * type of the sticker is independent from its format, which is determined by
-   * the fields is_animated and is_video.
-   */
-  readonly type: string
-
-  /**
    * Sticker width
    */
   readonly width: number
@@ -37,6 +21,16 @@ export interface Sticker {
    * Sticker height
    */
   readonly height: number
+
+  /**
+   * Emoji associated with the sticker
+   */
+  readonly emoji?: string | undefined
+
+  /**
+   * Name of the sticker set to which the sticker belongs
+   */
+  readonly set_name?: string | undefined
 
   /**
    * True, if the sticker is animated
@@ -49,19 +43,11 @@ export interface Sticker {
   readonly is_video: boolean
 
   /**
-   * Sticker thumbnail in the .WEBP or .JPG format
+   * Type of the sticker, currently can be "regular", "mask", or "custom_emoji".
+   * The type of the sticker is independent from its format, which is determined
+   * by the fields is_animated and is_video.
    */
-  readonly thumbnail?: PhotoSize | undefined
-
-  /**
-   * Emoji associated with the sticker
-   */
-  readonly emoji?: string | undefined
-
-  /**
-   * Name of the sticker set to which the sticker belongs
-   */
-  readonly set_name?: string | undefined
+  readonly type: string
 
   /**
    * For premium regular stickers, premium animation for the sticker
@@ -86,7 +72,26 @@ export interface Sticker {
   readonly needs_repainting?: true | undefined
 
   /**
-   * File size in bytes
+   * Sticker thumbnail in the .WEBP or .JPG format
+   */
+  readonly thumbnail?: PhotoSize | undefined
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
+
+  /**
+   * File size in bytes. It can be bigger than 2^31 and some programming
+   * languages may have difficulty/silent defects in interpreting it. But it has
+   * at most 52 significant bits, so a signed 64-bit integer or double-precision
+   * float type are safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -108,8 +113,13 @@ export interface StickerSet {
   readonly title: string
 
   /**
-   * Type of stickers in the set, currently one of “regular”, “mask”,
-   * “custom_emoji”
+   * Sticker set thumbnail in the .WEBP, .TGS, or .WEBM format
+   */
+  readonly thumbnail?: PhotoSize | undefined
+
+  /**
+   * Type of stickers in the set, currently can be "regular", "mask", or
+   * "custom_emoji"
    */
   readonly sticker_type: string
 
@@ -117,11 +127,6 @@ export interface StickerSet {
    * List of all set stickers
    */
   readonly stickers: Sticker[]
-
-  /**
-   * Sticker set thumbnail in the .WEBP, .TGS, or .WEBM format
-   */
-  readonly thumbnail?: PhotoSize | undefined
 }
 
 /**
@@ -132,8 +137,8 @@ export interface StickerSet {
  */
 export interface MaskPosition {
   /**
-   * The part of the face relative to which the mask should be placed. One of
-   * “forehead”, “eyes”, “mouth”, or “chin”.
+   * The part of the face relative to which the mask should be placed. Currently,
+   * can be "forehead", "eyes", "mouth", or "chin".
    */
   readonly point: string
 
@@ -166,32 +171,33 @@ export interface InputSticker {
   /**
    * The added sticker. Pass a file_id as a String to send a file that already
    * exists on the Telegram servers, pass an HTTP URL as a String for Telegram to
-   * get a file from the Internet, or pass “attach://<file_attach_name>” to
+   * get a file from the Internet, or pass "attach://<file_attach_name>" to
    * upload a new file using multipart/form-data under <file_attach_name> name.
    * Animated and video stickers can't be uploaded via HTTP URL. More information
-   * on Sending Files »
+   * on Sending Files ». Must be non-empty.
    */
   readonly sticker: string
 
   /**
-   * Format of the added sticker, must be one of “static” for a .WEBP or .PNG
-   * image, “animated” for a .TGS animation, “video” for a .WEBM video
+   * Format of the added sticker, must be one of "static" for a .WEBP or .PNG
+   * image, "animated" for a .TGS animation, "video" for a .WEBM video
    */
   readonly format: string
 
   /**
-   * List of 1-20 emoji associated with the sticker
+   * List of emoji associated with the sticker, 1-20 elements
    */
   readonly emoji_list: string[]
 
   /**
-   * Position where the mask should be placed on faces. For “mask” stickers only.
+   * Position where the mask should be placed on faces. For "mask" stickers only.
    */
   readonly mask_position?: MaskPosition | undefined
 
   /**
-   * List of 0-20 search keywords for the sticker with total length of up to 64
-   * characters. For “regular” and “custom_emoji” stickers only.
+   * List of search keywords for the sticker with total length of up to 64
+   * characters, at most 20 elements. For "regular" and "custom_emoji" stickers
+   * only.
    */
   readonly keywords?: string[] | undefined
 }

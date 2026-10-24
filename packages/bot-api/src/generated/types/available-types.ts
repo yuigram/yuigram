@@ -1,6 +1,8 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Available types
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallbackGame, Game } from './games.js'
 import type { Invoice, RefundedPayment, SuccessfulPayment } from './payments.js'
@@ -69,15 +71,15 @@ export interface User {
   readonly can_read_all_group_messages?: boolean | undefined
 
   /**
+   * True, if the bot supports inline queries. Returned only in getMe.
+   */
+  readonly supports_inline_queries?: boolean | undefined
+
+  /**
    * True, if the bot supports guest queries from chats it is not a member of.
    * Returned only in getMe.
    */
   readonly supports_guest_queries?: boolean | undefined
-
-  /**
-   * True, if the bot supports inline queries. Returned only in getMe.
-   */
-  readonly supports_inline_queries?: boolean | undefined
 
   /**
    * True, if the bot can be connected to a user account to manage it. Returned
@@ -131,22 +133,6 @@ export interface Chat {
   readonly id: number
 
   /**
-   * Type of the chat, can be either “private”, “group”, “supergroup” or
-   * “channel”
-   */
-  readonly type: string
-
-  /**
-   * Title, for supergroups, channels and group chats
-   */
-  readonly title?: string | undefined
-
-  /**
-   * Username, for private chats, supergroups and channels if available
-   */
-  readonly username?: string | undefined
-
-  /**
    * First name of the other party in a private chat
    */
   readonly first_name?: string | undefined
@@ -155,6 +141,22 @@ export interface Chat {
    * Last name of the other party in a private chat
    */
   readonly last_name?: string | undefined
+
+  /**
+   * Username, for private chats, supergroups and channels if available
+   */
+  readonly username?: string | undefined
+
+  /**
+   * Type of the chat, currently can be "private", "group", "supergroup", or
+   * "channel"
+   */
+  readonly type: string
+
+  /**
+   * Title, for supergroups, channels and group chats
+   */
+  readonly title?: string | undefined
 
   /**
    * True, if the supergroup chat is a forum (has topics enabled)
@@ -183,22 +185,6 @@ export interface ChatFullInfo {
   readonly id: number
 
   /**
-   * Type of the chat, can be either “private”, “group”, “supergroup” or
-   * “channel”
-   */
-  readonly type: string
-
-  /**
-   * Title, for supergroups, channels and group chats
-   */
-  readonly title?: string | undefined
-
-  /**
-   * Username, for private chats, supergroups and channels if available
-   */
-  readonly username?: string | undefined
-
-  /**
    * First name of the other party in a private chat
    */
   readonly first_name?: string | undefined
@@ -207,6 +193,22 @@ export interface ChatFullInfo {
    * Last name of the other party in a private chat
    */
   readonly last_name?: string | undefined
+
+  /**
+   * Username, for private chats, supergroups and channels if available
+   */
+  readonly username?: string | undefined
+
+  /**
+   * Type of the chat, currently can be "private", "group", "supergroup", or
+   * "channel"
+   */
+  readonly type: string
+
+  /**
+   * Title, for supergroups, channels and group chats
+   */
+  readonly title?: string | undefined
 
   /**
    * True, if the supergroup chat is a forum (has topics enabled)
@@ -219,93 +221,10 @@ export interface ChatFullInfo {
   readonly is_direct_messages?: true | undefined
 
   /**
-   * Identifier of the accent color for the chat name and backgrounds of the chat
-   * photo, reply header, and link preview. See accent colors for more details.
-   */
-  readonly accent_color_id: number
-
-  /**
-   * The maximum number of reactions that can be set on a message in the chat
-   */
-  readonly max_reaction_count: number
-
-  /**
-   * Chat photo
-   */
-  readonly photo?: ChatPhoto | undefined
-
-  /**
    * If non-empty, the list of all active chat usernames; for private chats,
    * supergroups and channels
    */
   readonly active_usernames?: string[] | undefined
-
-  /**
-   * For private chats, the date of birth of the user
-   */
-  readonly birthdate?: Birthdate | undefined
-
-  /**
-   * For private chats with business accounts, the intro of the business
-   */
-  readonly business_intro?: BusinessIntro | undefined
-
-  /**
-   * For private chats with business accounts, the location of the business
-   */
-  readonly business_location?: BusinessLocation | undefined
-
-  /**
-   * For private chats with business accounts, the opening hours of the business
-   */
-  readonly business_opening_hours?: BusinessOpeningHours | undefined
-
-  /**
-   * For private chats, the personal channel of the user
-   */
-  readonly personal_chat?: Chat | undefined
-
-  /**
-   * Information about the corresponding channel chat; for direct messages chats
-   * only
-   */
-  readonly parent_chat?: Chat | undefined
-
-  /**
-   * List of available reactions allowed in the chat. If omitted, then all emoji
-   * reactions are allowed.
-   */
-  readonly available_reactions?: ReactionType[] | undefined
-
-  /**
-   * Custom emoji identifier of the emoji chosen by the chat for the reply header
-   * and link preview background
-   */
-  readonly background_custom_emoji_id?: string | undefined
-
-  /**
-   * Identifier of the accent color for the chat's profile background. See
-   * profile accent colors for more details.
-   */
-  readonly profile_accent_color_id?: number | undefined
-
-  /**
-   * Custom emoji identifier of the emoji chosen by the chat for its profile
-   * background
-   */
-  readonly profile_background_custom_emoji_id?: string | undefined
-
-  /**
-   * Custom emoji identifier of the emoji status of the chat or the other party
-   * in a private chat
-   */
-  readonly emoji_status_custom_emoji_id?: string | undefined
-
-  /**
-   * Expiration date of the emoji status of the chat or the other party in a
-   * private chat, in Unix time, if any
-   */
-  readonly emoji_status_expiration_date?: number | undefined
 
   /**
    * Bio of the other party in a private chat
@@ -325,15 +244,56 @@ export interface ChatFullInfo {
   readonly has_restricted_voice_and_video_messages?: true | undefined
 
   /**
-   * True, if users need to join the supergroup before they can send messages
+   * For private chats with business accounts, the intro of the business
    */
-  readonly join_to_send_messages?: true | undefined
+  readonly business_intro?: BusinessIntro | undefined
 
   /**
-   * True, if all users directly joining the supergroup without using an invite
-   * link need to be approved by supergroup administrators
+   * For private chats with business accounts, the location of the business
    */
-  readonly join_by_request?: true | undefined
+  readonly business_location?: BusinessLocation | undefined
+
+  /**
+   * For private chats with business accounts, the opening hours of the business
+   */
+  readonly business_opening_hours?: BusinessOpeningHours | undefined
+
+  /**
+   * Information about types of gifts that are accepted by the chat or by the
+   * corresponding user for private chats
+   */
+  readonly accepted_gift_types: AcceptedGiftTypes | SupergroupAcceptedGiftTypes
+
+  /**
+   * For private chats, the date of birth of the user
+   */
+  readonly birthdate?: Birthdate | undefined
+
+  /**
+   * For private chats, the personal channel of the user
+   */
+  readonly personal_chat?: Chat | undefined
+
+  /**
+   * The Community to which the chat belongs
+   */
+  readonly community?: Community | undefined
+
+  /**
+   * For private chats, the rating of the user if any
+   */
+  readonly rating?: UserRating | undefined
+
+  /**
+   * For private chats, the first audio added to the profile of the user
+   */
+  readonly first_profile_audio?: Audio | undefined
+
+  /**
+   * The number of Telegram Stars a general user has to pay to send a message to
+   * the chat
+   */
+  readonly paid_message_star_count?: number | undefined
 
   /**
    * Description, for groups, supergroups and channel chats
@@ -346,26 +306,54 @@ export interface ChatFullInfo {
   readonly invite_link?: string | undefined
 
   /**
-   * The most recent pinned message (by sending date)
-   */
-  readonly pinned_message?: Message | undefined
-
-  /**
    * Default chat member permissions, for groups and supergroups
    */
   readonly permissions?: ChatPermissions | undefined
 
   /**
-   * Information about types of gifts that are accepted by the chat or by the
-   * corresponding user for private chats
+   * For supergroups, name of the group sticker set
    */
-  readonly accepted_gift_types: AcceptedGiftTypes
+  readonly sticker_set_name?: string | undefined
 
   /**
-   * True, if paid media messages can be sent or forwarded to the channel chat.
-   * The field is available only for channel chats.
+   * For supergroups, the name of the group's custom emoji sticker set. Custom
+   * emoji from this set can be used by all users and bots in the group.
    */
-  readonly can_send_paid_media?: true | undefined
+  readonly custom_emoji_sticker_set_name?: string | undefined
+
+  /**
+   * True, if the bot can change the group sticker set
+   */
+  readonly can_set_sticker_set?: true | undefined
+
+  /**
+   * True, if new chat members will have access to old messages; available only
+   * to chat administrators
+   */
+  readonly has_visible_history?: true | undefined
+
+  /**
+   * True, if users need to join the supergroup before they can send messages
+   */
+  readonly join_to_send_messages?: true | undefined
+
+  /**
+   * True, if all users directly joining the supergroup without using an invite
+   * link need to be approved by supergroup administrators
+   */
+  readonly join_by_request?: true | undefined
+
+  /**
+   * True, if non-administrators can only get the list of bots and administrators
+   * in the chat
+   */
+  readonly has_hidden_members?: true | undefined
+
+  /**
+   * True, if aggressive anti-spam checks are enabled in the supergroup. The
+   * field is only available to chat administrators.
+   */
+  readonly has_aggressive_anti_spam_enabled?: true | undefined
 
   /**
    * For supergroups, the minimum allowed delay between consecutive messages sent
@@ -380,51 +368,6 @@ export interface ChatFullInfo {
   readonly unrestrict_boost_count?: number | undefined
 
   /**
-   * The time after which all messages sent to the chat will be automatically
-   * deleted; in seconds
-   */
-  readonly message_auto_delete_time?: number | undefined
-
-  /**
-   * True, if aggressive anti-spam checks are enabled in the supergroup. The
-   * field is only available to chat administrators.
-   */
-  readonly has_aggressive_anti_spam_enabled?: true | undefined
-
-  /**
-   * True, if non-administrators can only get the list of bots and administrators
-   * in the chat
-   */
-  readonly has_hidden_members?: true | undefined
-
-  /**
-   * True, if messages from the chat can't be forwarded to other chats
-   */
-  readonly has_protected_content?: true | undefined
-
-  /**
-   * True, if new chat members will have access to old messages; available only
-   * to chat administrators
-   */
-  readonly has_visible_history?: true | undefined
-
-  /**
-   * For supergroups, name of the group sticker set
-   */
-  readonly sticker_set_name?: string | undefined
-
-  /**
-   * True, if the bot can change the group sticker set
-   */
-  readonly can_set_sticker_set?: true | undefined
-
-  /**
-   * For supergroups, the name of the group's custom emoji sticker set. Custom
-   * emoji from this set can be used by all users and bots in the group.
-   */
-  readonly custom_emoji_sticker_set_name?: string | undefined
-
-  /**
    * Unique identifier for the linked chat, i.e. the discussion group identifier
    * for a channel and vice versa; for supergroups and channel chats. This
    * identifier may be greater than 32 bits and some programming languages may
@@ -435,31 +378,10 @@ export interface ChatFullInfo {
   readonly linked_chat_id?: number | undefined
 
   /**
-   * For supergroups, the location to which the supergroup is connected
+   * Information about the corresponding channel chat; for direct messages chats
+   * only
    */
-  readonly location?: ChatLocation | undefined
-
-  /**
-   * For private chats, the rating of the user if any
-   */
-  readonly rating?: UserRating | undefined
-
-  /**
-   * For private chats, the first audio added to the profile of the user
-   */
-  readonly first_profile_audio?: Audio | undefined
-
-  /**
-   * The color scheme based on a unique gift that must be used for the chat's
-   * name, message replies and link previews
-   */
-  readonly unique_gift_colors?: UniqueGiftColors | undefined
-
-  /**
-   * The number of Telegram Stars a general user has to pay to send a message to
-   * the chat
-   */
-  readonly paid_message_star_count?: number | undefined
+  readonly parent_chat?: Chat | undefined
 
   /**
    * The bot that processes join request queries in the chat. The field is only
@@ -468,9 +390,89 @@ export interface ChatFullInfo {
   readonly guard_bot?: User | undefined
 
   /**
-   * The Community to which the chat belongs
+   * For supergroups, the location to which the supergroup is connected
    */
-  readonly community?: Community | undefined
+  readonly location?: ChatLocation | undefined
+
+  /**
+   * True, if paid media messages can be sent or forwarded to the channel chat.
+   * The field is available only for channel chats.
+   */
+  readonly can_send_paid_media?: true | undefined
+
+  /**
+   * Chat photo
+   */
+  readonly photo?: ChatPhoto | undefined
+
+  /**
+   * The most recent pinned message (by sending date)
+   */
+  readonly pinned_message?: Message | undefined
+
+  /**
+   * The time after which all messages sent to the chat will be automatically
+   * deleted; in seconds
+   */
+  readonly message_auto_delete_time?: number | undefined
+
+  /**
+   * Custom emoji identifier of the emoji status of the chat or the other party
+   * in a private chat
+   */
+  readonly emoji_status_custom_emoji_id?: string | undefined
+
+  /**
+   * Expiration date of the emoji status of the chat or the other party in a
+   * private chat, in Unix time, if any
+   */
+  readonly emoji_status_expiration_date?: number | undefined
+
+  /**
+   * List of available reactions allowed in the chat. If omitted, then all emoji
+   * reactions are allowed.
+   */
+  readonly available_reactions?: ReactionType[] | undefined
+
+  /**
+   * The maximum number of reactions that can be set on a message in the chat
+   */
+  readonly max_reaction_count: number
+
+  /**
+   * Identifier of the accent color for the chat name and backgrounds of the chat
+   * photo, reply header, and link preview. See accent colors for more details.
+   */
+  readonly accent_color_id: number
+
+  /**
+   * Custom emoji identifier of the emoji chosen by the chat for the reply header
+   * and link preview background
+   */
+  readonly background_custom_emoji_id?: string | undefined
+
+  /**
+   * The color scheme based on a unique gift that must be used for the chat's
+   * name, message replies and link previews
+   */
+  readonly unique_gift_colors?: UniqueGiftColors | undefined
+
+  /**
+   * Identifier of the accent color for the chat's profile background. See
+   * profile accent colors for more details.
+   */
+  readonly profile_accent_color_id?: number | undefined
+
+  /**
+   * Custom emoji identifier of the emoji chosen by the chat for its profile
+   * background
+   */
+  readonly profile_background_custom_emoji_id?: string | undefined
+
+  /**
+   * True, if messages from the chat can't be forwarded to other chats
+   */
+  readonly has_protected_content?: true | undefined
 }
 
 /**
@@ -479,6 +481,21 @@ export interface ChatFullInfo {
  * @see https://corefork.telegram.org/bots/api#message
  */
 export interface Message {
+  /**
+   * Unique identifier of the business connection from which the message was
+   * received. If non-empty, the message belongs to a chat of the corresponding
+   * business account that is independent from any potential bot chat which might
+   * share the same identifier.
+   */
+  readonly business_connection_id?: string | undefined
+
+  /**
+   * The bot that actually sent the message on behalf of the business account.
+   * Available only for outgoing messages sent on behalf of the connected
+   * business account.
+   */
+  readonly sender_business_bot?: User | undefined
+
   /**
    * Unique message identifier inside this chat; 0 for ephemeral messages. In
    * specific instances (e.g., a message containing a video sent to a big chat),
@@ -489,15 +506,11 @@ export interface Message {
   readonly message_id: number
 
   /**
-   * Unique identifier of a message thread or forum topic to which the message
-   * belongs; for supergroups and private chats only
+   * For ephemeral messages, identifier of the ephemeral message inside this
+   * chat. The identifier may be reused for another ephemeral message after the
+   * message is deleted or expires.
    */
-  readonly message_thread_id?: number | undefined
-
-  /**
-   * Information about the direct messages chat topic that contains the message
-   */
-  readonly direct_messages_topic?: DirectMessagesTopic | undefined
+  readonly ephemeral_message_id?: number | undefined
 
   /**
    * Sender of the message; may be empty for messages sent to channels. For
@@ -505,6 +518,12 @@ export interface Message {
    * field contains a fake sender user in non-channel chats.
    */
   readonly from?: User | undefined
+
+  /**
+   * Signature of the post author for messages in channels, or the custom title
+   * of an anonymous group administrator
+   */
+  readonly author_signature?: string | undefined
 
   /**
    * Sender of the message when sent on behalf of a chat. For example, the
@@ -517,34 +536,9 @@ export interface Message {
   readonly sender_chat?: Chat | undefined
 
   /**
-   * If the sender of the message boosted the chat, the number of boosts added by
-   * the user
+   * Chat the message belongs to
    */
-  readonly sender_boost_count?: number | undefined
-
-  /**
-   * The bot that actually sent the message on behalf of the business account.
-   * Available only for outgoing messages sent on behalf of the connected
-   * business account.
-   */
-  readonly sender_business_bot?: User | undefined
-
-  /**
-   * Tag or custom title of the sender of the message; for supergroups only
-   */
-  readonly sender_tag?: string | undefined
-
-  /**
-   * For ephemeral messages, the user who received the message
-   */
-  readonly receiver_user?: User | undefined
-
-  /**
-   * For ephemeral messages, identifier of the ephemeral message inside this
-   * chat. The identifier may be reused for another ephemeral message after the
-   * message is deleted or expires.
-   */
-  readonly ephemeral_message_id?: number | undefined
+  readonly chat: Chat
 
   /**
    * Date the message was sent in Unix time. It is always a positive number,
@@ -553,36 +547,25 @@ export interface Message {
   readonly date: number
 
   /**
-   * The unique identifier for the guest query. Use this identifier with the
-   * method answerGuestQuery to send a response message. If non-empty, the
-   * message belongs to the chat where the guest bot was summoned, which may not
-   * coincide with other existing bot chats sharing the same identifier.
+   * Date the message was last edited in Unix time
    */
-  readonly guest_query_id?: string | undefined
+  readonly edit_date?: number | undefined
 
   /**
-   * Unique identifier of the business connection from which the message was
-   * received. If non-empty, the message belongs to a chat of the corresponding
-   * business account that is independent from any potential bot chat which might
-   * share the same identifier.
+   * Unique identifier of a message thread or forum topic to which the message
+   * belongs; for supergroups and private chats only
    */
-  readonly business_connection_id?: string | undefined
+  readonly message_thread_id?: number | undefined
 
   /**
-   * Chat the message belongs to
+   * For ephemeral messages, the user who received the message
    */
-  readonly chat: Chat
+  readonly receiver_user?: User | undefined
 
   /**
    * Information about the original message for forwarded messages
    */
   readonly forward_origin?: MessageOrigin | undefined
-
-  /**
-   * True, if the message is sent to a topic in a forum supergroup or a private
-   * chat with the bot
-   */
-  readonly is_topic_message?: true | undefined
 
   /**
    * True, if the message is a channel post that was automatically forwarded to
@@ -611,11 +594,6 @@ export interface Message {
   readonly quote?: TextQuote | undefined
 
   /**
-   * For replies to a story, the original story
-   */
-  readonly reply_to_story?: Story | undefined
-
-  /**
    * Identifier of the specific checklist task that is being replied to
    */
   readonly reply_to_checklist_task_id?: number | undefined
@@ -626,43 +604,9 @@ export interface Message {
   readonly reply_to_poll_option_id?: string | undefined
 
   /**
-   * Bot through which the message was sent
+   * For replies to a story, the original story
    */
-  readonly via_bot?: User | undefined
-
-  /**
-   * For a message sent by a guest bot, this is the user whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_user?: User | undefined
-
-  /**
-   * For a message sent by a guest bot, this is the chat whose original message
-   * triggered the bot's response
-   */
-  readonly guest_bot_caller_chat?: Chat | undefined
-
-  /**
-   * Date the message was last edited in Unix time
-   */
-  readonly edit_date?: number | undefined
-
-  /**
-   * True, if the message can't be forwarded
-   */
-  readonly has_protected_content?: true | undefined
-
-  /**
-   * True, if the message was sent by an implicit action, for example, as an away
-   * or a greeting business message, or as a scheduled message
-   */
-  readonly is_from_offline?: true | undefined
-
-  /**
-   * True, if the message is a paid post. Note that such posts must not be
-   * deleted for 24 hours to receive the payment and can't be edited.
-   */
-  readonly is_paid_post?: true | undefined
+  readonly reply_to_story?: Story | undefined
 
   /**
    * The unique identifier inside this chat of a media message group this message
@@ -671,16 +615,12 @@ export interface Message {
   readonly media_group_id?: string | undefined
 
   /**
-   * Signature of the post author for messages in channels, or the custom title
-   * of an anonymous group administrator
+   * The unique identifier for the guest query. Use this identifier with the
+   * method answerGuestQuery to send a response message. If non-empty, the
+   * message belongs to the chat where the guest bot was summoned, which may not
+   * coincide with other existing bot chats sharing the same identifier.
    */
-  readonly author_signature?: string | undefined
-
-  /**
-   * The number of Telegram Stars that were paid by the sender of the message to
-   * send it
-   */
-  readonly paid_star_count?: number | undefined
+  readonly guest_query_id?: string | undefined
 
   /**
    * For text messages, the actual UTF-8 text of the message
@@ -700,18 +640,6 @@ export interface Message {
   readonly link_preview_options?: LinkPreviewOptions | undefined
 
   /**
-   * Information about suggested post parameters if the message is a suggested
-   * post in a channel direct messages chat. If the message is an approved or
-   * declined suggested post, then it can't be edited.
-   */
-  readonly suggested_post_info?: SuggestedPostInfo | undefined
-
-  /**
-   * Unique identifier of the message effect added to the message
-   */
-  readonly effect_id?: string | undefined
-
-  /**
    * Message is a rich formatted message
    */
   readonly rich_message?: RichMessage | undefined
@@ -723,55 +651,9 @@ export interface Message {
   readonly animation?: Animation | undefined
 
   /**
-   * Message is an audio file, information about the file
-   */
-  readonly audio?: Audio | undefined
-
-  /**
    * Message is a general file, information about the file
    */
   readonly document?: Document | undefined
-
-  /**
-   * Message is a live photo, information about the live photo. For backward
-   * compatibility, when this field is set, the photo field will also be set.
-   */
-  readonly live_photo?: LivePhoto | undefined
-
-  /**
-   * Message contains paid media; information about the paid media
-   */
-  readonly paid_media?: PaidMediaInfo | undefined
-
-  /**
-   * Message is a photo, available sizes of the photo
-   */
-  readonly photo?: PhotoSize[] | undefined
-
-  /**
-   * Message is a sticker, information about the sticker
-   */
-  readonly sticker?: Sticker | undefined
-
-  /**
-   * Message is a forwarded story
-   */
-  readonly story?: Story | undefined
-
-  /**
-   * Message is a video, information about the video
-   */
-  readonly video?: Video | undefined
-
-  /**
-   * Message is a video note, information about the video message
-   */
-  readonly video_note?: VideoNote | undefined
-
-  /**
-   * Message is a voice message, information about the file
-   */
-  readonly voice?: Voice | undefined
 
   /**
    * Caption for the animation, audio, document, paid media, photo, video or
@@ -796,9 +678,56 @@ export interface Message {
   readonly has_media_spoiler?: true | undefined
 
   /**
-   * Message is a checklist
+   * Message is an audio file, information about the file
    */
-  readonly checklist?: Checklist | undefined
+  readonly audio?: Audio | undefined
+
+  /**
+   * Message contains paid media; information about the paid media
+   */
+  readonly paid_media?: PaidMediaInfo | undefined
+
+  /**
+   * Message is a live photo, information about the live photo. For backward
+   * compatibility, when this field is set, the photo field will also be set.
+   */
+  readonly live_photo?: LivePhoto | undefined
+
+  /**
+   * Message is a photo, available sizes of the photo
+   */
+  readonly photo?: PhotoSize[] | undefined
+
+  /**
+   * Message is a sticker, information about the sticker
+   */
+  readonly sticker?: Sticker | undefined
+
+  /**
+   * Message is a video, information about the video
+   */
+  readonly video?: Video | undefined
+
+  /**
+   * Message is a video note, information about the video message
+   */
+  readonly video_note?: VideoNote | undefined
+
+  /**
+   * Message is a voice message, information about the file
+   */
+  readonly voice?: Voice | undefined
+
+  /**
+   * Message is a shared location, information about the location
+   */
+  readonly location?: Location | undefined
+
+  /**
+   * Message is a venue, information about the venue. For backward compatibility,
+   * when this field is set, the location field will also be set.
+   */
+  readonly venue?: Venue | undefined
 
   /**
    * Message is a shared contact, information about the contact
@@ -808,7 +737,7 @@ export interface Message {
   /**
    * Message is a dice with random value
    */
-  readonly dice?: Dice | undefined
+  readonly dice?: Dice | StakeDice | undefined
 
   /**
    * Message is a game, information about the game. More about games »
@@ -821,52 +750,50 @@ export interface Message {
   readonly poll?: Poll | undefined
 
   /**
-   * Message is a venue, information about the venue. For backward compatibility,
-   * when this field is set, the location field will also be set.
+   * Message is a forwarded story
    */
-  readonly venue?: Venue | undefined
+  readonly story?: Story | undefined
 
   /**
-   * Message is a shared location, information about the location
+   * Message is a checklist
    */
-  readonly location?: Location | undefined
+  readonly checklist?: Checklist | undefined
 
   /**
-   * New members that were added to the group or supergroup and information about
-   * them (the bot itself may be one of these members)
+   * Message is an invoice for a payment, information about the invoice. More
+   * about payments »
    */
-  readonly new_chat_members?: User[] | undefined
+  readonly invoice?: Invoice | undefined
 
   /**
-   * A member was removed from the group, information about them (this member may
-   * be the bot itself)
+   * Service message: video chat scheduled
    */
-  readonly left_chat_member?: User | undefined
+  readonly video_chat_scheduled?: VideoChatScheduled | undefined
 
   /**
-   * Service message: chat owner has left
+   * Service message: video chat started
    */
-  readonly chat_owner_left?: ChatOwnerLeft | undefined
+  readonly video_chat_started?: VideoChatStarted | undefined
 
   /**
-   * Service message: chat owner has changed
+   * Service message: video chat ended
    */
-  readonly chat_owner_changed?: ChatOwnerChanged | undefined
+  readonly video_chat_ended?: VideoChatEnded | undefined
 
   /**
-   * A chat title was changed to this value
+   * Service message: new participants invited to a video chat
    */
-  readonly new_chat_title?: string | undefined
+  readonly video_chat_participants_invited?: VideoChatParticipantsInvited | undefined
 
   /**
-   * A chat photo was change to this value
+   * Service message: answer option was added to a poll
    */
-  readonly new_chat_photo?: PhotoSize[] | undefined
+  readonly poll_option_added?: PollOptionAdded | undefined
 
   /**
-   * Service message: the chat photo was deleted
+   * Service message: answer option was deleted from a poll
    */
-  readonly delete_chat_photo?: true | undefined
+  readonly poll_option_deleted?: PollOptionDeleted | undefined
 
   /**
    * Service message: the group has been created
@@ -890,9 +817,56 @@ export interface Message {
   readonly channel_chat_created?: true | undefined
 
   /**
-   * Service message: auto-delete timer settings changed in the chat
+   * A chat title was changed to this value
    */
-  readonly message_auto_delete_timer_changed?: MessageAutoDeleteTimerChanged | undefined
+  readonly new_chat_title?: string | undefined
+
+  /**
+   * A chat photo was change to this value
+   */
+  readonly new_chat_photo?: PhotoSize[] | undefined
+
+  /**
+   * Service message: the chat photo was deleted
+   */
+  readonly delete_chat_photo?: true | undefined
+
+  /**
+   * Service message: chat owner has left
+   */
+  readonly chat_owner_left?: ChatOwnerLeft | undefined
+
+  /**
+   * Service message: chat owner has changed
+   */
+  readonly chat_owner_changed?: ChatOwnerChanged | undefined
+
+  /**
+   * New members that were added to the group or supergroup and information about
+   * them (the bot itself may be one of these members)
+   */
+  readonly new_chat_members?: User[] | undefined
+
+  /**
+   * Service message: chat was joined by a user from a Community
+   */
+  readonly community_chat_joined?: CommunityChatJoined | undefined
+
+  /**
+   * A member was removed from the group, information about them (this member may
+   * be the bot itself)
+   */
+  readonly left_chat_member?: User | undefined
+
+  /**
+   * Service message: chat or bot added to a Community
+   */
+  readonly community_chat_added?: CommunityChatAdded | undefined
+
+  /**
+   * Service message: chat or bot removed from a Community
+   */
+  readonly community_chat_removed?: CommunityChatRemoved | undefined
 
   /**
    * The group has been migrated to a supergroup with the specified identifier.
@@ -920,108 +894,19 @@ export interface Message {
   readonly pinned_message?: MaybeInaccessibleMessage | undefined
 
   /**
-   * Message is an invoice for a payment, information about the invoice. More
-   * about payments »
-   */
-  readonly invoice?: Invoice | undefined
-
-  /**
-   * Message is a service message about a successful payment, information about
-   * the payment. More about payments »
-   */
-  readonly successful_payment?: SuccessfulPayment | undefined
-
-  /**
-   * Message is a service message about a refunded payment, information about the
-   * payment. More about payments »
-   */
-  readonly refunded_payment?: RefundedPayment | undefined
-
-  /**
-   * Service message: users were shared with the bot
-   */
-  readonly users_shared?: UsersShared | undefined
-
-  /**
-   * Service message: a chat was shared with the bot
-   */
-  readonly chat_shared?: ChatShared | undefined
-
-  /**
-   * Service message: a regular gift was sent or received
-   */
-  readonly gift?: GiftInfo | undefined
-
-  /**
-   * Service message: a unique gift was sent or received
-   */
-  readonly unique_gift?: UniqueGiftInfo | undefined
-
-  /**
-   * Service message: upgrade of a gift was purchased after the gift was sent
-   */
-  readonly gift_upgrade_sent?: GiftInfo | undefined
-
-  /**
-   * The domain name of the website on which the user has logged in. More about
-   * Telegram Login »
-   */
-  readonly connected_website?: string | undefined
-
-  /**
-   * Service message: the user allowed the bot to write messages after adding it
-   * to the attachment or side menu, launching a Web App from a link, or
-   * accepting an explicit request from a Web App sent by the method
-   * requestWriteAccess
-   */
-  readonly write_access_allowed?: WriteAccessAllowed | undefined
-
-  /**
-   * Telegram Passport data
-   */
-  readonly passport_data?: PassportData | undefined
-
-  /**
-   * Service message: a user in the chat triggered another user's proximity alert
-   * while sharing Live Location
-   */
-  readonly proximity_alert_triggered?: ProximityAlertTriggered | undefined
-
-  /**
-   * Service message: user boosted the chat
-   */
-  readonly boost_added?: ChatBoostAdded | undefined
-
-  /**
    * Service message: chat background set
    */
   readonly chat_background_set?: ChatBackground | undefined
 
   /**
-   * Service message: some tasks in a checklist were marked as done or not done
+   * Service message: auto-delete timer settings changed in the chat
    */
-  readonly checklist_tasks_done?: ChecklistTasksDone | undefined
+  readonly message_auto_delete_timer_changed?: MessageAutoDeleteTimerChanged | undefined
 
   /**
-   * Service message: tasks were added to a checklist
+   * Service message: user boosted the chat
    */
-  readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
-
-  /**
-   * Service message: chat added to a Community
-   */
-  readonly community_chat_added?: CommunityChatAdded | undefined
-
-  /**
-   * Service message: chat removed from a Community
-   */
-  readonly community_chat_removed?: CommunityChatRemoved | undefined
-
-  /**
-   * Service message: the price for paid messages in the corresponding direct
-   * messages chat of a channel has changed
-   */
-  readonly direct_message_price_changed?: DirectMessagePriceChanged | undefined
+  readonly boost_added?: ChatBoostAdded | undefined
 
   /**
    * Service message: forum topic created
@@ -1054,6 +939,23 @@ export interface Message {
   readonly general_forum_topic_unhidden?: GeneralForumTopicUnhidden | undefined
 
   /**
+   * Service message: user created a bot that will be managed by the current bot
+   */
+  readonly managed_bot_created?: ManagedBotCreated | undefined
+
+  /**
+   * Message is a service message about a successful payment, information about
+   * the payment. More about payments »
+   */
+  readonly successful_payment?: SuccessfulPayment | undefined
+
+  /**
+   * Message is a service message about a refunded payment, information about the
+   * payment. More about payments »
+   */
+  readonly refunded_payment?: RefundedPayment | undefined
+
+  /**
    * Service message: a scheduled giveaway was created
    */
   readonly giveaway_created?: GiveawayCreated | undefined
@@ -1064,19 +966,29 @@ export interface Message {
   readonly giveaway?: Giveaway | undefined
 
   /**
-   * A giveaway with public winners was completed
-   */
-  readonly giveaway_winners?: GiveawayWinners | undefined
-
-  /**
    * Service message: a giveaway without public winners was completed
    */
   readonly giveaway_completed?: GiveawayCompleted | undefined
 
   /**
-   * Service message: user created a bot that will be managed by the current bot
+   * A giveaway with public winners was completed
    */
-  readonly managed_bot_created?: ManagedBotCreated | undefined
+  readonly giveaway_winners?: GiveawayWinners | undefined
+
+  /**
+   * Service message: upgrade of a gift was purchased after the gift was sent
+   */
+  readonly gift_upgrade_sent?: GiftInfo | undefined
+
+  /**
+   * Service message: a regular gift was sent or received
+   */
+  readonly gift?: GiftInfo | RefundedUpgradedGiftInfo | undefined
+
+  /**
+   * Service message: a unique gift was sent or received
+   */
+  readonly unique_gift?: UniqueGiftInfo | undefined
 
   /**
    * Service message: the price for paid messages has changed in the chat
@@ -1084,24 +996,30 @@ export interface Message {
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
 
   /**
-   * Service message: answer option was added to a poll
+   * Service message: the price for paid messages in the corresponding direct
+   * messages chat of a channel has changed
    */
-  readonly poll_option_added?: PollOptionAdded | undefined
+  readonly direct_message_price_changed?: DirectMessagePriceChanged | undefined
 
   /**
-   * Service message: answer option was deleted from a poll
+   * Service message: some tasks in a checklist were marked as done or not done
    */
-  readonly poll_option_deleted?: PollOptionDeleted | undefined
+  readonly checklist_tasks_done?: ChecklistTasksDone | undefined
 
   /**
-   * Service message: a suggested post was approved
+   * Service message: tasks were added to a checklist
    */
-  readonly suggested_post_approved?: SuggestedPostApproved | undefined
+  readonly checklist_tasks_added?: ChecklistTasksAdded | undefined
 
   /**
    * Service message: approval of a suggested post has failed
    */
   readonly suggested_post_approval_failed?: SuggestedPostApprovalFailed | undefined
+
+  /**
+   * Service message: a suggested post was approved
+   */
+  readonly suggested_post_approved?: SuggestedPostApproved | undefined
 
   /**
    * Service message: a suggested post was declined
@@ -1119,24 +1037,28 @@ export interface Message {
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
 
   /**
-   * Service message: video chat scheduled
+   * Service message: users were shared with the bot
    */
-  readonly video_chat_scheduled?: VideoChatScheduled | undefined
+  readonly users_shared?: UsersShared | undefined
 
   /**
-   * Service message: video chat started
+   * Service message: a chat was shared with the bot
    */
-  readonly video_chat_started?: VideoChatStarted | undefined
+  readonly chat_shared?: ChatShared | undefined
 
   /**
-   * Service message: video chat ended
+   * The domain name of the website on which the user has logged in. More about
+   * Telegram Login »
    */
-  readonly video_chat_ended?: VideoChatEnded | undefined
+  readonly connected_website?: string | undefined
 
   /**
-   * Service message: new participants invited to a video chat
+   * Service message: the user allowed the bot to write messages after adding it
+   * to the attachment or side menu, launching a Web App from a link, or
+   * accepting an explicit request from a Web App sent by the method
+   * requestWriteAccess
    */
-  readonly video_chat_participants_invited?: VideoChatParticipantsInvited | undefined
+  readonly write_access_allowed?: WriteAccessAllowed | undefined
 
   /**
    * Service message: data sent by a Web App
@@ -1144,10 +1066,95 @@ export interface Message {
   readonly web_app_data?: WebAppData | undefined
 
   /**
+   * Telegram Passport data
+   */
+  readonly passport_data?: PassportData | undefined
+
+  /**
+   * Service message: a user in the chat triggered another user's proximity alert
+   * while sharing Live Location
+   */
+  readonly proximity_alert_triggered?: ProximityAlertTriggered | undefined
+
+  /**
    * Inline keyboard attached to the message. login_url buttons are represented
    * as ordinary url buttons.
    */
   readonly reply_markup?: InlineKeyboardMarkup | undefined
+
+  /**
+   * Bot through which the message was sent
+   */
+  readonly via_bot?: User | undefined
+
+  /**
+   * For a message sent by a guest bot, this is the user whose original message
+   * triggered the bot's response
+   */
+  readonly guest_bot_caller_user?: User | undefined
+
+  /**
+   * For a message sent by a guest bot, this is the chat whose original message
+   * triggered the bot's response
+   */
+  readonly guest_bot_caller_chat?: Chat | undefined
+
+  /**
+   * True, if the message can't be forwarded
+   */
+  readonly has_protected_content?: true | undefined
+
+  /**
+   * True, if the message is sent to a topic in a forum supergroup or a private
+   * chat with the bot
+   */
+  readonly is_topic_message?: true | undefined
+
+  /**
+   * Information about the direct messages chat topic that contains the message
+   */
+  readonly direct_messages_topic?: DirectMessagesTopic | undefined
+
+  /**
+   * True, if the message was sent by an implicit action, for example, as an away
+   * or a greeting business message, or as a scheduled message
+   */
+  readonly is_from_offline?: true | undefined
+
+  /**
+   * Unique identifier of the message effect added to the message
+   */
+  readonly effect_id?: string | undefined
+
+  /**
+   * If the sender of the message boosted the chat, the number of boosts added by
+   * the user
+   */
+  readonly sender_boost_count?: number | undefined
+
+  /**
+   * Tag or custom title of the sender of the message; for supergroups only
+   */
+  readonly sender_tag?: string | undefined
+
+  /**
+   * The number of Telegram Stars that were paid by the sender of the message to
+   * send it
+   */
+  readonly paid_star_count?: number | undefined
+
+  /**
+   * True, if the message is a paid post. Note that such posts must not be
+   * deleted for 24 hours to receive the payment and can't be edited.
+   */
+  readonly is_paid_post?: true | undefined
+
+  /**
+   * Information about suggested post parameters if the message is a suggested
+   * post in a channel direct messages chat. If the message is an approved or
+   * declined suggested post, then it can't be edited.
+   */
+  readonly suggested_post_info?: SuggestedPostInfo | undefined
 }
 
 /**
@@ -1173,14 +1180,14 @@ export interface MessageId {
  */
 export interface InaccessibleMessage {
   /**
-   * Chat the message belonged to
-   */
-  readonly chat: Chat
-
-  /**
    * Unique message identifier inside the chat
    */
   readonly message_id: number
+
+  /**
+   * Chat the message belonged to
+   */
+  readonly chat: Chat
 
   /**
    * Always 0. The field can be used to differentiate regular and inaccessible
@@ -1190,8 +1197,8 @@ export interface InaccessibleMessage {
 }
 
 /**
- * This object describes a message that can be inaccessible to the bot. It can
- * be one of
+ * This object describes a message that can be inaccessible to the bot.
+ * Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#maybeinaccessiblemessage
  */
@@ -1207,21 +1214,6 @@ export type MaybeInaccessibleMessage =
  */
 export interface MessageEntity {
   /**
-   * Type of the entity. Currently, can be “mention” (@username), “hashtag”
-   * (#hashtag or #hashtag@chatusername), “cashtag” ($USD or $USD@chatusername),
-   * “bot_command” (/start@jobs_bot), “url” (https://telegram.org), “email”
-   * (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123), “bold” (bold
-   * text), “italic” (italic text), “underline” (underlined text),
-   * “strikethrough” (strikethrough text), “spoiler” (spoiler message),
-   * “blockquote” (block quotation), “expandable_blockquote”
-   * (collapsed-by-default block quotation), “code” (monowidth string), “pre”
-   * (monowidth block), “text_link” (for clickable text URLs), “text_mention”
-   * (for users without usernames), “custom_emoji” (for inline custom emoji
-   * stickers), or “date_time” (for formatted date and time).
-   */
-  readonly type: string
-
-  /**
    * Offset in UTF-16 code units to the start of the entity
    */
   readonly offset: number
@@ -1232,34 +1224,52 @@ export interface MessageEntity {
   readonly length: number
 
   /**
-   * For “text_link” only, URL that will be opened after user taps on the text
+   * Type of the entity. Currently, can be "mention" (@username), "hashtag"
+   * (#hashtag or #hashtag@chatusername), "cashtag" ($USD or $USD@chatusername),
+   * "bot_command" (/start@jobs_bot), "url" (https://telegram.org), "email"
+   * (do-not-reply@telegram.org), "phone_number" (+1-212-555-0123), "bold" (bold
+   * text), "italic" (italic text), "underline" (underlined text),
+   * "strikethrough" (strikethrough text), "spoiler" (spoiler message),
+   * "blockquote" (block quotation), "expandable_blockquote"
+   * (collapsed-by-default block quotation), "code" (monowidth string), "pre"
+   * (monowidth block), "text_link" (for clickable text URLs), "text_mention"
+   * (for users without usernames), "custom_emoji" (for inline custom emoji
+   * stickers), or "date_time" (for formatted date and time).
    */
-  readonly url?: string | undefined
+  readonly type: string
 
   /**
-   * For “text_mention” only, the mentioned user
-   */
-  readonly user?: User | undefined
-
-  /**
-   * For “pre” only, the programming language of the entity text
+   * For "pre" only, the programming language of the entity text
    */
   readonly language?: string | undefined
 
   /**
-   * For “custom_emoji” only, unique identifier of the custom emoji. Use
-   * getCustomEmojiStickers to get full information about the sticker.
+   * For "text_link" only, URL that will be opened after user taps on the text
+   */
+  readonly url?: string | undefined
+
+  /**
+   * For "text_mention" only, the mentioned user
+   */
+  readonly user?: User | undefined
+
+  /**
+   * For "custom_emoji" only, unique identifier of the custom emoji. Use
+   * getCustomEmojiStickers to get full information about the sticker. When sent
+   * to the Bot API, must be a decimal integer.
    */
   readonly custom_emoji_id?: string | undefined
 
   /**
-   * For “date_time” only, the Unix time associated with the entity
+   * For "date_time" only, the Unix time associated with the entity
    */
   readonly unix_time?: number | undefined
 
   /**
-   * For “date_time” only, the string that defines the formatting of the date and
-   * time. See date-time entity formatting for more details.
+   * For "date_time" only, the string that defines the formatting of the date and
+   * time. See date-time entity formatting for more details. When sent to the Bot
+   * API, must be "r", or an optional "w", followed by an optional "d" or "D",
+   * followed by an optional "t" or "T".
    */
   readonly date_time_format?: string | undefined
 }
@@ -1332,6 +1342,11 @@ export interface ExternalReplyInfo {
   readonly animation?: Animation | undefined
 
   /**
+   * True, if the message media is covered by a spoiler animation
+   */
+  readonly has_media_spoiler?: true | undefined
+
+  /**
    * Message is an audio file, information about the file
    */
   readonly audio?: Audio | undefined
@@ -1342,14 +1357,14 @@ export interface ExternalReplyInfo {
   readonly document?: Document | undefined
 
   /**
-   * Message is a live photo, information about the live photo
-   */
-  readonly live_photo?: LivePhoto | undefined
-
-  /**
    * Message contains paid media; information about the paid media
    */
   readonly paid_media?: PaidMediaInfo | undefined
+
+  /**
+   * Message is a live photo, information about the live photo
+   */
+  readonly live_photo?: LivePhoto | undefined
 
   /**
    * Message is a photo, available sizes of the photo
@@ -1360,11 +1375,6 @@ export interface ExternalReplyInfo {
    * Message is a sticker, information about the sticker
    */
   readonly sticker?: Sticker | undefined
-
-  /**
-   * Message is a forwarded story
-   */
-  readonly story?: Story | undefined
 
   /**
    * Message is a video, information about the video
@@ -1382,14 +1392,14 @@ export interface ExternalReplyInfo {
   readonly voice?: Voice | undefined
 
   /**
-   * True, if the message media is covered by a spoiler animation
+   * Message is a shared location, information about the location
    */
-  readonly has_media_spoiler?: true | undefined
+  readonly location?: Location | undefined
 
   /**
-   * Message is a checklist
+   * Message is a venue, information about the venue
    */
-  readonly checklist?: Checklist | undefined
+  readonly venue?: Venue | undefined
 
   /**
    * Message is a shared contact, information about the contact
@@ -1399,7 +1409,7 @@ export interface ExternalReplyInfo {
   /**
    * Message is a dice with random value
    */
-  readonly dice?: Dice | undefined
+  readonly dice?: Dice | StakeDice | undefined
 
   /**
    * Message is a game, information about the game. More about games »
@@ -1407,14 +1417,19 @@ export interface ExternalReplyInfo {
   readonly game?: Game | undefined
 
   /**
-   * Message is a scheduled giveaway, information about the giveaway
+   * Message is a native poll, information about the poll
    */
-  readonly giveaway?: Giveaway | undefined
+  readonly poll?: Poll | undefined
 
   /**
-   * A giveaway with public winners was completed
+   * Message is a forwarded story
    */
-  readonly giveaway_winners?: GiveawayWinners | undefined
+  readonly story?: Story | undefined
+
+  /**
+   * Message is a checklist
+   */
+  readonly checklist?: Checklist | undefined
 
   /**
    * Message is an invoice for a payment, information about the invoice. More
@@ -1423,19 +1438,14 @@ export interface ExternalReplyInfo {
   readonly invoice?: Invoice | undefined
 
   /**
-   * Message is a shared location, information about the location
+   * The message is a scheduled giveaway message
    */
-  readonly location?: Location | undefined
+  readonly giveaway?: Giveaway | undefined
 
   /**
-   * Message is a native poll, information about the poll
+   * A giveaway with public winners was completed
    */
-  readonly poll?: Poll | undefined
-
-  /**
-   * Message is a venue, information about the venue
-   */
-  readonly venue?: Venue | undefined
+  readonly giveaway_winners?: GiveawayWinners | undefined
 }
 
 /**
@@ -1445,27 +1455,20 @@ export interface ExternalReplyInfo {
  */
 export interface ReplyParameters {
   /**
+   * If the message to be replied to is from a different chat, unique identifier
+   * for the chat or username of the bot, supergroup or channel in the format
+   * @username. Not supported for messages sent on behalf of a business account,
+   * messages from channel direct messages chats and ephemeral messages. If a
+   * String, must be non-empty.
+   */
+  readonly chat_id?: number | string | undefined
+
+  /**
    * Identifier of the message that will be replied to in the current chat, or in
    * the chat chat_id if it is specified. Required if ephemeral_message_id isn't
    * specified.
    */
   readonly message_id?: number | undefined
-
-  /**
-   * If the message to be replied to is from a different chat, unique identifier
-   * for the chat or username of the bot, supergroup or channel in the format
-   * @username. Not supported for messages sent on behalf of a business account,
-   * messages from channel direct messages chats and ephemeral messages.
-   */
-  readonly chat_id?: number | string | undefined
-
-  /**
-   * Identifier of the incoming ephemeral message that will be replied to in the
-   * current chat. A reply to an ephemeral message must itself be an ephemeral
-   * message. An ephemeral message may only be replied to within 15 seconds of
-   * being sent. Required if message_id isn't specified.
-   */
-  readonly ephemeral_message_id?: number | undefined
 
   /**
    * Pass True if the message should be sent even if the specified message to be
@@ -1476,7 +1479,7 @@ export interface ReplyParameters {
   readonly allow_sending_without_reply?: boolean | undefined
 
   /**
-   * Quoted part of the message to be replied to; 0-1024 characters after
+   * Quoted part of the message to be replied to, 0-1024 characters after
    * entities parsing. The quote must be an exact substring of the message to be
    * replied to, including bold, italic, underline, strikethrough, spoiler,
    * custom_emoji, and date_time entities. The message will fail to send if the
@@ -1486,7 +1489,7 @@ export interface ReplyParameters {
 
   /**
    * Mode for parsing entities in the quote. See formatting options for more
-   * details.
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly quote_parse_mode?: string | undefined
 
@@ -1510,10 +1513,45 @@ export interface ReplyParameters {
    * Persistent identifier of the specific poll option to be replied to
    */
   readonly poll_option_id?: string | undefined
+
+  /**
+   * Identifier of the incoming ephemeral message that will be replied to in the
+   * current chat. A reply to an ephemeral message must itself be an ephemeral
+   * message. An ephemeral message may only be replied to within 15 seconds of
+   * being sent. Required if message_id isn't specified.
+   */
+  readonly ephemeral_message_id?: number | undefined
 }
 
 /**
- * This object describes the origin of a message. It can be one of
+ * Describes the parameters of an ephemeral message that is being sent.
+ *
+ * @see https://corefork.telegram.org/bots/api#ephemeralmessageparameters
+ */
+export interface EphemeralMessageParameters {
+  /**
+   * Identifier of the user who will receive the message. It is not guaranteed
+   * that the user will receive the message, especially if they are offline. See
+   * here for more details.
+   */
+  readonly receiver_user_id: number
+
+  /**
+   * Identifier of the callback query which triggered the message, if any, must
+   * be a decimal integer
+   */
+  readonly callback_query_id?: string | undefined
+
+  /**
+   * Pass True if the ephemeral message must be shown in place of the original
+   * message. Must be False for callback queries from ephemeral messages, which
+   * must be edited using regular editEphemeralMessage... methods.
+   */
+  readonly replace_callback_query_message?: boolean | undefined
+}
+
+/**
+ * This object describes the origin of a message. Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#messageorigin
  */
@@ -1530,19 +1568,19 @@ export type MessageOrigin =
  */
 export interface MessageOriginUser {
   /**
-   * Type of the message origin, always “user”
+   * Type of the message origin, always "user"
    */
   readonly type: string
-
-  /**
-   * Date the message was sent originally in Unix time
-   */
-  readonly date: number
 
   /**
    * User that sent the message originally
    */
   readonly sender_user: User
+
+  /**
+   * Date the message was sent originally in Unix time
+   */
+  readonly date: number
 }
 
 /**
@@ -1552,19 +1590,19 @@ export interface MessageOriginUser {
  */
 export interface MessageOriginHiddenUser {
   /**
-   * Type of the message origin, always “hidden_user”
+   * Type of the message origin, always "hidden_user"
    */
   readonly type: string
+
+  /**
+   * Name of the user that sent the message originally
+   */
+  readonly sender_user_name?: string | undefined
 
   /**
    * Date the message was sent originally in Unix time
    */
   readonly date: number
-
-  /**
-   * Name of the user that sent the message originally
-   */
-  readonly sender_user_name: string
 }
 
 /**
@@ -1574,14 +1612,9 @@ export interface MessageOriginHiddenUser {
  */
 export interface MessageOriginChat {
   /**
-   * Type of the message origin, always “chat”
+   * Type of the message origin, always "chat"
    */
   readonly type: string
-
-  /**
-   * Date the message was sent originally in Unix time
-   */
-  readonly date: number
 
   /**
    * Chat that sent the message originally
@@ -1593,6 +1626,11 @@ export interface MessageOriginChat {
    * message author signature
    */
   readonly author_signature?: string | undefined
+
+  /**
+   * Date the message was sent originally in Unix time
+   */
+  readonly date: number
 }
 
 /**
@@ -1602,14 +1640,9 @@ export interface MessageOriginChat {
  */
 export interface MessageOriginChannel {
   /**
-   * Type of the message origin, always “channel”
+   * Type of the message origin, always "channel"
    */
   readonly type: string
-
-  /**
-   * Date the message was sent originally in Unix time
-   */
-  readonly date: number
 
   /**
    * Channel chat to which the message was originally sent
@@ -1625,6 +1658,11 @@ export interface MessageOriginChannel {
    * Signature of the original post author
    */
   readonly author_signature?: string | undefined
+
+  /**
+   * Date the message was sent originally in Unix time
+   */
+  readonly date: number
 }
 
 /**
@@ -1645,6 +1683,14 @@ export interface PhotoSize {
   readonly file_unique_id: string
 
   /**
+   * File size in bytes. It can be bigger than 2^31 and some programming
+   * languages may have difficulty/silent defects in interpreting it. But it has
+   * at most 52 significant bits, so a signed 64-bit integer or double-precision
+   * float type are safe for storing this value.
+   */
+  readonly file_size?: number | undefined
+
+  /**
    * Photo width
    */
   readonly width: number
@@ -1653,11 +1699,6 @@ export interface PhotoSize {
    * Photo height
    */
   readonly height: number
-
-  /**
-   * File size in bytes
-   */
-  readonly file_size?: number | undefined
 }
 
 /**
@@ -1668,15 +1709,19 @@ export interface PhotoSize {
  */
 export interface Animation {
   /**
-   * Identifier for this file, which can be used to download or reuse the file
+   * Original animation filename as defined by the sender
    */
-  readonly file_id: string
+  readonly file_name?: string | undefined
 
   /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
+   * MIME type of the file as defined by the sender
    */
-  readonly file_unique_id: string
+  readonly mime_type?: string | undefined
+
+  /**
+   * Duration of the video in seconds as defined by the sender
+   */
+  readonly duration: number
 
   /**
    * Video width as defined by the sender
@@ -1689,24 +1734,20 @@ export interface Animation {
   readonly height: number
 
   /**
-   * Duration of the video in seconds as defined by the sender
-   */
-  readonly duration: number
-
-  /**
    * Animation thumbnail as defined by the sender
    */
   readonly thumbnail?: PhotoSize | undefined
 
   /**
-   * Original animation filename as defined by the sender
+   * Identifier for this file, which can be used to download or reuse the file
    */
-  readonly file_name?: string | undefined
+  readonly file_id: string
 
   /**
-   * MIME type of the file as defined by the sender
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
    */
-  readonly mime_type?: string | undefined
+  readonly file_unique_id: string
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -1725,30 +1766,9 @@ export interface Animation {
  */
 export interface Audio {
   /**
-   * Identifier for this file, which can be used to download or reuse the file
-   */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
-
-  /**
    * Duration of the audio in seconds as defined by the sender
    */
   readonly duration: number
-
-  /**
-   * Performer of the audio as defined by the sender or by audio tags
-   */
-  readonly performer?: string | undefined
-
-  /**
-   * Title of the audio as defined by the sender or by audio tags
-   */
-  readonly title?: string | undefined
 
   /**
    * Original filename as defined by the sender
@@ -1761,17 +1781,38 @@ export interface Audio {
   readonly mime_type?: string | undefined
 
   /**
+   * Title of the audio as defined by the sender or by audio tags
+   */
+  readonly title?: string | undefined
+
+  /**
+   * Performer of the audio as defined by the sender or by audio tags
+   */
+  readonly performer?: string | undefined
+
+  /**
+   * Thumbnail of the album cover to which the music file belongs
+   */
+  readonly thumbnail?: PhotoSize | undefined
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
+
+  /**
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
    * float type are safe for storing this value.
    */
   readonly file_size?: number | undefined
-
-  /**
-   * Thumbnail of the album cover to which the music file belongs
-   */
-  readonly thumbnail?: PhotoSize | undefined
 }
 
 /**
@@ -1782,6 +1823,21 @@ export interface Audio {
  */
 export interface Document {
   /**
+   * Original filename as defined by the sender
+   */
+  readonly file_name?: string | undefined
+
+  /**
+   * MIME type of the file as defined by the sender
+   */
+  readonly mime_type?: string | undefined
+
+  /**
+   * Document thumbnail as defined by the sender
+   */
+  readonly thumbnail?: PhotoSize | undefined
+
+  /**
    * Identifier for this file, which can be used to download or reuse the file
    */
   readonly file_id: string
@@ -1791,21 +1847,6 @@ export interface Document {
    * and for different bots. Can't be used to download or reuse the file.
    */
   readonly file_unique_id: string
-
-  /**
-   * Document thumbnail as defined by the sender
-   */
-  readonly thumbnail?: PhotoSize | undefined
-
-  /**
-   * Original filename as defined by the sender
-   */
-  readonly file_name?: string | undefined
-
-  /**
-   * MIME type of the file as defined by the sender
-   */
-  readonly mime_type?: string | undefined
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -1825,19 +1866,12 @@ export interface LivePhoto {
   /**
    * Available sizes of the corresponding static photo
    */
-  readonly photo?: PhotoSize[] | undefined
+  readonly photo: PhotoSize[]
 
   /**
-   * Identifier for the video file which can be used to download or reuse the
-   * file
+   * Duration of the video in seconds as defined by the sender
    */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for the video file which is supposed to be the same over
-   * time and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
+  readonly duration: number
 
   /**
    * Video width as defined by the sender
@@ -1850,14 +1884,21 @@ export interface LivePhoto {
   readonly height: number
 
   /**
-   * Duration of the video in seconds as defined by the sender
-   */
-  readonly duration: number
-
-  /**
    * MIME type of the file as defined by the sender
    */
   readonly mime_type?: string | undefined
+
+  /**
+   * Identifier for the video file which can be used to download or reuse the
+   * file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for the video file which is supposed to be the same over
+   * time and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -1892,17 +1933,6 @@ export interface Story {
  */
 export interface VideoQuality {
   /**
-   * Identifier for this file, which can be used to download or reuse the file
-   */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
-
-  /**
    * Video width
    */
   readonly width: number
@@ -1913,10 +1943,21 @@ export interface VideoQuality {
   readonly height: number
 
   /**
-   * Codec that was used to encode the video, for example, “h264”, “h265”, or
-   * “av01”
+   * Codec that was used to encode the video, for example, "h264", "h265", or
+   * "av01"
    */
   readonly codec: string
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -1934,15 +1975,9 @@ export interface VideoQuality {
  */
 export interface Video {
   /**
-   * Identifier for this file, which can be used to download or reuse the file
+   * Duration of the video in seconds as defined by the sender
    */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
+  readonly duration: number
 
   /**
    * Video width as defined by the sender
@@ -1955,14 +1990,38 @@ export interface Video {
   readonly height: number
 
   /**
-   * Duration of the video in seconds as defined by the sender
+   * Original filename as defined by the sender
    */
-  readonly duration: number
+  readonly file_name?: string | undefined
+
+  /**
+   * MIME type of the file as defined by the sender
+   */
+  readonly mime_type?: string | undefined
 
   /**
    * Video thumbnail
    */
   readonly thumbnail?: PhotoSize | undefined
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
+
+  /**
+   * File size in bytes. It can be bigger than 2^31 and some programming
+   * languages may have difficulty/silent defects in interpreting it. But it has
+   * at most 52 significant bits, so a signed 64-bit integer or double-precision
+   * float type are safe for storing this value.
+   */
+  readonly file_size?: number | undefined
 
   /**
    * Available sizes of the cover of the video in the message
@@ -1978,16 +2037,40 @@ export interface Video {
    * List of available qualities of the video
    */
   readonly qualities?: VideoQuality[] | undefined
+}
+
+/**
+ * This object represents a video message.
+ *
+ * @see https://corefork.telegram.org/bots/api#videonote
+ */
+export interface VideoNote {
+  /**
+   * Duration of the video in seconds as defined by the sender
+   */
+  readonly duration: number
 
   /**
-   * Original filename as defined by the sender
+   * Video width and height (diameter of the video message) as defined by the
+   * sender
    */
-  readonly file_name?: string | undefined
+  readonly length: number
 
   /**
-   * MIME type of the file as defined by the sender
+   * Video thumbnail
    */
-  readonly mime_type?: string | undefined
+  readonly thumbnail?: PhotoSize | undefined
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -1999,62 +2082,11 @@ export interface Video {
 }
 
 /**
- * This object represents a video message (available in Telegram apps as of
- * v.4.0).
- *
- * @see https://corefork.telegram.org/bots/api#videonote
- */
-export interface VideoNote {
-  /**
-   * Identifier for this file, which can be used to download or reuse the file
-   */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
-
-  /**
-   * Video width and height (diameter of the video message) as defined by the
-   * sender
-   */
-  readonly length: number
-
-  /**
-   * Duration of the video in seconds as defined by the sender
-   */
-  readonly duration: number
-
-  /**
-   * Video thumbnail
-   */
-  readonly thumbnail?: PhotoSize | undefined
-
-  /**
-   * File size in bytes
-   */
-  readonly file_size?: number | undefined
-}
-
-/**
  * This object represents a voice note.
  *
  * @see https://corefork.telegram.org/bots/api#voice
  */
 export interface Voice {
-  /**
-   * Identifier for this file, which can be used to download or reuse the file
-   */
-  readonly file_id: string
-
-  /**
-   * Unique identifier for this file, which is supposed to be the same over time
-   * and for different bots. Can't be used to download or reuse the file.
-   */
-  readonly file_unique_id: string
-
   /**
    * Duration of the audio in seconds as defined by the sender
    */
@@ -2064,6 +2096,17 @@ export interface Voice {
    * MIME type of the file as defined by the sender
    */
   readonly mime_type?: string | undefined
+
+  /**
+   * Identifier for this file, which can be used to download or reuse the file
+   */
+  readonly file_id: string
+
+  /**
+   * Unique identifier for this file, which is supposed to be the same over time
+   * and for different bots. Can't be used to download or reuse the file.
+   */
+  readonly file_unique_id: string
 
   /**
    * File size in bytes. It can be bigger than 2^31 and some programming
@@ -2109,7 +2152,7 @@ export type PaidMedia =
  */
 export interface PaidMediaLivePhoto {
   /**
-   * Type of the paid media, always “live_photo”
+   * Type of the paid media, always "live_photo"
    */
   readonly type: string
 
@@ -2126,7 +2169,7 @@ export interface PaidMediaLivePhoto {
  */
 export interface PaidMediaPhoto {
   /**
-   * Type of the paid media, always “photo”
+   * Type of the paid media, always "photo"
    */
   readonly type: string
 
@@ -2143,7 +2186,7 @@ export interface PaidMediaPhoto {
  */
 export interface PaidMediaPreview {
   /**
-   * Type of the paid media, always “preview”
+   * Type of the paid media, always "preview"
    */
   readonly type: string
 
@@ -2170,7 +2213,7 @@ export interface PaidMediaPreview {
  */
 export interface PaidMediaVideo {
   /**
-   * Type of the paid media, always “video”
+   * Type of the paid media, always "video"
    */
   readonly type: string
 
@@ -2202,6 +2245,11 @@ export interface Contact {
   readonly last_name?: string | undefined
 
   /**
+   * Additional data about the contact in the form of a vCard
+   */
+  readonly vcard?: string | undefined
+
+  /**
    * Contact's user identifier in Telegram. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
@@ -2209,11 +2257,6 @@ export interface Contact {
    * identifier.
    */
   readonly user_id?: number | undefined
-
-  /**
-   * Additional data about the contact in the form of a vCard
-   */
-  readonly vcard?: string | undefined
 }
 
 /**
@@ -2223,13 +2266,32 @@ export interface Contact {
  */
 export interface Dice {
   /**
-   * Emoji on which the dice throw animation is based
+   * Emoji on which the dice throw animation is based, currently can be "", "",
+   * "", "", "", or ""
    */
   readonly emoji: string
 
   /**
-   * Value of the dice, 1-6 for “”, “” and “” base emoji, 1-5 for “” and “” base
-   * emoji, 1-64 for “” base emoji
+   * Value of the dice, 1-6 if emoji is "", "", or ""; 1-5 if emoji is "" or "";
+   * 1-64 if emoji is ""
+   */
+  readonly value: number
+}
+
+/**
+ * This object represents an animated dice with a stake that displays a random
+ * value.
+ *
+ * @see https://corefork.telegram.org/bots/api#stakedice
+ */
+export interface StakeDice {
+  /**
+   * Emoji on which the dice throw animation is based, always ""
+   */
+  readonly emoji: string
+
+  /**
+   * Value of the dice, 1-6
    */
   readonly value: number
 }
@@ -2275,14 +2337,14 @@ export interface PollMedia {
   readonly link?: Link | undefined
 
   /**
-   * Media is a live photo, information about the live photo
-   */
-  readonly live_photo?: LivePhoto | undefined
-
-  /**
    * Media is a shared location, information about the location
    */
   readonly location?: Location | undefined
+
+  /**
+   * Media is a live photo, information about the live photo
+   */
+  readonly live_photo?: LivePhoto | undefined
 
   /**
    * Media is a photo, available sizes of the photo
@@ -2308,7 +2370,7 @@ export interface PollMedia {
 
 /**
  * This object represents the content of a poll description or a quiz
- * explanation to be sent. It should be one of
+ * explanation to be sent. Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#inputpollmedia
  */
@@ -2323,8 +2385,8 @@ export type InputPollMedia =
   | InputMediaVideo
 
 /**
- * This object represents the content of a poll option to be sent. It should be
- * one of
+ * This object represents the content of a poll option to be sent. Currently,
+ * it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#inputpolloptionmedia
  */
@@ -2403,7 +2465,8 @@ export interface InputPollOption {
 
   /**
    * Mode for parsing entities in the text. See formatting options for more
-   * details. Currently, only custom emoji entities are allowed.
+   * details. Currently, only custom emoji entities are allowed. Must be one of
+   * "Markdown", "MarkdownV2", or "HTML".
    */
   readonly text_parse_mode?: string | undefined
 
@@ -2431,14 +2494,14 @@ export interface PollAnswer {
   readonly poll_id: string
 
   /**
-   * The chat that changed the answer to the poll, if the voter is anonymous
-   */
-  readonly voter_chat?: Chat | undefined
-
-  /**
    * The user that changed the answer to the poll, if the voter isn't anonymous
    */
   readonly user?: User | undefined
+
+  /**
+   * The chat that changed the answer to the poll, if the voter is anonymous
+   */
+  readonly voter_chat?: Chat | undefined
 
   /**
    * 0-based identifiers of chosen answer options. May be empty if the vote was
@@ -2486,6 +2549,16 @@ export interface Poll {
   readonly total_voter_count: number
 
   /**
+   * Amount of time in seconds the poll will be active after creation
+   */
+  readonly open_period?: number | undefined
+
+  /**
+   * Point in time (Unix timestamp) when the poll will be automatically closed
+   */
+  readonly close_date?: number | undefined
+
+  /**
    * True, if the poll is closed
    */
   readonly is_closed: boolean
@@ -2494,11 +2567,6 @@ export interface Poll {
    * True, if the poll is anonymous
    */
   readonly is_anonymous: boolean
-
-  /**
-   * Poll type, currently can be “regular” or “quiz”
-   */
-  readonly type: string
 
   /**
    * True, if the poll allows multiple answers
@@ -2518,11 +2586,24 @@ export interface Poll {
 
   /**
    * A list of two-letter ISO 3166-1 alpha-2 country codes indicating the
-   * countries from which users can vote in the poll. The country code “FT” is
+   * countries from which users can vote in the poll. The country code "FT" is
    * used for users with anonymous numbers. If omitted, then users from any
    * country can participate in the poll.
    */
   readonly country_codes?: string[] | undefined
+
+  /**
+   * Poll type, currently can be "regular" or "quiz"
+   */
+  readonly type: string
+
+  /**
+   * Deprecated, use correct_option_ids instead. The 0-based identifier of the
+   * correct answer option. Available only for polls in quiz mode with exactly
+   * one correct answer option which are closed or were sent (not forwarded) by
+   * the bot or to the private chat with the bot.
+   */
+  readonly correct_option_id?: number | undefined
 
   /**
    * Array of 0-based identifiers of the correct answer options. Available only
@@ -2547,16 +2628,6 @@ export interface Poll {
    * Media added to the quiz explanation
    */
   readonly explanation_media?: PollMedia | undefined
-
-  /**
-   * Amount of time in seconds the poll will be active after creation
-   */
-  readonly open_period?: number | undefined
-
-  /**
-   * Point in time (Unix timestamp) when the poll will be automatically closed
-   */
-  readonly close_date?: number | undefined
 
   /**
    * Description of the poll; for polls inside the Message object only
@@ -2654,19 +2725,19 @@ export interface Checklist {
  */
 export interface InputChecklistTask {
   /**
-   * Unique identifier of the task; must be positive and unique among all task
+   * Unique identifier of the task, at least 1; must be unique among all task
    * identifiers currently present in the checklist
    */
   readonly id: number
 
   /**
-   * Text of the task; 1-100 characters after entities parsing
+   * Text of the task, 1-100 characters after entities parsing
    */
   readonly text: string
 
   /**
    * Mode for parsing entities in the text. See formatting options for more
-   * details.
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -2685,13 +2756,13 @@ export interface InputChecklistTask {
  */
 export interface InputChecklist {
   /**
-   * Title of the checklist; 1-255 characters after entities parsing
+   * Title of the checklist, 1-255 characters after entities parsing
    */
   readonly title: string
 
   /**
    * Mode for parsing entities in the title. See formatting options for more
-   * details.
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -2703,11 +2774,6 @@ export interface InputChecklist {
   readonly title_entities?: MessageEntity[] | undefined
 
   /**
-   * List of 1-30 tasks in the checklist
-   */
-  readonly tasks: InputChecklistTask[]
-
-  /**
    * Pass True if other users can add tasks to the checklist
    */
   readonly others_can_add_tasks?: boolean | undefined
@@ -2716,6 +2782,11 @@ export interface InputChecklist {
    * Pass True if other users can mark tasks as done or not done in the checklist
    */
   readonly others_can_mark_tasks_as_done?: boolean | undefined
+
+  /**
+   * List of tasks in the checklist, 1-30 elements
+   */
+  readonly tasks: InputChecklistTask[]
 }
 
 /**
@@ -2735,7 +2806,7 @@ export interface Location {
   readonly longitude: number
 
   /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
+   * The radius of uncertainty for the location, measured in meters, 0-1500
    */
   readonly horizontal_accuracy?: number | undefined
 
@@ -2746,7 +2817,7 @@ export interface Location {
   readonly live_period?: number | undefined
 
   /**
-   * The direction in which user is moving, in degrees; 1-360. For active live
+   * The direction in which user is moving, in degrees, 1-360. For active live
    * locations only.
    */
   readonly heading?: number | undefined
@@ -2756,6 +2827,28 @@ export interface Location {
    * member, in meters. For sent live locations only.
    */
   readonly proximity_alert_radius?: number | undefined
+}
+
+/**
+ * This object represents a point on the map.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputlocation
+ */
+export interface InputLocation {
+  /**
+   * Latitude of the location
+   */
+  readonly latitude: number
+
+  /**
+   * Longitude of the location
+   */
+  readonly longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
 }
 
 /**
@@ -2785,8 +2878,8 @@ export interface Venue {
   readonly foursquare_id?: string | undefined
 
   /**
-   * Foursquare type of the venue. (For example, “arts_entertainment/default”,
-   * “arts_entertainment/aquarium” or “food/icecream”.)
+   * Foursquare type of the venue. (For example, "arts_entertainment/default",
+   * "arts_entertainment/aquarium" or "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -2808,15 +2901,15 @@ export interface Venue {
  */
 export interface WebAppData {
   /**
-   * The data. Be aware that a bad client can send arbitrary data in this field.
-   */
-  readonly data: string
-
-  /**
    * Text of the web_app keyboard button from which the Web App was opened. Be
    * aware that a bad client can send arbitrary data in this field.
    */
   readonly button_text: string
+
+  /**
+   * The data. Be aware that a bad client can send arbitrary data in this field.
+   */
+  readonly data: string
 }
 
 /**
@@ -2827,14 +2920,14 @@ export interface WebAppData {
  */
 export interface ProximityAlertTriggered {
   /**
-   * User that triggered the alert
+   * User or chat that triggered the alert
    */
-  readonly traveler: User
+  readonly traveler: User | Chat
 
   /**
-   * User that set the alert
+   * User or chat that set the alert
    */
-  readonly watcher: User
+  readonly watcher: User | Chat
 
   /**
    * The distance between the users
@@ -2906,12 +2999,34 @@ export interface BotSubscriptionUpdated {
   readonly invoice_payload: string
 
   /**
-   * The new state of the subscription. Currently, it can be one of “canceled” if
-   * the user canceled the subscription, “active” if the user re-enabled a
-   * previously canceled subscription, or “failed” if payment for the
+   * The new state of the subscription. Currently, it can be one of "canceled" if
+   * the user canceled the subscription, "active" if the user re-enabled a
+   * previously canceled subscription, or "failed" if payment for the
    * subscription failed.
    */
   readonly state: string
+}
+
+/**
+ * This object describes an update about a user stopping message generation.
+ *
+ * @see https://corefork.telegram.org/bots/api#messagegenerationstopped
+ */
+export interface MessageGenerationStopped {
+  /**
+   * Chat in which the message is generated
+   */
+  readonly chat: Chat
+
+  /**
+   * Unique identifier of the message thread in which the message is generated
+   */
+  readonly message_thread_id?: number | undefined
+
+  /**
+   * Unique identifier of the message draft which was stopped
+   */
+  readonly draft_id: string
 }
 
 /**
@@ -2940,7 +3055,7 @@ export interface PollOptionAdded {
   /**
    * Special entities that appear in the option_text
    */
-  readonly option_text_entities?: MessageEntity[] | undefined
+  readonly option_entities?: MessageEntity[] | undefined
 }
 
 /**
@@ -2969,7 +3084,7 @@ export interface PollOptionDeleted {
   /**
    * Special entities that appear in the option_text
    */
-  readonly option_text_entities?: MessageEntity[] | undefined
+  readonly option_entities?: MessageEntity[] | undefined
 }
 
 /**
@@ -3002,7 +3117,7 @@ export type BackgroundFill =
  */
 export interface BackgroundFillSolid {
   /**
-   * Type of the background fill, always “solid”
+   * Type of the background fill, always "solid"
    */
   readonly type: string
 
@@ -3019,7 +3134,7 @@ export interface BackgroundFillSolid {
  */
 export interface BackgroundFillGradient {
   /**
-   * Type of the background fill, always “gradient”
+   * Type of the background fill, always "gradient"
    */
   readonly type: string
 
@@ -3034,7 +3149,7 @@ export interface BackgroundFillGradient {
   readonly bottom_color: number
 
   /**
-   * Clockwise rotation angle of the background fill in degrees; 0-359
+   * Clockwise rotation angle of the background fill in degrees, 0-359
    */
   readonly rotation_angle: number
 }
@@ -3047,13 +3162,13 @@ export interface BackgroundFillGradient {
  */
 export interface BackgroundFillFreeformGradient {
   /**
-   * Type of the background fill, always “freeform_gradient”
+   * Type of the background fill, always "freeform_gradient"
    */
   readonly type: string
 
   /**
-   * A list of the 3 or 4 base colors that are used to generate the freeform
-   * gradient in the RGB24 format
+   * A list of the base colors that are used to generate the freeform gradient in
+   * the RGB24 format, 3-4 elements
    */
   readonly colors: number[]
 }
@@ -3076,19 +3191,19 @@ export type BackgroundType =
  */
 export interface BackgroundTypeFill {
   /**
-   * Type of the background, always “fill”
+   * Type of the background, always "fill"
    */
   readonly type: string
+
+  /**
+   * Dimming of the background in dark themes, as a percentage, 0-100
+   */
+  readonly dark_theme_dimming: number
 
   /**
    * The background fill
    */
   readonly fill: BackgroundFill
-
-  /**
-   * Dimming of the background in dark themes, as a percentage; 0-100
-   */
-  readonly dark_theme_dimming: number
 }
 
 /**
@@ -3098,17 +3213,17 @@ export interface BackgroundTypeFill {
  */
 export interface BackgroundTypeWallpaper {
   /**
-   * Type of the background, always “wallpaper”
+   * Type of the background, always "wallpaper"
    */
   readonly type: string
 
   /**
-   * Document with the wallpaper
+   * Document with the background image
    */
   readonly document: Document
 
   /**
-   * Dimming of the background in dark themes, as a percentage; 0-100
+   * Dimming of the background in dark themes, as a percentage, 0-100
    */
   readonly dark_theme_dimming: number
 
@@ -3126,19 +3241,19 @@ export interface BackgroundTypeWallpaper {
 
 /**
  * The background is a .PNG or .TGV (gzipped subset of SVG with MIME type
- * “application/x-tgwallpattern”) pattern to be combined with the background
+ * "application/x-tgwallpattern") pattern to be combined with the background
  * fill chosen by the user.
  *
  * @see https://corefork.telegram.org/bots/api#backgroundtypepattern
  */
 export interface BackgroundTypePattern {
   /**
-   * Type of the background, always “pattern”
+   * Type of the background, always "pattern"
    */
   readonly type: string
 
   /**
-   * Document with the pattern
+   * Document with the background image
    */
   readonly document: Document
 
@@ -3148,7 +3263,7 @@ export interface BackgroundTypePattern {
   readonly fill: BackgroundFill
 
   /**
-   * Intensity of the pattern when it is shown above the filled background; 0-100
+   * Intensity of the pattern when it is shown above the filled background, 0-100
    */
   readonly intensity: number
 
@@ -3171,7 +3286,7 @@ export interface BackgroundTypePattern {
  */
 export interface BackgroundTypeChatTheme {
   /**
-   * Type of the background, always “chat_theme”
+   * Type of the background, always "chat_theme"
    */
   readonly type: string
 
@@ -3238,20 +3353,34 @@ export interface ChecklistTasksAdded {
 }
 
 /**
- * Describes a service message about a chat being added to a community.
+ * Describes a service message about a chat or a bot being added to a
+ * community.
  *
  * @see https://corefork.telegram.org/bots/api#communitychatadded
  */
 export interface CommunityChatAdded {
   /**
-   * The new community to which the chat belongs
+   * The new community to which the chat or the bot belongs
    */
   readonly community: Community
 }
 
 /**
- * Describes a service message about a chat being removed from a community.
- * Currently holds no information.
+ * Describes a service message about a chat being joined by a user from a
+ * community.
+ *
+ * @see https://corefork.telegram.org/bots/api#communitychatjoined
+ */
+export interface CommunityChatJoined {
+  /**
+   * The community from which the chat was joined
+   */
+  readonly community: Community
+}
+
+/**
+ * Describes a service message about a chat or a bot being removed from a
+ * community. Currently holds no information.
  *
  * @see https://corefork.telegram.org/bots/api#communitychatremoved
  */
@@ -3387,14 +3516,14 @@ export interface SharedUser {
  */
 export interface UsersShared {
   /**
-   * Identifier of the request
-   */
-  readonly request_id: number
-
-  /**
    * Information about users shared with the bot
    */
   readonly users: SharedUser[]
+
+  /**
+   * Identifier of the request
+   */
+  readonly request_id: number
 }
 
 /**
@@ -3404,11 +3533,6 @@ export interface UsersShared {
  * @see https://corefork.telegram.org/bots/api#chatshared
  */
 export interface ChatShared {
-  /**
-   * Identifier of the request
-   */
-  readonly request_id: number
-
   /**
    * Identifier of the shared chat. This number may have more than 32 significant
    * bits and some programming languages may have difficulty/silent defects in
@@ -3433,6 +3557,11 @@ export interface ChatShared {
    * Available sizes of the chat photo, if the photo was requested by the bot
    */
   readonly photo?: PhotoSize[] | undefined
+
+  /**
+   * Identifier of the request
+   */
+  readonly request_id: number
 }
 
 /**
@@ -3445,22 +3574,22 @@ export interface ChatShared {
  */
 export interface WriteAccessAllowed {
   /**
-   * True, if the access was granted after the user accepted an explicit request
-   * from a Web App sent by the method requestWriteAccess
-   */
-  readonly from_request?: boolean | undefined
-
-  /**
    * Name of the Web App, if the access was granted when the Web App was launched
    * from a link
    */
   readonly web_app_name?: string | undefined
 
   /**
+   * True, if the access was granted after the user accepted an explicit request
+   * from a Web App sent by the method requestWriteAccess
+   */
+  readonly from_request?: true | undefined
+
+  /**
    * True, if the access was granted when the bot was added to the attachment or
    * side menu
    */
-  readonly from_attachment_menu?: boolean | undefined
+  readonly from_attachment_menu?: true | undefined
 }
 
 /**
@@ -3623,22 +3752,22 @@ export interface SuggestedPostPaid {
   readonly suggested_post_message?: Message | undefined
 
   /**
-   * Currency in which the payment was made. Currently, one of “XTR” for Telegram
-   * Stars or “TON” for TON grams.
+   * Currency in which the payment was made. Currently, one of "XTR" for Telegram
+   * Stars or "TON" for TON grams.
    */
   readonly currency: string
-
-  /**
-   * The amount of the currency that was received by the channel in nanograms;
-   * for payments in TON grams only
-   */
-  readonly amount?: number | undefined
 
   /**
    * The amount of Telegram Stars that was received by the channel; for payments
    * in Telegram Stars only
    */
   readonly star_amount?: StarAmount | undefined
+
+  /**
+   * The amount of the currency that was received by the channel in nanograms;
+   * for payments in TON grams only
+   */
+  readonly amount?: number | undefined
 }
 
 /**
@@ -3655,9 +3784,9 @@ export interface SuggestedPostRefunded {
   readonly suggested_post_message?: Message | undefined
 
   /**
-   * Reason for the refund. Currently, one of “post_deleted” if the post was
+   * Reason for the refund. Currently, one of "post_deleted" if the post was
    * deleted within 24 hours of being posted or removed from scheduled messages
-   * without being posted, or “payment_refunded” if the payer refunded their
+   * without being posted, or "payment_refunded" if the payer refunded their
    * payment.
    */
   readonly reason: string
@@ -3711,11 +3840,6 @@ export interface Giveaway {
   readonly has_public_winners?: true | undefined
 
   /**
-   * Description of additional giveaway prize
-   */
-  readonly prize_description?: string | undefined
-
-  /**
    * A list of two-letter ISO 3166-1 alpha-2 country codes indicating the
    * countries from which eligible users for the giveaway must come. If empty,
    * then all users can participate in the giveaway. Users with a phone number
@@ -3724,16 +3848,21 @@ export interface Giveaway {
   readonly country_codes?: string[] | undefined
 
   /**
-   * The number of Telegram Stars to be split between giveaway winners; for
-   * Telegram Star giveaways only
+   * Description of additional giveaway prize
    */
-  readonly prize_star_count?: number | undefined
+  readonly prize_description?: string | undefined
 
   /**
    * The number of months the Telegram Premium subscription won from the giveaway
    * will be active for; for Telegram Premium giveaways only
    */
   readonly premium_subscription_month_count?: number | undefined
+
+  /**
+   * The number of Telegram Stars to be split between giveaway winners; for
+   * Telegram Star giveaways only
+   */
+  readonly prize_star_count?: number | undefined
 }
 
 /**
@@ -3754,42 +3883,15 @@ export interface GiveawayWinners {
   readonly giveaway_message_id: number
 
   /**
-   * Point in time (Unix timestamp) when winners of the giveaway were selected
-   */
-  readonly winners_selection_date: number
-
-  /**
-   * Total number of winners in the giveaway
-   */
-  readonly winner_count: number
-
-  /**
-   * List of up to 100 winners of the giveaway
-   */
-  readonly winners: User[]
-
-  /**
    * The number of other chats the user had to join in order to be eligible for
    * the giveaway
    */
   readonly additional_chat_count?: number | undefined
 
   /**
-   * The number of Telegram Stars that were split between giveaway winners; for
-   * Telegram Star giveaways only
+   * Point in time (Unix timestamp) when winners of the giveaway were selected
    */
-  readonly prize_star_count?: number | undefined
-
-  /**
-   * The number of months the Telegram Premium subscription won from the giveaway
-   * will be active for; for Telegram Premium giveaways only
-   */
-  readonly premium_subscription_month_count?: number | undefined
-
-  /**
-   * Number of undistributed prizes
-   */
-  readonly unclaimed_prize_count?: number | undefined
+  readonly winners_selection_date: number
 
   /**
    * True, if only users who had joined the chats after the giveaway started were
@@ -3803,9 +3905,36 @@ export interface GiveawayWinners {
   readonly was_refunded?: true | undefined
 
   /**
+   * The number of months the Telegram Premium subscription won from the giveaway
+   * will be active for; for Telegram Premium giveaways only
+   */
+  readonly premium_subscription_month_count?: number | undefined
+
+  /**
+   * The number of Telegram Stars that were split between giveaway winners; for
+   * Telegram Star giveaways only
+   */
+  readonly prize_star_count?: number | undefined
+
+  /**
    * Description of additional giveaway prize
    */
   readonly prize_description?: string | undefined
+
+  /**
+   * Total number of winners in the giveaway
+   */
+  readonly winner_count: number
+
+  /**
+   * Number of undistributed prizes
+   */
+  readonly unclaimed_prize_count?: number | undefined
+
+  /**
+   * List of winners of the giveaway, at most 100 elements
+   */
+  readonly winners: User[]
 }
 
 /**
@@ -3826,15 +3955,15 @@ export interface GiveawayCompleted {
   readonly unclaimed_prize_count?: number | undefined
 
   /**
-   * Message with the giveaway that was completed, if it wasn't deleted
-   */
-  readonly giveaway_message?: Message | undefined
-
-  /**
    * True, if the giveaway is a Telegram Star giveaway. Otherwise, currently, the
    * giveaway is a Telegram Premium giveaway.
    */
   readonly is_star_giveaway?: true | undefined
+
+  /**
+   * Message with the giveaway that was completed, if it wasn't deleted
+   */
+  readonly giveaway_message?: Message | undefined
 }
 
 /**
@@ -3876,22 +4005,46 @@ export interface LinkPreviewOptions {
 }
 
 /**
- * Describes the price of a suggested post.
+ * Describes the price of a suggested post. Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#suggestedpostprice
  */
-export interface SuggestedPostPrice {
+export type SuggestedPostPrice =
+  | SuggestedPostPriceGram
+  | SuggestedPostPriceStar
+
+/**
+ * Describes the price of a suggested post in Telegram Stars.
+ *
+ * @see https://corefork.telegram.org/bots/api#suggestedpostpricestar
+ */
+export interface SuggestedPostPriceStar {
   /**
-   * Currency in which the post will be paid. Currently, must be one of “XTR” for
-   * Telegram Stars or “TON” for TON grams.
+   * Currency in which the post will be paid, always "XTR"
    */
   readonly currency: string
 
   /**
-   * The amount of the currency that will be paid for the post in the smallest
-   * units of the currency, i.e. Telegram Stars or nanograms. Currently, price in
-   * Telegram Stars must be between 5 and 100000, and price in nanograms must be
-   * between 10000000 and 10000000000000.
+   * The number of Telegram Stars that will be paid for the post. Values between
+   * 5-100000 are accepted.
+   */
+  readonly amount: number
+}
+
+/**
+ * Describes the price of a suggested post in TON grams.
+ *
+ * @see https://corefork.telegram.org/bots/api#suggestedpostpricegram
+ */
+export interface SuggestedPostPriceGram {
+  /**
+   * Currency in which the post will be paid, always "TON"
+   */
+  readonly currency: string
+
+  /**
+   * The number of nanograms that will be paid for the post. Values between
+   * 10000000-10000000000000 are accepted. Must be a multiple of 10000000.
    */
   readonly amount: number
 }
@@ -3902,12 +4055,6 @@ export interface SuggestedPostPrice {
  * @see https://corefork.telegram.org/bots/api#suggestedpostinfo
  */
 export interface SuggestedPostInfo {
-  /**
-   * State of the suggested post. Currently, it can be one of “pending”,
-   * “approved”, “declined”.
-   */
-  readonly state: string
-
   /**
    * Proposed price of the post. If the field is omitted, then the post is
    * unpaid.
@@ -3920,6 +4067,12 @@ export interface SuggestedPostInfo {
    * or administrator who approves it.
    */
   readonly send_date?: number | undefined
+
+  /**
+   * State of the suggested post. Currently, can be "pending", "approved", or
+   * "declined".
+   */
+  readonly state: string
 }
 
 /**
@@ -3929,18 +4082,18 @@ export interface SuggestedPostInfo {
  */
 export interface SuggestedPostParameters {
   /**
-   * Proposed price for the post. If the field is omitted, then the post is
-   * unpaid.
-   */
-  readonly price?: SuggestedPostPrice | undefined
-
-  /**
    * Proposed send date of the post. If specified, then the date must be between
    * 300 second and 2678400 seconds (30 days) in the future. If the field is
    * omitted, then the post can be published at any time within 30 days at the
    * sole discretion of the user who approves it.
    */
   readonly send_date?: number | undefined
+
+  /**
+   * Proposed price for the post. If the field is omitted, then the post is
+   * unpaid.
+   */
+  readonly price?: SuggestedPostPrice | undefined
 }
 
 /**
@@ -3959,10 +4112,9 @@ export interface DirectMessagesTopic {
   readonly topic_id: number
 
   /**
-   * Information about the user that created the topic. Currently, it is always
-   * present.
+   * Information about the user that created the topic
    */
-  readonly user?: User | undefined
+  readonly user: User
 }
 
 /**
@@ -4031,7 +4183,11 @@ export interface File {
 
   /**
    * File path. Use https://api.telegram.org/file/bot<token>/<file_path> to get
-   * the file.
+   * the file. Always a directory, one of "animations", "documents", "music",
+   * "notification_sounds", "passport", "photos", "profile_photos", "secret",
+   * "secret_thumbnails", "stickers", "stories", "temp", "thumbnails",
+   * "video_notes", "videos", "voice", or "wallpapers", followed by a slash and a
+   * file name.
    */
   readonly file_path?: string | undefined
 }
@@ -4063,11 +4219,26 @@ export interface ReplyKeyboardMarkup {
   readonly keyboard: KeyboardButton[][]
 
   /**
-   * Requests clients to always show the keyboard when the regular keyboard is
-   * hidden. Defaults to False, in which case the custom keyboard can be hidden
-   * and opened with a keyboard icon.
+   * Use this parameter if you want to show the keyboard to specific users only.
+   * Targets: 1) users that are @mentioned in the text of the Message object; 2)
+   * if the bot's message is a reply to a message in the same chat and forum
+   * topic, sender of the original message. Example: A user requests to change
+   * the bot's language, bot replies to the request with a keyboard to select the
+   * new language. Other users in the group don't see the keyboard.
    */
-  readonly is_persistent?: boolean | undefined
+  readonly selective?: boolean | undefined
+
+  /**
+   * Pass True if the reply interface must be shown to the user, as if they had
+   * manually selected the bot's message and tapped 'Reply'
+   */
+  readonly force_reply?: boolean | undefined
+
+  /**
+   * The placeholder to be shown in the input field when the keyboard is active,
+   * 1-64 characters
+   */
+  readonly input_field_placeholder?: string | undefined
 
   /**
    * Requests clients to resize the keyboard vertically for optimal fit (e.g.,
@@ -4086,20 +4257,11 @@ export interface ReplyKeyboardMarkup {
   readonly one_time_keyboard?: boolean | undefined
 
   /**
-   * The placeholder to be shown in the input field when the keyboard is active;
-   * 1-64 characters
+   * Requests clients to always show the keyboard when the regular keyboard is
+   * hidden. Defaults to False, in which case the custom keyboard can be hidden
+   * and opened with a keyboard icon.
    */
-  readonly input_field_placeholder?: string | undefined
-
-  /**
-   * Use this parameter if you want to show the keyboard to specific users only.
-   * Targets: 1) users that are @mentioned in the text of the Message object; 2)
-   * if the bot's message is a reply to a message in the same chat and forum
-   * topic, sender of the original message. Example: A user requests to change
-   * the bot's language, bot replies to the request with a keyboard to select the
-   * new language. Other users in the group don't see the keyboard.
-   */
-  readonly selective?: boolean | undefined
+  readonly is_persistent?: boolean | undefined
 }
 
 /**
@@ -4122,37 +4284,16 @@ export interface KeyboardButton {
    * Unique identifier of the custom emoji shown before the text of the button.
    * Can only be used by bots that purchased additional usernames on Fragment or
    * in the messages directly sent by the bot to private, group and supergroup
-   * chats if the owner of the bot has a Telegram Premium subscription.
+   * chats if the owner of the bot has a Telegram Premium subscription. Must be a
+   * decimal integer.
    */
   readonly icon_custom_emoji_id?: string | undefined
 
   /**
-   * Style of the button. Must be one of “danger” (red), “success” (green) or
-   * “primary” (blue). If omitted, then an app-specific style is used.
+   * Style of the button. Must be one of "danger" (red), "success" (green) or
+   * "primary" (blue). If omitted, then an app-specific style is used.
    */
   readonly style?: string | undefined
-
-  /**
-   * If specified, pressing the button will open a list of suitable users.
-   * Identifiers of selected users will be sent to the bot in a “users_shared”
-   * service message. Available in private chats only.
-   */
-  readonly request_users?: KeyboardButtonRequestUsers | undefined
-
-  /**
-   * If specified, pressing the button will open a list of suitable chats.
-   * Tapping on a chat will send its identifier to the bot in a “chat_shared”
-   * service message. Available in private chats only.
-   */
-  readonly request_chat?: KeyboardButtonRequestChat | undefined
-
-  /**
-   * If specified, pressing the button will ask the user to create and share a
-   * bot that will be managed by the current bot. Available for bots that enabled
-   * management of other bots in the @BotFather Mini App. Available in private
-   * chats only.
-   */
-  readonly request_managed_bot?: KeyboardButtonRequestManagedBot | undefined
 
   /**
    * If True, the user's phone number will be sent as a contact when the button
@@ -4174,10 +4315,32 @@ export interface KeyboardButton {
 
   /**
    * If specified, the described Web App will be launched when the button is
-   * pressed. The Web App will be able to send a “web_app_data” service message.
+   * pressed. The Web App will be able to send a "web_app_data" service message.
    * Available in private chats only.
    */
   readonly web_app?: WebAppInfo | undefined
+
+  /**
+   * If specified, pressing the button will open a list of suitable users.
+   * Identifiers of selected users will be sent to the bot in a "users_shared"
+   * service message. Available in private chats only.
+   */
+  readonly request_users?: KeyboardButtonRequestUsers | undefined
+
+  /**
+   * If specified, pressing the button will open a list of suitable chats.
+   * Tapping on a chat will send its identifier to the bot in a "chat_shared"
+   * service message. Available in private chats only.
+   */
+  readonly request_chat?: KeyboardButtonRequestChat | undefined
+
+  /**
+   * If specified, pressing the button will ask the user to create and share a
+   * bot that will be managed by the current bot. Available for bots that enabled
+   * management of other bots in the @BotFather Mini App. Available in private
+   * chats only.
+   */
+  readonly request_managed_bot?: KeyboardButtonRequestManagedBot | undefined
 }
 
 /**
@@ -4207,7 +4370,7 @@ export interface KeyboardButtonRequestUsers {
   readonly user_is_premium?: boolean | undefined
 
   /**
-   * The maximum number of users to be selected; 1-10. Defaults to 1.
+   * The maximum number of users to be selected, 1-10, defaults to 1
    */
   readonly max_quantity?: number | undefined
 
@@ -4244,9 +4407,9 @@ export interface KeyboardButtonRequestChat {
 
   /**
    * Pass True to request a channel chat, pass False to request a group or a
-   * supergroup chat
+   * supergroup chat, defaults to False
    */
-  readonly chat_is_channel: boolean
+  readonly chat_is_channel?: boolean | undefined
 
   /**
    * Pass True to request a forum supergroup, pass False to request a non-forum
@@ -4358,7 +4521,7 @@ export interface ReplyKeyboardRemove {
    * summon this keyboard; if you want to hide the keyboard from sight but keep
    * it accessible, use one_time_keyboard in ReplyKeyboardMarkup)
    */
-  readonly remove_keyboard: true
+  readonly remove_keyboard: boolean
 
   /**
    * Use this parameter if you want to remove the keyboard for specific users
@@ -4384,6 +4547,13 @@ export interface InlineKeyboardMarkup {
    * objects
    */
   readonly inline_keyboard: InlineKeyboardButton[][]
+
+  /**
+   * Pass True if the reply interface must be shown to the user, as if they had
+   * manually selected the bot's message and tapped 'Reply'. The value of the
+   * field can't be changed when the inline keyboard is edited.
+   */
+  readonly force_reply?: boolean | undefined
 }
 
 /**
@@ -4408,8 +4578,8 @@ export interface InlineKeyboardButton {
   readonly icon_custom_emoji_id?: string | undefined
 
   /**
-   * Style of the button. Must be one of “danger” (red), “success” (green) or
-   * “primary” (blue). If omitted, then an app-specific style is used.
+   * Style of the button. Must be one of "danger" (red), "success" (green) or
+   * "primary" (blue). If omitted, then an app-specific style is used.
    */
   readonly style?: string | undefined
 
@@ -4421,12 +4591,6 @@ export interface InlineKeyboardButton {
   readonly url?: string | undefined
 
   /**
-   * Data to be sent in a callback query to the bot when the button is pressed,
-   * 1-64 bytes
-   */
-  readonly callback_data?: string | undefined
-
-  /**
    * Description of the Web App that will be launched when the user presses the
    * button. The Web App will be able to send an arbitrary message on behalf of
    * the user using the method answerWebAppQuery. Available only in private chats
@@ -4436,19 +4600,17 @@ export interface InlineKeyboardButton {
   readonly web_app?: WebAppInfo | undefined
 
   /**
-   * An HTTPS URL used to automatically authorize the user. Can be used as a
-   * replacement for the Telegram Login Widget.
+   * Data to be sent in a callback query to the bot when the button is pressed,
+   * 1-64 bytes
    */
-  readonly login_url?: LoginUrl | undefined
+  readonly callback_data?: string | undefined
 
   /**
-   * If set, pressing the button will prompt the user to select one of their
-   * chats, open that chat and insert the bot's username and the specified inline
-   * query in the input field. May be empty, in which case just the bot's
-   * username will be inserted. Not supported for messages sent in channel direct
-   * messages chats and on behalf of a business account.
+   * Description of the game that will be launched when the user presses the
+   * button. NOTE: This type of button must always be the first button in the
+   * first row.
    */
-  readonly switch_inline_query?: string | undefined
+  readonly callback_game?: CallbackGame | undefined
 
   /**
    * If set, pressing the button will insert the bot's username and the specified
@@ -4462,6 +4624,15 @@ export interface InlineKeyboardButton {
 
   /**
    * If set, pressing the button will prompt the user to select one of their
+   * chats, open that chat and insert the bot's username and the specified inline
+   * query in the input field. May be empty, in which case just the bot's
+   * username will be inserted. Not supported for messages sent in channel direct
+   * messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
    * chats of the specified type, open that chat and insert the bot's username
    * and the specified inline query in the input field. Not supported for
    * messages sent in channel direct messages chats and on behalf of a business
@@ -4470,9 +4641,94 @@ export interface InlineKeyboardButton {
   readonly switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat | undefined
 
   /**
-   * Description of the button that copies the specified text to the clipboard
+   * Specify True, to send a Pay button. Substrings "" and "XTR" in the buttons's
+   * text will be replaced with a Telegram Star icon. NOTE: This type of button
+   * must always be the first button in the first row and can only be used in
+   * invoice messages.
+   */
+  readonly pay?: true | undefined
+
+  /**
+   * A button that copies the specified text to the clipboard
    */
   readonly copy_text?: CopyTextButton | undefined
+
+  /**
+   * If set, then the button is disabled and does nothing
+   */
+  readonly disabled?: DisabledButton | undefined
+}
+
+/**
+ * This object represents an inline keyboard that appears right next to the
+ * message it belongs to.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputinlinekeyboardmarkup
+ */
+export interface InputInlineKeyboardMarkup {
+  /**
+   * Array of button rows, each represented by an Array of
+   * InputInlineKeyboardButton objects
+   */
+  readonly inline_keyboard: InputInlineKeyboardButton[][]
+
+  /**
+   * Pass True if the reply interface must be shown to the user, as if they had
+   * manually selected the bot's message and tapped 'Reply'. The value of the
+   * field can't be changed when the inline keyboard is edited.
+   */
+  readonly force_reply?: boolean | undefined
+}
+
+/**
+ * This object represents one button of an inline keyboard. Exactly one of the
+ * fields other than text, icon_custom_emoji_id, and style must be used to
+ * specify the type of the button.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputinlinekeyboardbutton
+ */
+export interface InputInlineKeyboardButton {
+  /**
+   * Label text on the button
+   */
+  readonly text: string
+
+  /**
+   * Unique identifier of the custom emoji shown before the text of the button.
+   * Can only be used by bots that purchased additional usernames on Fragment or
+   * in the messages directly sent by the bot to private, group and supergroup
+   * chats if the owner of the bot has a Telegram Premium subscription. Must be a
+   * decimal integer.
+   */
+  readonly icon_custom_emoji_id?: string | undefined
+
+  /**
+   * Style of the button. Must be one of "danger" (red), "success" (green) or
+   * "primary" (blue). If omitted, then an app-specific style is used.
+   */
+  readonly style?: string | undefined
+
+  /**
+   * HTTP or tg:// URL to be opened when the button is pressed. Links
+   * tg://user?id=<user_id> can be used to mention a user by their identifier
+   * without using a username, if this is allowed by their privacy settings.
+   */
+  readonly url?: string | undefined
+
+  /**
+   * Description of the Web App that will be launched when the user presses the
+   * button. The Web App will be able to send an arbitrary message on behalf of
+   * the user using the method answerWebAppQuery. Available only in private chats
+   * between a user and the bot. Not supported for messages sent on behalf of a
+   * business account.
+   */
+  readonly web_app?: WebAppInfo | undefined
+
+  /**
+   * Data to be sent in a callback query to the bot when the button is pressed,
+   * 1-64 bytes
+   */
+  readonly callback_data?: string | undefined
 
   /**
    * Description of the game that will be launched when the user presses the
@@ -4482,25 +4738,85 @@ export interface InlineKeyboardButton {
   readonly callback_game?: CallbackGame | undefined
 
   /**
-   * Specify True, to send a Pay button. Substrings “” and “XTR” in the buttons's
+   * If set, pressing the button will insert the bot's username and the specified
+   * inline query in the current chat's input field. May be empty, in which case
+   * only the bot's username will be inserted. This offers a quick way for the
+   * user to open your bot in inline mode in the same chat - good for selecting
+   * something from multiple options. Not supported in channels and for messages
+   * sent in channel direct messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query_current_chat?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats, open that chat and insert the bot's username and the specified inline
+   * query in the input field. May be empty, in which case just the bot's
+   * username will be inserted. Not supported for messages sent in channel direct
+   * messages chats and on behalf of a business account.
+   */
+  readonly switch_inline_query?: string | undefined
+
+  /**
+   * If set, pressing the button will prompt the user to select one of their
+   * chats of the specified type, open that chat and insert the bot's username
+   * and the specified inline query in the input field. Not supported for
+   * messages sent in channel direct messages chats and on behalf of a business
+   * account.
+   */
+  readonly switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat | undefined
+
+  /**
+   * Specify True, to send a Pay button. Substrings "" and "XTR" in the buttons's
    * text will be replaced with a Telegram Star icon. NOTE: This type of button
    * must always be the first button in the first row and can only be used in
    * invoice messages.
    */
   readonly pay?: boolean | undefined
+
+  /**
+   * A button that copies the specified text to the clipboard
+   */
+  readonly copy_text?: CopyTextButton | undefined
+
+  /**
+   * If set, then the button is disabled and does nothing
+   */
+  readonly disabled?: DisabledButton | undefined
+
+  /**
+   * An HTTPS URL used to automatically authorize the user. Can be used as a
+   * replacement for the Telegram Login Widget. Not supported for ephemeral
+   * messages.
+   */
+  readonly login_url?: LoginUrl | undefined
 }
 
 /**
  * This object represents a parameter of the inline keyboard button used to
- * automatically authorize a user. Serves as a great replacement for the
+ * automatically authorize a user. It serves as a great replacement for the
  * Telegram Login Widget when the user is coming from Telegram. All the user
  * needs to do is tap/click a button and confirm that they want to log in:
- * Telegram apps support these buttons as of version 5.7. Sample bot:
- * @discussbot
+ * Sample bot: @DiscussBot
  *
  * @see https://corefork.telegram.org/bots/api#loginurl
  */
 export interface LoginUrl {
+  /**
+   * Username of a bot, which will be used for user authorization; not supported
+   * in InputRichMessageButton. See Setting up a bot for more details. If not
+   * specified, the current bot's username will be assumed. The url's domain must
+   * be the same as the domain linked with the bot. See Linking your domain to
+   * the bot for more details. Only A-Z, a-z, 0-9 and _ are allowed, after an
+   * optional @.
+   */
+  readonly bot_username?: string | undefined
+
+  /**
+   * Pass True to request the permission for your bot to send messages to the
+   * user
+   */
+  readonly request_write_access?: boolean | undefined
+
   /**
    * An HTTPS URL to be opened with user authorization data added to the query
    * string when the button is pressed. If the user refuses to provide
@@ -4516,20 +4832,6 @@ export interface LoginUrl {
    * New text of the button in forwarded messages
    */
   readonly forward_text?: string | undefined
-
-  /**
-   * Username of a bot, which will be used for user authorization. See Setting up
-   * a bot for more details. If not specified, the current bot's username will be
-   * assumed. The url's domain must be the same as the domain linked with the
-   * bot. See Linking your domain to the bot for more details.
-   */
-  readonly bot_username?: string | undefined
-
-  /**
-   * Pass True to request the permission for your bot to send messages to the
-   * user
-   */
-  readonly request_write_access?: boolean | undefined
 }
 
 /**
@@ -4540,28 +4842,31 @@ export interface LoginUrl {
  */
 export interface SwitchInlineQueryChosenChat {
   /**
-   * The default inline query to be inserted in the input field. If left empty,
-   * only the bot's username will be inserted.
+   * Optional when sent to the Bot API. The default inline query to be inserted
+   * in the input field. If left empty, only the bot's username will be inserted.
    */
   readonly query?: string | undefined
 
   /**
-   * True, if private chats with users can be chosen
+   * Optional when sent to the Bot API. True, if private chats with users can be
+   * chosen
    */
   readonly allow_user_chats?: boolean | undefined
 
   /**
-   * True, if private chats with bots can be chosen
+   * Optional when sent to the Bot API. True, if private chats with bots can be
+   * chosen
    */
   readonly allow_bot_chats?: boolean | undefined
 
   /**
-   * True, if group and supergroup chats can be chosen
+   * Optional when sent to the Bot API. True, if group and supergroup chats can
+   * be chosen
    */
   readonly allow_group_chats?: boolean | undefined
 
   /**
-   * True, if channel chats can be chosen
+   * Optional when sent to the Bot API. True, if channel chats can be chosen
    */
   readonly allow_channel_chats?: boolean | undefined
 }
@@ -4574,18 +4879,24 @@ export interface SwitchInlineQueryChosenChat {
  */
 export interface CopyTextButton {
   /**
-   * The text to be copied to the clipboard; 1-256 characters
+   * The text to be copied to the clipboard, 1-256 characters
    */
   readonly text: string
 }
 
 /**
+ * This object represents a disabled button which does nothing. Currently holds
+ * no information.
+ *
+ * @see https://corefork.telegram.org/bots/api#disabledbutton
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
+export interface DisabledButton {}
+
+/**
  * This object represents an incoming callback query from a callback button in
- * an inline keyboard. If the button that originated the query was attached to
- * a message sent by the bot, the field message will be present. If the button
- * was attached to a message sent via the bot (in inline mode), the field
- * inline_message_id will be present. Exactly one of the fields data or
- * game_short_name will be present.
+ * an inline keyboard of a message sent by the bot. Exactly one of the fields
+ * data or game_short_name will be present.
  *
  * @see https://corefork.telegram.org/bots/api#callbackquery
  */
@@ -4603,13 +4914,93 @@ export interface CallbackQuery {
   /**
    * Message sent by the bot with the callback button that originated the query
    */
-  readonly message?: MaybeInaccessibleMessage | undefined
+  readonly message: MaybeInaccessibleMessage
+
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the callback button was sent. Useful for high scores in games.
+   */
+  readonly chat_instance: string
+
+  /**
+   * Data associated with the callback button. Be aware that the message
+   * originated the query can contain no callback buttons with this data.
+   */
+  readonly data?: string | undefined
+
+  /**
+   * Short name of a Game to be returned, serves as the unique identifier for the
+   * game
+   */
+  readonly game_short_name?: string | undefined
+}
+
+/**
+ * This object represents an incoming callback query from a callback button in
+ * an inline keyboard of a message sent on behalf of a connected business
+ * account. Exactly one of the fields data or game_short_name will be present.
+ *
+ * @see https://corefork.telegram.org/bots/api#businesscallbackquery
+ */
+export interface BusinessCallbackQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
+
+  /**
+   * Message sent on behalf of the business account with the callback button that
+   * originated the query
+   */
+  readonly message: Message
+
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the callback button was sent. Useful for high scores in games.
+   */
+  readonly chat_instance: string
+
+  /**
+   * Data associated with the callback button. Be aware that the message
+   * originated the query can contain no callback buttons with this data.
+   */
+  readonly data?: string | undefined
+
+  /**
+   * Short name of a Game to be returned, serves as the unique identifier for the
+   * game
+   */
+  readonly game_short_name?: string | undefined
+}
+
+/**
+ * This object represents an incoming callback query from a callback button in
+ * an inline keyboard of a message sent via the bot (in inline mode). Exactly
+ * one of the fields data or game_short_name will be present.
+ *
+ * @see https://corefork.telegram.org/bots/api#inlinecallbackquery
+ */
+export interface InlineCallbackQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
 
   /**
    * Identifier of the message sent via the bot in inline mode, that originated
    * the query
    */
-  readonly inline_message_id?: string | undefined
+  readonly inline_message_id: string
 
   /**
    * Global identifier, uniquely corresponding to the chat to which the message
@@ -4642,24 +5033,24 @@ export interface CallbackQuery {
  */
 export interface ForceReply {
   /**
-   * Shows reply interface to the user, as if they manually selected the bot's
-   * message and tapped 'Reply'
-   */
-  readonly force_reply: true
-
-  /**
-   * The placeholder to be shown in the input field when the reply is active;
-   * 1-64 characters
-   */
-  readonly input_field_placeholder?: string | undefined
-
-  /**
    * Use this parameter if you want to force reply from specific users only.
    * Targets: 1) users that are @mentioned in the text of the Message object; 2)
    * if the bot's message is a reply to a message in the same chat and forum
    * topic, sender of the original message.
    */
   readonly selective?: boolean | undefined
+
+  /**
+   * Shows reply interface to the user, as if they had manually selected the
+   * bot's message and tapped 'Reply'
+   */
+  readonly force_reply: boolean
+
+  /**
+   * The placeholder to be shown in the input field when the reply is active,
+   * 1-64 characters
+   */
+  readonly input_field_placeholder?: string | undefined
 }
 
 /**
@@ -4724,35 +5115,19 @@ export interface ChatPhoto {
 export interface ChatInviteLink {
   /**
    * The invite link. If the link was created by another chat administrator, then
-   * the second part of the link will be replaced with “…”.
+   * the second part of the link will be replaced with "...".
    */
   readonly invite_link: string
-
-  /**
-   * Creator of the link
-   */
-  readonly creator: User
-
-  /**
-   * True, if users joining the chat via the link need to be approved by chat
-   * administrators
-   */
-  readonly creates_join_request: boolean
-
-  /**
-   * True, if the link is primary
-   */
-  readonly is_primary: boolean
-
-  /**
-   * True, if the link is revoked
-   */
-  readonly is_revoked: boolean
 
   /**
    * Invite link name
    */
   readonly name?: string | undefined
+
+  /**
+   * Creator of the link
+   */
+  readonly creator: User
 
   /**
    * Point in time (Unix timestamp) when the link will expire or has been expired
@@ -4761,7 +5136,7 @@ export interface ChatInviteLink {
 
   /**
    * The maximum number of users that can be members of the chat simultaneously
-   * after joining the chat via this invite link; 1-99999
+   * after joining the chat via this invite link, 1-99999
    */
   readonly member_limit?: number | undefined
 
@@ -4781,6 +5156,22 @@ export interface ChatInviteLink {
    * subsequent subscription period to be a member of the chat using the link
    */
   readonly subscription_price?: number | undefined
+
+  /**
+   * True, if users joining the chat via the link need to be approved by chat
+   * administrators
+   */
+  readonly creates_join_request: boolean
+
+  /**
+   * True, if the link is primary
+   */
+  readonly is_primary: boolean
+
+  /**
+   * True, if the link is revoked
+   */
+  readonly is_revoked: boolean
 }
 
 /**
@@ -4790,68 +5181,18 @@ export interface ChatInviteLink {
  */
 export interface ChatAdministratorRights {
   /**
-   * True, if the user's presence in the chat is hidden
+   * Optional when sent to the Bot API. True, if the administrator can access the
+   * chat event log, get boost list, see hidden supergroup and channel members,
+   * report spam messages, ignore slow mode, and send messages to the chat
+   * without paying Telegram Stars. Implied by any other administrator privilege.
    */
-  readonly is_anonymous: boolean
+  readonly can_manage_chat?: boolean | undefined
 
   /**
-   * True, if the administrator can access the chat event log, get boost list,
-   * see hidden supergroup and channel members, report spam messages, ignore slow
-   * mode, and send messages to the chat without paying Telegram Stars. Implied
-   * by any other administrator privilege.
+   * Optional when sent to the Bot API. True, if the user is allowed to change
+   * the chat title, photo and other settings
    */
-  readonly can_manage_chat: boolean
-
-  /**
-   * True, if the administrator can delete messages of other users
-   */
-  readonly can_delete_messages: boolean
-
-  /**
-   * True, if the administrator can manage video chats
-   */
-  readonly can_manage_video_chats: boolean
-
-  /**
-   * True, if the administrator can restrict, ban or unban chat members, or
-   * access supergroup statistics
-   */
-  readonly can_restrict_members: boolean
-
-  /**
-   * True, if the administrator can add new administrators with a subset of their
-   * own privileges or demote administrators that they have promoted, directly or
-   * indirectly (promoted by administrators that were appointed by the user)
-   */
-  readonly can_promote_members: boolean
-
-  /**
-   * True, if the user is allowed to change the chat title, photo and other
-   * settings
-   */
-  readonly can_change_info: boolean
-
-  /**
-   * True, if the user is allowed to invite new users to the chat
-   */
-  readonly can_invite_users: boolean
-
-  /**
-   * True, if the administrator can post stories to the chat
-   */
-  readonly can_post_stories: boolean
-
-  /**
-   * True, if the administrator can edit stories posted by other users, post
-   * stories to the chat page, pin chat stories, and access the chat's story
-   * archive
-   */
-  readonly can_edit_stories: boolean
-
-  /**
-   * True, if the administrator can delete stories posted by other users
-   */
-  readonly can_delete_stories: boolean
+  readonly can_change_info?: boolean | undefined
 
   /**
    * True, if the administrator can post messages in the channel, approve
@@ -4866,6 +5207,24 @@ export interface ChatAdministratorRights {
   readonly can_edit_messages?: boolean | undefined
 
   /**
+   * Optional when sent to the Bot API. True, if the administrator can delete
+   * messages of other users
+   */
+  readonly can_delete_messages?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the user is allowed to invite
+   * new users to the chat
+   */
+  readonly can_invite_users?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can restrict,
+   * ban or unban chat members, or access supergroup statistics
+   */
+  readonly can_restrict_members?: boolean | undefined
+
+  /**
    * True, if the user is allowed to pin messages; for groups and supergroups
    * only
    */
@@ -4878,6 +5237,39 @@ export interface ChatAdministratorRights {
   readonly can_manage_topics?: boolean | undefined
 
   /**
+   * Optional when sent to the Bot API. True, if the administrator can add new
+   * administrators with a subset of their own privileges or demote
+   * administrators that they have promoted, directly or indirectly (promoted by
+   * administrators that were appointed by the user)
+   */
+  readonly can_promote_members?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can manage
+   * video chats
+   */
+  readonly can_manage_video_chats?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can post
+   * stories to the chat
+   */
+  readonly can_post_stories?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can edit
+   * stories posted by other users, post stories to the chat page, pin chat
+   * stories, and access the chat's story archive
+   */
+  readonly can_edit_stories?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can delete
+   * stories posted by other users
+   */
+  readonly can_delete_stories?: boolean | undefined
+
+  /**
    * True, if the administrator can manage direct messages of the channel and
    * decline suggested posts; for channels only
    */
@@ -4885,9 +5277,21 @@ export interface ChatAdministratorRights {
 
   /**
    * True, if the administrator can edit the tags of regular members; for groups
-   * and supergroups only. If omitted, defaults to the value of can_pin_messages.
+   * and supergroups only
    */
   readonly can_manage_tags?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the administrator can manage
+   * chat welcome messages or directly send them in the case of bots
+   */
+  readonly can_send_welcome_messages?: boolean | undefined
+
+  /**
+   * Optional when sent to the Bot API. True, if the user's presence in the chat
+   * is hidden
+   */
+  readonly is_anonymous?: boolean | undefined
 }
 
 /**
@@ -4931,17 +5335,17 @@ export interface ChatMemberUpdated {
    * True, if the user joined the chat after sending a direct join request
    * without using an invite link and being approved by an administrator
    */
-  readonly via_join_request?: boolean | undefined
+  readonly via_join_request?: true | undefined
 
   /**
    * True, if the user joined the chat via a chat folder invite link
    */
-  readonly via_chat_folder_invite_link?: boolean | undefined
+  readonly via_chat_folder_invite_link?: true | undefined
 }
 
 /**
- * This object contains information about one member of a chat. Currently, the
- * following 6 types of chat members are supported:
+ * This object contains information about one member of a chat. Currently, it
+ * can be one of
  *
  * @see https://corefork.telegram.org/bots/api#chatmember
  */
@@ -4961,24 +5365,24 @@ export type ChatMember =
  */
 export interface ChatMemberOwner {
   /**
-   * The member's status in the chat, always “creator”
-   */
-  readonly status: string
-
-  /**
    * Information about the user
    */
   readonly user: User
 
   /**
-   * True, if the user's presence in the chat is hidden
+   * The member's status in the chat, always "creator"
    */
-  readonly is_anonymous: boolean
+  readonly status: string
 
   /**
    * Custom title for this user
    */
   readonly custom_title?: string | undefined
+
+  /**
+   * True, if the user's presence in the chat is hidden
+   */
+  readonly is_anonymous: boolean
 }
 
 /**
@@ -4988,24 +5392,19 @@ export interface ChatMemberOwner {
  */
 export interface ChatMemberAdministrator {
   /**
-   * The member's status in the chat, always “administrator”
-   */
-  readonly status: string
-
-  /**
    * Information about the user
    */
   readonly user: User
 
   /**
+   * The member's status in the chat, always "administrator"
+   */
+  readonly status: string
+
+  /**
    * True, if the bot is allowed to edit administrator privileges of that user
    */
   readonly can_be_edited: boolean
-
-  /**
-   * True, if the user's presence in the chat is hidden
-   */
-  readonly is_anonymous: boolean
 
   /**
    * True, if the administrator can access the chat event log, get boost list,
@@ -5016,20 +5415,50 @@ export interface ChatMemberAdministrator {
   readonly can_manage_chat: boolean
 
   /**
+   * True, if the user is allowed to change the chat title, photo and other
+   * settings
+   */
+  readonly can_change_info: boolean
+
+  /**
+   * True, if the administrator can post messages in the channel, approve
+   * suggested posts, or access channel statistics; for channels only
+   */
+  readonly can_post_messages?: boolean | undefined
+
+  /**
+   * True, if the administrator can edit messages of other users and can pin
+   * messages; for channels only
+   */
+  readonly can_edit_messages?: boolean | undefined
+
+  /**
    * True, if the administrator can delete messages of other users
    */
   readonly can_delete_messages: boolean
 
   /**
-   * True, if the administrator can manage video chats
+   * True, if the user is allowed to invite new users to the chat
    */
-  readonly can_manage_video_chats: boolean
+  readonly can_invite_users: boolean
 
   /**
    * True, if the administrator can restrict, ban or unban chat members, or
    * access supergroup statistics
    */
   readonly can_restrict_members: boolean
+
+  /**
+   * True, if the user is allowed to pin messages; for groups and supergroups
+   * only
+   */
+  readonly can_pin_messages?: boolean | undefined
+
+  /**
+   * True, if the user is allowed to create, rename, close, and reopen forum
+   * topics; for supergroups only
+   */
+  readonly can_manage_topics?: boolean | undefined
 
   /**
    * True, if the administrator can add new administrators with a subset of their
@@ -5039,15 +5468,9 @@ export interface ChatMemberAdministrator {
   readonly can_promote_members: boolean
 
   /**
-   * True, if the user is allowed to change the chat title, photo and other
-   * settings
+   * True, if the administrator can manage video chats
    */
-  readonly can_change_info: boolean
-
-  /**
-   * True, if the user is allowed to invite new users to the chat
-   */
-  readonly can_invite_users: boolean
+  readonly can_manage_video_chats: boolean
 
   /**
    * True, if the administrator can post stories to the chat
@@ -5067,30 +5490,6 @@ export interface ChatMemberAdministrator {
   readonly can_delete_stories: boolean
 
   /**
-   * True, if the administrator can post messages in the channel, approve
-   * suggested posts, or access channel statistics; for channels only
-   */
-  readonly can_post_messages?: boolean | undefined
-
-  /**
-   * True, if the administrator can edit messages of other users and can pin
-   * messages; for channels only
-   */
-  readonly can_edit_messages?: boolean | undefined
-
-  /**
-   * True, if the user is allowed to pin messages; for groups and supergroups
-   * only
-   */
-  readonly can_pin_messages?: boolean | undefined
-
-  /**
-   * True, if the user is allowed to create, rename, close, and reopen forum
-   * topics; for supergroups only
-   */
-  readonly can_manage_topics?: boolean | undefined
-
-  /**
    * True, if the administrator can manage direct messages of the channel and
    * decline suggested posts; for channels only
    */
@@ -5098,9 +5497,20 @@ export interface ChatMemberAdministrator {
 
   /**
    * True, if the administrator can edit the tags of regular members; for groups
-   * and supergroups only. If omitted, defaults to the value of can_pin_messages.
+   * and supergroups only
    */
   readonly can_manage_tags?: boolean | undefined
+
+  /**
+   * True, if the administrator can manage chat welcome messages or directly send
+   * them in the case of bots
+   */
+  readonly can_send_welcome_messages: boolean
+
+  /**
+   * True, if the user's presence in the chat is hidden
+   */
+  readonly is_anonymous: boolean
 
   /**
    * Custom title for this user
@@ -5115,7 +5525,12 @@ export interface ChatMemberAdministrator {
  */
 export interface ChatMemberMember {
   /**
-   * The member's status in the chat, always “member”
+   * Information about the user
+   */
+  readonly user: User
+
+  /**
+   * The member's status in the chat, always "member"
    */
   readonly status: string
 
@@ -5123,11 +5538,6 @@ export interface ChatMemberMember {
    * Tag of the member
    */
   readonly tag?: string | undefined
-
-  /**
-   * Information about the user
-   */
-  readonly user: User
 
   /**
    * Date when the user's subscription will expire; Unix time
@@ -5143,7 +5553,12 @@ export interface ChatMemberMember {
  */
 export interface ChatMemberRestricted {
   /**
-   * The member's status in the chat, always “restricted”
+   * Information about the user
+   */
+  readonly user: User
+
+  /**
+   * The member's status in the chat, always "restricted"
    */
   readonly status: string
 
@@ -5153,14 +5568,10 @@ export interface ChatMemberRestricted {
   readonly tag?: string | undefined
 
   /**
-   * Information about the user
+   * Date when restrictions will be lifted for this user; Unix time. If 0, then
+   * the user is restricted forever.
    */
-  readonly user: User
-
-  /**
-   * True, if the user is a member of the chat at the moment of the request
-   */
-  readonly is_member: boolean
+  readonly until_date: number
 
   /**
    * True, if the user is allowed to send text messages, rich messages, contacts,
@@ -5246,10 +5657,9 @@ export interface ChatMemberRestricted {
   readonly can_manage_topics: boolean
 
   /**
-   * Date when restrictions will be lifted for this user; Unix time. If 0, then
-   * the user is restricted forever.
+   * True, if the user is a member of the chat at the moment of the request
    */
-  readonly until_date: number
+  readonly is_member: boolean
 }
 
 /**
@@ -5260,14 +5670,14 @@ export interface ChatMemberRestricted {
  */
 export interface ChatMemberLeft {
   /**
-   * The member's status in the chat, always “left”
-   */
-  readonly status: string
-
-  /**
    * Information about the user
    */
   readonly user: User
+
+  /**
+   * The member's status in the chat, always "left"
+   */
+  readonly status: string
 }
 
 /**
@@ -5278,14 +5688,14 @@ export interface ChatMemberLeft {
  */
 export interface ChatMemberBanned {
   /**
-   * The member's status in the chat, always “kicked”
-   */
-  readonly status: string
-
-  /**
    * Information about the user
    */
   readonly user: User
+
+  /**
+   * The member's status in the chat, always "kicked"
+   */
+  readonly status: string
 
   /**
    * Date when restrictions will be lifted for this user; Unix time. If 0, then
@@ -5352,88 +5762,99 @@ export interface ChatJoinRequest {
  */
 export interface ChatPermissions {
   /**
-   * True, if the user is allowed to send text messages, rich messages, contacts,
-   * giveaways, giveaway winners, invoices, locations and venues
+   * Optional when sent to the Bot API. True, if the user is allowed to send text
+   * messages, rich messages, contacts, giveaways, giveaway winners, invoices,
+   * locations and venues
    */
   readonly can_send_messages?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send audios
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * audios
    */
   readonly can_send_audios?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send documents
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * documents
    */
   readonly can_send_documents?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send photos
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * photos
    */
   readonly can_send_photos?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send videos
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * videos
    */
   readonly can_send_videos?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send video notes
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * video notes
    */
   readonly can_send_video_notes?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send voice notes
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * voice notes
    */
   readonly can_send_voice_notes?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send polls and checklists
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * polls and checklists
    */
   readonly can_send_polls?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send animations, games, stickers and use
-   * inline bots
+   * Optional when sent to the Bot API. True, if the user is allowed to send
+   * animations, games, stickers and use inline bots
    */
   readonly can_send_other_messages?: boolean | undefined
 
   /**
-   * True, if the user is allowed to add web page previews to their messages
+   * Optional when sent to the Bot API. True, if the user is allowed to add web
+   * page previews to their messages
    */
   readonly can_add_web_page_previews?: boolean | undefined
 
   /**
-   * True, if the user is allowed to react to messages. If omitted, defaults to
-   * the value of can_send_messages.
+   * Optional when sent to the Bot API. True, if the user is allowed to react to
+   * messages. If omitted, defaults to the value of can_send_messages.
    */
   readonly can_react_to_messages?: boolean | undefined
 
   /**
-   * True, if the user is allowed to edit their own tag. If omitted, defaults to
-   * the value of can_pin_messages.
+   * Optional when sent to the Bot API. True, if the user is allowed to edit
+   * their own tag. If omitted, defaults to the value of can_pin_messages.
    */
   readonly can_edit_tag?: boolean | undefined
 
   /**
-   * True, if the user is allowed to change the chat title, photo and other
-   * settings. Ignored in public supergroups.
+   * Optional when sent to the Bot API. True, if the user is allowed to change
+   * the chat title, photo and other settings. Ignored in public supergroups.
    */
   readonly can_change_info?: boolean | undefined
 
   /**
-   * True, if the user is allowed to invite new users to the chat
+   * Optional when sent to the Bot API. True, if the user is allowed to invite
+   * new users to the chat
    */
   readonly can_invite_users?: boolean | undefined
 
   /**
-   * True, if the user is allowed to pin messages. Ignored in public supergroups.
+   * Optional when sent to the Bot API. True, if the user is allowed to pin
+   * messages. Ignored in public supergroups.
    */
   readonly can_pin_messages?: boolean | undefined
 
   /**
-   * True, if the user is allowed to create forum topics. If omitted, defaults to
-   * the value of can_pin_messages.
+   * Optional when sent to the Bot API. True, if the user is allowed to create
+   * forum topics. If omitted, defaults to the value of can_pin_messages.
    */
   readonly can_manage_topics?: boolean | undefined
 }
@@ -5445,12 +5866,12 @@ export interface ChatPermissions {
  */
 export interface Birthdate {
   /**
-   * Day of the user's birth; 1-31
+   * Day of the user's birth, 1-31
    */
   readonly day: number
 
   /**
-   * Month of the user's birth; 1-12
+   * Month of the user's birth, 1-12
    */
   readonly month: number
 
@@ -5490,14 +5911,14 @@ export interface BusinessIntro {
  */
 export interface BusinessLocation {
   /**
-   * Address of the business
-   */
-  readonly address: string
-
-  /**
    * Location of the business
    */
   readonly location?: Location | undefined
+
+  /**
+   * Address of the business
+   */
+  readonly address: string
 }
 
 /**
@@ -5527,14 +5948,14 @@ export interface BusinessOpeningHoursInterval {
  */
 export interface BusinessOpeningHours {
   /**
-   * Unique name of the time zone for which the opening hours are defined
-   */
-  readonly time_zone_name: string
-
-  /**
    * List of time intervals describing business opening hours
    */
   readonly opening_hours: BusinessOpeningHoursInterval[]
+
+  /**
+   * Unique name of the time zone for which the opening hours are defined
+   */
+  readonly time_zone_name: string
 }
 
 /**
@@ -5595,7 +6016,7 @@ export interface StoryAreaPosition {
   readonly height_percentage: number
 
   /**
-   * The clockwise rotation angle of the rectangle, in degrees; 0-360
+   * The clockwise rotation angle of the rectangle, in degrees, 0-360
    */
   readonly rotation_angle: number
 
@@ -5655,7 +6076,7 @@ export type StoryAreaType =
  */
 export interface StoryAreaTypeLocation {
   /**
-   * Type of the area, always “location”
+   * Type of the area, must be location
    */
   readonly type: string
 
@@ -5668,6 +6089,11 @@ export interface StoryAreaTypeLocation {
    * Location longitude in degrees
    */
   readonly longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
 
   /**
    * Address of the location
@@ -5683,14 +6109,14 @@ export interface StoryAreaTypeLocation {
  */
 export interface StoryAreaTypeSuggestedReaction {
   /**
-   * Type of the area, always “suggested_reaction”
+   * Type of the area, must be suggested_reaction
    */
   readonly type: string
 
   /**
    * Type of the reaction
    */
-  readonly reaction_type: ReactionType
+  readonly reaction_type: InputReactionType
 
   /**
    * Pass True if the reaction area has a dark background
@@ -5711,7 +6137,7 @@ export interface StoryAreaTypeSuggestedReaction {
  */
 export interface StoryAreaTypeLink {
   /**
-   * Type of the area, always “link”
+   * Type of the area, must be link
    */
   readonly type: string
 
@@ -5729,9 +6155,14 @@ export interface StoryAreaTypeLink {
  */
 export interface StoryAreaTypeWeather {
   /**
-   * Type of the area, always “weather”
+   * Type of the area, must be weather
    */
   readonly type: string
+
+  /**
+   * A color of the area background in the ARGB format, 0-4294967295
+   */
+  readonly background_color: number
 
   /**
    * Temperature, in degree Celsius
@@ -5742,11 +6173,6 @@ export interface StoryAreaTypeWeather {
    * Emoji representing the weather
    */
   readonly emoji: string
-
-  /**
-   * A color of the area background in the ARGB format
-   */
-  readonly background_color: number
 }
 
 /**
@@ -5757,7 +6183,7 @@ export interface StoryAreaTypeWeather {
  */
 export interface StoryAreaTypeUniqueGift {
   /**
-   * Type of the area, always “unique_gift”
+   * Type of the area, must be unique_gift
    */
   readonly type: string
 
@@ -5796,7 +6222,7 @@ export interface ChatLocation {
   readonly location: Location
 
   /**
-   * Location address; 1-64 characters, as defined by the chat owner
+   * Location address, 1-64 characters, as defined by the chat owner
    */
   readonly address: string
 }
@@ -5818,7 +6244,7 @@ export type ReactionType =
  */
 export interface ReactionTypeEmoji {
   /**
-   * Type of the reaction, always “emoji”
+   * Type of the reaction, always "emoji"
    */
   readonly type: string
 
@@ -5839,7 +6265,7 @@ export interface ReactionTypeEmoji {
  */
 export interface ReactionTypeCustomEmoji {
   /**
-   * Type of the reaction, always “custom_emoji”
+   * Type of the reaction, always "custom_emoji"
    */
   readonly type: string
 
@@ -5856,10 +6282,19 @@ export interface ReactionTypeCustomEmoji {
  */
 export interface ReactionTypePaid {
   /**
-   * Type of the reaction, always “paid”
+   * Type of the reaction, always "paid"
    */
   readonly type: string
 }
+
+/**
+ * This object describes the type of a reaction. Currently, it can be one of
+ *
+ * @see https://corefork.telegram.org/bots/api#inputreactiontype
+ */
+export type InputReactionType =
+  | ReactionTypeCustomEmoji
+  | ReactionTypeEmoji
 
 /**
  * Represents a reaction added to a message along with the number of times it
@@ -5976,12 +6411,6 @@ export interface ForumTopic {
    * Unique identifier of the custom emoji shown as the topic icon
    */
   readonly icon_custom_emoji_id?: string | undefined
-
-  /**
-   * True, if the name of the topic wasn't specified explicitly by its creator
-   * and likely needs to be changed by the bot
-   */
-  readonly is_name_implicit?: true | undefined
 }
 
 /**
@@ -6034,6 +6463,35 @@ export interface Gift {
   readonly upgrade_star_count?: number | undefined
 
   /**
+   * The number of remaining gifts of this type that can be sent by all users;
+   * for limited gifts only
+   */
+  readonly remaining_count?: number | undefined
+
+  /**
+   * The total number of gifts of this type that can be sent by all users; for
+   * limited gifts only
+   */
+  readonly total_count?: number | undefined
+
+  /**
+   * The number of remaining gifts of this type that can be sent by the bot; for
+   * limited gifts only
+   */
+  readonly personal_remaining_count?: number | undefined
+
+  /**
+   * The total number of gifts of this type that can be sent by the bot; for
+   * limited gifts only
+   */
+  readonly personal_total_count?: number | undefined
+
+  /**
+   * Information about the chat that published the gift
+   */
+  readonly publisher_chat?: Chat | undefined
+
+  /**
    * True, if the gift can only be purchased by Telegram Premium subscribers
    */
   readonly is_premium?: true | undefined
@@ -6045,44 +6503,15 @@ export interface Gift {
   readonly has_colors?: true | undefined
 
   /**
-   * The total number of gifts of this type that can be sent by all users; for
-   * limited gifts only
-   */
-  readonly total_count?: number | undefined
-
-  /**
-   * The number of remaining gifts of this type that can be sent by all users;
-   * for limited gifts only
-   */
-  readonly remaining_count?: number | undefined
-
-  /**
-   * The total number of gifts of this type that can be sent by the bot; for
-   * limited gifts only
-   */
-  readonly personal_total_count?: number | undefined
-
-  /**
-   * The number of remaining gifts of this type that can be sent by the bot; for
-   * limited gifts only
-   */
-  readonly personal_remaining_count?: number | undefined
-
-  /**
-   * Background of the gift
-   */
-  readonly background?: GiftBackground | undefined
-
-  /**
    * The total number of different unique gifts that can be obtained by upgrading
    * the gift
    */
   readonly unique_gift_variant_count?: number | undefined
 
   /**
-   * Information about the chat that published the gift
+   * Background of the gift
    */
-  readonly publisher_chat?: Chat | undefined
+  readonly background?: GiftBackground | undefined
 }
 
 /**
@@ -6114,16 +6543,16 @@ export interface UniqueGiftModel {
   readonly sticker: Sticker
 
   /**
+   * Rarity of the model if it is a crafted model. Currently, can be "uncommon",
+   * "rare", "epic", or "legendary".
+   */
+  readonly rarity?: string | undefined
+
+  /**
    * The number of unique gifts that receive this model for every 1000 gift
    * upgrades. Always 0 for crafted gifts.
    */
   readonly rarity_per_mille: number
-
-  /**
-   * Rarity of the model if it is a crafted model. Currently, can be “uncommon”,
-   * “rare”, “epic”, or “legendary”.
-   */
-  readonly rarity?: string | undefined
 }
 
 /**
@@ -6222,7 +6651,7 @@ export interface UniqueGiftColors {
   readonly light_theme_main_color: number
 
   /**
-   * List of 1-3 additional colors used in light themes; RGB format
+   * List of additional colors used in light themes, 1-3 elements; RGB format
    */
   readonly light_theme_other_colors: number[]
 
@@ -6232,7 +6661,7 @@ export interface UniqueGiftColors {
   readonly dark_theme_main_color: number
 
   /**
-   * List of 1-3 additional colors used in dark themes; RGB format
+   * List of additional colors used in dark themes, 1-3 elements; RGB format
    */
   readonly dark_theme_other_colors: number[]
 }
@@ -6282,21 +6711,15 @@ export interface UniqueGift {
   readonly backdrop: UniqueGiftBackdrop
 
   /**
+   * Information about the chat that published the gift
+   */
+  readonly publisher_chat?: Chat | undefined
+
+  /**
    * True, if the original regular gift was exclusively purchaseable by Telegram
    * Premium subscribers
    */
   readonly is_premium?: true | undefined
-
-  /**
-   * True, if the gift was used to craft another gift and isn't available anymore
-   */
-  readonly is_burned?: true | undefined
-
-  /**
-   * True, if the gift is assigned from the TON blockchain and can't be resold or
-   * transferred in Telegram
-   */
-  readonly is_from_blockchain?: true | undefined
 
   /**
    * The color scheme that can be used by the gift's owner for the chat's name,
@@ -6306,9 +6729,15 @@ export interface UniqueGift {
   readonly colors?: UniqueGiftColors | undefined
 
   /**
-   * Information about the chat that published the gift
+   * True, if the gift is assigned from the TON blockchain and can't be resold or
+   * transferred in Telegram
    */
-  readonly publisher_chat?: Chat | undefined
+  readonly is_from_blockchain?: true | undefined
+
+  /**
+   * True, if the gift was used to craft another gift and isn't available anymore
+   */
+  readonly is_burned?: true | undefined
 }
 
 /**
@@ -6341,11 +6770,6 @@ export interface GiftInfo {
   readonly prepaid_upgrade_star_count?: number | undefined
 
   /**
-   * True, if the gift's upgrade was purchased after the gift was sent
-   */
-  readonly is_upgrade_separate?: true | undefined
-
-  /**
    * True, if the gift can be upgraded to a unique gift
    */
   readonly can_be_upgraded?: true | undefined
@@ -6367,10 +6791,27 @@ export interface GiftInfo {
   readonly is_private?: true | undefined
 
   /**
+   * True, if the gift's upgrade was purchased after the gift was sent
+   */
+  readonly is_upgrade_separate?: true | undefined
+
+  /**
    * Unique number reserved for this gift when upgraded. See the number field in
    * UniqueGift.
    */
   readonly unique_gift_number?: number | undefined
+}
+
+/**
+ * Describes a service message about an upgraded gift that was refunded.
+ *
+ * @see https://corefork.telegram.org/bots/api#refundedupgradedgiftinfo
+ */
+export interface RefundedUpgradedGiftInfo {
+  /**
+   * Information about the gift
+   */
+  readonly gift: Gift
 }
 
 /**
@@ -6383,28 +6824,6 @@ export interface UniqueGiftInfo {
    * Information about the gift
    */
   readonly gift: UniqueGift
-
-  /**
-   * Origin of the gift. Currently, either “upgrade” for gifts upgraded from
-   * regular gifts, “transfer” for gifts transferred from other users or
-   * channels, “resale” for gifts bought from other users, “gifted_upgrade” for
-   * upgrades purchased after the gift was sent, or “offer” for gifts bought or
-   * sold through gift purchase offers.
-   */
-  readonly origin: string
-
-  /**
-   * For gifts bought from other users, the currency in which the payment for the
-   * gift was done. Currently, one of “XTR” for Telegram Stars or “TON” for TON
-   * grams.
-   */
-  readonly last_resale_currency?: string | undefined
-
-  /**
-   * For gifts bought from other users, the price paid for the gift in either
-   * Telegram Stars or nanograms
-   */
-  readonly last_resale_amount?: number | undefined
 
   /**
    * Unique identifier of the received gift for the bot; only present for gifts
@@ -6423,6 +6842,45 @@ export interface UniqueGiftInfo {
    * the past, then the gift can be transferred now.
    */
   readonly next_transfer_date?: number | undefined
+
+  /**
+   * Origin of the gift. Currently, either "upgrade" for gifts upgraded from
+   * regular gifts, "transfer" for gifts transferred from other users or
+   * channels, "resale" for gifts bought from other users, "blockchain" for gifts
+   * assigned from the blockchain, "gifted_upgrade" for upgrades purchased after
+   * the gift was sent, "offer" for gifts bought or sold through gift purchase
+   * offers, or "craft" for gifts crafted from other gifts.
+   */
+  readonly origin: string
+
+  /**
+   * For gifts bought from other users, the currency in which the payment for the
+   * gift was done. Currently, one of "XTR" for Telegram Stars or "TON" for TON
+   * grams.
+   */
+  readonly last_resale_currency?: string | undefined
+
+  /**
+   * For gifts bought from other users, the price paid for the gift in either
+   * Telegram Stars or nanograms
+   */
+  readonly last_resale_amount?: number | undefined
+
+  /**
+   * Text of the message that was added to the gift
+   */
+  readonly text?: string | undefined
+
+  /**
+   * Special entities that appear in the text
+   */
+  readonly entities?: MessageEntity[] | undefined
+
+  /**
+   * True, if the sender and gift text are shown only to the gift receiver;
+   * otherwise, everyone will be able to see them
+   */
+  readonly is_private?: true | undefined
 }
 
 /**
@@ -6442,7 +6900,7 @@ export type OwnedGift =
  */
 export interface OwnedGiftRegular {
   /**
-   * Type of the gift, always “regular”
+   * Type of the gift, always "regular"
    */
   readonly type: string
 
@@ -6450,6 +6908,19 @@ export interface OwnedGiftRegular {
    * Information about the regular gift
    */
   readonly gift: Gift
+
+  /**
+   * True, if the gift can be upgraded to a unique gift; for gifts received on
+   * behalf of business accounts only
+   */
+  readonly can_be_upgraded?: true | undefined
+
+  /**
+   * Number of Telegram Stars that can be claimed by the receiver instead of the
+   * gift; omitted if the gift cannot be converted to Telegram Stars; for gifts
+   * received on behalf of business accounts only
+   */
+  readonly convert_star_count?: number | undefined
 
   /**
    * Unique identifier of the gift for the bot; for gifts received on behalf of
@@ -6461,6 +6932,11 @@ export interface OwnedGiftRegular {
    * Sender of the gift if it is a known user
    */
   readonly sender_user?: User | undefined
+
+  /**
+   * Sender of the gift if it is a known chat
+   */
+  readonly sender_chat?: Chat | undefined
 
   /**
    * Date the gift was sent in Unix time
@@ -6490,27 +6966,20 @@ export interface OwnedGiftRegular {
   readonly is_saved?: true | undefined
 
   /**
-   * True, if the gift can be upgraded to a unique gift; for gifts received on
-   * behalf of business accounts only
-   */
-  readonly can_be_upgraded?: true | undefined
-
-  /**
    * True, if the gift was refunded and isn't available anymore
    */
   readonly was_refunded?: true | undefined
 
   /**
-   * Number of Telegram Stars that can be claimed by the receiver instead of the
-   * gift; omitted if the gift cannot be converted to Telegram Stars; for gifts
-   * received on behalf of business accounts only
-   */
-  readonly convert_star_count?: number | undefined
-
-  /**
    * Number of Telegram Stars that were paid for the ability to upgrade the gift
    */
   readonly prepaid_upgrade_star_count?: number | undefined
+
+  /**
+   * Point in time (Unix timestamp) when the gift can be transferred. If it is in
+   * the past, then the gift can be transferred now.
+   */
+  readonly next_transfer_date?: number | undefined
 
   /**
    * True, if the gift's upgrade was purchased after the gift was sent; for gifts
@@ -6532,7 +7001,7 @@ export interface OwnedGiftRegular {
  */
 export interface OwnedGiftUnique {
   /**
-   * Type of the gift, always “unique”
+   * Type of the gift, always "unique"
    */
   readonly type: string
 
@@ -6540,28 +7009,6 @@ export interface OwnedGiftUnique {
    * Information about the unique gift
    */
   readonly gift: UniqueGift
-
-  /**
-   * Unique identifier of the received gift for the bot; for gifts received on
-   * behalf of business accounts only
-   */
-  readonly owned_gift_id?: string | undefined
-
-  /**
-   * Sender of the gift if it is a known user
-   */
-  readonly sender_user?: User | undefined
-
-  /**
-   * Date the gift was sent in Unix time
-   */
-  readonly send_date: number
-
-  /**
-   * True, if the gift is displayed on the account's profile page; for gifts
-   * received on behalf of business accounts only
-   */
-  readonly is_saved?: true | undefined
 
   /**
    * True, if the gift can be transferred to another owner; for gifts received on
@@ -6576,10 +7023,75 @@ export interface OwnedGiftUnique {
   readonly transfer_star_count?: number | undefined
 
   /**
+   * Unique identifier of the gift for the bot; for gifts received on behalf of
+   * business accounts only
+   */
+  readonly owned_gift_id?: string | undefined
+
+  /**
+   * Sender of the gift if it is a known user
+   */
+  readonly sender_user?: User | undefined
+
+  /**
+   * Sender of the gift if it is a known chat
+   */
+  readonly sender_chat?: Chat | undefined
+
+  /**
+   * Date the gift was sent in Unix time
+   */
+  readonly send_date: number
+
+  /**
+   * Text of the message that was added to the gift
+   */
+  readonly text?: string | undefined
+
+  /**
+   * Special entities that appear in the text
+   */
+  readonly entities?: MessageEntity[] | undefined
+
+  /**
+   * True, if the sender and gift text are shown only to the gift receiver;
+   * otherwise, everyone will be able to see them
+   */
+  readonly is_private?: true | undefined
+
+  /**
+   * True, if the gift is displayed on the account's profile page; for gifts
+   * received on behalf of business accounts only
+   */
+  readonly is_saved?: true | undefined
+
+  /**
+   * True, if the gift was refunded and isn't available anymore
+   */
+  readonly was_refunded?: true | undefined
+
+  /**
+   * Number of Telegram Stars that were paid for the ability to upgrade the gift
+   */
+  readonly prepaid_upgrade_star_count?: number | undefined
+
+  /**
    * Point in time (Unix timestamp) when the gift can be transferred. If it is in
    * the past, then the gift can be transferred now.
    */
   readonly next_transfer_date?: number | undefined
+
+  /**
+   * True, if the gift's upgrade was purchased after the gift was sent; for gifts
+   * received on behalf of business accounts only
+   */
+  readonly is_upgrade_separate?: true | undefined
+
+  /**
+   * Unique number reserved for this gift when upgraded. See the number field in
+   * UniqueGift.
+   */
+  readonly unique_gift_number?: number | undefined
 }
 
 /**
@@ -6652,6 +7164,41 @@ export interface AcceptedGiftTypes {
   readonly premium_subscription: boolean
 
   /**
+   * Optional when sent to the Bot API. True, if transfers of unique gifts from
+   * channels are accepted, defaults to True
+   */
+  readonly gifts_from_channels?: boolean | undefined
+}
+
+/**
+ * This object describes the types of gifts that can be gifted to a supergroup
+ * or a channel chat; either all of them are accepted or none.
+ *
+ * @see https://corefork.telegram.org/bots/api#supergroupacceptedgifttypes
+ */
+export interface SupergroupAcceptedGiftTypes {
+  /**
+   * True, if unlimited regular gifts are accepted
+   */
+  readonly unlimited_gifts: boolean
+
+  /**
+   * True, if limited regular gifts are accepted
+   */
+  readonly limited_gifts: boolean
+
+  /**
+   * True, if unique gifts or gifts that can be upgraded to unique for free are
+   * accepted
+   */
+  readonly unique_gifts: boolean
+
+  /**
+   * True, if a Telegram Premium subscription is accepted
+   */
+  readonly premium_subscription: boolean
+
+  /**
    * True, if transfers of unique gifts from channels are accepted
    */
   readonly gifts_from_channels: boolean
@@ -6669,7 +7216,7 @@ export interface StarAmount {
   readonly amount: number
 
   /**
-   * The number of 1/1000000000 shares of Telegram Stars; from -999999999 to
+   * The number of 1/1000000000 shares of Telegram Stars, from -999999999 to
    * 999999999; can be negative if and only if amount is non-positive
    */
   readonly nanostar_amount?: number | undefined
@@ -6682,13 +7229,13 @@ export interface StarAmount {
  */
 export interface BotCommand {
   /**
-   * Text of the command; 1-32 characters. Can contain only lowercase English
+   * Text of the command, 1-32 characters. Can contain only lowercase English
    * letters, digits and underscores.
    */
   readonly command: string
 
   /**
-   * Description of the command; 1-256 characters
+   * Description of the command, 1-256 characters
    */
   readonly description: string
 
@@ -6701,7 +7248,7 @@ export interface BotCommand {
 
 /**
  * This object represents the scope to which bot commands are applied.
- * Currently, the following 7 scopes are supported:
+ * Currently, it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#botcommandscope
  */
@@ -6779,7 +7326,7 @@ export interface BotCommandScopeChat {
   /**
    * Unique identifier for the target chat or username of the target supergroup
    * in the format @username. Channel direct messages chats and channel chats
-   * aren't supported.
+   * aren't supported. If a String, must be non-empty.
    */
   readonly chat_id: number | string
 }
@@ -6799,7 +7346,7 @@ export interface BotCommandScopeChatAdministrators {
   /**
    * Unique identifier for the target chat or username of the target supergroup
    * in the format @username. Channel direct messages chats and channel chats
-   * aren't supported.
+   * aren't supported. If a String, must be non-empty.
    */
   readonly chat_id: number | string
 }
@@ -6819,12 +7366,12 @@ export interface BotCommandScopeChatMember {
   /**
    * Unique identifier for the target chat or username of the target supergroup
    * in the format @username. Channel direct messages chats and channel chats
-   * aren't supported.
+   * aren't supported. If a String, must be non-empty.
    */
   readonly chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   readonly user_id: number
 }
@@ -6866,10 +7413,11 @@ export interface BotShortDescription {
 }
 
 /**
- * This object describes the bot's menu button in a private chat. It should be
- * one of If a menu button other than MenuButtonDefault is set for a private
- * chat, then it is applied in the chat. Otherwise the default menu button is
- * applied. By default, the menu button opens the list of bot commands.
+ * This object describes the bot's menu button in a private chat. Currently, it
+ * can be one of If a menu button other than MenuButtonDefault is set for a
+ * private chat, then it is applied in the chat. Otherwise the default menu
+ * button is applied. By default, the menu button opens the list of bot
+ * commands.
  *
  * @see https://corefork.telegram.org/bots/api#menubutton
  */
@@ -6930,7 +7478,8 @@ export interface MenuButtonDefault {
 }
 
 /**
- * This object describes the source of a chat boost. It can be one of
+ * This object describes the source of a chat boost. Currently, it can be one
+ * of
  *
  * @see https://corefork.telegram.org/bots/api#chatboostsource
  */
@@ -6947,7 +7496,7 @@ export type ChatBoostSource =
  */
 export interface ChatBoostSourcePremium {
   /**
-   * Source of the boost, always “premium”
+   * Source of the boost, always "premium"
    */
   readonly source: string
 
@@ -6966,7 +7515,7 @@ export interface ChatBoostSourcePremium {
  */
 export interface ChatBoostSourceGiftCode {
   /**
-   * Source of the boost, always “gift_code”
+   * Source of the boost, always "gift_code"
    */
   readonly source: string
 
@@ -6986,7 +7535,7 @@ export interface ChatBoostSourceGiftCode {
  */
 export interface ChatBoostSourceGiveaway {
   /**
-   * Source of the boost, always “giveaway”
+   * Source of the boost, always "giveaway"
    */
   readonly source: string
 
@@ -6997,16 +7546,16 @@ export interface ChatBoostSourceGiveaway {
   readonly giveaway_message_id: number
 
   /**
-   * User that won the prize in the giveaway if any; for Telegram Premium
-   * giveaways only
-   */
-  readonly user?: User | undefined
-
-  /**
    * The number of Telegram Stars to be split between giveaway winners; for
    * Telegram Star giveaways only
    */
   readonly prize_star_count?: number | undefined
+
+  /**
+   * User that won the prize in the giveaway if any; for Telegram Premium
+   * giveaways only
+   */
+  readonly user?: User | undefined
 
   /**
    * True, if the giveaway was completed, but there was no user to win the prize
@@ -7171,12 +7720,6 @@ export interface BusinessBotRights {
   readonly can_edit_username?: true | undefined
 
   /**
-   * True, if the bot can change the privacy settings pertaining to gifts for the
-   * business account
-   */
-  readonly can_change_gift_settings?: true | undefined
-
-  /**
    * True, if the bot can view gifts and the amount of Telegram Stars owned by
    * the business account
    */
@@ -7187,6 +7730,12 @@ export interface BusinessBotRights {
    * Telegram Stars
    */
   readonly can_convert_gifts_to_stars?: true | undefined
+
+  /**
+   * True, if the bot can change the privacy settings pertaining to gifts for the
+   * business account
+   */
+  readonly can_change_gift_settings?: true | undefined
 
   /**
    * True, if the bot can transfer and upgrade gifts owned by the business
@@ -7238,14 +7787,14 @@ export interface BusinessConnection {
   readonly date: number
 
   /**
-   * Rights of the business bot
-   */
-  readonly rights?: BusinessBotRights | undefined
-
-  /**
    * True, if the connection is active
    */
   readonly is_enabled: boolean
+
+  /**
+   * Rights of the business bot
+   */
+  readonly rights?: BusinessBotRights | undefined
 }
 
 /**
@@ -7351,8 +7900,8 @@ export interface ResponseParameters {
 }
 
 /**
- * This object represents the content of a media message to be sent. It should
- * be one of
+ * This object represents the content of a media message to be sent. Currently,
+ * it can be one of
  *
  * @see https://corefork.telegram.org/bots/api#inputmedia
  */
@@ -7372,40 +7921,14 @@ export type InputMedia =
  */
 export interface InputMediaAnimation {
   /**
-   * Type of the media, must be animation
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-
-  /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  readonly thumbnail?: string | undefined
-
-  /**
    * Caption of the animation to be sent, 0-1024 characters after entities
    * parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the animation caption. See formatting options
-   * for more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7421,6 +7944,37 @@ export interface InputMediaAnimation {
   readonly show_caption_above_media?: boolean | undefined
 
   /**
+   * Pass True if the animation needs to be covered with a spoiler animation
+   */
+  readonly has_spoiler?: boolean | undefined
+
+  /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
+   */
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Type of the media, must be animation
+   */
+  readonly type: string
+
+  /**
    * Animation width
    */
   readonly width?: number | undefined
@@ -7434,11 +7988,6 @@ export interface InputMediaAnimation {
    * Animation duration in seconds
    */
   readonly duration?: number | undefined
-
-  /**
-   * Pass True if the animation needs to be covered with a spoiler animation
-   */
-  readonly has_spoiler?: boolean | undefined
 }
 
 /**
@@ -7448,39 +7997,13 @@ export interface InputMediaAnimation {
  */
 export interface InputMediaAudio {
   /**
-   * Type of the media, must be audio
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-
-  /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  readonly thumbnail?: string | undefined
-
-  /**
    * Caption of the audio to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the audio caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7491,19 +8014,45 @@ export interface InputMediaAudio {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
+   */
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Type of the media, must be audio
+   */
+  readonly type: string
+
+  /**
    * Duration of the audio in seconds
    */
   readonly duration?: number | undefined
 
   /**
-   * Performer of the audio
-   */
-  readonly performer?: string | undefined
-
-  /**
    * Title of the audio
    */
   readonly title?: string | undefined
+
+  /**
+   * Performer of the audio
+   */
+  readonly performer?: string | undefined
 }
 
 /**
@@ -7513,16 +8062,28 @@ export interface InputMediaAudio {
  */
 export interface InputMediaDocument {
   /**
-   * Type of the media, must be document
+   * Caption of the document to be sent, 0-1024 characters after entities parsing
    */
-  readonly type: string
+  readonly caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  readonly parse_mode?: string | undefined
+
+  /**
+   * List of special entities that appear in the caption, which can be specified
+   * instead of parse_mode
+   */
+  readonly caption_entities?: MessageEntity[] | undefined
 
   /**
    * File to send. Pass a file_id to send a file that exists on the Telegram
    * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
    * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
+   * Sending Files ». Must be non-empty.
    */
   readonly media: string
 
@@ -7532,28 +8093,16 @@ export interface InputMediaDocument {
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
    * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
    */
   readonly thumbnail?: string | undefined
 
   /**
-   * Caption of the document to be sent, 0-1024 characters after entities parsing
+   * Type of the media, must be document
    */
-  readonly caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the document caption. See formatting options
-   * for more details.
-   */
-  readonly parse_mode?: string | undefined
-
-  /**
-   * List of special entities that appear in the caption, which can be specified
-   * instead of parse_mode
-   */
-  readonly caption_entities?: MessageEntity[] | undefined
+  readonly type: string
 
   /**
    * Disables automatic server-side content type detection for files uploaded
@@ -7587,37 +8136,14 @@ export interface InputMediaLink {
  */
 export interface InputMediaLivePhoto {
   /**
-   * Type of the media, must be live_photo
-   */
-  readonly type: string
-
-  /**
-   * Video of the live photo to send. Pass a file_id to send a file that exists
-   * on the Telegram servers (recommended) or pass “attach://<file_attach_name>”
-   * to upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files ». Sending live photos by a URL is
-   * currently unsupported.
-   */
-  readonly media: string
-
-  /**
-   * The static photo to send. Pass a file_id to send a file that exists on the
-   * Telegram servers (recommended) or pass “attach://<file_attach_name>” to
-   * upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files ». Sending live photos by a URL is
-   * currently unsupported.
-   */
-  readonly photo: string
-
-  /**
    * Caption of the live photo to be sent, 0-1024 characters after entities
    * parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the live photo caption. See formatting options
-   * for more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7636,6 +8162,29 @@ export interface InputMediaLivePhoto {
    * Pass True if the live photo needs to be covered with a spoiler animation
    */
   readonly has_spoiler?: boolean | undefined
+
+  /**
+   * Video of the live photo to send. Pass a file_id to send a file that exists
+   * on the Telegram servers (recommended) or pass "attach://<file_attach_name>"
+   * to upload a new one using multipart/form-data under <file_attach_name> name.
+   * More information on Sending Files ». Sending live photos by a URL is
+   * currently unsupported. Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Type of the media, must be live_photo
+   */
+  readonly type: string
+
+  /**
+   * The static photo to send. Pass a file_id to send a file that exists on the
+   * Telegram servers (recommended) or pass "attach://<file_attach_name>" to
+   * upload a new one using multipart/form-data under <file_attach_name> name.
+   * More information on Sending Files ». Sending live photos by a URL is
+   * currently unsupported. Must be non-empty.
+   */
+  readonly photo: string
 }
 
 /**
@@ -7660,7 +8209,7 @@ export interface InputMediaLocation {
   readonly longitude: number
 
   /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
+   * The radius of uncertainty for the location, measured in meters, 0-1500
    */
   readonly horizontal_accuracy?: number | undefined
 }
@@ -7672,27 +8221,13 @@ export interface InputMediaLocation {
  */
 export interface InputMediaPhoto {
   /**
-   * Type of the media, must be photo
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-
-  /**
    * Caption of the photo to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the photo caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7711,6 +8246,20 @@ export interface InputMediaPhoto {
    * Pass True if the photo needs to be covered with a spoiler animation
    */
   readonly has_spoiler?: boolean | undefined
+
+  /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Type of the media, must be photo
+   */
+  readonly type: string
 }
 
 /**
@@ -7720,23 +8269,31 @@ export interface InputMediaPhoto {
  */
 export interface InputMediaSticker {
   /**
-   * Type of the media, must be sticker
-   */
-  readonly type: string
-
-  /**
    * File to send. Pass a file_id to send a file that exists on the Telegram
    * servers (recommended), pass an HTTP URL for Telegram to get a .WEBP sticker
-   * from the Internet, or pass “attach://<file_attach_name>” to upload a new
+   * from the Internet, or pass "attach://<file_attach_name>" to upload a new
    * .WEBP, .TGS, or .WEBM sticker using multipart/form-data under
-   * <file_attach_name> name. More information on Sending Files »
+   * <file_attach_name> name. More information on Sending Files ». Must be
+   * non-empty.
    */
   readonly media: string
 
   /**
-   * Emoji associated with the sticker; only for just uploaded stickers
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
    */
-  readonly emoji?: string | undefined
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Type of the media, must be sticker
+   */
+  readonly type: string
 }
 
 /**
@@ -7761,6 +8318,11 @@ export interface InputMediaVenue {
   readonly longitude: number
 
   /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  readonly horizontal_accuracy?: number | undefined
+
+  /**
    * Name of the venue
    */
   readonly title: string
@@ -7777,8 +8339,8 @@ export interface InputMediaVenue {
 
   /**
    * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
    */
   readonly foursquare_type?: string | undefined
 
@@ -7800,53 +8362,13 @@ export interface InputMediaVenue {
  */
 export interface InputMediaVideo {
   /**
-   * Type of the media, must be video
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-
-  /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  readonly thumbnail?: string | undefined
-
-  /**
-   * Cover for the video in the message. Pass a file_id to send a file that
-   * exists on the Telegram servers (recommended), pass an HTTP URL for Telegram
-   * to get a file from the Internet, or pass “attach://<file_attach_name>” to
-   * upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files »
-   */
-  readonly cover?: string | undefined
-
-  /**
-   * Start timestamp for the video in the message
-   */
-  readonly start_timestamp?: number | undefined
-
-  /**
    * Caption of the video to be sent, 0-1024 characters after entities parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7860,6 +8382,37 @@ export interface InputMediaVideo {
    * Pass True if the caption must be shown above the message media
    */
   readonly show_caption_above_media?: boolean | undefined
+
+  /**
+   * Pass True if the video needs to be covered with a spoiler animation
+   */
+  readonly has_spoiler?: boolean | undefined
+
+  /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
+   */
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Type of the media, must be video
+   */
+  readonly type: string
 
   /**
    * Video width
@@ -7877,14 +8430,23 @@ export interface InputMediaVideo {
   readonly duration?: number | undefined
 
   /**
+   * Cover for the video in the message. Pass a file_id to send a file that
+   * exists on the Telegram servers (recommended), pass an HTTP URL for Telegram
+   * to get a file from the Internet, or pass "attach://<file_attach_name>" to
+   * upload a new one using multipart/form-data under <file_attach_name> name.
+   * More information on Sending Files ». Must be non-empty.
+   */
+  readonly cover?: string | undefined
+
+  /**
+   * Start timestamp for the video in the message
+   */
+  readonly start_timestamp?: number | undefined
+
+  /**
    * Pass True if the uploaded video is suitable for streaming
    */
   readonly supports_streaming?: boolean | undefined
-
-  /**
-   * Pass True if the video needs to be covered with a spoiler animation
-   */
-  readonly has_spoiler?: boolean | undefined
 }
 
 /**
@@ -7894,28 +8456,14 @@ export interface InputMediaVideo {
  */
 export interface InputMediaVoiceNote {
   /**
-   * Type of the media, must be voice_note
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-
-  /**
    * Caption of the voice message to be sent, 0-1024 characters after entities
    * parsing
    */
   readonly caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the voice message caption. See formatting
-   * options for more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   readonly parse_mode?: string | undefined
 
@@ -7924,6 +8472,20 @@ export interface InputMediaVoiceNote {
    * instead of parse_mode
    */
   readonly caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Type of the media, must be voice_note
+   */
+  readonly type: string
 
   /**
    * Duration of the voice message in seconds
@@ -7948,25 +8510,47 @@ export type InputPaidMedia =
  */
 export interface InputPaidMediaLivePhoto {
   /**
+   * Video of the live photo to send. Pass a file_id to send a file that exists
+   * on the Telegram servers (recommended) or pass "attach://<file_attach_name>"
+   * to upload a new one using multipart/form-data under <file_attach_name> name.
+   * More information on Sending Files ». Sending live photos by a URL is
+   * currently unsupported. Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
+   */
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Media width
+   */
+  readonly width?: number | undefined
+
+  /**
+   * Media height
+   */
+  readonly height?: number | undefined
+
+  /**
    * Type of the media, must be live_photo
    */
   readonly type: string
 
   /**
-   * Video of the live photo to send. Pass a file_id to send a file that exists
-   * on the Telegram servers (recommended) or pass “attach://<file_attach_name>”
-   * to upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files ». Sending live photos by a URL is
-   * currently unsupported.
-   */
-  readonly media: string
-
-  /**
    * The static photo to send. Pass a file_id to send a file that exists on the
-   * Telegram servers (recommended) or pass “attach://<file_attach_name>” to
+   * Telegram servers (recommended) or pass "attach://<file_attach_name>" to
    * upload a new one using multipart/form-data under <file_attach_name> name.
    * More information on Sending Files ». Sending live photos by a URL is
-   * currently unsupported.
+   * currently unsupported. Must be non-empty.
    */
   readonly photo: string
 }
@@ -7978,37 +8562,11 @@ export interface InputPaidMediaLivePhoto {
  */
 export interface InputPaidMediaPhoto {
   /**
-   * Type of the media, must be photo
-   */
-  readonly type: string
-
-  /**
    * File to send. Pass a file_id to send a file that exists on the Telegram
    * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
    * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
-   */
-  readonly media: string
-}
-
-/**
- * The paid media to send is a video.
- *
- * @see https://corefork.telegram.org/bots/api#inputpaidmediavideo
- */
-export interface InputPaidMediaVideo {
-  /**
-   * Type of the media, must be video
-   */
-  readonly type: string
-
-  /**
-   * File to send. Pass a file_id to send a file that exists on the Telegram
-   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
-   * multipart/form-data under <file_attach_name> name. More information on
-   * Sending Files »
+   * Sending Files ». Must be non-empty.
    */
   readonly media: string
 
@@ -8018,35 +8576,69 @@ export interface InputPaidMediaVideo {
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
    * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
    */
   readonly thumbnail?: string | undefined
 
   /**
-   * Cover for the video in the message. Pass a file_id to send a file that
-   * exists on the Telegram servers (recommended), pass an HTTP URL for Telegram
-   * to get a file from the Internet, or pass “attach://<file_attach_name>” to
-   * upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files »
-   */
-  readonly cover?: string | undefined
-
-  /**
-   * Start timestamp for the video in the message
-   */
-  readonly start_timestamp?: number | undefined
-
-  /**
-   * Video width
+   * Media width
    */
   readonly width?: number | undefined
 
   /**
-   * Video height
+   * Media height
    */
   readonly height?: number | undefined
+
+  /**
+   * Type of the media, must be photo
+   */
+  readonly type: string
+}
+
+/**
+ * The paid media to send is a video.
+ *
+ * @see https://corefork.telegram.org/bots/api#inputpaidmediavideo
+ */
+export interface InputPaidMediaVideo {
+  /**
+   * File to send. Pass a file_id to send a file that exists on the Telegram
+   * servers (recommended), pass an HTTP URL for Telegram to get a file from the
+   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * multipart/form-data under <file_attach_name> name. More information on
+   * Sending Files ». Must be non-empty.
+   */
+  readonly media: string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files »
+   */
+  readonly thumbnail?: string | undefined
+
+  /**
+   * Media width
+   */
+  readonly width?: number | undefined
+
+  /**
+   * Media height
+   */
+  readonly height?: number | undefined
+
+  /**
+   * Type of the media, must be video
+   */
+  readonly type: string
 
   /**
    * Video duration in seconds
@@ -8057,6 +8649,20 @@ export interface InputPaidMediaVideo {
    * Pass True if the uploaded video is suitable for streaming
    */
   readonly supports_streaming?: boolean | undefined
+
+  /**
+   * Cover for the video in the message. Pass a file_id to send a file that
+   * exists on the Telegram servers (recommended), pass an HTTP URL for Telegram
+   * to get a file from the Internet, or pass "attach://<file_attach_name>" to
+   * upload a new one using multipart/form-data under <file_attach_name> name.
+   * More information on Sending Files ». Must be non-empty.
+   */
+  readonly cover?: string | undefined
+
+  /**
+   * Start timestamp for the video in the message
+   */
+  readonly start_timestamp?: number | undefined
 }
 
 /**
@@ -8081,9 +8687,9 @@ export interface InputProfilePhotoStatic {
 
   /**
    * The static profile photo. Profile photos can't be reused and can only be
-   * uploaded as a new file, so you can pass “attach://<file_attach_name>” if the
+   * uploaded as a new file, so you can pass "attach://<file_attach_name>" if the
    * photo was uploaded using multipart/form-data under <file_attach_name>. More
-   * information on Sending Files »
+   * information on Sending Files ». Must start with "attach://".
    */
   readonly photo: string
 }
@@ -8101,15 +8707,15 @@ export interface InputProfilePhotoAnimated {
 
   /**
    * The animated profile photo. Profile photos can't be reused and can only be
-   * uploaded as a new file, so you can pass “attach://<file_attach_name>” if the
+   * uploaded as a new file, so you can pass "attach://<file_attach_name>" if the
    * photo was uploaded using multipart/form-data under <file_attach_name>. More
-   * information on Sending Files »
+   * information on Sending Files ». Must start with "attach://".
    */
   readonly animation: string
 
   /**
    * Timestamp in seconds of the frame that will be used as the static profile
-   * photo. Defaults to 0.0.
+   * photo. Defaults to 0.
    */
   readonly main_frame_timestamp?: number | undefined
 }
@@ -8138,9 +8744,9 @@ export interface InputStoryContentPhoto {
   /**
    * The photo to post as a story. The photo must be of the size 1080x1920 and
    * must not exceed 10 MB. The photo can't be reused and can only be uploaded as
-   * a new file, so you can pass “attach://<file_attach_name>” if the photo was
+   * a new file, so you can pass "attach://<file_attach_name>" if the photo was
    * uploaded using multipart/form-data under <file_attach_name>. More
-   * information on Sending Files »
+   * information on Sending Files ». Must start with "attach://".
    */
   readonly photo: string
 }
@@ -8161,20 +8767,20 @@ export interface InputStoryContentVideo {
    * streamable, encoded with H.265 codec, with key frames added each second in
    * the MPEG4 format, and must not exceed 30 MB. The video can't be reused and
    * can only be uploaded as a new file, so you can pass
-   * “attach://<file_attach_name>” if the video was uploaded using
+   * "attach://<file_attach_name>" if the video was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
+   * Files ». Must start with "attach://".
    */
   readonly video: string
 
   /**
-   * Precise duration of the video in seconds; 0-60
+   * Precise duration of the video in seconds, 0-60
    */
   readonly duration?: number | undefined
 
   /**
    * Timestamp in seconds of the frame that will be used as the static cover for
-   * the story. Defaults to 0.0.
+   * the story. Defaults to 0.
    */
   readonly cover_frame_timestamp?: number | undefined
 

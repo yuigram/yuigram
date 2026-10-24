@@ -103,24 +103,75 @@ The key function decides scope, and getting it wrong is the most common session 
 ```ts
 key: (e) => e.sender?.id                              // per user, across all chats
 key: (e) => e.chat?.id                                // per chat, shared by members
-key: (e) => `${e.chat?.id}:${e.sender?.id}`           // per user per chat  ← usual default
-key: (e) => `${e.chat?.id}:${e.message?.message_thread_id}`  // per forum topic
+key: userChatKey                                      // per user per chat  ← the usual choice
 ```
 
-The default is per-user-per-chat, because a user's state in a group is rarely the state they
-want in a DM, and the reverse mistake leaks one conversation's context into another.
+A key given to `session()` sees the chat and the sender an update carries, which is what these
+scopes need; a key that reads further into an update — a forum topic, say — is written against a
+stated context with `createSession`. Per-user-per-chat is the usual choice, because a user's
+state in a group is rarely the state they want in a DM, and the reverse mistake leaks one
+conversation's context into another. The key is still required, so the choice is visible where
+the session is installed, and it may be a `bigint`: an account's identifiers are 64-bit, and a
+key is written out in full rather than through a `number` that would round it.
 
 Returning `undefined` skips session loading entirely — correct for updates with no
 meaningful subject, such as channel posts.
 
 ### Persistence
 
-Sessions load lazily on first access and flush after the handler completes, with dirty
-tracking so an untouched session costs no write. `lazy: false` forces eager loading where a
-middleware needs the data before the handler runs.
+A session is read once per update, before the handlers run, and only for an update the key
+function names someone for; a channel post with no sender never reaches the store. What changed
+is written once, when the handlers settle. An untouched session costs no write.
 
 Concurrent updates for the same key are serialized while the session is held, which prevents
 the classic lost-update race where two rapid messages both read `count: 0`.
+
+**When a write happens.** `commit` decides what a handler that threw or was cancelled leaves
+behind:
+
+| `commit` | Handlers resolved | Handlers threw or were cancelled |
+| --- | --- | --- |
+| `'always'` (default) | written | written — a handler that replied and then failed has told the user something, and the state behind the reply is kept with it |
+| `'success'` | written | not written — the stored value is what it was, as a transaction would leave it |
+
+`sessionHandle.save()` writes now, whatever `commit` says, and a later failure does not undo
+it. It is for state that must survive what happens next: a payment recorded before the
+confirmation is sent. A forced write that the store refuses rejects in the handler that asked
+for it; the write at the end of an update only logs, since the update has already done what it
+did.
+
+**Changing the value.**
+
+| Operation | Effect |
+| --- | --- |
+| `session.x = v`, `session.list.push(v)`, `delete session.x` | tracked at any depth |
+| `sessionHandle.set(v)` | replaces the value |
+| `sessionHandle.merge(patch)` | `Object.assign` over the value: fields in `patch` replace, nested objects included; onto a `null` value, the patch becomes the value |
+| `sessionHandle.clear()` | the value reads as `initial()`; left alone, the key is deleted; changed again, the new value is written instead |
+| `sessionHandle.touch()` | marks dirty, for a change the value cannot report — a `Map` mutated in place |
+
+**Absent, `undefined` and `null`.** Only a key with nothing under it starts from `initial()`,
+and `sessionHandle.isNew` says so; a stored `null` is a value. Inside the value, a stored
+`null` survives every store. A field set to `undefined` survives the in-memory store, but a
+store that serializes to JSON — the file, SQLite and Redis stores — writes it as absent, which
+is what it reads as after a restart. Values must be JSON data for those stores: a `Date` comes
+back as a string, and a `bigint` cannot be written at all.
+
+**Expiry.** `ttl` in the options applies to every write. A write can name its own —
+`set(v, { ttl })`, `merge(patch, { ttl })`, `save({ ttl })` or `expireIn(seconds)` — and `0`
+writes without one. A single field can expire on its own:
+
+```ts
+import { expiring } from 'yuigram'
+
+message.session.pendingCode = expiring('482913', 5 * 60_000)
+```
+
+The field reads as its value until five minutes after it was last assigned and as absent from
+then on; assigning it again restarts the same allowance, and `expiring(value, 0)` makes it
+permanent. The expiry is stored with the field, as `{ "$expiring": { "at", "for" }, "value" }`,
+so it holds across updates and restarts, and an expired field is dropped before any write —
+including the next write of a session that never read it.
 
 ### Conversations
 
@@ -181,6 +232,108 @@ be blunt: **this string is equivalent to being logged in**. It is not a configur
 it does not belong in a repository, and it should not be pasted into a chat for debugging.
 See [security.md](security.md) §3.
 
+### The portable format
+
+259 bytes, then standard base64 — a canonical string of exactly 348 characters:
+
+```
+offset  size  field
+──────────────────────────────────────────────────────
+0       1     version    0x01
+1       1     flags      bit 0 = test network; 1-7 reserved
+2       1     dcId       1..255
+3     256     authKey
+──────────────────────────────────────────────────────
+```
+
+It carries one datacenter's long-lived key and enough to place it: which datacenter the key
+belongs to, and which network that datacenter is on. Everything else is left out because it
+is obtained again rather than carried — a key with a lifetime is negotiated on connecting, a
+salt is named by the server on the first message that lacks one, addresses are supplied to the
+account and republished by the server, and the peers and the update sequence are caches of
+what the network already knows. `apiId` and `apiHash` stay outside it: they belong to the
+application rather than to the account, and are passed alongside.
+
+Encoding is standard base64 with mandatory padding, and decoding is strict — the alphabet, the
+padding and the unused bits of the final character are all checked, so one session has exactly
+one string. A string that is not exactly one is refused with `SessionError`, naming what was
+wrong without repeating what it read.
+
+**There is no checksum, and no encryption.** A session damaged in a way that survives decoding
+is refused by the datacenter, which is where a revoked one is refused too. Nothing in the
+format authenticates it: whoever holds the string is the account.
+
+Only version `0x01` is read. A later version is refused rather than guessed at, so a session
+written by a newer build fails where it is passed instead of somewhere further in.
+
+```ts
+const me = Account.fromString(process.env.SESSION!, {
+  apiId,
+  apiHash,
+  keys,
+  bootstrap,
+  storage: memory(),
+})
+```
+
+A store is supplied rather than made for you. An account needs one to run at all, not merely
+to survive a restart — a key with a lifetime, the peers it learns and the addresses it is told
+are all written while it works. `memory()` is what to pass when there is nowhere to write; the
+string is then the only thing that has to survive, which is the point of having one.
+
+Importing never silently replaces an account. If the supplied store already holds a different
+authorization for the session's own datacenter, the first connection refuses with
+`SessionError` and leaves the store untouched; `replace: true` puts the session in its place. The
+same key already there — a string imported on every start into a store that kept it — is simply
+used. Once importing goes ahead, any authorization in the store for another datacenter this
+account could reach is cleared before the imported key is installed, so an account built from
+one session can never end up using a key left behind by another. Two runs importing into one
+area at once are kept apart as any two runs of one account are: by the guard within its reach —
+one process, or a browser origin — and by the store's lease across processes over SQLite or
+Redis. Over a directory shared by two processes, only a run that starts after the other's claim
+was written is refused ([storage.md](storage.md) §4).
+
+The first connection after an import negotiates a key with a lifetime and has the imported key
+vouch for it; the long-lived exchange is skipped because that is what the string carried.
+
+### Strings from other libraries
+
+The version-3 TL session string that mtcute writes is read and written as `format: 'tl-v3'`; the
+layout is always named, since a string read as a layout it is not in would be somebody else's
+account. That is the one foreign layout supported. The string formats of Telethon, Pyrogram,
+GramJS and MTKruto are different layouts and are not read; mtcute converts those through a
+separate package, and Yuigram has no counterpart to it.
+
+```ts
+const me = Account.fromString(process.env.SESSION!, { ...options, format: 'tl-v3' })
+const carried = await me.exportSession({ format: 'tl-v3' })
+
+const converted = writeSession(readSession(text, { format: 'tl-v3' }), { format: 'portable' })
+```
+
+```
+byte 0     version, 3
+int32      flags: bit 0 a user follows, bit 1 (older strings) test network, bit 2 a media address follows
+bytes      address: version 1 or 2, dc, flags (IPv6, media only, test network), host, port
+bytes      media address, if flagged
+int53      user id, then a Bool: is a bot, if flagged
+bytes      the 256-byte authorization key
+           URL-safe base64 without padding; the standard alphabet and padding are read too
+```
+
+What it carries beyond the key is used, not trusted over the caller: an address is added to the
+bootstrap only for a datacenter the bootstrap has none for, and the user is written down as this
+account's own. Exporting includes the user only when both its identifier and whether it is a
+bot are known, since the layout records both. Every field is checked on the way in — the version,
+unknown flags, lengths, the datacenter, the port, the network of each address, the Bool, the key's
+size — and nothing may follow the key. A string in the wrong layout is refused with a message
+naming the layout it looks like, and no message repeats what it read.
+
+Only the authorization moves. The other library's record of peers and its place in the update
+stream are not in the string, so an imported account learns peers again as answers name them, and
+starts its update stream where Telegram is when it first connects (§9.3 of
+[mtproto.md](mtproto.md)): updates the other library had not yet received are not fetched.
+
 ### Encryption at rest
 
 ```ts
@@ -200,14 +353,17 @@ it finds permissions wider than that.
 Each `Account` owns an independent session; nothing is shared:
 
 ```ts
-const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash }))
-const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash }))
+const alice = app.add(Account.fromSession('./alice.session', { apiId, apiHash, keys, bootstrap }))
+const bob   = app.add(Account.fromSession('./bob.session', { apiId, apiHash, keys, bootstrap }))
 ```
 
 `apiId`/`apiHash` are per-*developer*, not per-account, so they are legitimately shared across
-clients. Session state never is — sharing a session file between two running clients corrupts
-both, and the file driver takes an exclusive lock to make that failure loud rather than
-mysterious.
+clients. Session state never is — two running clients writing one session corrupt each other's
+keys and place in the update stream. No driver takes a file lock. Within one process, or one
+browser origin, the second run is refused by the guard; across processes a SQLite or Redis store
+refuses it with its lease; over a plain directory the claim record refuses a run that starts
+after another's claim is written, and nothing refuses two that start together.
+[storage.md](storage.md) §4 sets out each case.
 
 ---
 
@@ -224,9 +380,10 @@ Account.fromSession(storage, { apiId, apiHash })
 
 It fails on four counts:
 
-1. **Shape.** Framework sessions are key-value. The peer cache needs indexed lookup by id and
-   by username, with range scans. A KV interface forces peers into a serialized blob that must
-   be fully rewritten on every update — unusable for an account with tens of thousands of peers.
+1. **Shape.** An account's state is not one value per user: peers are a record each plus
+   username and phone indexes, authorization keys are per datacenter with expiries, and the
+   update position is committed as a whole. It shares the `KV` contract with framework storage,
+   but it is written under its own area by the account rather than handed to a plugin.
 2. **Sensitivity.** Auth keys and shopping carts have different threat models and belong under
    different access controls. One interface encourages one store.
 3. **Lifecycle.** Framework sessions expire; auth keys must not. A shared TTL mechanism would
@@ -235,8 +392,9 @@ It fails on four counts:
    requires human re-authentication with an SMS code — it cannot be recovered automatically,
    and the framework must treat it as a fatal, loud condition rather than a cache miss.
 
-They may share a *driver* — the same SQLite file, the same Redis instance — but through
-different contracts. That is the layering in [storage.md](storage.md).
+They may share a *driver* — the same SQLite file, the same Redis instance — but not a store
+object: an `App` keeps framework state in its own areas, and an account is given its store
+directly. That division is in [storage.md](storage.md) §3 and §4.
 
 ---
 
@@ -250,8 +408,226 @@ different contracts. That is the layering in [storage.md](storage.md).
 | Auth session corrupt | **Fail loudly.** Never silently re-authenticate — that turns a storage bug into an unexplained SMS to the user's phone |
 | Auth session rejected by Telegram (`AUTH_KEY_UNREGISTERED`) | Raise `SessionError`, stop the client, require explicit re-sign-in |
 | Peer cache corrupt | Rebuild — it is a cache; log the fact and continue |
-| Two clients on one session file | Refuse to start the second, with an explicit error |
+| Two clients on one session | Refuse the second with `StorageOwnershipError` — within the guard's reach (one process, one browser origin) and, across processes, over a leasing store (SQLite, Redis). Over a plain directory, only a second run that starts after the first's claim is written is refused |
 
 The asymmetry is the point: framework state degrades gracefully because it can, and
 authorization state fails loudly because a silent recovery path would be indistinguishable
 from an attack.
+
+---
+
+## 6. Conversation state
+
+A third kind, above framework sessions and distinct from them: where a
+conversation *is*, rather than what is known about a person. `conversation()`
+covers scenes, prompts and the waiting that both rest on.
+
+### 6.1 Identity
+
+The key names the client first, then whichever parts of the update the scope
+asks for:
+
+```
+bot:c:-100123:u:456        chat+user, the default
+bot:c:-100123              chat — everybody shares one conversation
+bot:u:456                  user — one conversation wherever they are
+bot:c:-100123:u:456:t:7    chat+user+topic — per forum topic
+```
+
+Naming the client first is what keeps an application holding a bot and three
+accounts from having them advance each other's forms. An update the scope
+cannot be derived from — an inline query, a channel post with no sender — has
+no conversation, and reaches the ordinary handlers untouched.
+
+An account's peers are numbered separately for each sort, so its keys name the
+sort beside the number, and a 64-bit number is written out in full:
+
+```
+me:c:user:456:u:user:456        a private chat
+me:c:chat:456:u:user:456        basic group 456 — a different conversation
+me:c:channel:1234567890123:u:user:456
+```
+
+`userChatKey` writes a session key by the same rule. A Bot API key has no sort
+and stays exactly as it was.
+
+### 6.2 Concurrency
+
+Updates for one conversation are serialised; different conversations run in
+parallel. Without it, two answers arriving together both read the same position
+and the second write loses the first — a form that advances one step for two
+answers. The lock is per key and each key is dropped as it drains, so a bot
+serving a thousand conversations does not process them one at a time because
+two of them might collide.
+
+A handler that awaits `conversation.wait(...)` hands its turn back while it
+waits — the answer belongs to the same conversation and could not get in
+otherwise — and takes it again, behind whatever arrived meanwhile, before it
+carries on. Its continuation never runs alongside a later update.
+
+The lock is in the process. Two processes sharing one store are not coordinated:
+the storage contract has no compare-and-set, and nothing here claims otherwise.
+Run one process per conversation, or route each conversation to one process.
+
+### 6.3 What survives a restart, and what does not
+
+| | Where it lives | Survives a restart |
+|---|---|---|
+| Scene position and state | The `KV` given to the plugin | **Yes**, if the store does |
+| A flow's journal and the wait it is at | The `KV` given to `flows` | **Yes**, if the store does |
+| `conversation.wait(...)` | A suspended function in memory | **No** |
+
+This is the one thing to know before choosing between them. A form built from
+scene steps resumes after a deployment because the only thing kept is a name, a
+number and plain data. A flow resumes for the same reason: what it keeps is a
+journal of plain data, not the function. A form built from
+`await conversation.wait(...)` reads like a flow and does not survive: the
+promise goes with the process. All three ship because each is useful, and none
+is described as another.
+
+### 6.4 Scenes
+
+Entering runs the scene's entry handler and its first step against the update
+that entered. A step that neither navigates nor leaves is waiting for another
+update, which is the ordinary case for a question — `fresh` is what tells the
+step whether to ask or to read an answer.
+
+`beforeStep` runs before every step and *replaces* it when it navigates or
+leaves, which is what makes it the place to handle `/cancel`. `afterStep` runs
+only for a step that stayed. Moving past the last step leaves the scene, because
+that is how a form ends. Leaving always runs the exit handler before any
+successor's entry handler, including when a scene is entered from outside one.
+
+### 6.5 Waiting
+
+A waiter belongs to one conversation, so a pending prompt never consumes another
+person's message. It may validate a match and keep waiting, time out — raising
+or answering nothing, as asked — and be cancelled by a signal. A non-matching
+update reaches the handlers unless the waiter asked to be exclusive.
+
+One waiter per conversation: a second replaces the first, and the first is told
+so rather than left to never resolve. Entering or leaving a scene cancels an
+open waiter.
+
+Stopping an account does too. An account tells the plugins installed on it when
+it begins to stop, before it waits for the handlers still running, and the
+conversation plugin cancels every open waiter then — each handler still waiting
+gets a `WaitCancelledError` through the account's error handling — and refuses
+new ones until the account starts again. Without that the stop would wait for a
+handler that is waiting for a message nothing will deliver, and end at its
+deadline, unclean. A host that does not report its lifecycle — a bot, today, or
+a router — leaves it to the application, which calls `controls.cancelAll()`
+when it stops.
+
+### 6.6 Flows
+
+A flow is a conversation written as one function, which survives a restart:
+
+```ts
+const order = defineFlow<Step, undefined, Order>({
+  name: 'order',
+  version: 1,
+  async run(flow) {
+    const drink = await flow.ask('drink', (m) => m.reply('What would you like?'), typed)
+    const number = await flow.effect('place', () => placeOrder(drink))
+    await flow.effect('confirm', () => flow.context.reply(`Order #${number}.`).then(() => null))
+
+    return { drink, number }
+  },
+})
+
+bot.onCommand('order', (message) => message.conversation.start(order))
+```
+
+**What is stored.** Nothing about the function. A run is a record of plain
+data: its identity, the flow's name and version, the conversation key and where
+it was started, the input, a journal of what each step produced, the wait it is
+suspended at — its label, deadline and how many answers it rejected — the update
+that started it, and how it ended. The store is the one given to `flows`, and a
+file store keeps it as JSON.
+
+**Resuming is replaying.** When an update arrives for a conversation whose flow
+is waiting — in this process or a new one, with the definitions registered again
+under the same names — the function runs again from the top. Every step already
+in the journal returns what it returned the first time without doing anything;
+the wait it was suspended at is offered the update; from there it runs for real
+until it waits again or ends. Two rules follow, and they are the price of
+writing a durable conversation as one function:
+
+- **Take the same path given the same journal.** Decide on what steps
+  returned, not on `flow.context`, which is whatever update is driving this
+  resume.
+- **Reach outside only through `flow.effect`.** Code between steps runs again
+  on every resume. A message, a write, the clock and a random number are
+  effects, and their results are recorded.
+
+**What happens to the run that stopped.** A pass that reaches a wait it cannot
+answer stops there by awaiting a promise created with no way to settle it — not
+by throwing, so a `catch` around a wait's timeout cannot catch the stop and carry
+on. Nothing can ever resume that frame: the next update, deadline or cancellation
+starts a new pass from the top, and the abandoned one, referred to by nothing,
+is collected. A test resumes one run two hundred times and forces a collection
+with at most one of the abandoned frames left; another checks that no pass which
+stopped at a wait ever gets past it later — through rejected answers, the
+answer, a cancellation and a shutdown — and that the one effect after the wait
+ran once. A run holds at most one deadline timer in a process, re-armed as the
+wait is reached again, and none once it has ended or the process has shut down.
+
+A definition that changes its steps changes its `version`. A run started under
+a version the definition does not `accept` is left as it is and reported. A
+change that slipped through without a new version is caught when the replay
+meets a different step than the journal recorded — or ends before reaching the
+one the run was waiting at — and is reported without anything being written.
+
+**What an effect promises.** The flow records that an effect started before it
+runs and records its result after. A stop between the two leaves an outcome
+nobody can know:
+
+| The run stopped | On resume |
+|---|---|
+| Before the effect started | It runs, once |
+| After it started, before it finished | `EffectUncertainError` at that step — or, with `repeat: true`, it runs again |
+| After it finished, before its result was written | The same: from the store, this cannot be told apart from the row above |
+| After its result was written | Its result is returned; it does not run |
+
+An effect is handed `once.key`, stable for that step of that run across attempts
+and restarts, and `once.id`, a 64-bit number derived from it — the shape of an
+MTProto send's `random_id`, which is how Telegram recognises a message sent
+again. Nothing here makes a Telegram call exactly-once: it is at-most-once by
+default, and at-least-once where an effect says repeating is safe.
+
+**Waiting and ending.**
+
+| What happens | What the flow sees |
+|---|---|
+| The answer arrives | The wait returns what `transform` made of it |
+| An answer is rejected by `validate` | Nothing: `onInvalid` is told, the attempt is counted, the wait stays |
+| An update that is not the answer | Nothing; the update reaches the handlers unless the wait is `exclusive` |
+| The deadline passes while this process runs | `WaitTimeoutError` at the wait, with no update: `flow.context` throws and `flow.address` names the chat |
+| The deadline passed while nothing ran | The same, on the next update in the conversation — which then reaches the handlers, since it was not an answer — or at startup through `controls.flows.resume()` |
+| `cancelFlow()`, `controls.flows.cancel()`, entering a scene, a reset, or another flow started | `WaitCancelledError` at the wait, so cleanup can run as effects; the run ends cancelled |
+| The same update delivered twice | Nothing: it is recognised by its update number, or by its message number and kind, and not used again |
+| The function throws | The run ends failed with the error kept; the error goes where a handler's would, or to `onProblem` when a deadline was driving it |
+| The client stops or the process exits | Nothing. The run stays as stored. An account's stop also stops this process acting on its deadlines, as `controls.flows.shutdown()` does; the next update in the conversation carries the run on, and `resume()` after a start re-arms its deadline |
+
+Stopping and cancelling are different on purpose. A deployment is not a reason
+to tell somebody their order was abandoned.
+
+**Concurrency** is §6.2's: updates for one conversation are handled one at a
+time in one process, so two answers arriving together cannot both advance one
+wait; two processes over one store are not coordinated.
+
+A flow is a bounded conversation — a run may take a thousand steps by default —
+and the journal is replayed on every resume. A conversation that loops for ever
+belongs in a scene.
+
+### 6.7 What it is not
+
+Conversation state is not authorization state, and the separation in §4 applies
+to it unchanged: a scene's position is application data that degrades
+gracefully, and nothing here touches the credentials in §3.
+
+Typed callback data is not authorization either. `unpack` says the data belongs
+to a schema; anybody who can see a button can press it, and anybody who has
+pressed one can send its data again. The query carries who pressed it, and
+whether they may is the application's question.

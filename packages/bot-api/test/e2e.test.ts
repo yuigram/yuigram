@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * A whole bot, end to end.
  *

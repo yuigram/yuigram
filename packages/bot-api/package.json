@@ -1,6 +1,6 @@
 {
   "name": "@yuigram/bot-api",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Telegram Bot API subsystem for Yuigram",
   "keywords": [
     "telegram",
@@ -39,7 +39,30 @@
       "types": "./dist/webhook/index.d.ts",
       "import": "./dist/webhook/index.js",
       "default": "./dist/webhook/index.js"
+    },
+    "./markup": {
+      "types": "./dist/markup/index.d.ts",
+      "import": "./dist/markup/index.js",
+      "default": "./dist/markup/index.js"
+    },
+    "./stream": {
+      "types": "./dist/stream/index.d.ts",
+      "import": "./dist/stream/index.js",
+      "default": "./dist/stream/index.js"
+    },
+    "./rich": {
+      "types": "./dist/rich/index.d.ts",
+      "import": "./dist/rich/index.js",
+      "default": "./dist/rich/index.js"
+    },
+    "./web-app": {
+      "types": "./dist/web-app/index.d.ts",
+      "import": "./dist/web-app/index.js",
+      "default": "./dist/web-app/index.js"
     }
+  },
+  "browser": {
+    "./dist/files-node.js": "./dist/files-node.browser.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

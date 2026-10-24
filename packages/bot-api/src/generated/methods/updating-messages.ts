@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Updating messages
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { InlineKeyboardMarkup, InputChecklist, InputMedia, InputRichMessage, LinkPreviewOptions, MessageEntity } from '../types/index.js'
+import type { InputChecklist, InputInlineKeyboardMarkup, InputMedia, InputRichMessage, LinkPreviewOptions, MessageEntity } from '../types/index.js'
 
 /**
  * Parameters for `editMessageText`.
@@ -10,6 +12,47 @@ import type { InlineKeyboardMarkup, InputChecklist, InputMedia, InputRichMessage
  * @see https://corefork.telegram.org/bots/api#editmessagetext
  */
 export interface EditMessageTextParams {
+  /**
+   * New rich content of the message; required if text isn't specified. Direct
+   * upload of new files and explicit upload of files by a URL isn't supported
+   * when an inline message is edited.
+   */
+  rich_message?: InputRichMessage | undefined
+
+  /**
+   * Link preview generation options for the message
+   */
+  link_preview_options?: LinkPreviewOptions | undefined
+
+  /**
+   * New text of the message, 1-4096 characters after entities parsing; required
+   * if rich_message isn't specified
+   */
+  text?: string | undefined
+
+  /**
+   * Mode for parsing entities in the text. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of parse_mode
+   */
+  entities?: MessageEntity[] | undefined
+
+  /**
+   * A JSON-serialized object for an inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
+   */
+  inline_message_id?: string | undefined
+
   /**
    * Unique identifier of the business connection on behalf of which the message
    * to be edited was sent
@@ -19,55 +62,15 @@ export interface EditMessageTextParams {
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
    * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
+   * format @username. If a String, must be non-empty.
    */
   chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the message to
-   * edit.
+   * edit. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
-
-  /**
-   * New text of the message, 1-4096 characters after entity parsing; required if
-   * rich_message isn't specified
-   */
-  text?: string | undefined
-
-  /**
-   * Mode for parsing entities in the message text. See formatting options for
-   * more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in message text,
-   * which can be specified instead of parse_mode
-   */
-  entities?: MessageEntity[] | undefined
-
-  /**
-   * Link preview generation options for the message
-   */
-  link_preview_options?: LinkPreviewOptions | undefined
-
-  /**
-   * New rich content of the message; required if text isn't specified. Direct
-   * upload of new files isn't supported when an inline message is edited.
-   */
-  rich_message?: InputRichMessage | undefined
-
-  /**
-   * A JSON-serialized object for an inline keyboard
-   */
-  reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -77,29 +80,9 @@ export interface EditMessageTextParams {
  */
 export interface EditMessageCaptionParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * to be edited was sent
+   * A JSON-serialized object for an inline keyboard
    */
-  business_connection_id?: string | undefined
-
-  /**
-   * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
-   */
-  chat_id?: number | string | undefined
-
-  /**
-   * Required if inline_message_id is not specified. Identifier of the message to
-   * edit.
-   */
-  message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
    * New caption of the message, 0-1024 characters after entities parsing
@@ -107,8 +90,8 @@ export interface EditMessageCaptionParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the message caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -125,9 +108,29 @@ export interface EditMessageCaptionParams {
   show_caption_above_media?: boolean | undefined
 
   /**
-   * A JSON-serialized object for an inline keyboard
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  inline_message_id?: string | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * to be edited was sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Unique identifier for the
+   * target chat or username of the target bot, supergroup or channel in the
+   * format @username. If a String, must be non-empty.
+   */
+  chat_id?: number | string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Identifier of the message to
+   * edit. Must be at least 1.
+   */
+  message_id?: number | undefined
 }
 
 /**
@@ -137,6 +140,22 @@ export interface EditMessageCaptionParams {
  */
 export interface EditMessageMediaParams {
   /**
+   * A JSON-serialized object for a new inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * A JSON-serialized object for the new media content of the message
+   */
+  media: InputMedia
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
+   */
+  inline_message_id?: string | undefined
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * to be edited was sent
    */
@@ -145,31 +164,15 @@ export interface EditMessageMediaParams {
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
    * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
+   * format @username. If a String, must be non-empty.
    */
   chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the message to
-   * edit.
+   * edit. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
-
-  /**
-   * A JSON-serialized object for the new media content of the message
-   */
-  media: InputMedia
-
-  /**
-   * A JSON-serialized object for a new inline keyboard
-   */
-  reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -179,29 +182,26 @@ export interface EditMessageMediaParams {
  */
 export interface EditMessageLiveLocationParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * to be edited was sent
+   * New period in seconds during which the location can be updated, starting
+   * from the message send date. If 0x7FFFFFFF is specified, then the location
+   * can be updated forever. Otherwise, the new value must not exceed the current
+   * live_period by more than a day, and the live location expiration date must
+   * remain within the next 90 days. If not specified, then live_period remains
+   * unchanged.
    */
-  business_connection_id?: string | undefined
+  live_period?: number | undefined
 
   /**
-   * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
+   * Direction in which the user is moving, in degrees. Values between 1-360 are
+   * accepted.
    */
-  chat_id?: number | string | undefined
+  heading?: number | undefined
 
   /**
-   * Required if inline_message_id is not specified. Identifier of the message to
-   * edit.
+   * The maximum distance for proximity alerts about approaching another chat
+   * member, in meters. Values between 1-100000 are accepted.
    */
-  message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
+  proximity_alert_radius?: number | undefined
 
   /**
    * Latitude of new location
@@ -214,36 +214,39 @@ export interface EditMessageLiveLocationParams {
   longitude: number
 
   /**
-   * New period in seconds during which the location can be updated, starting
-   * from the message send date. If 0x7FFFFFFF is specified, then the location
-   * can be updated forever. Otherwise, the new value must not exceed the current
-   * live_period by more than a day, and the live location expiration date must
-   * remain within the next 90 days. If not specified, then live_period remains
-   * unchanged.
-   */
-  live_period?: number | undefined
-
-  /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
+   * The radius of uncertainty for the location, measured in meters, 0-1500
    */
   horizontal_accuracy?: number | undefined
 
   /**
-   * Direction in which the user is moving, in degrees. Must be between 1 and 360
-   * if specified.
-   */
-  heading?: number | undefined
-
-  /**
-   * The maximum distance for proximity alerts about approaching another chat
-   * member, in meters. Must be between 1 and 100000 if specified.
-   */
-  proximity_alert_radius?: number | undefined
-
-  /**
    * A JSON-serialized object for a new inline keyboard
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
+   */
+  inline_message_id?: string | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * to be edited was sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Unique identifier for the
+   * target chat or username of the target bot, supergroup or channel in the
+   * format @username. If a String, must be non-empty.
+   */
+  chat_id?: number | string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Identifier of the message to
+   * edit. Must be at least 1.
+   */
+  message_id?: number | undefined
 }
 
 /**
@@ -253,6 +256,17 @@ export interface EditMessageLiveLocationParams {
  */
 export interface StopMessageLiveLocationParams {
   /**
+   * A JSON-serialized object for a new inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
+   */
+  inline_message_id?: string | undefined
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * to be edited was sent
    */
@@ -261,26 +275,15 @@ export interface StopMessageLiveLocationParams {
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
    * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
+   * format @username. If a String, must be non-empty.
    */
   chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the message
-   * with live location to stop.
+   * with live location to stop. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
-
-  /**
-   * A JSON-serialized object for a new inline keyboard
-   */
-  reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -290,21 +293,9 @@ export interface StopMessageLiveLocationParams {
  */
 export interface EditMessageChecklistParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * A JSON-serialized object for the new inline keyboard for the message
    */
-  business_connection_id: string
-
-  /**
-   * Unique identifier for the target chat or username of the target bot in the
-   * format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message
-   */
-  message_id: number
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 
   /**
    * A JSON-serialized object for the new checklist
@@ -312,9 +303,21 @@ export interface EditMessageChecklistParams {
   checklist: InputChecklist
 
   /**
-   * A JSON-serialized object for the new inline keyboard for the message
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  business_connection_id: string
+
+  /**
+   * Unique identifier for the target chat or username of the target bot in the
+   * format @username, if a String, must be non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message, at least 1
+   */
+  message_id: number
 }
 
 /**
@@ -324,6 +327,17 @@ export interface EditMessageChecklistParams {
  */
 export interface EditMessageReplyMarkupParams {
   /**
+   * A JSON-serialized object for an inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
+   */
+  inline_message_id?: string | undefined
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * to be edited was sent
    */
@@ -332,26 +346,15 @@ export interface EditMessageReplyMarkupParams {
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
    * target chat or username of the target bot, supergroup or channel in the
-   * format @username.
+   * format @username. If a String, must be non-empty.
    */
   chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the message to
-   * edit.
+   * edit. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
-
-  /**
-   * A JSON-serialized object for an inline keyboard
-   */
-  reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -361,6 +364,11 @@ export interface EditMessageReplyMarkupParams {
  */
 export interface StopPollParams {
   /**
+   * A JSON-serialized object for a new message inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * to be edited was sent
    */
@@ -368,19 +376,15 @@ export interface StopPollParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the original message with the poll
+   * Identifier of the original message with the poll, at least 1
    */
   message_id: number
-
-  /**
-   * A JSON-serialized object for a new message inline keyboard
-   */
-  reply_markup?: InlineKeyboardMarkup | undefined
 }
 
 /**
@@ -390,13 +394,41 @@ export interface StopPollParams {
  */
 export interface EditEphemeralMessageTextParams {
   /**
+   * New rich content of the message; required if text isn't specified
+   */
+  rich_message?: InputRichMessage | undefined
+
+  /**
+   * Link preview generation options for the message
+   */
+  link_preview_options?: LinkPreviewOptions | undefined
+
+  /**
+   * New text of the message, 1-4096 characters after entities parsing; required
+   * if rich_message isn't specified
+   */
+  text?: string | undefined
+
+  /**
+   * Mode for parsing entities in the text. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of parse_mode
+   */
+  entities?: MessageEntity[] | undefined
+
+  /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the user who received the message
+   * Identifier of the user who received the message, at least 1
    */
   receiver_user_id: number
 
@@ -406,31 +438,9 @@ export interface EditEphemeralMessageTextParams {
   ephemeral_message_id: number
 
   /**
-   * New text of the message, 1-4096 characters after entity parsing
-   */
-  text: string
-
-  /**
-   * Mode for parsing entities in the message text. See formatting options for
-   * more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in message text,
-   * which can be specified instead of parse_mode
-   */
-  entities?: MessageEntity[] | undefined
-
-  /**
-   * Link preview generation options for the message
-   */
-  link_preview_options?: LinkPreviewOptions | undefined
-
-  /**
    * A JSON-serialized object for an inline keyboard
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -440,13 +450,18 @@ export interface EditEphemeralMessageTextParams {
  */
 export interface EditEphemeralMessageMediaParams {
   /**
+   * A JSON-serialized object for the new media content of the message
+   */
+  media: InputMedia
+
+  /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the user who received the message
+   * Identifier of the user who received the message, at least 1
    */
   receiver_user_id: number
 
@@ -456,16 +471,9 @@ export interface EditEphemeralMessageMediaParams {
   ephemeral_message_id: number
 
   /**
-   * A JSON-serialized object for the new media content of the message. A new
-   * file can't be uploaded; use a previously uploaded file via its file_id or
-   * specify a URL.
-   */
-  media: InputMedia
-
-  /**
    * A JSON-serialized object for an inline keyboard
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -475,29 +483,13 @@ export interface EditEphemeralMessageMediaParams {
  */
 export interface EditEphemeralMessageCaptionParams {
   /**
-   * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Identifier of the user who received the message
-   */
-  receiver_user_id: number
-
-  /**
-   * Identifier of the ephemeral message to edit
-   */
-  ephemeral_message_id: number
-
-  /**
    * New caption of the message, 0-1024 characters after entities parsing
    */
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the message caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -508,25 +500,19 @@ export interface EditEphemeralMessageCaptionParams {
   caption_entities?: MessageEntity[] | undefined
 
   /**
-   * A JSON-serialized object for an inline keyboard
+   * Pass True if the caption must be shown above the message media. Supported
+   * only for animation, photo and video messages.
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
-}
+  show_caption_above_media?: boolean | undefined
 
-/**
- * Parameters for `editEphemeralMessageReplyMarkup`.
- *
- * @see https://corefork.telegram.org/bots/api#editephemeralmessagereplymarkup
- */
-export interface EditEphemeralMessageReplyMarkupParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the user who received the message
+   * Identifier of the user who received the message, at least 1
    */
   receiver_user_id: number
 
@@ -538,7 +524,35 @@ export interface EditEphemeralMessageReplyMarkupParams {
   /**
    * A JSON-serialized object for an inline keyboard
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
+}
+
+/**
+ * Parameters for `editEphemeralMessageReplyMarkup`.
+ *
+ * @see https://corefork.telegram.org/bots/api#editephemeralmessagereplymarkup
+ */
+export interface EditEphemeralMessageReplyMarkupParams {
+  /**
+   * Unique identifier for the target chat or username of the target supergroup
+   * in the format @username, if a String, must be non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Identifier of the user who received the message, at least 1
+   */
+  receiver_user_id: number
+
+  /**
+   * Identifier of the ephemeral message to edit
+   */
+  ephemeral_message_id: number
+
+  /**
+   * A JSON-serialized object for an inline keyboard
+   */
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -548,12 +562,13 @@ export interface EditEphemeralMessageReplyMarkupParams {
  */
 export interface ApproveSuggestedPostParams {
   /**
-   * Unique identifier for the target direct messages chat
+   * Unique identifier for the target direct messages chat, if a String, must be
+   * non-empty
    */
-  chat_id: number
+  chat_id: number | string
 
   /**
-   * Identifier of a suggested post message to approve
+   * Identifier of a suggested post message to approve, at least 1
    */
   message_id: number
 
@@ -573,17 +588,18 @@ export interface ApproveSuggestedPostParams {
  */
 export interface DeclineSuggestedPostParams {
   /**
-   * Unique identifier for the target direct messages chat
+   * Unique identifier for the target direct messages chat, if a String, must be
+   * non-empty
    */
-  chat_id: number
+  chat_id: number | string
 
   /**
-   * Identifier of a suggested post message to decline
+   * Identifier of a suggested post message to decline, at least 1
    */
   message_id: number
 
   /**
-   * Comment for the creator of the suggested post; 0-128 characters
+   * Comment for the creator of the suggested post, 0-128 characters
    */
   comment?: string | undefined
 }
@@ -596,12 +612,13 @@ export interface DeclineSuggestedPostParams {
 export interface DeleteMessageParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the message to delete
+   * Identifier of the message to delete, at least 1
    */
   message_id: number
 }
@@ -614,13 +631,15 @@ export interface DeleteMessageParams {
 export interface DeleteMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
   /**
-   * A JSON-serialized list of 1-100 identifiers of messages to delete. See
-   * deleteMessage for limitations on which messages can be deleted.
+   * A JSON-serialized list of identifiers of messages to delete. See
+   * deleteMessage for limitations on which messages can be deleted. Must have
+   * 1-100 elements. Each element must be at least 1.
    */
   message_ids: number[]
 }
@@ -633,12 +652,12 @@ export interface DeleteMessagesParams {
 export interface DeleteEphemeralMessageParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the user who received the message
+   * Identifier of the user who received the message, at least 1
    */
   receiver_user_id: number
 
@@ -656,18 +675,18 @@ export interface DeleteEphemeralMessageParams {
 export interface DeleteMessageReactionParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of the target message
+   * Identifier of the target message, at least 1
    */
   message_id: number
 
   /**
    * Identifier of the user whose reaction will be removed, if the reaction was
-   * added by a user
+   * added by a user, at least 1
    */
   user_id?: number | undefined
 
@@ -686,13 +705,13 @@ export interface DeleteMessageReactionParams {
 export interface DeleteAllMessageReactionsParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
    * Identifier of the user whose reactions will be removed, if the reactions
-   * were added by a user
+   * were added by a user, at least 1
    */
   user_id?: number | undefined
 

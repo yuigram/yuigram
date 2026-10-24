@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Bot API error mapping.
  *
@@ -10,7 +12,7 @@
  * object is the most common route by which one reaches a log aggregator.
  */
 
-import { FloodError, NetworkError, TelegramError } from '@yuigram/core'
+import { FloodError, NetworkError, TelegramError } from './core.js'
 import type { ApiResponse } from './http/client.js'
 
 /** Telegram refused the call. */

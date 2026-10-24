@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * The architecture invariants.
  *
@@ -9,7 +11,7 @@
  * one both accepts a conforming workspace and rejects a violating one.
  */
 
-import type { Invariant, InvariantResult, Violation, Workspace } from './types.js'
+import type { Invariant, InvariantResult, SourceFile, Violation, Workspace } from './types.js'
 import { stripComments } from './workspace.js'
 
 /**
@@ -134,6 +136,11 @@ export const layerBoundaries: Invariant = (workspace): InvariantResult => {
     ['@yuigram/core', ['@yuigram/bot-api', '@yuigram/mtproto', '@yuigram/yuigram', 'yuigram']],
     ['@yuigram/bot-api', ['@yuigram/mtproto', 'yuigram']],
     ['@yuigram/mtproto', ['@yuigram/bot-api', 'yuigram']],
+    // Storage adapters serve both transports through core's contracts, so
+    // either transport importing one, or one importing a transport, would tie
+    // a database to a protocol.
+    ['@yuigram/sqlite', ['@yuigram/bot-api', '@yuigram/mtproto', 'yuigram']],
+    ['@yuigram/redis', ['@yuigram/bot-api', '@yuigram/mtproto', 'yuigram']],
   ])
 
   for (const pkg of workspace.packages) {
@@ -263,11 +270,539 @@ export function publicSurfaceIsClean(
   return { name: 'public-surface-is-clean', violations }
 }
 
+/**
+ * Directory edges that must not exist inside a package.
+ *
+ * The two rules above resolve a specifier to a package name and skip relative
+ * imports entirely, so neither can see one generated table reaching into
+ * another. That edge is exactly what keeps the service and API vocabularies
+ * apart: the plaintext handshake channel decodes with the service table alone,
+ * and an API constructor is unreachable there only while the modules stay
+ * separate.
+ *
+ * Branded identifiers stop a *value* crossing between tables. This stops a
+ * *module* crossing, which branding cannot express.
+ */
+interface ModuleBoundary {
+  /** Directory prefix, relative to the repository root. */
+  readonly from: string
+  /** Prefixes it must not reach. */
+  readonly to: readonly string[]
+  /** Why the edge is forbidden, shown when one appears. */
+  readonly rationale: string
+}
+
+export const MODULE_BOUNDARIES: readonly ModuleBoundary[] = [
+  {
+    from: 'packages/mtproto/src/generated/mtproto/',
+    to: ['packages/mtproto/src/generated/api/'],
+    rationale:
+      'The service table is decoded before an auth key exists. Reaching the API table from it would make an API constructor readable on the plaintext channel.',
+  },
+  {
+    from: 'packages/mtproto/src/generated/api/',
+    to: ['packages/mtproto/src/generated/mtproto/'],
+    rationale:
+      'The API layer travels only inside an encrypted session. Depending on the service table would couple a layer bump to the transport vocabulary.',
+  },
+  {
+    from: 'packages/mtproto/src/generated/core/',
+    to: ['packages/mtproto/src/generated/api/', 'packages/mtproto/src/generated/mtproto/'],
+    rationale:
+      'The core table holds the TL language itself. It is what the other two share, so it may not depend on either.',
+  },
+]
+
+/** Resolve a relative specifier against the importing file. */
+function resolveRelative(fromFile: string, specifier: string): string | null {
+  if (!specifier.startsWith('.')) return null
+
+  const segments = fromFile.split('/').slice(0, -1)
+  for (const part of specifier.split('/')) {
+    if (part === '.' || part === '') continue
+    if (part === '..') segments.pop()
+    else segments.push(part)
+  }
+
+  return segments.join('/')
+}
+
+export const moduleBoundaries: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) {
+      const boundary = MODULE_BOUNDARIES.find((rule) => source.path.startsWith(rule.from))
+      if (boundary === undefined) continue
+
+      for (const ref of source.imports) {
+        const target = resolveRelative(source.path, ref.specifier)
+        if (target === null) continue
+
+        const crossed = boundary.to.find((prefix) => target.startsWith(prefix))
+        if (crossed === undefined) continue
+
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `${boundary.from} imports '${ref.specifier}', which resolves into ${crossed}`,
+          rationale: boundary.rationale,
+        })
+      }
+    }
+  }
+
+  return { name: 'module-boundaries', violations }
+}
+
+/**
+ * What an entry point costs merely to load.
+ *
+ * Importing a module evaluates everything it statically imports, transitively,
+ * whether or not the program goes on to use any of it. `docs/performance.md` §2
+ * budgets a cold `import 'yuigram'` at under 100 ms and asks for the TL codec
+ * tables — some 2,300 combinators — to be resolved on first use rather than
+ * built eagerly. A single static edge from an entry point into a table puts all
+ * of them back into every program's startup, including the ones that only ever
+ * run a bot.
+ *
+ * The benchmark measures the consequence; this states the rule. A measurement
+ * says a number moved, and leaves the next person to work out which import did
+ * it.
+ *
+ * Only static edges are followed. A module reached through `import(...)` is
+ * loaded when the code that needs it runs, and one reached by `import type` is
+ * not loaded at all — which is the whole point of writing either.
+ */
+interface EagerSurface {
+  /** Entry module, repository-relative. */
+  readonly entry: string
+  /** Prefixes its static closure must not reach. */
+  readonly excluded: readonly string[]
+  /**
+   * Package entry points its static closure must not import by name.
+   *
+   * The walk follows relative imports only, so an optional entry point of
+   * another package — `@yuigram/core/format` — is named here to be caught.
+   */
+  readonly forbidden?: readonly string[]
+  /** Why the weight is kept out, shown when it appears. */
+  readonly rationale: string
+}
+
+/** The optional entry points no main entry point may load by importing it. */
+const OPTIONAL_ENTRIES: readonly string[] = [
+  '@yuigram/core/format',
+  '@yuigram/core/stream',
+  '@yuigram/core/dice',
+  '@yuigram/core/indexeddb',
+  '@yuigram/bot-api/markup',
+  '@yuigram/bot-api/rich',
+  '@yuigram/bot-api/stream',
+  '@yuigram/bot-api/web-app',
+  '@yuigram/mtproto/stream',
+  '@yuigram/mtproto/worker',
+  '@yuigram/mtproto/filters',
+  '@yuigram/mtproto/utils',
+  '@yuigram/mtproto/testing',
+  '@yuigram/mtproto/mtproxy',
+]
+
+const OPTIONAL_RATIONALE =
+  'Formatting, rich messages, streaming, dice, Mini App launch data, IndexedDB storage, MTProxy, account filters, utilities and testing, and the worker are entry points of their own, loaded by the programs that ask for them. A static edge from a main entry point puts them into the startup of every program that imports it.'
+
+export const EAGER_SURFACES: readonly EagerSurface[] = [
+  {
+    entry: 'packages/mtproto/src/index.ts',
+    excluded: [
+      'packages/mtproto/src/generated/api/tables/',
+      'packages/mtproto/src/generated/core/tables/',
+      'packages/mtproto/src/generated/mtproto/tables/',
+    ],
+    rationale:
+      'The codec tables are resolved when an account connects, not when the package is imported. A static edge to one of them is paid by every program that loads the framework, including bot-only programs that never speak MTProto.',
+  },
+  {
+    entry: 'packages/core/src/index.ts',
+    excluded: [
+      'packages/core/src/format/',
+      'packages/core/src/stream/',
+      'packages/core/src/dice/',
+      'packages/core/src/indexeddb/',
+    ],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/bot-api/src/index.ts',
+    excluded: [
+      'packages/bot-api/src/markup/',
+      'packages/bot-api/src/rich/',
+      'packages/bot-api/src/stream/',
+      'packages/bot-api/src/web-app/',
+    ],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/mtproto/src/index.ts',
+    excluded: [
+      'packages/mtproto/src/stream/',
+      'packages/mtproto/src/worker/',
+      'packages/mtproto/src/filters/',
+      'packages/mtproto/src/utils/',
+      'packages/mtproto/src/testing/',
+      'packages/mtproto/src/mtproxy/',
+    ],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+  {
+    entry: 'packages/yuigram/src/index.ts',
+    excluded: [],
+    forbidden: OPTIONAL_ENTRIES,
+    rationale: OPTIONAL_RATIONALE,
+  },
+]
+
+/**
+ * The source file a relative specifier names, or null when it names none.
+ *
+ * A specifier carries the extension of the built file rather than the source
+ * one. `nodenext` resolution requires the extension, so every relative import
+ * in the repository ends in `.js` and none names a bare directory — rewriting
+ * the extension is the whole of the mapping.
+ */
+function sourceAt(target: string, sources: ReadonlyMap<string, SourceFile>): SourceFile | null {
+  return sources.get(target.replace(/\.js$/, '.ts')) ?? null
+}
+
+/** One edge out of the permitted set, as the walk found it. */
+interface Crossing {
+  readonly file: string
+  readonly line: number
+  readonly specifier: string
+  /** The excluded prefix it resolved into. */
+  readonly crossed: string
+}
+
+/**
+ * Walk what loading `entry` would load, reporting the edges that leave the set.
+ *
+ * A module that crosses is reported and not descended into. Everything under it
+ * crosses too, and the edge that reached it is the one thing to fix.
+ */
+function crossings(
+  entry: SourceFile,
+  sources: ReadonlyMap<string, SourceFile>,
+  excluded: readonly string[],
+  forbidden: readonly string[] = [],
+): Crossing[] {
+  const found: Crossing[] = []
+  const seen = new Set<string>([entry.path])
+  const pending: SourceFile[] = [entry]
+
+  for (let source = pending.pop(); source !== undefined; source = pending.pop()) {
+    for (const ref of source.imports) {
+      if (ref.kind !== 'static') continue
+
+      const target = resolveRelative(source.path, ref.specifier)
+      if (target === null) {
+        const named = forbidden.find((entry) => ref.specifier === entry)
+        if (named !== undefined) {
+          found.push({
+            file: source.path,
+            line: ref.line,
+            specifier: ref.specifier,
+            crossed: named,
+          })
+        }
+        continue
+      }
+
+      const crossed = excluded.find((prefix) => target.startsWith(prefix))
+      if (crossed !== undefined) {
+        found.push({ file: source.path, line: ref.line, specifier: ref.specifier, crossed })
+        continue
+      }
+
+      const next = sourceAt(target, sources)
+      if (next === null || seen.has(next.path)) continue
+
+      seen.add(next.path)
+      pending.push(next)
+    }
+  }
+
+  return found
+}
+
+export const eagerSurfaces: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+  const sources = new Map<string, SourceFile>()
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) sources.set(source.path, source)
+  }
+
+  for (const surface of EAGER_SURFACES) {
+    const entry = sources.get(surface.entry)
+    if (entry === undefined) continue
+
+    for (const crossing of crossings(entry, sources, surface.excluded, surface.forbidden)) {
+      violations.push({
+        file: crossing.file,
+        line: crossing.line,
+        message: `'${crossing.specifier}' is reachable from ${surface.entry} without running anything, and resolves into ${crossing.crossed}`,
+        rationale: surface.rationale,
+      })
+    }
+  }
+
+  return { name: 'eager-surfaces', violations }
+}
+
+/**
+ * A published package reaches its own modules by path, never by its own name.
+ *
+ * Each package ships a manifest in `dist/` that says the files are ES modules,
+ * carries the `browser` map and `sideEffects`, and names no package
+ * (`scripts/write-dist-manifests.mjs`): it is what lets Node stop looking for
+ * a module's package one directory up. An import of a package's own name —
+ * in code, or in a type import that ends up in a declaration file — would be
+ * resolved against that manifest first and fall back to whatever `node_modules`
+ * happens to hold, which depends on how the package was installed. Tests are
+ * not shipped and are not held.
+ */
+export const noSelfImport: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    if (!pkg.dir.startsWith('packages/')) continue
+
+    for (const source of pkg.sources) {
+      if (isTestFile(source.path)) continue
+      for (const ref of source.imports) {
+        if (ref.specifier !== pkg.name && !ref.specifier.startsWith(`${pkg.name}/`)) continue
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `${pkg.name} imports itself by name ('${ref.specifier}'); import the module by its path`,
+          rationale:
+            'The manifest in dist/ names no package, so a self-import is resolved through node_modules — present in some installations and not others.',
+        })
+      }
+    }
+  }
+
+  return { name: 'no-self-import', violations }
+}
+
+/**
+ * How the main entry points reach the core.
+ *
+ * Node resolves an import by package name separately for each module that
+ * writes it, and that walk — `node_modules`, export map, real path — was about a
+ * tenth of a cold `import 'yuigram'` when fifty-odd modules each did it
+ * (`docs/performance.md` §2). So in each package below, the modules its main
+ * entry point loads take the core's values from one local module that
+ * re-exports it, and only that module names the package.
+ *
+ * What it does not cover is deliberate. `import type` is erased and resolves
+ * nothing at run time. A module loaded later — by `import()`, or by an optional
+ * entry point — is not paid for at startup, and the core's other entry points
+ * are separate packages as far as resolution goes.
+ */
+interface CoreRoute {
+  /** The main entry point whose static closure is held. */
+  readonly entry: string
+  /** The one module allowed to import the core by name. */
+  readonly link: string
+}
+
+export const CORE_ROUTES: readonly CoreRoute[] = [
+  { entry: 'packages/bot-api/src/index.ts', link: 'packages/bot-api/src/core.ts' },
+  { entry: 'packages/mtproto/src/index.ts', link: 'packages/mtproto/src/core.ts' },
+]
+
+/** The modules loading `entry` loads, following static relative imports only. */
+function staticClosure(
+  entry: SourceFile,
+  sources: ReadonlyMap<string, SourceFile>,
+): readonly SourceFile[] {
+  const seen = new Map<string, SourceFile>([[entry.path, entry]])
+  const pending: SourceFile[] = [entry]
+
+  for (let source = pending.pop(); source !== undefined; source = pending.pop()) {
+    for (const ref of source.imports) {
+      if (ref.kind !== 'static') continue
+      const target = resolveRelative(source.path, ref.specifier)
+      const next = target === null ? null : sourceAt(target, sources)
+      if (next === null || seen.has(next.path)) continue
+      seen.set(next.path, next)
+      pending.push(next)
+    }
+  }
+
+  return [...seen.values()]
+}
+
+export const coreRoute: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+  const sources = new Map<string, SourceFile>()
+  for (const pkg of workspace.packages) {
+    for (const source of pkg.sources) sources.set(source.path, source)
+  }
+
+  for (const route of CORE_ROUTES) {
+    const entry = sources.get(route.entry)
+    if (entry === undefined) continue
+
+    for (const source of staticClosure(entry, sources)) {
+      if (source.path === route.link) continue
+      for (const ref of source.imports) {
+        if (ref.kind !== 'static' || ref.specifier !== '@yuigram/core') continue
+        violations.push({
+          file: source.path,
+          line: ref.line,
+          message: `'@yuigram/core' is imported by name in a module ${route.entry} loads; import it from ${route.link} instead, or with \`import type\` for types`,
+          rationale:
+            'Each import by package name is resolved separately at startup, and the main entry points load enough of them to cost a tenth of the import budget. One local module resolves the core once for all of them.',
+        })
+      }
+    }
+  }
+
+  return { name: 'core-route', violations }
+}
+
+/**
+ * What a template must refuse to commit.
+ *
+ * `docs/security.md` §3 lists "never in git" as a control that is on by
+ * default, held by documentation and by a `.gitignore` in every template, and
+ * calls it the realistic leak path — realistic because nothing about it fails
+ * loudly. A session string is one line of text that is a logged-in account, and
+ * the way it reaches a public repository is not that somebody decided to commit
+ * it. It is that they copied a template, ran it, and committed everything the
+ * run produced.
+ *
+ * So the rule is about the templates rather than about this repository: the
+ * root ignore file protects what is checked out here, and protects nothing at
+ * all once a directory has been copied somewhere else. Each pattern below
+ * corresponds to something an example actually reads or writes.
+ */
+const TEMPLATE_IGNORES: readonly string[] = [
+  'node_modules/',
+  'dist/',
+  '.env',
+  '*.session',
+  'state/',
+]
+
+/** One template, as the checker reads it. */
+export interface Template {
+  /** Repository-relative directory, e.g. `examples/08-storage`. */
+  readonly path: string
+  /** Contents of its `.gitignore`, or undefined when it has none. */
+  readonly gitignore: string | undefined
+}
+
+/**
+ * Every template ignores what running it produces.
+ *
+ * Checked against the patterns rather than the file, so a template that needs
+ * more may say more. A template that is missing one is reported by name: the
+ * point of the control is that somebody copying it inherits the protection,
+ * and a template silently short of a rule inherits nothing.
+ */
+export function templatesIgnoreSecrets(templates: readonly Template[]): InvariantResult {
+  const violations: Violation[] = []
+
+  for (const template of templates) {
+    if (template.gitignore === undefined) {
+      violations.push({
+        file: `${template.path}/.gitignore`,
+        message: `${template.path} is a template with no '.gitignore'`,
+        rationale:
+          'A template is copied whole. Whoever copies it inherits its ignore rules and nothing else, and what they run writes credentials and session state beside the code.',
+      })
+      continue
+    }
+
+    const lines = new Set(
+      template.gitignore
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('#')),
+    )
+
+    for (const pattern of TEMPLATE_IGNORES) {
+      if (lines.has(pattern)) continue
+
+      violations.push({
+        file: `${template.path}/.gitignore`,
+        message: `${template.path} does not ignore '${pattern}'`,
+        rationale:
+          'Each pattern names something an example reads or writes: dependencies, build output, credentials, a session, or the state a run leaves behind.',
+      })
+    }
+  }
+
+  return { name: 'templates-ignore-secrets', violations }
+}
+
+/**
+ * The words a generated Bot API file carries instead of a licence identifier:
+ * its code is MIT, but the descriptions it quotes are Telegram's.
+ */
+export const QUOTED_DOCUMENTATION_NOTICE = 'The code is licensed under MIT (see LICENSE).'
+
+/** How many lines from the top a licence notice may sit. */
+const NOTICE_LINES = 8
+
+/**
+ * Every source file says which licence covers it.
+ *
+ * Files travel on their own, and one copied out of the repository says what it
+ * is under only if it says so itself — which matters most for the generated
+ * files, whose content is partly someone else's. A hand-written file opens with
+ * `SPDX-License-Identifier: MIT`. A generated
+ * one carries what its generator writes: the identifier, with TDLib's Boost
+ * licence beside it where the file derives from TDLib's schema, or, where it
+ * quotes Telegram's documentation, the same in words.
+ */
+export const licenceNotices: Invariant = (workspace): InvariantResult => {
+  const violations: Violation[] = []
+
+  for (const pkg of workspace.packages) {
+    for (const file of pkg.sources) {
+      const head = file.text.split('\n', NOTICE_LINES).join('\n')
+      if (/SPDX-License-Identifier: MIT\b/.test(head)) continue
+      if (head.includes(QUOTED_DOCUMENTATION_NOTICE)) continue
+
+      violations.push({
+        file: file.path,
+        line: 1,
+        message: `${file.path} does not say which licence covers it`,
+        rationale:
+          'A file copied on its own says what it is under only if it states it; a generated one also says whose content it carries. A hand-written file opens with an SPDX identifier, and a generated one with what its generator writes.',
+      })
+    }
+  }
+
+  return { name: 'licence-notices', violations }
+}
+
 /** All invariants that operate purely on the workspace description. */
 export const workspaceInvariants: readonly Invariant[] = [
   noTelegramDependencies,
   layerBoundaries,
   declaredImports,
+  moduleBoundaries,
+  eagerSurfaces,
+  coreRoute,
+  noSelfImport,
+  licenceNotices,
 ]
 
 /** Run every workspace invariant and collect the results. */

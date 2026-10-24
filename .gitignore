@@ -25,3 +25,9 @@ coverage/
 *.session
 *.session-journal
 sessions/
+
+# Framework state, which is what the examples write when they are run
+state/
+
+# Documentation samples written out for type-checking (scripts/check-doc-examples.mjs)
+examples/.doc-check/

@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Rich messages
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { ForceReply, InlineKeyboardMarkup, InputRichMessage, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
+import type { EphemeralMessageParameters, ForceReply, InputInlineKeyboardMarkup, InputRichMessage, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
 
 /**
  * Parameters for `sendRichMessage`.
@@ -11,15 +13,14 @@ import type { ForceReply, InlineKeyboardMarkup, InputRichMessage, ReplyKeyboardM
  */
 export interface SendRichMessageParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent. Bot can send rich messages on behalf of a business account
-   * only if the corresponding user can send rich messages.
+   * The message to be sent
    */
-  business_connection_id?: string | undefined
+  rich_message: InputRichMessage
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -37,9 +38,29 @@ export interface SendRichMessageParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * The message to be sent
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent. Bot can send rich messages on behalf of a business account
+   * only if the corresponding user can send rich messages.
    */
-  rich_message: InputRichMessage
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -65,23 +86,11 @@ export interface SendRichMessageParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -91,9 +100,10 @@ export interface SendRichMessageParams {
  */
 export interface SendRichMessageDraftParams {
   /**
-   * Unique identifier for the target private chat
+   * Unique identifier for the target private chat or username of the target bot
+   * in the format @username, if a String, must be non-empty
    */
-  chat_id: number
+  chat_id: number | string
 
   /**
    * Unique identifier for the target message thread
@@ -102,13 +112,29 @@ export interface SendRichMessageDraftParams {
 
   /**
    * Unique identifier of the message draft; must be non-zero. Changes to drafts
-   * with the same identifier are animated.
+   * with the same identifier are animated. Otherwise, the draft is replaced
+   * without animation. Must be a decimal integer.
    */
-  draft_id: number
+  draft_id: string
 
   /**
-   * The partial message to be streamed. Direct upload of new files isn't
-   * supported.
+   * Pass True to show the user a button to stop further drafts. The bot will
+   * receive an Update "stopped_message_generation" if the user presses the
+   * button.
+   */
+  can_stop?: boolean | undefined
+
+  /**
+   * Pass True to keep the draft in the chat when the button is pressed. The
+   * draft will still disappear after a short time or if the bot sends a message.
+   * To fully preserve the partial draft, the bot should send it as a new
+   * message.
+   */
+  keep_on_stop?: boolean | undefined
+
+  /**
+   * The partial message to be streamed. Direct upload of new files and explicit
+   * upload of files by a URL isn't supported.
    */
   rich_message: InputRichMessage
 }

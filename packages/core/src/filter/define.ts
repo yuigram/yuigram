@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Filter construction and composition.
  *

@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Stickers
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { ForceReply, InlineKeyboardMarkup, InputSticker, MaskPosition, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
+import type { EphemeralMessageParameters, ForceReply, InputInlineKeyboardMarkup, InputSticker, MaskPosition, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, SuggestedPostParameters } from '../types/index.js'
 import type { InputFile } from '../../input-file.js'
 
 /**
@@ -12,14 +14,24 @@ import type { InputFile } from '../../input-file.js'
  */
 export interface SendStickerParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Sticker to send. Pass a file_id as String to send a file that exists on the
+   * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
+   * get a .WEBP sticker from the Internet, or upload a new .WEBP, .TGS, or .WEBM
+   * sticker using multipart/form-data. More information on Sending Files ».
+   * Video and animated stickers can't be sent via an HTTP URL. If a String, must
+   * be non-empty.
    */
-  business_connection_id?: string | undefined
+  sticker: InputFile | string
+
+  /**
+   * Emoji associated with the sticker; only for just uploaded stickers
+   */
+  emoji?: string | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -37,32 +49,28 @@ export interface SendStickerParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * For outgoing ephemeral messages, unique identifier of the user who will
-   * receive the message; for group and supergroup chats only. It is not
-   * guaranteed that the user will receive the message, especially if they are
-   * offline. See ephemeral message sending for more details.
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  receiver_user_id?: number | undefined
+  business_connection_id?: string | undefined
 
   /**
-   * For outgoing ephemeral messages, identifier of the callback query which
-   * triggered the message if any
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  callback_query_id?: string | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * Sticker to send. Pass a file_id as String to send a file that exists on the
-   * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
-   * get a .WEBP sticker from the Internet, or upload a new .WEBP, .TGS, or .WEBM
-   * sticker using multipart/form-data. More information on Sending Files ».
-   * Video and animated stickers can't be sent via an HTTP URL.
+   * Description of the message to reply to
    */
-  sticker: InputFile | string
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Emoji associated with the sticker; only for just uploaded stickers
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  emoji?: string | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -88,23 +96,11 @@ export interface SendStickerParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -126,8 +122,8 @@ export interface GetStickerSetParams {
  */
 export interface GetCustomEmojiStickersParams {
   /**
-   * A JSON-serialized list of custom emoji identifiers. At most 200 custom emoji
-   * identifiers can be specified.
+   * A JSON-serialized list of custom emoji identifiers. Must have at most 200
+   * elements. Each element must be a decimal integer.
    */
   custom_emoji_ids: string[]
 }
@@ -139,21 +135,21 @@ export interface GetCustomEmojiStickersParams {
  */
 export interface UploadStickerFileParams {
   /**
-   * User identifier of sticker file owner
+   * User identifier of sticker file owner, at least 1
    */
   user_id: number
 
   /**
-   * A file with the sticker in .WEBP, .PNG, .TGS, or .WEBM format. See
-   * https://core.telegram.org/stickers for technical requirements. More
-   * information on Sending Files »
-   */
-  sticker: InputFile
-
-  /**
-   * Format of the sticker, must be one of “static”, “animated”, “video”
+   * Format of the sticker, must be one of "static", "animated", or "video"
    */
   sticker_format: string
+
+  /**
+   * A file with the sticker in .WEBP, .PNG, .TGS, or .WEBM format. See
+   * https://core.telegram.org/stickers for technical requirements. More
+   * information on Sending Files ». If a String, must start with "attach://".
+   */
+  sticker: InputFile | string
 }
 
 /**
@@ -163,7 +159,7 @@ export interface UploadStickerFileParams {
  */
 export interface CreateNewStickerSetParams {
   /**
-   * User identifier of created sticker set owner
+   * User identifier of created sticker set owner, at least 1
    */
   user_id: number
 
@@ -171,7 +167,8 @@ export interface CreateNewStickerSetParams {
    * Short name of sticker set, to be used in t.me/addstickers/ URLs (e.g.,
    * animals). Can contain only English letters, digits and underscores. Must
    * begin with a letter, can't contain consecutive underscores and must end in
-   * "_by_<bot_username>". <bot_username> is case insensitive. 1-64 characters.
+   * "_by_<bot_username>". <bot_username> is case insensitive. Must be 1-64
+   * characters long.
    */
   name: string
 
@@ -181,24 +178,24 @@ export interface CreateNewStickerSetParams {
   title: string
 
   /**
-   * A JSON-serialized list of 1-50 initial stickers to be added to the sticker
-   * set
-   */
-  stickers: InputSticker[]
-
-  /**
-   * Type of stickers in the set, pass “regular”, “mask”, or “custom_emoji”. By
-   * default, a regular sticker set is created.
-   */
-  sticker_type?: string | undefined
-
-  /**
    * Pass True if stickers in the sticker set must be repainted to the color of
    * text when used in messages, the accent color if used as emoji status, white
    * on chat photos, or another appropriate color based on context; for custom
    * emoji sticker sets only
    */
   needs_repainting?: boolean | undefined
+
+  /**
+   * A JSON-serialized list of initial stickers to be added to the sticker set,
+   * 1-50 elements
+   */
+  stickers: InputSticker[]
+
+  /**
+   * Type of stickers in the set, must be one of "regular", "mask", or
+   * "custom_emoji", defaults to "regular"
+   */
+  sticker_type?: string | undefined
 }
 
 /**
@@ -208,7 +205,7 @@ export interface CreateNewStickerSetParams {
  */
 export interface AddStickerToSetParams {
   /**
-   * User identifier of sticker set owner
+   * User identifier of sticker set owner, at least 1
    */
   user_id: number
 
@@ -232,7 +229,7 @@ export interface AddStickerToSetParams {
  */
 export interface SetStickerPositionInSetParams {
   /**
-   * File identifier of the sticker
+   * File identifier of the sticker, non-empty
    */
   sticker: string
 
@@ -249,7 +246,7 @@ export interface SetStickerPositionInSetParams {
  */
 export interface DeleteStickerFromSetParams {
   /**
-   * File identifier of the sticker
+   * File identifier of the sticker, non-empty
    */
   sticker: string
 }
@@ -261,7 +258,7 @@ export interface DeleteStickerFromSetParams {
  */
 export interface ReplaceStickerInSetParams {
   /**
-   * User identifier of the sticker set owner
+   * User identifier of the sticker set owner, at least 1
    */
   user_id: number
 
@@ -271,7 +268,7 @@ export interface ReplaceStickerInSetParams {
   name: string
 
   /**
-   * File identifier of the replaced sticker
+   * File identifier of the replaced sticker, non-empty
    */
   old_sticker: string
 
@@ -290,12 +287,12 @@ export interface ReplaceStickerInSetParams {
  */
 export interface SetStickerEmojiListParams {
   /**
-   * File identifier of the sticker
+   * File identifier of the sticker, non-empty
    */
   sticker: string
 
   /**
-   * A JSON-serialized list of 1-20 emoji associated with the sticker
+   * A JSON-serialized list of emoji associated with the sticker, 1-20 elements
    */
   emoji_list: string[]
 }
@@ -307,13 +304,13 @@ export interface SetStickerEmojiListParams {
  */
 export interface SetStickerKeywordsParams {
   /**
-   * File identifier of the sticker
+   * File identifier of the sticker, non-empty
    */
   sticker: string
 
   /**
-   * A JSON-serialized list of 0-20 search keywords for the sticker with total
-   * length of up to 64 characters
+   * A JSON-serialized list of search keywords for the sticker with total length
+   * of up to 64 characters, at most 20 elements
    */
   keywords?: string[] | undefined
 }
@@ -325,7 +322,7 @@ export interface SetStickerKeywordsParams {
  */
 export interface SetStickerMaskPositionParams {
   /**
-   * File identifier of the sticker
+   * File identifier of the sticker, non-empty
    */
   sticker: string
 
@@ -360,14 +357,14 @@ export interface SetStickerSetTitleParams {
  */
 export interface SetStickerSetThumbnailParams {
   /**
+   * User identifier of the sticker set owner, at least 1
+   */
+  user_id: number
+
+  /**
    * Sticker set name
    */
   name: string
-
-  /**
-   * User identifier of the sticker set owner
-   */
-  user_id: number
 
   /**
    * A .WEBP or .PNG image with the thumbnail, must be up to 128 kilobytes in
@@ -382,15 +379,17 @@ export interface SetStickerSetThumbnailParams {
    * Telegram to get a file from the Internet, or upload a new one using
    * multipart/form-data. More information on Sending Files ». Animated and video
    * sticker set thumbnails can't be uploaded via HTTP URL. If omitted, then the
-   * thumbnail is dropped and the first sticker is used as the thumbnail.
+   * thumbnail is dropped and the first sticker is used as the thumbnail. If a
+   * String, must be non-empty.
    */
   thumbnail?: InputFile | string | undefined
 
   /**
-   * Format of the thumbnail, must be one of “static” for a .WEBP or .PNG image,
-   * “animated” for a .TGS animation, or “video” for a .WEBM video
+   * Format of the thumbnail, must be one of "static" for a .WEBP or .PNG image,
+   * "animated" for a .TGS animation, or "video" for a .WEBM video. If omitted,
+   * the format is detected automatically.
    */
-  format: string
+  format?: string | undefined
 }
 
 /**
@@ -406,7 +405,8 @@ export interface SetCustomEmojiStickerSetThumbnailParams {
 
   /**
    * Custom emoji identifier of a sticker from the sticker set; pass an empty
-   * string to drop the thumbnail and use the first sticker as the thumbnail
+   * string to drop the thumbnail and use the first sticker as the thumbnail,
+   * must be a decimal integer or empty
    */
   custom_emoji_id?: string | undefined
 }

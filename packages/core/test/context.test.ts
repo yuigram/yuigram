@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Context construction and extension.
  *

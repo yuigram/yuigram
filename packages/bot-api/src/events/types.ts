@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * What a handler receives.
  *
@@ -47,7 +49,7 @@ import type {
   SendVoiceParams,
   SetMessageReactionParams,
 } from '../generated/methods/index.js'
-import type { Message, ReactionType, Update } from '../generated/types/index.js'
+import type { Chat, Message, ReactionType, Update } from '../generated/types/index.js'
 import type {
   CallbackQueryBoundApi,
   InlineQueryBoundApi,
@@ -87,6 +89,14 @@ export interface EventContext<K extends BotEventKind = BotEventKind> {
   readonly raw: Update
   /** The full API surface, for anything the actions do not cover. */
   readonly api: RawApi
+  /**
+   * The client this update arrived on.
+   *
+   * Narrowed to what a bot is: an application holding several clients reads it
+   * to tell which one is speaking, and a handler registered on one client
+   * already knows.
+   */
+  readonly client: { readonly name: string }
   /** Scoped logger. */
   readonly log: Logger
 }
@@ -219,6 +229,19 @@ export interface MessageActions {
 
   /** Unpin this message. */
   unpin(): Promise<true>
+
+  /**
+   * Fetch the file this message carries, through the client it arrived on.
+   *
+   * A document, video, audio, voice note, video note or animation as it is; a
+   * photo at its largest size; a sticker only when nothing else is there.
+   * Refused, by name, for a message with no file. Over the transport only: a
+   * local Bot API server's files are read with `download(bot.files, …)`.
+   */
+  download(): Promise<Uint8Array>
+
+  /** Open the file this message carries as a stream of bytes. */
+  downloadStream(): Promise<ReadableStream<Uint8Array>>
 }
 
 /**
@@ -318,6 +341,14 @@ export interface CallbackQueryContext
   readonly sender: EventFieldsByKind['callback_query']['sender']
   readonly data: EventFieldsByKind['callback_query']['data']
   readonly message: EventFieldsByKind['callback_query']['message']
+  /**
+   * The chat of the message the button is on, where the query has one.
+   *
+   * Absent for a button on an inline message, which belongs to no chat the bot
+   * can see. Present otherwise, so what is keyed by chat — a session, a
+   * conversation — keys a press the way it keys the messages around it.
+   */
+  readonly chat?: Chat | undefined
 }
 
 /**

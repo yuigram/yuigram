@@ -1,0 +1,131 @@
+{
+  "api.223.tl": {
+    "from": "https://core.telegram.org/schema",
+    "retrieved": "2026-08-29",
+    "kept": "the layer the documentation page served when the pipeline was first run; the record of what that layer was"
+  },
+  "api.229.tl": {
+    "retrieved": "2026-10-08",
+    "schemaProper": {
+      "from": "TDLib",
+      "repository": "https://github.com/tdlib/td",
+      "revision": "42e6a5259551178d1dab54a22ad96d14bd906e20",
+      "path": "td/generate/scheme/telegram_api.tl",
+      "sha256": "4c44853dd138f6484281317b2a6da7e778b770014bf2d63db76d4138b33bec4f",
+      "licence": "Boost Software License 1.0",
+      "notice": "TDLIB-LICENSE.txt",
+      "layer": {
+        "path": "td/telegram/Version.h",
+        "sha256": "30a7bb6f94190d0a814d258ca67ccd57b7e4c5a04faa091ade0e43c43129ea63",
+        "states": 229
+      }
+    },
+    "languageOwned": {
+      "from": "https://core.telegram.org/schema",
+      "definitions": [
+        "boolFalse#bc799737 = Bool;",
+        "boolTrue#997275b5 = Bool;",
+        "true#3fedd339 = True;",
+        "vector#1cb5c415 {t:Type} # [ t ] = Vector t;",
+        "error#c4b9f9bb code:int text:string = Error;",
+        "null#56730bcc = Null;"
+      ]
+    },
+    "setAside": [
+      {
+        "definition": "int ? = Int;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "long ? = Long;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "double ? = Double;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "string ? = String;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "bytes = Bytes;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "int256 = Int256;",
+        "kind": "builtin",
+        "reason": "a codec primitive"
+      },
+      {
+        "definition": "ipPort#d433ad73 ipv4:int port:int = IpPort;",
+        "kind": "tdlib",
+        "reason": "TDLib's simple configuration, read from a signed blob outside any API connection; never an answer to a call"
+      },
+      {
+        "definition": "ipPortSecret#37982646 ipv4:int port:int secret:bytes = IpPort;",
+        "kind": "tdlib",
+        "reason": "TDLib's simple configuration, read from a signed blob outside any API connection; never an answer to a call"
+      },
+      {
+        "definition": "accessPointRule#4679b65f phone_prefix_rules:string dc_id:int ips:vector<IpPort> = AccessPointRule;",
+        "kind": "tdlib",
+        "reason": "TDLib's simple configuration, read from a signed blob outside any API connection; never an answer to a call"
+      },
+      {
+        "definition": "help.configSimple#5a592a6c date:int expires:int rules:vector<AccessPointRule> = help.ConfigSimple;",
+        "kind": "tdlib",
+        "reason": "TDLib's simple configuration, read from a signed blob outside any API connection; never an answer to a call"
+      },
+      {
+        "definition": "inputPeerPhotoFileLocationLegacy#27d69997 flags:# big:flags.0?true peer:InputPeer volume_id:long local_id:int = InputFileLocation;",
+        "kind": "tdlib",
+        "reason": "a legacy file location TDLib keeps for references it stored long ago; not in the layer as Telegram serves or documents it"
+      },
+      {
+        "definition": "inputStickerSetThumbLegacy#dbaeae9 stickerset:InputStickerSet volume_id:long local_id:int = InputFileLocation;",
+        "kind": "tdlib",
+        "reason": "a legacy file location TDLib keeps for references it stored long ago; not in the layer as Telegram serves or documents it"
+      },
+      {
+        "definition": "test.useConfigSimple = help.ConfigSimple;",
+        "kind": "tdlib",
+        "reason": "a TDLib test entry with no identifier of its own; not a method of Telegram's API"
+      },
+      {
+        "definition": "test.parseInputAppEvent = InputAppEvent;",
+        "kind": "tdlib",
+        "reason": "a TDLib test entry with no identifier of its own; not a method of Telegram's API"
+      },
+      {
+        "definition": "invokeWithBusinessConnectionPrefix#dd289f8e connection_id:string = Error;",
+        "kind": "tdlib",
+        "reason": "TDLib's encoding of the prefix of a wrapper method, under the wrapper's own identifier; the wrapper itself is in the schema proper"
+      },
+      {
+        "definition": "invokeWithGooglePlayIntegrityPrefix#1df92984 nonce:string token:string = Error;",
+        "kind": "tdlib",
+        "reason": "TDLib's encoding of the prefix of a wrapper method, under the wrapper's own identifier; the wrapper itself is in the schema proper"
+      },
+      {
+        "definition": "invokeWithApnsSecretPrefix#0dae54f8 nonce:string secret:string = Error;",
+        "kind": "tdlib",
+        "reason": "TDLib's encoding of the prefix of a wrapper method, under the wrapper's own identifier; the wrapper itself is in the schema proper"
+      },
+      {
+        "definition": "invokeWithReCaptchaPrefix#adbb0f94 token:string = Error;",
+        "kind": "tdlib",
+        "reason": "TDLib's encoding of the prefix of a wrapper method, under the wrapper's own identifier; the wrapper itself is in the schema proper"
+      }
+    ]
+  },
+  "mtproto.tl": {
+    "from": "https://core.telegram.org/schema/mtproto",
+    "retrieved": "2026-10-08"
+  }
+}

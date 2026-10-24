@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Reads the repository into the plain description the invariants consume.
  *
@@ -8,7 +10,8 @@
 import type { Dirent } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import type { ImportRef, SourceFile, Workspace, WorkspacePackage } from './types.js'
+import type { Template } from './rules.js'
+import type { ImportKind, ImportRef, SourceFile, Workspace, WorkspacePackage } from './types.js'
 
 /** Directories never worth walking. */
 const SKIP_DIRECTORIES = new Set(['node_modules', 'dist', '.git', 'coverage', '.pnpm-store'])
@@ -44,13 +47,24 @@ export function extractImports(text: string): ImportRef[] {
   while (match !== null) {
     const specifier = match[1] ?? match[2]
     if (specifier !== undefined) {
+      // The second group is the call form, so a match on it is a specifier the
+      // importing module reaches only when the surrounding code runs. A
+      // statement led by `import type` is erased instead, and reaches it never.
+      // An inline `{ type A }` is not the same thing: the statement survives
+      // and the module is still evaluated for it.
+      const kind: ImportKind =
+        match[1] === undefined
+          ? 'dynamic'
+          : /^\s*(?:import|export)\s+type\s/.test(match[0])
+            ? 'type'
+            : 'static'
       // Anchor to the specifier itself, not the match start: the pattern
       // consumes a leading whitespace character, which would otherwise report
       // the previous line. It also gives the more useful line for imports
       // whose bindings span several lines.
       const specifierOffset = match.index + match[0].lastIndexOf(specifier)
       const line = scannable.slice(0, specifierOffset).split('\n').length
-      refs.push({ specifier, line })
+      refs.push({ specifier, line, kind })
     }
     match = pattern.exec(scannable)
   }
@@ -140,6 +154,50 @@ export async function loadWorkspace(root: string): Promise<Workspace> {
 }
 
 /** Collect built `.d.ts` files, which is what the public-surface check inspects. */
+/**
+ * The templates a user copies, and the ignore rules each carries.
+ *
+ * `examples/` is where they live. A directory without a `tsconfig.json` is not
+ * one — the build output and the installed dependencies sit beside them.
+ */
+export async function loadTemplates(root: string): Promise<Template[]> {
+  const directory = join(root, 'examples')
+  const templates: Template[] = []
+
+  for (const entry of await readDirSafe(directory)) {
+    if (!entry.isDirectory()) continue
+
+    const here = join(directory, entry.name)
+    if (!(await exists(join(here, 'tsconfig.json')))) continue
+
+    templates.push({
+      path: `examples/${entry.name}`,
+      gitignore: await readFileSafe(join(here, '.gitignore')),
+    })
+  }
+
+  return templates
+}
+
+/** Read a file, or report that there is none. */
+async function readFileSafe(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch {
+    return undefined
+  }
+}
+
+/** Whether a path is there at all. */
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function loadDeclarationFiles(
   root: string,
 ): Promise<Array<{ path: string; text: string }>> {

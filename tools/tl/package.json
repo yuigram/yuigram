@@ -1,0 +1,19 @@
+{
+  "name": "@yuigram/tl-codegen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TL schema parser and code generator for the MTProto subsystem",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "fetch": "tsx src/cli.ts fetch",
+    "errors": "tsx src/cli.ts errors",
+    "emit": "tsx src/cli.ts emit",
+    "crosscheck": "tsx src/cli.ts crosscheck",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  }
+}

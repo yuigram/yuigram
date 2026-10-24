@@ -4,7 +4,7 @@ Three designs for Yuigram's public API. They are genuinely different in structur
 variations on one idea, and each is worked through the same set of scenarios so they can be
 compared honestly.
 
-Shared premises, drawn from [api-review.md](api-review.md) and not re-litigated here:
+Shared premises, established in [api-review.md](api-review.md) and taken as given here:
 
 - Handlers receive a context **typed for the event**, named after the domain object.
 - Authentication is expressed in the constructor's **name**, not in the shape of its argument.
@@ -313,7 +313,7 @@ await poll(app)
 | Extending with a new event kind | add a method | add to `on` | add a factory |
 
 None of the three has a type-safety advantage: all give event-specific contexts, which is the
-critical fix from the review. The differences are ergonomic and structural.
+requirement that matters. The differences are ergonomic and structural.
 
 ---
 
@@ -331,6 +331,6 @@ Three questions cut across all proposals and are decided in
    `message`. What does `onChatMemberJoined` give? `member`? `event`? Consistency here decides
    whether the model holds together.
 
-3. **`poll()` / `connect()` — or one verb?** Distinct verbs state the mechanism, which the
-   review asks for. But a developer holding a `Bot | Account` union then cannot start it
-   generically.
+3. **`poll()` / `connect()` — or one verb?** Distinct verbs state the mechanism, which is what
+   makes the lifecycle legible. But a developer holding a `Bot | Account` union then cannot
+   start it generically.

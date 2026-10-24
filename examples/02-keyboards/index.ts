@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * 02 — Keyboards, media and formatting.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * "Does this update carry X?" — one filter per optional field.
  *

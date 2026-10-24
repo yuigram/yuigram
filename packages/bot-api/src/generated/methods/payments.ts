@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Payments
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOption, SuggestedPostParameters } from '../types/index.js'
+import type { EphemeralMessageParameters, InputInlineKeyboardMarkup, LabeledPrice, MessageEntity, ReplyParameters, ShippingOption, SuggestedPostParameters } from '../types/index.js'
 
 /**
  * Parameters for `sendInvoice`.
@@ -10,25 +12,6 @@ import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOptio
  * @see https://corefork.telegram.org/bots/api#sendinvoice
  */
 export interface SendInvoiceParams {
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
   /**
    * Product name, 1-32 characters
    */
@@ -52,8 +35,24 @@ export interface SendInvoiceParams {
   provider_token?: string | undefined
 
   /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
-   * payments in Telegram Stars.
+   * JSON-serialized data about the invoice, which will be shared with the
+   * payment provider. A detailed description of required fields should be
+   * provided by the payment provider.
+   */
+  provider_data?: string | undefined
+
+  /**
+   * Unique deep-linking parameter. If left empty, forwarded copies of the sent
+   * message will have a Pay button, allowing multiple users to pay directly from
+   * the forwarded message, using the same invoice. If non-empty, forwarded
+   * copies of the sent message will have a URL button with a deep link to the
+   * bot (instead of a Pay button), with the value used as the start parameter.
+   */
+  start_parameter?: string | undefined
+
+  /**
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
+   * payments in Telegram Stars. Must be non-empty.
    */
   currency: string
 
@@ -76,49 +75,21 @@ export interface SendInvoiceParams {
 
   /**
    * A JSON-serialized Array of suggested amounts of tips in the smallest units
-   * of the currency (integer, not float/double). At most 4 suggested tip amounts
-   * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * of the currency (integer, not float/double). Must have at most 4 elements.
+   * The suggested tip amounts must be positive, passed in a strictly increased
+   * order and must not exceed max_tip_amount.
    */
   suggested_tip_amounts?: number[] | undefined
 
   /**
-   * Unique deep-linking parameter. If left empty, forwarded copies of the sent
-   * message will have a Pay button, allowing multiple users to pay directly from
-   * the forwarded message, using the same invoice. If non-empty, forwarded
-   * copies of the sent message will have a URL button with a deep link to the
-   * bot (instead of a Pay button), with the value used as the start parameter.
+   * The number of seconds the subscription will be active for before the next
+   * payment, which is currently always 30 days. Must be 2592000. The currency
+   * must be set to "XTR" (Telegram Stars) if the parameter is used. Any number
+   * of subscriptions can be active for a given bot at the same time, including
+   * multiple concurrent subscriptions from the same user. Subscription price
+   * must no exceed 10000 Telegram Stars.
    */
-  start_parameter?: string | undefined
-
-  /**
-   * JSON-serialized data about the invoice, which will be shared with the
-   * payment provider. A detailed description of required fields should be
-   * provided by the payment provider.
-   */
-  provider_data?: string | undefined
-
-  /**
-   * URL of the product photo for the invoice. Can be a photo of the goods or a
-   * marketing image for a service. People like it better when they see what they
-   * are paying for.
-   */
-  photo_url?: string | undefined
-
-  /**
-   * Photo size in bytes
-   */
-  photo_size?: number | undefined
-
-  /**
-   * Photo width
-   */
-  photo_width?: number | undefined
-
-  /**
-   * Photo height
-   */
-  photo_height?: number | undefined
+  subscription_period?: number | undefined
 
   /**
    * Pass True if you require the user's full name to complete the order. Ignored
@@ -161,6 +132,89 @@ export interface SendInvoiceParams {
    * payments in Telegram Stars.
    */
   is_flexible?: boolean | undefined
+
+  /**
+   * URL of the product photo for the invoice. Can be a photo of the goods or a
+   * marketing image for a service. People like it better when they see what they
+   * are paying for.
+   */
+  photo_url?: string | undefined
+
+  /**
+   * Photo size in bytes
+   */
+  photo_size?: number | undefined
+
+  /**
+   * Photo width
+   */
+  photo_width?: number | undefined
+
+  /**
+   * Photo height
+   */
+  photo_height?: number | undefined
+
+  /**
+   * Caption of the paid media, 0-1024 characters after entities parsing
+   */
+  paid_media_caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the paid media caption. See formatting options
+   * for more details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  paid_media_caption_parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the paid media
+   * caption, which can be specified instead of paid_media_caption_parse_mode
+   */
+  paid_media_caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -186,23 +240,11 @@ export interface SendInvoiceParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * A JSON-serialized object for an inline keyboard. If empty, one 'Pay total
    * price' button will be shown. If not empty, the first button must be a Pay
    * button.
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -211,12 +253,6 @@ export interface SendInvoiceParams {
  * @see https://corefork.telegram.org/bots/api#createinvoicelink
  */
 export interface CreateInvoiceLinkParams {
-  /**
-   * Unique identifier of the business connection on behalf of which the link
-   * will be created. For payments in Telegram Stars only.
-   */
-  business_connection_id?: string | undefined
-
   /**
    * Product name, 1-32 characters
    */
@@ -240,8 +276,15 @@ export interface CreateInvoiceLinkParams {
   provider_token?: string | undefined
 
   /**
-   * Three-letter ISO 4217 currency code, see more on currencies. Pass “XTR” for
-   * payments in Telegram Stars.
+   * JSON-serialized data about the invoice, which will be shared with the
+   * payment provider. A detailed description of required fields should be
+   * provided by the payment provider.
+   */
+  provider_data?: string | undefined
+
+  /**
+   * Three-letter ISO 4217 currency code, see more on currencies. Pass "XTR" for
+   * payments in Telegram Stars. Must be non-empty.
    */
   currency: string
 
@@ -251,16 +294,6 @@ export interface CreateInvoiceLinkParams {
    * exactly one item for payments in Telegram Stars.
    */
   prices: LabeledPrice[]
-
-  /**
-   * The number of seconds the subscription will be active for before the next
-   * payment. The currency must be set to “XTR” (Telegram Stars) if the parameter
-   * is used. Currently, it must always be 2592000 (30 days) if specified. Any
-   * number of subscriptions can be active for a given bot at the same time,
-   * including multiple concurrent subscriptions from the same user. Subscription
-   * price must no exceed 10000 Telegram Stars.
-   */
-  subscription_period?: number | undefined
 
   /**
    * The maximum accepted amount for tips in the smallest units of the currency
@@ -274,39 +307,21 @@ export interface CreateInvoiceLinkParams {
 
   /**
    * A JSON-serialized Array of suggested amounts of tips in the smallest units
-   * of the currency (integer, not float/double). At most 4 suggested tip amounts
-   * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * of the currency (integer, not float/double). Must have at most 4 elements.
+   * The suggested tip amounts must be positive, passed in a strictly increased
+   * order and must not exceed max_tip_amount.
    */
   suggested_tip_amounts?: number[] | undefined
 
   /**
-   * JSON-serialized data about the invoice, which will be shared with the
-   * payment provider. A detailed description of required fields should be
-   * provided by the payment provider.
+   * The number of seconds the subscription will be active for before the next
+   * payment, which is currently always 30 days. Must be 2592000. The currency
+   * must be set to "XTR" (Telegram Stars) if the parameter is used. Any number
+   * of subscriptions can be active for a given bot at the same time, including
+   * multiple concurrent subscriptions from the same user. Subscription price
+   * must no exceed 10000 Telegram Stars.
    */
-  provider_data?: string | undefined
-
-  /**
-   * URL of the product photo for the invoice. Can be a photo of the goods or a
-   * marketing image for a service.
-   */
-  photo_url?: string | undefined
-
-  /**
-   * Photo size in bytes
-   */
-  photo_size?: number | undefined
-
-  /**
-   * Photo width
-   */
-  photo_width?: number | undefined
-
-  /**
-   * Photo height
-   */
-  photo_height?: number | undefined
+  subscription_period?: number | undefined
 
   /**
    * Pass True if you require the user's full name to complete the order. Ignored
@@ -349,6 +364,50 @@ export interface CreateInvoiceLinkParams {
    * payments in Telegram Stars.
    */
   is_flexible?: boolean | undefined
+
+  /**
+   * URL of the product photo for the invoice. Can be a photo of the goods or a
+   * marketing image for a service.
+   */
+  photo_url?: string | undefined
+
+  /**
+   * Photo size in bytes
+   */
+  photo_size?: number | undefined
+
+  /**
+   * Photo width
+   */
+  photo_width?: number | undefined
+
+  /**
+   * Photo height
+   */
+  photo_height?: number | undefined
+
+  /**
+   * Caption of the paid media, 0-1024 characters after entities parsing
+   */
+  paid_media_caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the paid media caption. See formatting options
+   * for more details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  paid_media_caption_parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the paid media
+   * caption, which can be specified instead of paid_media_caption_parse_mode
+   */
+  paid_media_caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the link
+   * will be created. For payments in Telegram Stars only.
+   */
+  business_connection_id?: string | undefined
 }
 
 /**
@@ -358,7 +417,7 @@ export interface CreateInvoiceLinkParams {
  */
 export interface AnswerShippingQueryParams {
   /**
-   * Unique identifier for the query to be answered
+   * Unique identifier for the query to be answered, must be a decimal integer
    */
   shipping_query_id: string
 
@@ -377,9 +436,9 @@ export interface AnswerShippingQueryParams {
 
   /**
    * Required if ok is False. Error message in human readable form that explains
-   * why it is impossible to complete the order (e.g. “Sorry, delivery to your
-   * desired address is unavailable”). Telegram will display this message to the
-   * user.
+   * why it is impossible to complete the order (e.g. "Sorry, delivery to your
+   * desired address is unavailable"). Telegram will display this message to the
+   * user. Must be non-empty.
    */
   error_message?: string | undefined
 }
@@ -391,7 +450,7 @@ export interface AnswerShippingQueryParams {
  */
 export interface AnswerPreCheckoutQueryParams {
   /**
-   * Unique identifier for the query to be answered
+   * Unique identifier for the query to be answered, must be a decimal integer
    */
   pre_checkout_query_id: string
 
@@ -406,7 +465,8 @@ export interface AnswerPreCheckoutQueryParams {
    * the reason for failure to proceed with the checkout (e.g. "Sorry, somebody
    * just bought the last of our amazing black T-shirts while you were busy
    * filling out your payment details. Please choose a different color or
-   * garment!"). Telegram will display this message to the user.
+   * garment!"). Telegram will display this message to the user. Must be
+   * non-empty.
    */
   error_message?: string | undefined
 }
@@ -444,12 +504,12 @@ export interface GetStarTransactionsParams {
  */
 export interface RefundStarPaymentParams {
   /**
-   * Identifier of the user whose payment will be refunded
+   * Identifier of the user whose payment will be refunded, at least 1
    */
   user_id: number
 
   /**
-   * Telegram payment identifier
+   * Telegram payment identifier, non-empty
    */
   telegram_payment_charge_id: string
 }
@@ -461,7 +521,7 @@ export interface RefundStarPaymentParams {
  */
 export interface EditUserStarSubscriptionParams {
   /**
-   * Identifier of the user whose subscription will be edited
+   * Identifier of the user whose subscription will be edited, at least 1
    */
   user_id: number
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 /**
  * Named registrations, at the type level.
  *

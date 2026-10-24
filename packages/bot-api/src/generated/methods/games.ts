@@ -1,8 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Games
-// Source: Telegram Bot API 10.2, schemas/bot-api/10.2.json
+// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// The code is licensed under MIT (see LICENSE). Descriptions are quoted from
+// Telegram's Bot API documentation, which that licence does not cover.
 
-import type { InlineKeyboardMarkup, ReplyParameters } from '../types/index.js'
+import type { EphemeralMessageParameters, InputInlineKeyboardMarkup, ReplyParameters } from '../types/index.js'
 
 /**
  * Parameters for `sendGame`.
@@ -11,15 +13,15 @@ import type { InlineKeyboardMarkup, ReplyParameters } from '../types/index.js'
  */
 export interface SendGameParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Short name of the game, serves as the unique identifier for the game. Set up
+   * your games via @BotFather. Must be non-empty.
    */
-  business_connection_id?: string | undefined
+  game_short_name: string
 
   /**
    * Unique identifier for the target chat or username of the target bot in the
    * format @username. Games can't be sent to channel direct messages chats and
-   * channel chats.
+   * channel chats. If a String, must be non-empty.
    */
   chat_id: number | string
 
@@ -31,10 +33,21 @@ export interface SendGameParams {
   message_thread_id?: number | undefined
 
   /**
-   * Short name of the game, serves as the unique identifier for the game. Set up
-   * your games via @BotFather.
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  game_short_name: string
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -60,16 +73,11 @@ export interface SendGameParams {
   message_effect_id?: string | undefined
 
   /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * A JSON-serialized object for an inline keyboard. If empty, one 'Play
    * game_title' button will be shown. If not empty, the first button must launch
    * the game.
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -79,7 +87,7 @@ export interface SendGameParams {
  */
 export interface SetGameScoreParams {
   /**
-   * User identifier
+   * User identifier, at least 1
    */
   user_id: number
 
@@ -101,22 +109,23 @@ export interface SetGameScoreParams {
   disable_edit_message?: boolean | undefined
 
   /**
-   * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat.
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
    */
-  chat_id?: number | undefined
+  inline_message_id?: string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Unique identifier for the
+   * target chat or username of the target bot in the format @username. If a
+   * String, must be non-empty.
+   */
+  chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the sent
-   * message.
+   * message. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
 }
 
 /**
@@ -126,25 +135,26 @@ export interface SetGameScoreParams {
  */
 export interface GetGameHighScoresParams {
   /**
-   * Target user id
+   * Target user id, at least 1
    */
   user_id: number
 
   /**
-   * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat.
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message. Must be non-empty.
    */
-  chat_id?: number | undefined
+  inline_message_id?: string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Unique identifier for the
+   * target chat or username of the target bot in the format @username. If a
+   * String, must be non-empty.
+   */
+  chat_id?: number | string | undefined
 
   /**
    * Required if inline_message_id is not specified. Identifier of the sent
-   * message.
+   * message. Must be at least 1.
    */
   message_id?: number | undefined
-
-  /**
-   * Required if chat_id and message_id are not specified. Identifier of the
-   * inline message.
-   */
-  inline_message_id?: string | undefined
 }
