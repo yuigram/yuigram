@@ -4,7 +4,7 @@
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { AcceptedGiftTypes, BotCommand, BotCommandScope, ChatAdministratorRights, ChatPermissions, EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, InlineQueryResult, InputChecklist, InputMediaAudio, InputMediaDocument, InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo, InputPaidMedia, InputPollMedia, InputPollOption, InputProfilePhoto, InputStoryContent, KeyboardButton, LinkPreviewOptions, MenuButton, MessageEntity, ReactionType, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, StoryArea, SuggestedPostParameters } from '../types/index.js'
+import type { AcceptedGiftTypes, BotCommand, BotCommandScope, ChatAdministratorRights, ChatPermissions, EphemeralMessageParameters, ForceReply, InlineQueryResult, InputChecklist, InputInlineKeyboardMarkup, InputMediaAudio, InputMediaDocument, InputMediaLivePhoto, InputMediaPhoto, InputMediaVideo, InputPaidMedia, InputPollMedia, InputPollOption, InputProfilePhoto, InputReactionType, InputStoryContent, KeyboardButton, LinkPreviewOptions, MenuButton, MessageEntity, ReplyKeyboardMarkup, ReplyKeyboardRemove, ReplyParameters, StoryArea, SuggestedPostParameters } from '../types/index.js'
 import type { InputFile } from '../../input-file.js'
 
 /**
@@ -38,14 +38,31 @@ export interface CloseParams {}
  */
 export interface SendMessageParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Link preview generation options for the message
    */
-  business_connection_id?: string | undefined
+  link_preview_options?: LinkPreviewOptions | undefined
+
+  /**
+   * Text of the message to be sent, 1-4096 characters after entities parsing
+   */
+  text: string
+
+  /**
+   * Mode for parsing entities in the text. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of parse_mode
+   */
+  entities?: MessageEntity[] | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -63,32 +80,28 @@ export interface SendMessageParams {
   direct_messages_topic_id?: number | undefined
 
   /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
    * A JSON-serialized object containing the parameters of the ephemeral message
    * to send
    */
   ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * Text of the message to be sent, 1-4096 characters after entities parsing
+   * Description of the message to reply to
    */
-  text: string
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Mode for parsing entities in the message text. See formatting options for
-   * more details.
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in message text,
-   * which can be specified instead of parse_mode
-   */
-  entities?: MessageEntity[] | undefined
-
-  /**
-   * Link preview generation options for the message
-   */
-  link_preview_options?: LinkPreviewOptions | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -114,23 +127,11 @@ export interface SendMessageParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -140,8 +141,26 @@ export interface SendMessageParams {
  */
 export interface ForwardMessageParams {
   /**
+   * Unique identifier for the chat where the original message was sent (or
+   * username of the target bot, supergroup or channel in the format @username),
+   * if a String, must be non-empty
+   */
+  from_chat_id: number | string
+
+  /**
+   * Message identifier in the chat specified in from_chat_id, at least 1
+   */
+  message_id: number
+
+  /**
+   * New start timestamp for the forwarded video in the message
+   */
+  video_start_timestamp?: number | undefined
+
+  /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -159,15 +178,28 @@ export interface ForwardMessageParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * Unique identifier for the chat where the original message was sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  from_chat_id: number | string
+  business_connection_id?: string | undefined
 
   /**
-   * New start timestamp for the forwarded video in the message
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  video_start_timestamp?: number | undefined
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -180,21 +212,24 @@ export interface ForwardMessageParams {
   protect_content?: boolean | undefined
 
   /**
+   * Pass True to allow up to 1000 messages per second, ignoring broadcasting
+   * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
+   * be withdrawn from the bot's balance.
+   */
+  allow_paid_broadcast?: boolean | undefined
+
+  /**
    * Unique identifier of the message effect to be added to the message; only
    * available when forwarding to private chats
    */
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only
+   * Additional interface options. A JSON-serialized object for an inline
+   * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
+   * to force a reply from the user.
    */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Message identifier in the chat specified in from_chat_id
-   */
-  message_id: number
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -205,7 +240,8 @@ export interface ForwardMessageParams {
 export interface ForwardMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -224,14 +260,15 @@ export interface ForwardMessagesParams {
 
   /**
    * Unique identifier for the chat where the original messages were sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup or channel in the format @username),
+   * if a String, must be non-empty
    */
   from_chat_id: number | string
 
   /**
-   * A JSON-serialized list of 1-100 identifiers of messages in the chat
-   * from_chat_id to forward. The identifiers must be specified in a strictly
-   * increasing order.
+   * A JSON-serialized list of identifiers of messages in the chat from_chat_id
+   * to forward. The identifiers must be specified in a strictly increasing
+   * order. Must have 1-100 elements. Each element must be at least 1.
    */
   message_ids: number[]
 
@@ -254,8 +291,50 @@ export interface ForwardMessagesParams {
  */
 export interface CopyMessageParams {
   /**
+   * Unique identifier for the chat where the original message was sent (or
+   * username of the target bot, supergroup or channel in the format @username),
+   * if a String, must be non-empty
+   */
+  from_chat_id: number | string
+
+  /**
+   * Message identifier in the chat specified in from_chat_id, at least 1
+   */
+  message_id: number
+
+  /**
+   * New caption for media, 0-1024 characters after entities parsing. If not
+   * specified, the original caption is kept.
+   */
+  caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the caption, which
+   * can be specified instead of parse_mode
+   */
+  caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the message media. Ignored if a
+   * new caption isn't specified.
+   */
+  show_caption_above_media?: boolean | undefined
+
+  /**
+   * New start timestamp for the copied video in the message
+   */
+  video_start_timestamp?: number | undefined
+
+  /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -273,44 +352,28 @@ export interface CopyMessageParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * Unique identifier for the chat where the original message was sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  from_chat_id: number | string
+  business_connection_id?: string | undefined
 
   /**
-   * Message identifier in the chat specified in from_chat_id
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
    */
-  message_id: number
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * New start timestamp for the copied video in the message
+   * Description of the message to reply to
    */
-  video_start_timestamp?: number | undefined
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * New caption for media, 0-1024 characters after entities parsing. If not
-   * specified, the original caption is kept.
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the new caption. See formatting options for
-   * more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in the new caption,
-   * which can be specified instead of parse_mode
-   */
-  caption_entities?: MessageEntity[] | undefined
-
-  /**
-   * Pass True if the caption must be shown above the message media. Ignored if a
-   * new caption isn't specified.
-   */
-  show_caption_above_media?: boolean | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -336,23 +399,11 @@ export interface CopyMessageParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -363,7 +414,8 @@ export interface CopyMessageParams {
 export interface CopyMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -382,14 +434,15 @@ export interface CopyMessagesParams {
 
   /**
    * Unique identifier for the chat where the original messages were sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup or channel in the format @username),
+   * if a String, must be non-empty
    */
   from_chat_id: number | string
 
   /**
-   * A JSON-serialized list of 1-100 identifiers of messages in the chat
-   * from_chat_id to copy. The identifiers must be specified in a strictly
-   * increasing order.
+   * A JSON-serialized list of identifiers of messages in the chat from_chat_id
+   * to copy. The identifiers must be specified in a strictly increasing order.
+   * Must have 1-100 elements. Each element must be at least 1.
    */
   message_ids: number[]
 
@@ -417,43 +470,13 @@ export interface CopyMessagesParams {
  */
 export interface SendPhotoParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Photo to send. Pass a file_id as String to send a photo that exists on the
    * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
    * get a photo from the Internet, or upload a new photo using
    * multipart/form-data. The photo must be at most 10 MB in size. The photo's
    * width and height must not exceed 10000 in total. Width and height ratio must
-   * be at most 20. More information on Sending Files »
+   * be at most 20. More information on Sending Files ». If a String, must be
+   * non-empty.
    */
   photo: InputFile | string
 
@@ -464,8 +487,8 @@ export interface SendPhotoParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the photo caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -486,6 +509,50 @@ export interface SendPhotoParams {
   has_spoiler?: boolean | undefined
 
   /**
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
+
+  /**
    * Sends the message silently. Users will receive a notification with no sound.
    */
   disable_notification?: boolean | undefined
@@ -509,23 +576,11 @@ export interface SendPhotoParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -535,42 +590,11 @@ export interface SendPhotoParams {
  */
 export interface SendLivePhotoParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target channel (in
-   * the format @channelusername)
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Live photo video to send. The video must be no longer than 10 seconds and
    * must not exceed 10 MB in size. Pass a file_id as String to send a video that
    * exists on the Telegram servers (recommended) or upload a new video using
    * multipart/form-data. More information on Sending Files ». Sending live
-   * photos by a URL is currently unsupported.
+   * photos by a URL is currently unsupported. If a String, must be non-empty.
    */
   live_photo: InputFile | string
 
@@ -578,7 +602,7 @@ export interface SendLivePhotoParams {
    * The static photo to send. Pass a file_id as String to send a photo that
    * exists on the Telegram servers (recommended) or upload a new video using
    * multipart/form-data. More information on Sending Files ». Sending live
-   * photos by a URL is currently unsupported.
+   * photos by a URL is currently unsupported. If a String, must be non-empty.
    */
   photo: InputFile | string
 
@@ -589,8 +613,8 @@ export interface SendLivePhotoParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -611,6 +635,49 @@ export interface SendLivePhotoParams {
   has_spoiler?: boolean | undefined
 
   /**
+   * Unique identifier for the target chat or username of the target channel (in
+   * the format @channelusername), if a String, must be non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
+
+  /**
    * Sends the message silently. Users will receive a notification with no sound.
    */
   disable_notification?: boolean | undefined
@@ -634,23 +701,11 @@ export interface SendLivePhotoParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -660,14 +715,62 @@ export interface SendLivePhotoParams {
  */
 export interface SendAudioParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Audio file to send. Pass a file_id as String to send an audio file that
+   * exists on the Telegram servers (recommended), pass an HTTP URL as a String
+   * for Telegram to get an audio file from the Internet, or upload a new one
+   * using multipart/form-data. More information on Sending Files ». If a String,
+   * must be non-empty.
    */
-  business_connection_id?: string | undefined
+  audio: InputFile | string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files ». If a String, must start with "attach://".
+   */
+  thumbnail?: InputFile | string | undefined
+
+  /**
+   * Duration of the audio in seconds
+   */
+  duration?: number | undefined
+
+  /**
+   * Track name
+   */
+  title?: string | undefined
+
+  /**
+   * Performer
+   */
+  performer?: string | undefined
+
+  /**
+   * Audio caption, 0-1024 characters after entities parsing
+   */
+  caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the caption, which
+   * can be specified instead of parse_mode
+   */
+  caption_entities?: MessageEntity[] | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -685,62 +788,28 @@ export interface SendAudioParams {
   direct_messages_topic_id?: number | undefined
 
   /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
    * A JSON-serialized object containing the parameters of the ephemeral message
    * to send
    */
   ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * Audio file to send. Pass a file_id as String to send an audio file that
-   * exists on the Telegram servers (recommended), pass an HTTP URL as a String
-   * for Telegram to get an audio file from the Internet, or upload a new one
-   * using multipart/form-data. More information on Sending Files »
+   * Description of the message to reply to
    */
-  audio: InputFile | string
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Audio caption, 0-1024 characters after entities parsing
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the audio caption. See formatting options for
-   * more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in the caption, which
-   * can be specified instead of parse_mode
-   */
-  caption_entities?: MessageEntity[] | undefined
-
-  /**
-   * Duration of the audio in seconds
-   */
-  duration?: number | undefined
-
-  /**
-   * Performer
-   */
-  performer?: string | undefined
-
-  /**
-   * Track name
-   */
-  title?: string | undefined
-
-  /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  thumbnail?: InputFile | string | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -766,23 +835,11 @@ export interface SendAudioParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -792,14 +849,53 @@ export interface SendAudioParams {
  */
 export interface SendDocumentParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * File to send. Pass a file_id as String to send a file that exists on the
+   * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
+   * get a file from the Internet, or upload a new one using multipart/form-data.
+   * More information on Sending Files ». If a String, must be non-empty.
    */
-  business_connection_id?: string | undefined
+  document: InputFile | string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files ». If a String, must start with "attach://".
+   */
+  thumbnail?: InputFile | string | undefined
+
+  /**
+   * Disables automatic server-side content type detection for files uploaded
+   * using multipart/form-data
+   */
+  disable_content_type_detection?: boolean | undefined
+
+  /**
+   * Document caption (may also be used when resending documents by file_id),
+   * 0-1024 characters after entities parsing
+   */
+  caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the caption, which
+   * can be specified instead of parse_mode
+   */
+  caption_entities?: MessageEntity[] | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -817,54 +913,28 @@ export interface SendDocumentParams {
   direct_messages_topic_id?: number | undefined
 
   /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
    * A JSON-serialized object containing the parameters of the ephemeral message
    * to send
    */
   ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * File to send. Pass a file_id as String to send a file that exists on the
-   * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
-   * get a file from the Internet, or upload a new one using multipart/form-data.
-   * More information on Sending Files »
+   * Description of the message to reply to
    */
-  document: InputFile | string
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  thumbnail?: InputFile | string | undefined
-
-  /**
-   * Document caption (may also be used when resending documents by file_id),
-   * 0-1024 characters after entities parsing
-   */
-  caption?: string | undefined
-
-  /**
-   * Mode for parsing entities in the document caption. See formatting options
-   * for more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in the caption, which
-   * can be specified instead of parse_mode
-   */
-  caption_entities?: MessageEntity[] | undefined
-
-  /**
-   * Disables automatic server-side content type detection for files uploaded
-   * using multipart/form-data
-   */
-  disable_content_type_detection?: boolean | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -890,23 +960,11 @@ export interface SendDocumentParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -916,43 +974,25 @@ export interface SendDocumentParams {
  */
 export interface SendVideoParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Video to send. Pass a file_id as String to send a video that exists on the
    * Telegram servers (recommended), pass an HTTP URL as a String for Telegram to
    * get a video from the Internet, or upload a new video using
-   * multipart/form-data. More information on Sending Files »
+   * multipart/form-data. More information on Sending Files ». If a String, must
+   * be non-empty.
    */
   video: InputFile | string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files ». If a String, must start with "attach://".
+   */
+  thumbnail?: InputFile | string | undefined
 
   /**
    * Duration of sent video in seconds
@@ -970,23 +1010,11 @@ export interface SendVideoParams {
   height?: number | undefined
 
   /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  thumbnail?: InputFile | string | undefined
-
-  /**
    * Cover for the video in the message. Pass a file_id to send a file that
    * exists on the Telegram servers (recommended), pass an HTTP URL for Telegram
-   * to get a file from the Internet, or pass “attach://<file_attach_name>” to
+   * to get a file from the Internet, or pass "attach://<file_attach_name>" to
    * upload a new one using multipart/form-data under <file_attach_name> name.
-   * More information on Sending Files »
+   * More information on Sending Files ». If a String, must be non-empty.
    */
   cover?: InputFile | string | undefined
 
@@ -996,14 +1024,19 @@ export interface SendVideoParams {
   start_timestamp?: number | undefined
 
   /**
+   * Pass True if the uploaded video is suitable for streaming
+   */
+  supports_streaming?: boolean | undefined
+
+  /**
    * Video caption (may also be used when resending videos by file_id), 0-1024
    * characters after entities parsing
    */
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -1024,9 +1057,48 @@ export interface SendVideoParams {
   has_spoiler?: boolean | undefined
 
   /**
-   * Pass True if the uploaded video is suitable for streaming
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
-  supports_streaming?: boolean | undefined
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1052,23 +1124,11 @@ export interface SendVideoParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -1078,43 +1138,25 @@ export interface SendVideoParams {
  */
 export interface SendAnimationParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Animation to send. Pass a file_id as String to send an animation that exists
    * on the Telegram servers (recommended), pass an HTTP URL as a String for
    * Telegram to get an animation from the Internet, or upload a new animation
-   * using multipart/form-data. More information on Sending Files »
+   * using multipart/form-data. More information on Sending Files ». If a String,
+   * must be non-empty.
    */
   animation: InputFile | string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files ». If a String, must start with "attach://".
+   */
+  thumbnail?: InputFile | string | undefined
 
   /**
    * Duration of sent animation in seconds
@@ -1132,26 +1174,14 @@ export interface SendAnimationParams {
   height?: number | undefined
 
   /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
-   */
-  thumbnail?: InputFile | string | undefined
-
-  /**
    * Animation caption (may also be used when resending animation by file_id),
    * 0-1024 characters after entities parsing
    */
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the animation caption. See formatting options
-   * for more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -1172,6 +1202,50 @@ export interface SendAnimationParams {
   has_spoiler?: boolean | undefined
 
   /**
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
+
+  /**
    * Sends the message silently. Users will receive a notification with no sound.
    */
   disable_notification?: boolean | undefined
@@ -1195,23 +1269,11 @@ export interface SendAnimationParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -1221,43 +1283,18 @@ export interface SendAnimationParams {
  */
 export interface SendVoiceParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Audio file to send. Pass a file_id as String to send a file that exists on
    * the Telegram servers (recommended), pass an HTTP URL as a String for
    * Telegram to get a file from the Internet, or upload a new one using
-   * multipart/form-data. More information on Sending Files »
+   * multipart/form-data. More information on Sending Files ». If a String, must
+   * be non-empty.
    */
   voice: InputFile | string
+
+  /**
+   * Duration of the voice message in seconds
+   */
+  duration?: number | undefined
 
   /**
    * Voice message caption, 0-1024 characters after entities parsing
@@ -1265,8 +1302,8 @@ export interface SendVoiceParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the voice message caption. See formatting
-   * options for more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -1277,9 +1314,48 @@ export interface SendVoiceParams {
   caption_entities?: MessageEntity[] | undefined
 
   /**
-   * Duration of the voice message in seconds
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
-  duration?: number | undefined
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1305,23 +1381,11 @@ export interface SendVoiceParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -1331,43 +1395,24 @@ export interface SendVoiceParams {
  */
 export interface SendVideoNoteParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Video note to send. Pass a file_id as String to send a video note that
    * exists on the Telegram servers (recommended) or upload a new video using
    * multipart/form-data. More information on Sending Files ». Sending video
-   * notes by a URL is currently unsupported.
+   * notes by a URL is currently unsupported. If a String, must be non-empty.
    */
   video_note: InputFile | string
+
+  /**
+   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
+   * file is supported server-side. The thumbnail should be in JPEG format and
+   * less than 200 kB in size. A thumbnail's width and height should not exceed
+   * 320. Ignored if the file is not uploaded using multipart/form-data.
+   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * can pass "attach://<file_attach_name>" if the thumbnail was uploaded using
+   * multipart/form-data under <file_attach_name>. More information on Sending
+   * Files ». If a String, must start with "attach://".
+   */
+  thumbnail?: InputFile | string | undefined
 
   /**
    * Duration of sent video in seconds
@@ -1380,16 +1425,48 @@ export interface SendVideoNoteParams {
   length?: number | undefined
 
   /**
-   * Thumbnail of the file sent; can be ignored if thumbnail generation for the
-   * file is supported server-side. The thumbnail should be in JPEG format and
-   * less than 200 kB in size. A thumbnail's width and height should not exceed
-   * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
-   * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
-   * multipart/form-data under <file_attach_name>. More information on Sending
-   * Files »
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
-  thumbnail?: InputFile | string | undefined
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1415,23 +1492,11 @@ export interface SendVideoNoteParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -1441,40 +1506,13 @@ export interface SendVideoNoteParams {
  */
 export interface SendPaidMediaParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username. If the chat is a channel, all
-   * Telegram Star proceeds from this media will be credited to the chat's
-   * balance. Otherwise, they will be credited to the bot's balance.
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * The number of Telegram Stars that must be paid to buy access to the media;
+   * The number of Telegram Stars that must be paid to buy access to the media,
    * 1-25000
    */
   star_count: number
 
   /**
-   * A JSON-serialized Array describing the media to be sent; up to 10 items
+   * A JSON-serialized Array describing the media to be sent, at most 10 elements
    */
   media: InputPaidMedia[]
 
@@ -1490,8 +1528,8 @@ export interface SendPaidMediaParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the media caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -1505,6 +1543,52 @@ export interface SendPaidMediaParams {
    * Pass True if the caption must be shown above the message media
    */
   show_caption_above_media?: boolean | undefined
+
+  /**
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username. If the chat is a channel, all
+   * Telegram Star proceeds from this media will be credited to the chat's
+   * balance. Otherwise, they will be credited to the bot's balance. If a String,
+   * must be non-empty.
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1524,23 +1608,17 @@ export interface SendPaidMediaParams {
   allow_paid_broadcast?: boolean | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
+   * Unique identifier of the message effect to be added to the message; for
+   * private chats only
    */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
+  message_effect_id?: string | undefined
 
   /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -1550,14 +1628,41 @@ export interface SendPaidMediaParams {
  */
 export interface SendMediaGroupParams {
   /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * will be sent
    */
   business_connection_id?: string | undefined
 
   /**
+   * Sends messages silently. Users will receive a notification with no sound.
+   */
+  disable_notification?: boolean | undefined
+
+  /**
+   * Protects the contents of the sent messages from forwarding and saving
+   */
+  protect_content?: boolean | undefined
+
+  /**
+   * Unique identifier of the message effect to be added to the message; for
+   * private chats only
+   */
+  message_effect_id?: string | undefined
+
+  /**
+   * A JSON-serialized Array describing messages to be sent, 2-10 elements
+   */
+  media: Array<InputMediaAudio | InputMediaDocument | InputMediaLivePhoto | InputMediaPhoto | InputMediaVideo>
+
+  /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -1575,38 +1680,11 @@ export interface SendMediaGroupParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * A JSON-serialized Array describing messages to be sent, must include 2-10
-   * items
-   */
-  media: Array<InputMediaAudio | InputMediaDocument | InputMediaLivePhoto | InputMediaPhoto | InputMediaVideo>
-
-  /**
-   * Sends messages silently. Users will receive a notification with no sound.
-   */
-  disable_notification?: boolean | undefined
-
-  /**
-   * Protects the contents of the sent messages from forwarding and saving
-   */
-  protect_content?: boolean | undefined
-
-  /**
    * Pass True to allow up to 1000 messages per second, ignoring broadcasting
    * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
    * be withdrawn from the bot's balance.
    */
   allow_paid_broadcast?: boolean | undefined
-
-  /**
-   * Unique identifier of the message effect to be added to the message; for
-   * private chats only
-   */
-  message_effect_id?: string | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
 }
 
 /**
@@ -1616,14 +1694,24 @@ export interface SendMediaGroupParams {
  */
 export interface SendLocationParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Latitude of the location
    */
-  business_connection_id?: string | undefined
+  latitude: number
+
+  /**
+   * Longitude of the location
+   */
+  longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  horizontal_accuracy?: number | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -1641,45 +1729,28 @@ export interface SendLocationParams {
   direct_messages_topic_id?: number | undefined
 
   /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
    * A JSON-serialized object containing the parameters of the ephemeral message
    * to send
    */
   ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * Latitude of the location
+   * Description of the message to reply to
    */
-  latitude: number
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Longitude of the location
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  longitude: number
-
-  /**
-   * The radius of uncertainty for the location, measured in meters; 0-1500
-   */
-  horizontal_accuracy?: number | undefined
-
-  /**
-   * Period in seconds during which the location will be updated (see Live
-   * Locations), must be between 60 and 86400, or 0x7FFFFFFF for live locations
-   * that can be edited indefinitely. Must be 0 for ephemeral messages.
-   */
-  live_period?: number | undefined
-
-  /**
-   * For live locations, a direction in which the user is moving, in degrees.
-   * Must be between 1 and 360 if specified.
-   */
-  heading?: number | undefined
-
-  /**
-   * For live locations, a maximum distance for proximity alerts about
-   * approaching another chat member, in meters. Must be between 1 and 100000 if
-   * specified.
-   */
-  proximity_alert_radius?: number | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1705,23 +1776,32 @@ export interface SendLocationParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+
+  /**
+   * Period in seconds during which the location will be updated (see Live
+   * Locations), must be 0, 60-86400, or 2147483647; 2147483647 (0x7FFFFFFF) for
+   * live locations that can be edited indefinitely, or 0 for a static location.
+   * Must be 0 for ephemeral messages.
+   */
+  live_period?: number | undefined
+
+  /**
+   * For live locations, a direction in which the user is moving, in degrees.
+   * Values between 1-360 are accepted.
+   */
+  heading?: number | undefined
+
+  /**
+   * For live locations, a maximum distance for proximity alerts about
+   * approaching another chat member, in meters. Values between 1-100000 are
+   * accepted.
+   */
+  proximity_alert_radius?: number | undefined
 }
 
 /**
@@ -1731,37 +1811,6 @@ export interface SendLocationParams {
  */
 export interface SendVenueParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
-   * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
-   */
-  chat_id: number | string
-
-  /**
-   * Unique identifier for the target message thread (topic) of a forum; for
-   * forum supergroups and private chats of bots with forum topic mode enabled
-   * only
-   */
-  message_thread_id?: number | undefined
-
-  /**
-   * Identifier of the direct messages topic to which the message will be sent;
-   * required if the message is sent to a direct messages chat
-   */
-  direct_messages_topic_id?: number | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the ephemeral message
-   * to send
-   */
-  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
-
-  /**
    * Latitude of the venue
    */
   latitude: number
@@ -1770,6 +1819,11 @@ export interface SendVenueParams {
    * Longitude of the venue
    */
   longitude: number
+
+  /**
+   * The radius of uncertainty for the location, measured in meters, 0-1500
+   */
+  horizontal_accuracy?: number | undefined
 
   /**
    * Name of the venue
@@ -1787,16 +1841,16 @@ export interface SendVenueParams {
   foursquare_id?: string | undefined
 
   /**
-   * Foursquare type of the venue, if known. (For example,
-   * “arts_entertainment/default”, “arts_entertainment/aquarium” or
-   * “food/icecream”.)
-   */
-  foursquare_type?: string | undefined
-
-  /**
    * Google Places identifier of the venue
    */
   google_place_id?: string | undefined
+
+  /**
+   * Foursquare type of the venue, if known. (For example,
+   * "arts_entertainment/default", "arts_entertainment/aquarium" or
+   * "food/icecream".)
+   */
+  foursquare_type?: string | undefined
 
   /**
    * Google Places type of the venue. (See supported types.)
@@ -1804,63 +1858,9 @@ export interface SendVenueParams {
   google_place_type?: string | undefined
 
   /**
-   * Sends the message silently. Users will receive a notification with no sound.
-   */
-  disable_notification?: boolean | undefined
-
-  /**
-   * Protects the contents of the sent message from forwarding and saving
-   */
-  protect_content?: boolean | undefined
-
-  /**
-   * Pass True to allow up to 1000 messages per second, ignoring broadcasting
-   * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
-   * be withdrawn from the bot's balance.
-   */
-  allow_paid_broadcast?: boolean | undefined
-
-  /**
-   * Unique identifier of the message effect to be added to the message; for
-   * private chats only
-   */
-  message_effect_id?: string | undefined
-
-  /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
-   * Additional interface options. A JSON-serialized object for an inline
-   * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
-   * to force a reply from the user.
-   */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
-}
-
-/**
- * Parameters for `sendContact`.
- *
- * @see https://corefork.telegram.org/bots/api#sendcontact
- */
-export interface SendContactParams {
-  /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
-   */
-  business_connection_id?: string | undefined
-
-  /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -1878,30 +1878,28 @@ export interface SendContactParams {
   direct_messages_topic_id?: number | undefined
 
   /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
    * A JSON-serialized object containing the parameters of the ephemeral message
    * to send
    */
   ephemeral_message_parameters?: EphemeralMessageParameters | undefined
 
   /**
-   * Contact's phone number
+   * Description of the message to reply to
    */
-  phone_number: string
+  reply_parameters?: ReplyParameters | undefined
 
   /**
-   * Contact's first name
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
    */
-  first_name: string
-
-  /**
-   * Contact's last name
-   */
-  last_name?: string | undefined
-
-  /**
-   * Additional data about the contact in the form of a vCard, 0-2048 bytes
-   */
-  vcard?: string | undefined
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -1927,41 +1925,43 @@ export interface SendContactParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
- * Parameters for `sendPoll`.
+ * Parameters for `sendContact`.
  *
- * @see https://corefork.telegram.org/bots/api#sendpoll
+ * @see https://corefork.telegram.org/bots/api#sendcontact
  */
-export interface SendPollParams {
+export interface SendContactParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Contact's phone number, non-empty
    */
-  business_connection_id?: string | undefined
+  phone_number: string
+
+  /**
+   * Contact's first name, non-empty
+   */
+  first_name: string
+
+  /**
+   * Contact's last name
+   */
+  last_name?: string | undefined
+
+  /**
+   * Additional data about the contact in the form of a vCard, 0-2048 bytes
+   */
+  vcard?: string | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username. Polls can't be sent to
-   * channel direct messages chats.
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -1973,26 +1973,112 @@ export interface SendPollParams {
   message_thread_id?: number | undefined
 
   /**
-   * Poll question, 1-300 characters
+   * Identifier of the direct messages topic to which the message will be sent;
+   * required if the message is sent to a direct messages chat
+   */
+  direct_messages_topic_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
+
+  /**
+   * Sends the message silently. Users will receive a notification with no sound.
+   */
+  disable_notification?: boolean | undefined
+
+  /**
+   * Protects the contents of the sent message from forwarding and saving
+   */
+  protect_content?: boolean | undefined
+
+  /**
+   * Pass True to allow up to 1000 messages per second, ignoring broadcasting
+   * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
+   * be withdrawn from the bot's balance.
+   */
+  allow_paid_broadcast?: boolean | undefined
+
+  /**
+   * Unique identifier of the message effect to be added to the message; for
+   * private chats only
+   */
+  message_effect_id?: string | undefined
+
+  /**
+   * Additional interface options. A JSON-serialized object for an inline
+   * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
+   * to force a reply from the user.
+   */
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+}
+
+/**
+ * Parameters for `sendPoll`.
+ *
+ * @see https://corefork.telegram.org/bots/api#sendpoll
+ */
+export interface SendPollParams {
+  /**
+   * Poll question, 1-300 characters after entities parsing
    */
   question: string
 
   /**
    * Mode for parsing entities in the question. See formatting options for more
-   * details. Currently, only custom emoji entities are allowed.
+   * details. Currently, only custom emoji entities are allowed. Must be one of
+   * "Markdown", "MarkdownV2", or "HTML".
    */
   question_parse_mode?: string | undefined
 
   /**
-   * A JSON-serialized list of special entities that appear in the poll question.
-   * It can be specified instead of question_parse_mode.
+   * A JSON-serialized list of special entities that appear in the question,
+   * which can be specified instead of question_parse_mode. Currently, only
+   * custom emoji entities are allowed.
    */
   question_entities?: MessageEntity[] | undefined
 
   /**
-   * A JSON-serialized list of 1-12 answer options
+   * A JSON-serialized list of answer options, 1-12 elements
    */
   options: InputPollOption[]
+
+  /**
+   * Description of the poll to be sent, 0-1024 characters after entities parsing
+   */
+  description?: string | undefined
+
+  /**
+   * Mode for parsing entities in the description. See formatting options for
+   * more details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  description_parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the description,
+   * which can be specified instead of description_parse_mode
+   */
+  description_entities?: MessageEntity[] | undefined
 
   /**
    * True, if the poll needs to be anonymous, defaults to True
@@ -2000,51 +2086,38 @@ export interface SendPollParams {
   is_anonymous?: boolean | undefined
 
   /**
-   * Poll type, “quiz” or “regular”, defaults to “regular”
-   */
-  type?: string | undefined
-
-  /**
    * Pass True if the poll allows multiple answers, defaults to False
    */
   allows_multiple_answers?: boolean | undefined
 
   /**
-   * Pass True if the poll allows to change chosen answer options, defaults to
-   * False for quizzes and to True for regular polls
+   * Poll type, must be one of "quiz" or "regular", defaults to "regular"
    */
-  allows_revoting?: boolean | undefined
+  type?: string | undefined
 
   /**
-   * Pass True if the poll options must be shown in random order
+   * Text that is shown when a user chooses an incorrect answer or taps on the
+   * lamp icon in a quiz-style poll, 0-200 characters after entities parsing,
+   * with at most 2 line feeds
    */
-  shuffle_options?: boolean | undefined
+  explanation?: string | undefined
 
   /**
-   * Pass True if answer options can be added to the poll after creation; not
-   * supported for anonymous polls and quizzes
+   * Mode for parsing entities in the explanation. See formatting options for
+   * more details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
-  allow_adding_options?: boolean | undefined
+  explanation_parse_mode?: string | undefined
 
   /**
-   * Pass True if poll results must be shown only after the poll closes
+   * A JSON-serialized list of special entities that appear in the explanation,
+   * which can be specified instead of explanation_parse_mode
    */
-  hide_results_until_closes?: boolean | undefined
+  explanation_entities?: MessageEntity[] | undefined
 
   /**
-   * Pass True if voting is limited to users who have been members of the chat
-   * where the poll is being sent for more than 24 hours; for channel chats only
+   * Media added to the quiz explanation
    */
-  members_only?: boolean | undefined
-
-  /**
-   * A JSON-serialized list of 0-12 two-letter ISO 3166-1 alpha-2 country codes
-   * indicating the countries from which users can vote in the poll; for channel
-   * chats only. Use “FT” as a country code to allow users with anonymous numbers
-   * to vote. If omitted or empty, then users from any country can participate in
-   * the poll.
-   */
-  country_codes?: string[] | undefined
+  explanation_media?: InputPollMedia | undefined
 
   /**
    * A JSON-serialized list of monotonically increasing 0-based identifiers of
@@ -2053,28 +2126,16 @@ export interface SendPollParams {
   correct_option_ids?: number[] | undefined
 
   /**
-   * Text that is shown when a user chooses an incorrect answer or taps on the
-   * lamp icon in a quiz-style poll, 0-200 characters with at most 2 line feeds
-   * after entities parsing
+   * Pass True if answer options can be added to the poll after creation; not
+   * supported for anonymous polls and quizzes
    */
-  explanation?: string | undefined
+  allow_adding_options?: boolean | undefined
 
   /**
-   * Mode for parsing entities in the explanation. See formatting options for
-   * more details.
+   * Pass True if the poll allows to change chosen answer options, defaults to
+   * False for quizzes and to True for regular polls
    */
-  explanation_parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in the poll
-   * explanation. It can be specified instead of explanation_parse_mode.
-   */
-  explanation_entities?: MessageEntity[] | undefined
-
-  /**
-   * Media added to the quiz explanation
-   */
-  explanation_media?: InputPollMedia | undefined
+  allows_revoting?: boolean | undefined
 
   /**
    * Amount of time in seconds the poll will be active after creation, 5-2628000.
@@ -2096,26 +2157,65 @@ export interface SendPollParams {
   is_closed?: boolean | undefined
 
   /**
-   * Description of the poll to be sent, 0-1024 characters after entities parsing
+   * Pass True if the poll options must be shown in random order
    */
-  description?: string | undefined
+  shuffle_options?: boolean | undefined
 
   /**
-   * Mode for parsing entities in the poll description. See formatting options
-   * for more details.
+   * Pass True if poll results must be shown only after the poll closes
    */
-  description_parse_mode?: string | undefined
+  hide_results_until_closes?: boolean | undefined
 
   /**
-   * A JSON-serialized list of special entities that appear in the poll
-   * description, which can be specified instead of description_parse_mode
+   * Pass True if voting is limited to users who have been members of the chat
+   * where the poll is being sent for more than 24 hours; for channel chats only
    */
-  description_entities?: MessageEntity[] | undefined
+  members_only?: boolean | undefined
+
+  /**
+   * A JSON-serialized list of two-letter ISO 3166-1 alpha-2 country codes
+   * indicating the countries from which users can vote in the poll; for channel
+   * chats only. Use "FT" as a country code to allow users with anonymous numbers
+   * to vote. If omitted or empty, then users from any country can participate in
+   * the poll. Must have at most 12 elements.
+   */
+  country_codes?: string[] | undefined
 
   /**
    * Media added to the poll description
    */
   media?: InputPollMedia | undefined
+
+  /**
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup or channel in the format @username. Polls can't be sent to
+   * channel direct messages chats. If a String, must be non-empty.
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
+   */
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -2141,16 +2241,11 @@ export interface SendPollParams {
   message_effect_id?: string | undefined
 
   /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -2160,21 +2255,26 @@ export interface SendPollParams {
  */
 export interface SendChecklistParams {
   /**
+   * A JSON-serialized object for the checklist to send
+   */
+  checklist: InputChecklist
+
+  /**
+   * Unique identifier for the target chat or username of the target bot in the
+   * format @username, if a String, must be non-empty
+   */
+  chat_id: number | string
+
+  /**
    * Unique identifier of the business connection on behalf of which the message
    * will be sent
    */
   business_connection_id: string
 
   /**
-   * Unique identifier for the target chat or username of the target bot in the
-   * format @username
+   * Description of the message to reply to
    */
-  chat_id: number | string
-
-  /**
-   * A JSON-serialized object for the checklist to send
-   */
-  checklist: InputChecklist
+  reply_parameters?: ReplyParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -2192,14 +2292,9 @@ export interface SendChecklistParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object for description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * A JSON-serialized object for an inline keyboard
    */
-  reply_markup?: InlineKeyboardMarkup | undefined
+  reply_markup?: InputInlineKeyboardMarkup | undefined
 }
 
 /**
@@ -2209,14 +2304,16 @@ export interface SendChecklistParams {
  */
 export interface SendDiceParams {
   /**
-   * Unique identifier of the business connection on behalf of which the message
-   * will be sent
+   * Emoji on which the dice throw animation is based. Currently, must be one of
+   * "", "", "", "", "", or "". Dice can have values 1-6 for "", "" and "",
+   * values 1-5 for "" and "", and values 1-64 for "". Defaults to "".
    */
-  business_connection_id?: string | undefined
+  emoji?: string | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
@@ -2234,11 +2331,28 @@ export interface SendDiceParams {
   direct_messages_topic_id?: number | undefined
 
   /**
-   * Emoji on which the dice throw animation is based. Currently, must be one of
-   * “”, “”, “”, “”, “”, or “”. Dice can have values 1-6 for “”, “” and “”,
-   * values 1-5 for “” and “”, and values 1-64 for “”. Defaults to “”.
+   * Unique identifier of the business connection on behalf of which the message
+   * will be sent
    */
-  emoji?: string | undefined
+  business_connection_id?: string | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the ephemeral message
+   * to send
+   */
+  ephemeral_message_parameters?: EphemeralMessageParameters | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * A JSON-serialized object containing the parameters of the suggested post to
+   * send; for direct messages chats only. If the message is sent as a reply to
+   * another suggested post, then that suggested post is automatically declined.
+   */
+  suggested_post_parameters?: SuggestedPostParameters | undefined
 
   /**
    * Sends the message silently. Users will receive a notification with no sound.
@@ -2264,23 +2378,11 @@ export interface SendDiceParams {
   message_effect_id?: string | undefined
 
   /**
-   * A JSON-serialized object containing the parameters of the suggested post to
-   * send; for direct messages chats only. If the message is sent as a reply to
-   * another suggested post, then that suggested post is automatically declined.
-   */
-  suggested_post_parameters?: SuggestedPostParameters | undefined
-
-  /**
-   * Description of the message to reply to
-   */
-  reply_parameters?: ReplyParameters | undefined
-
-  /**
    * Additional interface options. A JSON-serialized object for an inline
    * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
    * to force a reply from the user.
    */
-  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+  reply_markup?: InputInlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
 }
 
 /**
@@ -2290,9 +2392,10 @@ export interface SendDiceParams {
  */
 export interface SendMessageDraftParams {
   /**
-   * Unique identifier for the target private chat
+   * Unique identifier for the target private chat or username of the target bot
+   * in the format @username, if a String, must be non-empty
    */
-  chat_id: number
+  chat_id: number | string
 
   /**
    * Unique identifier for the target message thread
@@ -2302,31 +2405,13 @@ export interface SendMessageDraftParams {
   /**
    * Unique identifier of the message draft; must be non-zero. Changes to drafts
    * with the same identifier are animated. Otherwise, the draft is replaced
-   * without animation.
+   * without animation. Must be a decimal integer.
    */
-  draft_id: number
-
-  /**
-   * Text of the message to be sent, 0-4096 characters after entities parsing.
-   * Pass an empty text to show a “Thinking…” placeholder.
-   */
-  text?: string | undefined
-
-  /**
-   * Mode for parsing entities in the message text. See formatting options for
-   * more details.
-   */
-  parse_mode?: string | undefined
-
-  /**
-   * A JSON-serialized list of special entities that appear in message text,
-   * which can be specified instead of parse_mode
-   */
-  entities?: MessageEntity[] | undefined
+  draft_id: string
 
   /**
    * Pass True to show the user a button to stop further drafts. The bot will
-   * receive an Update “stopped_message_generation” if the user presses the
+   * receive an Update "stopped_message_generation" if the user presses the
    * button.
    */
   can_stop?: boolean | undefined
@@ -2338,6 +2423,24 @@ export interface SendMessageDraftParams {
    * message.
    */
   keep_on_stop?: boolean | undefined
+
+  /**
+   * Text of the message to be sent, 0-4096 characters after entities parsing.
+   * Pass an empty text to show a "Thinking..." placeholder.
+   */
+  text?: string | undefined
+
+  /**
+   * Mode for parsing entities in the text. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of parse_mode
+   */
+  entities?: MessageEntity[] | undefined
 }
 
 /**
@@ -2347,6 +2450,20 @@ export interface SendMessageDraftParams {
  */
 export interface SendChatActionParams {
   /**
+   * Type of action to broadcast, must be one of "cancel", "typing",
+   * "record_video", "upload_video", "record_audio", "record_voice",
+   * "upload_audio", "upload_voice", "upload_photo", "upload_document",
+   * "choose_sticker", "pick_up_location", "find_location", "record_video_note",
+   * or "upload_video_note". Choose one, depending on what the user is about to
+   * receive: typing for text messages, upload_photo for photos, record_video or
+   * upload_video for videos, record_voice or upload_voice for voice notes,
+   * upload_document for general files, choose_sticker for stickers,
+   * find_location for location data, record_video_note or upload_video_note for
+   * video notes.
+   */
+  action: string
+
+  /**
    * Unique identifier of the business connection on behalf of which the action
    * will be sent
    */
@@ -2355,7 +2472,7 @@ export interface SendChatActionParams {
   /**
    * Unique identifier for the target chat or username of the target bot or
    * supergroup in the format @username. Channel chats and channel direct
-   * messages chats aren't supported.
+   * messages chats aren't supported. If a String, must be non-empty.
    */
   chat_id: number | string
 
@@ -2364,16 +2481,6 @@ export interface SendChatActionParams {
    * supergroups and private chats of bots with forum topic mode enabled only
    */
   message_thread_id?: number | undefined
-
-  /**
-   * Type of action to broadcast. Choose one, depending on what the user is about
-   * to receive: typing for text messages, upload_photo for photos, record_video
-   * or upload_video for videos, record_voice or upload_voice for voice notes,
-   * upload_document for general files, choose_sticker for stickers,
-   * find_location for location data, record_video_note or upload_video_note for
-   * video notes.
-   */
-  action: string
 }
 
 /**
@@ -2384,13 +2491,15 @@ export interface SendChatActionParams {
 export interface SetMessageReactionParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup or channel in the format @username, if a String, must be
+   * non-empty
    */
   chat_id: number | string
 
   /**
    * Identifier of the target message. If the message belongs to a media group,
    * the reaction is set to the first non-deleted message in the group instead.
+   * Must be at least 1.
    */
   message_id: number
 
@@ -2401,7 +2510,7 @@ export interface SetMessageReactionParams {
    * explicitly allowed by chat administrators. Paid reactions can't be used by
    * bots.
    */
-  reaction?: ReactionType[] | undefined
+  reaction?: InputReactionType[] | undefined
 
   /**
    * Pass True to set the reaction with a big animation
@@ -2416,7 +2525,7 @@ export interface SetMessageReactionParams {
  */
 export interface GetUserProfilePhotosParams {
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
@@ -2440,7 +2549,7 @@ export interface GetUserProfilePhotosParams {
  */
 export interface GetUserProfileAudiosParams {
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
@@ -2464,13 +2573,13 @@ export interface GetUserProfileAudiosParams {
  */
 export interface SetUserEmojiStatusParams {
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
   /**
    * Custom emoji identifier of the emoji status to set. Pass an empty string to
-   * remove the status.
+   * remove the status. Must be a decimal integer or empty.
    */
   emoji_status_custom_emoji_id?: string | undefined
 
@@ -2487,7 +2596,7 @@ export interface SetUserEmojiStatusParams {
  */
 export interface GetFileParams {
   /**
-   * File identifier to get information about
+   * File identifier to get information about, non-empty
    */
   file_id: string
 }
@@ -2500,12 +2609,12 @@ export interface GetFileParams {
 export interface BanChatMemberParams {
   /**
    * Unique identifier for the target group or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
@@ -2532,20 +2641,20 @@ export interface BanChatMemberParams {
  */
 export interface UnbanChatMemberParams {
   /**
+   * Do nothing if the user is not banned
+   */
+  only_if_banned?: boolean | undefined
+
+  /**
    * Unique identifier for the target group or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
-
-  /**
-   * Do nothing if the user is not banned
-   */
-  only_if_banned?: boolean | undefined
 }
 
 /**
@@ -2556,19 +2665,21 @@ export interface UnbanChatMemberParams {
 export interface RestrictChatMemberParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
   /**
-   * A JSON-serialized object for new user permissions
+   * Date when restrictions will be lifted for the user; Unix time. If user is
+   * restricted for more than 366 days or less than 30 seconds from the current
+   * time, they are considered to be restricted forever.
    */
-  permissions: ChatPermissions
+  until_date?: number | undefined
 
   /**
    * Pass True if chat permissions are set independently. Otherwise, the
@@ -2580,11 +2691,9 @@ export interface RestrictChatMemberParams {
   use_independent_chat_permissions?: boolean | undefined
 
   /**
-   * Date when restrictions will be lifted for the user; Unix time. If user is
-   * restricted for more than 366 days or less than 30 seconds from the current
-   * time, they are considered to be restricted forever.
+   * A JSON-serialized object for new user permissions
    */
-  until_date?: number | undefined
+  permissions: ChatPermissions
 }
 
 /**
@@ -2595,19 +2704,14 @@ export interface RestrictChatMemberParams {
 export interface PromoteChatMemberParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
-
-  /**
-   * Pass True if the administrator's presence in the chat is hidden
-   */
-  is_anonymous?: boolean | undefined
 
   /**
    * Pass True if the administrator can access the chat event log, get boost
@@ -2618,14 +2722,32 @@ export interface PromoteChatMemberParams {
   can_manage_chat?: boolean | undefined
 
   /**
+   * Pass True if the administrator can change chat title, photo and other
+   * settings
+   */
+  can_change_info?: boolean | undefined
+
+  /**
+   * Pass True if the administrator can post messages in the channel, approve
+   * suggested posts, or access channel statistics; for channels only
+   */
+  can_post_messages?: boolean | undefined
+
+  /**
+   * Pass True if the administrator can edit messages of other users and can pin
+   * messages; for channels only
+   */
+  can_edit_messages?: boolean | undefined
+
+  /**
    * Pass True if the administrator can delete messages of other users
    */
   can_delete_messages?: boolean | undefined
 
   /**
-   * Pass True if the administrator can manage video chats
+   * Pass True if the administrator can invite new users to the chat
    */
-  can_manage_video_chats?: boolean | undefined
+  can_invite_users?: boolean | undefined
 
   /**
    * Pass True if the administrator can restrict, ban or unban chat members, or
@@ -2633,6 +2755,17 @@ export interface PromoteChatMemberParams {
    * for promotions of channel administrators.
    */
   can_restrict_members?: boolean | undefined
+
+  /**
+   * Pass True if the administrator can pin messages; for supergroups only
+   */
+  can_pin_messages?: boolean | undefined
+
+  /**
+   * Pass True if the user is allowed to create, rename, close, and reopen forum
+   * topics; for supergroups only
+   */
+  can_manage_topics?: boolean | undefined
 
   /**
    * Pass True if the administrator can add new administrators with a subset of
@@ -2643,15 +2776,9 @@ export interface PromoteChatMemberParams {
   can_promote_members?: boolean | undefined
 
   /**
-   * Pass True if the administrator can change chat title, photo and other
-   * settings
+   * Pass True if the administrator can manage video chats
    */
-  can_change_info?: boolean | undefined
-
-  /**
-   * Pass True if the administrator can invite new users to the chat
-   */
-  can_invite_users?: boolean | undefined
+  can_manage_video_chats?: boolean | undefined
 
   /**
    * Pass True if the administrator can post stories to the chat
@@ -2671,29 +2798,6 @@ export interface PromoteChatMemberParams {
   can_delete_stories?: boolean | undefined
 
   /**
-   * Pass True if the administrator can post messages in the channel, approve
-   * suggested posts, or access channel statistics; for channels only
-   */
-  can_post_messages?: boolean | undefined
-
-  /**
-   * Pass True if the administrator can edit messages of other users and can pin
-   * messages; for channels only
-   */
-  can_edit_messages?: boolean | undefined
-
-  /**
-   * Pass True if the administrator can pin messages; for supergroups only
-   */
-  can_pin_messages?: boolean | undefined
-
-  /**
-   * Pass True if the user is allowed to create, rename, close, and reopen forum
-   * topics; for supergroups only
-   */
-  can_manage_topics?: boolean | undefined
-
-  /**
    * Pass True if the administrator can manage direct messages within the channel
    * and decline suggested posts; for channels only
    */
@@ -2710,6 +2814,11 @@ export interface PromoteChatMemberParams {
    * send them in the case of bots
    */
   can_send_welcome_messages?: boolean | undefined
+
+  /**
+   * Pass True if the administrator's presence in the chat is hidden
+   */
+  is_anonymous?: boolean | undefined
 }
 
 /**
@@ -2720,17 +2829,17 @@ export interface PromoteChatMemberParams {
 export interface SetChatAdministratorCustomTitleParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
   /**
-   * New custom title for the administrator; 0-16 characters, emoji are not
+   * New custom title for the administrator, 0-16 characters, emoji are not
    * allowed
    */
   custom_title: string
@@ -2744,17 +2853,17 @@ export interface SetChatAdministratorCustomTitleParams {
 export interface SetChatMemberTagParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
   /**
-   * New tag for the member; 0-16 characters, emoji are not allowed
+   * New tag for the member, 0-16 characters, emoji are not allowed
    */
   tag?: string | undefined
 }
@@ -2767,7 +2876,7 @@ export interface SetChatMemberTagParams {
 export interface BanChatSenderChatParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -2785,7 +2894,7 @@ export interface BanChatSenderChatParams {
 export interface UnbanChatSenderChatParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -2803,14 +2912,9 @@ export interface UnbanChatSenderChatParams {
 export interface SetChatPermissionsParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
-
-  /**
-   * A JSON-serialized object for new default chat permissions
-   */
-  permissions: ChatPermissions
 
   /**
    * Pass True if chat permissions are set independently. Otherwise, the
@@ -2820,6 +2924,11 @@ export interface SetChatPermissionsParams {
    * the can_send_polls permission will imply the can_send_messages permission.
    */
   use_independent_chat_permissions?: boolean | undefined
+
+  /**
+   * A JSON-serialized object for new default chat permissions
+   */
+  permissions: ChatPermissions
 }
 
 /**
@@ -2830,7 +2939,7 @@ export interface SetChatPermissionsParams {
 export interface ExportChatInviteLinkParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -2843,12 +2952,12 @@ export interface ExportChatInviteLinkParams {
 export interface CreateChatInviteLinkParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Invite link name; 0-32 characters
+   * Invite link name, 0-32 characters
    */
   name?: string | undefined
 
@@ -2859,7 +2968,7 @@ export interface CreateChatInviteLinkParams {
 
   /**
    * The maximum number of users that can be members of the chat simultaneously
-   * after joining the chat via this invite link; 1-99999
+   * after joining the chat via this invite link, 1-99999
    */
   member_limit?: number | undefined
 
@@ -2878,7 +2987,7 @@ export interface CreateChatInviteLinkParams {
 export interface EditChatInviteLinkParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -2888,7 +2997,7 @@ export interface EditChatInviteLinkParams {
   invite_link: string
 
   /**
-   * Invite link name; 0-32 characters
+   * Invite link name, 0-32 characters
    */
   name?: string | undefined
 
@@ -2899,7 +3008,7 @@ export interface EditChatInviteLinkParams {
 
   /**
    * The maximum number of users that can be members of the chat simultaneously
-   * after joining the chat via this invite link; 1-99999
+   * after joining the chat via this invite link, 1-99999
    */
   member_limit?: number | undefined
 
@@ -2918,24 +3027,24 @@ export interface EditChatInviteLinkParams {
 export interface CreateChatSubscriptionInviteLinkParams {
   /**
    * Unique identifier for the target channel chat or username of the target
-   * channel in the format @username
+   * channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Invite link name; 0-32 characters
+   * Invite link name, 0-32 characters
    */
   name?: string | undefined
 
   /**
    * The number of seconds the subscription will be active for before the next
-   * payment. Currently, it must always be 2592000 (30 days).
+   * payment, which is currently always 30 days. Must be 2592000.
    */
   subscription_period: number
 
   /**
    * The amount of Telegram Stars a user must pay initially and after each
-   * subsequent subscription period to be a member of the chat; 1-10000
+   * subsequent subscription period to be a member of the chat, 1-10000
    */
   subscription_price: number
 }
@@ -2948,7 +3057,7 @@ export interface CreateChatSubscriptionInviteLinkParams {
 export interface EditChatSubscriptionInviteLinkParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -2958,7 +3067,7 @@ export interface EditChatSubscriptionInviteLinkParams {
   invite_link: string
 
   /**
-   * Invite link name; 0-32 characters
+   * Invite link name, 0-32 characters
    */
   name?: string | undefined
 }
@@ -2971,7 +3080,7 @@ export interface EditChatSubscriptionInviteLinkParams {
 export interface RevokeChatInviteLinkParams {
   /**
    * Unique identifier of the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -2989,12 +3098,12 @@ export interface RevokeChatInviteLinkParams {
 export interface ApproveChatJoinRequestParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 }
@@ -3007,12 +3116,12 @@ export interface ApproveChatJoinRequestParams {
 export interface DeclineChatJoinRequestParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 }
@@ -3024,13 +3133,13 @@ export interface DeclineChatJoinRequestParams {
  */
 export interface AnswerChatJoinRequestQueryParams {
   /**
-   * Unique identifier of the join request query
+   * Unique identifier of the join request query, must be a decimal integer
    */
   chat_join_request_query_id: string
 
   /**
-   * Result of the query. Must be either “approve” to allow the user to join the
-   * chat, “decline” to disallow the user to join the chat, or “queue” to leave
+   * Result of the query. Must be either "approve" to allow the user to join the
+   * chat, "decline" to disallow the user to join the chat, or "queue" to leave
    * the decision to other administrators.
    */
   result: string
@@ -3043,13 +3152,13 @@ export interface AnswerChatJoinRequestQueryParams {
  */
 export interface SendChatJoinRequestWebAppParams {
   /**
-   * Unique identifier of the join request query
+   * Unique identifier of the join request query, must be a decimal integer
    */
   chat_join_request_query_id: string
 
   /**
    * An HTTPS URL of a Web App to be opened with additional data as specified in
-   * Initializing Web Apps
+   * Initializing Web Apps, non-empty
    */
   web_app_url: string
 }
@@ -3062,14 +3171,15 @@ export interface SendChatJoinRequestWebAppParams {
 export interface SetChatPhotoParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * New chat photo, uploaded using multipart/form-data
+   * New chat photo, uploaded using multipart/form-data, if a String, must start
+   * with "attach://"
    */
-  photo: InputFile
+  photo: InputFile | string
 }
 
 /**
@@ -3080,7 +3190,7 @@ export interface SetChatPhotoParams {
 export interface DeleteChatPhotoParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3093,7 +3203,7 @@ export interface DeleteChatPhotoParams {
 export interface SetChatTitleParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3111,7 +3221,7 @@ export interface SetChatTitleParams {
 export interface SetChatDescriptionParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3135,12 +3245,12 @@ export interface PinChatMessageParams {
 
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Identifier of a message to pin
+   * Identifier of a message to pin, at least 1
    */
   message_id: number
 
@@ -3166,14 +3276,14 @@ export interface UnpinChatMessageParams {
 
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
    * Identifier of the message to unpin. Required if business_connection_id is
    * specified. If not specified, the most recent pinned message (by sending
-   * date) will be unpinned.
+   * date) will be unpinned. Must be at least 1.
    */
   message_id?: number | undefined
 }
@@ -3186,7 +3296,7 @@ export interface UnpinChatMessageParams {
 export interface UnpinAllChatMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3200,7 +3310,8 @@ export interface LeaveChatParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
    * or channel in the format @username. Channel direct messages chats aren't
-   * supported; leave the corresponding channel instead.
+   * supported; leave the corresponding channel instead. If a String, must be
+   * non-empty.
    */
   chat_id: number | string
 }
@@ -3213,7 +3324,7 @@ export interface LeaveChatParams {
 export interface GetChatParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3226,7 +3337,7 @@ export interface GetChatParams {
 export interface GetChatAdministratorsParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3245,7 +3356,7 @@ export interface GetChatAdministratorsParams {
 export interface GetChatMemberCountParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3258,12 +3369,12 @@ export interface GetChatMemberCountParams {
 export interface GetChatMemberParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * or channel in the format @username
+   * or channel in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 }
@@ -3275,12 +3386,12 @@ export interface GetChatMemberParams {
  */
 export interface GetUserPersonalChatMessagesParams {
   /**
-   * Unique identifier for the target user
+   * Unique identifier for the target user, at least 1
    */
   user_id: number
 
   /**
-   * The maximum number of messages to return; 1-20
+   * The maximum number of messages to return, 1-20
    */
   limit: number
 }
@@ -3293,12 +3404,12 @@ export interface GetUserPersonalChatMessagesParams {
 export interface SetChatStickerSetParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Name of the sticker set to be set as the group sticker set
+   * Name of the sticker set to be set as the group sticker set, non-empty
    */
   sticker_set_name: string
 }
@@ -3311,7 +3422,7 @@ export interface SetChatStickerSetParams {
 export interface DeleteChatStickerSetParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3332,7 +3443,7 @@ export interface GetForumTopicIconStickersParams {}
 export interface CreateForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3342,15 +3453,16 @@ export interface CreateForumTopicParams {
   name: string
 
   /**
-   * Color of the topic icon in RGB format. Currently, must be one of 7322096
-   * (0x6FB9F0), 16766590 (0xFFD67E), 13338331 (0xCB86DB), 9367192 (0x8EEE98),
-   * 16749490 (0xFF93B2), or 16478047 (0xFB6F5F).
+   * Color of the topic icon in RGB format. Must be one of 7322096, 16766590,
+   * 13338331, 9367192, 16749490, or 16478047. In hexadecimal, they are 0x6FB9F0,
+   * 0xFFD67E, 0xCB86DB, 0x8EEE98, 0xFF93B2, and 0xFB6F5F.
    */
   icon_color?: number | undefined
 
   /**
    * Unique identifier of the custom emoji shown as the topic icon. Use
-   * getForumTopicIconStickers to get all allowed custom emoji identifiers.
+   * getForumTopicIconStickers to get all allowed custom emoji identifiers. Must
+   * be a decimal integer.
    */
   icon_custom_emoji_id?: string | undefined
 }
@@ -3363,7 +3475,7 @@ export interface CreateForumTopicParams {
 export interface EditForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3382,7 +3494,7 @@ export interface EditForumTopicParams {
    * New unique identifier of the custom emoji shown as the topic icon. Use
    * getForumTopicIconStickers to get all allowed custom emoji identifiers. Pass
    * an empty string to remove the icon. If not specified, the current icon will
-   * be kept.
+   * be kept. Must be a decimal integer or empty.
    */
   icon_custom_emoji_id?: string | undefined
 }
@@ -3395,7 +3507,7 @@ export interface EditForumTopicParams {
 export interface CloseForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3413,7 +3525,7 @@ export interface CloseForumTopicParams {
 export interface ReopenForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3431,7 +3543,7 @@ export interface ReopenForumTopicParams {
 export interface DeleteForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3449,7 +3561,7 @@ export interface DeleteForumTopicParams {
 export interface UnpinAllForumTopicMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3467,7 +3579,7 @@ export interface UnpinAllForumTopicMessagesParams {
 export interface EditGeneralForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -3485,7 +3597,7 @@ export interface EditGeneralForumTopicParams {
 export interface CloseGeneralForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3498,7 +3610,7 @@ export interface CloseGeneralForumTopicParams {
 export interface ReopenGeneralForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3511,7 +3623,7 @@ export interface ReopenGeneralForumTopicParams {
 export interface HideGeneralForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3524,7 +3636,7 @@ export interface HideGeneralForumTopicParams {
 export interface UnhideGeneralForumTopicParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3537,7 +3649,7 @@ export interface UnhideGeneralForumTopicParams {
 export interface UnpinAllGeneralForumTopicMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target supergroup
-   * in the format @username
+   * in the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 }
@@ -3549,7 +3661,7 @@ export interface UnpinAllGeneralForumTopicMessagesParams {
  */
 export interface AnswerCallbackQueryParams {
   /**
-   * Unique identifier for the query to be answered
+   * Unique identifier for the query to be answered, must be a decimal integer
    */
   callback_query_id: string
 
@@ -3588,7 +3700,7 @@ export interface AnswerCallbackQueryParams {
  */
 export interface AnswerGuestQueryParams {
   /**
-   * Unique identifier for the query to be answered
+   * Unique identifier for the query to be answered, must be a decimal integer
    */
   guest_query_id: string
 
@@ -3606,12 +3718,12 @@ export interface AnswerGuestQueryParams {
 export interface GetUserChatBoostsParams {
   /**
    * Unique identifier for the chat or username of the channel in the format
-   * @username
+   * @username, if a String, must be non-empty
    */
   chat_id: number | string
 
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 }
@@ -3635,7 +3747,7 @@ export interface GetBusinessConnectionParams {
  */
 export interface GetManagedBotTokenParams {
   /**
-   * User identifier of the managed bot whose token will be returned
+   * User identifier of the managed bot whose token will be returned, at least 1
    */
   user_id: number
 }
@@ -3647,7 +3759,7 @@ export interface GetManagedBotTokenParams {
  */
 export interface ReplaceManagedBotTokenParams {
   /**
-   * User identifier of the managed bot whose token will be replaced
+   * User identifier of the managed bot whose token will be replaced, at least 1
    */
   user_id: number
 }
@@ -3659,7 +3771,8 @@ export interface ReplaceManagedBotTokenParams {
  */
 export interface GetManagedBotAccessSettingsParams {
   /**
-   * User identifier of the managed bot whose access settings will be returned
+   * User identifier of the managed bot whose access settings will be returned,
+   * at least 1
    */
   user_id: number
 }
@@ -3671,7 +3784,8 @@ export interface GetManagedBotAccessSettingsParams {
  */
 export interface SetManagedBotAccessSettingsParams {
   /**
-   * User identifier of the managed bot whose access settings will be changed
+   * User identifier of the managed bot whose access settings will be changed, at
+   * least 1
    */
   user_id: number
 
@@ -3682,9 +3796,9 @@ export interface SetManagedBotAccessSettingsParams {
   is_access_restricted: boolean
 
   /**
-   * A JSON-serialized list of up to 10 identifiers of users who will have access
-   * to the bot in addition to its owner. Ignored if is_access_restricted is
-   * False.
+   * A JSON-serialized list of identifiers of users who will have access to the
+   * bot in addition to its owner. Ignored if is_access_restricted is False. Must
+   * have at most 10 elements. Each element must be at least 1.
    */
   added_user_ids?: number[] | undefined
 }
@@ -3697,7 +3811,7 @@ export interface SetManagedBotAccessSettingsParams {
 export interface SetMyCommandsParams {
   /**
    * A JSON-serialized list of bot commands to be set as the list of the bot's
-   * commands. At most 100 commands can be specified.
+   * commands. Must have at most 100 elements.
    */
   commands: BotCommand[]
 
@@ -3760,16 +3874,16 @@ export interface GetMyCommandsParams {
  */
 export interface SetMyNameParams {
   /**
-   * New bot name; 0-64 characters. Pass an empty string to remove the dedicated
-   * name for the given language.
-   */
-  name?: string | undefined
-
-  /**
    * A two-letter ISO 639-1 language code. If empty, the name will be shown to
    * all users for whose language there is no dedicated name.
    */
   language_code?: string | undefined
+
+  /**
+   * New bot name, 0-64 characters. Pass an empty string to remove the dedicated
+   * name for the given language.
+   */
+  name?: string | undefined
 }
 
 /**
@@ -3791,16 +3905,16 @@ export interface GetMyNameParams {
  */
 export interface SetMyDescriptionParams {
   /**
-   * New bot description; 0-512 characters. Pass an empty string to remove the
-   * dedicated description for the given language.
-   */
-  description?: string | undefined
-
-  /**
    * A two-letter ISO 639-1 language code. If empty, the description will be
    * applied to all users for whose language there is no dedicated description.
    */
   language_code?: string | undefined
+
+  /**
+   * New bot description, 0-512 characters. Pass an empty string to remove the
+   * dedicated description for the given language.
+   */
+  description?: string | undefined
 }
 
 /**
@@ -3822,17 +3936,17 @@ export interface GetMyDescriptionParams {
  */
 export interface SetMyShortDescriptionParams {
   /**
-   * New short description for the bot; 0-120 characters. Pass an empty string to
-   * remove the dedicated short description for the given language.
-   */
-  short_description?: string | undefined
-
-  /**
    * A two-letter ISO 639-1 language code. If empty, the short description will
    * be applied to all users for whose language there is no dedicated short
    * description.
    */
   language_code?: string | undefined
+
+  /**
+   * New short description for the bot, 0-120 characters. Pass an empty string to
+   * remove the dedicated short description for the given language.
+   */
+  short_description?: string | undefined
 }
 
 /**
@@ -3874,16 +3988,16 @@ export interface RemoveMyProfilePhotoParams {}
  */
 export interface SetChatMenuButtonParams {
   /**
-   * Unique identifier for the target private chat. If not specified, the bot's
-   * default menu button will be changed.
-   */
-  chat_id?: number | undefined
-
-  /**
    * A JSON-serialized object for the bot's new menu button. Defaults to
    * MenuButtonDefault.
    */
   menu_button?: MenuButton | undefined
+
+  /**
+   * Unique identifier for the target private chat. If not specified, the bot's
+   * default menu button will be changed. Must be at least 1.
+   */
+  chat_id?: number | undefined
 }
 
 /**
@@ -3894,7 +4008,7 @@ export interface SetChatMenuButtonParams {
 export interface GetChatMenuButtonParams {
   /**
    * Unique identifier for the target private chat. If not specified, the bot's
-   * default menu button will be returned.
+   * default menu button will be returned. Must be at least 1.
    */
   chat_id?: number | undefined
 }
@@ -3906,17 +4020,17 @@ export interface GetChatMenuButtonParams {
  */
 export interface SetMyDefaultAdministratorRightsParams {
   /**
-   * A JSON-serialized object describing new default administrator rights. If not
-   * specified, the default administrator rights will be cleared.
-   */
-  rights?: ChatAdministratorRights | undefined
-
-  /**
    * Pass True to change the default administrator rights of the bot in channels.
    * Otherwise, the default administrator rights of the bot for groups and
    * supergroups will be changed.
    */
   for_channels?: boolean | undefined
+
+  /**
+   * A JSON-serialized object describing new default administrator rights. If not
+   * specified, the default administrator rights will be cleared.
+   */
+  rights?: ChatAdministratorRights | undefined
 }
 
 /**
@@ -3948,20 +4062,8 @@ export interface GetAvailableGiftsParams {}
  */
 export interface SendGiftParams {
   /**
-   * Required if chat_id is not specified. Unique identifier of the target user
-   * who will receive the gift.
-   */
-  user_id?: number | undefined
-
-  /**
-   * Required if user_id is not specified. Unique identifier for the chat or
-   * username of the channel (in the format @username) that will receive the
-   * gift.
-   */
-  chat_id?: number | string | undefined
-
-  /**
-   * Identifier of the gift; limited gifts can't be sent to channel chats
+   * Identifier of the gift; limited gifts can't be sent to channel chats, must
+   * be a decimal integer
    */
   gift_id: string
 
@@ -3972,24 +4074,39 @@ export interface SendGiftParams {
   pay_for_upgrade?: boolean | undefined
 
   /**
-   * Text that will be shown along with the gift; 0-128 characters
+   * Text that will be shown along with the gift, 0-128 characters after entities
+   * parsing
    */
   text?: string | undefined
 
   /**
    * Mode for parsing entities in the text. See formatting options for more
-   * details. Entities other than “bold”, “italic”, “underline”, “strikethrough”,
-   * “spoiler”, “custom_emoji”, and “date_time” are ignored.
+   * details. Entities other than "bold", "italic", "underline", "strikethrough",
+   * "spoiler", "custom_emoji", and "date_time" are ignored. Must be one of
+   * "Markdown", "MarkdownV2", or "HTML".
    */
   text_parse_mode?: string | undefined
 
   /**
-   * A JSON-serialized list of special entities that appear in the gift text. It
-   * can be specified instead of text_parse_mode. Entities other than “bold”,
-   * “italic”, “underline”, “strikethrough”, “spoiler”, “custom_emoji”, and
-   * “date_time” are ignored.
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of text_parse_mode. Entities other than "bold",
+   * "italic", "underline", "strikethrough", "spoiler", "custom_emoji", and
+   * "date_time" are ignored.
    */
   text_entities?: MessageEntity[] | undefined
+
+  /**
+   * Required if user_id is not specified. Unique identifier for the chat or
+   * username of the channel (in the format @username) that will receive the
+   * gift. If a String, must be non-empty.
+   */
+  chat_id?: number | string | undefined
+
+  /**
+   * Required if chat_id is not specified. Unique identifier of the target user
+   * who will receive the gift. Must be at least 1.
+   */
+  user_id?: number | undefined
 }
 
 /**
@@ -4000,15 +4117,9 @@ export interface SendGiftParams {
 export interface GiftPremiumSubscriptionParams {
   /**
    * Unique identifier of the target user who will receive a Telegram Premium
-   * subscription
+   * subscription, at least 1
    */
   user_id: number
-
-  /**
-   * Number of months the Telegram Premium subscription will be active for the
-   * user; must be one of 3, 6, or 12
-   */
-  month_count: number
 
   /**
    * Number of Telegram Stars to pay for the Telegram Premium subscription; must
@@ -4017,23 +4128,30 @@ export interface GiftPremiumSubscriptionParams {
   star_count: number
 
   /**
+   * Number of months the Telegram Premium subscription will be active for the
+   * user, must be one of 3, 6, or 12
+   */
+  month_count: number
+
+  /**
    * Text that will be shown along with the service message about the
-   * subscription; 0-128 characters
+   * subscription, 0-128 characters after entities parsing
    */
   text?: string | undefined
 
   /**
    * Mode for parsing entities in the text. See formatting options for more
-   * details. Entities other than “bold”, “italic”, “underline”, “strikethrough”,
-   * “spoiler”, “custom_emoji”, and “date_time” are ignored.
+   * details. Entities other than "bold", "italic", "underline", "strikethrough",
+   * "spoiler", "custom_emoji", and "date_time" are ignored. Must be one of
+   * "Markdown", "MarkdownV2", or "HTML".
    */
   text_parse_mode?: string | undefined
 
   /**
-   * A JSON-serialized list of special entities that appear in the gift text. It
-   * can be specified instead of text_parse_mode. Entities other than “bold”,
-   * “italic”, “underline”, “strikethrough”, “spoiler”, “custom_emoji”, and
-   * “date_time” are ignored.
+   * A JSON-serialized list of special entities that appear in the text, which
+   * can be specified instead of text_parse_mode. Entities other than "bold",
+   * "italic", "underline", "strikethrough", "spoiler", "custom_emoji", and
+   * "date_time" are ignored.
    */
   text_entities?: MessageEntity[] | undefined
 }
@@ -4045,12 +4163,12 @@ export interface GiftPremiumSubscriptionParams {
  */
 export interface VerifyUserParams {
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 
   /**
-   * Custom description for the verification; 0-70 characters. Must be empty if
+   * Custom description for the verification, 0-70 characters. Must be empty if
    * the organization isn't allowed to provide a custom verification description.
    */
   custom_description?: string | undefined
@@ -4065,12 +4183,12 @@ export interface VerifyChatParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
    * supergroup or channel in the format @username. Channel direct messages chats
-   * can't be verified.
+   * can't be verified. If a String, must be non-empty.
    */
   chat_id: number | string
 
   /**
-   * Custom description for the verification; 0-70 characters. Must be empty if
+   * Custom description for the verification, 0-70 characters. Must be empty if
    * the organization isn't allowed to provide a custom verification description.
    */
   custom_description?: string | undefined
@@ -4083,7 +4201,7 @@ export interface VerifyChatParams {
  */
 export interface RemoveUserVerificationParams {
   /**
-   * Unique identifier of the target user
+   * Unique identifier of the target user, at least 1
    */
   user_id: number
 }
@@ -4095,10 +4213,9 @@ export interface RemoveUserVerificationParams {
  */
 export interface RemoveChatVerificationParams {
   /**
-   * Unique identifier for the target chat or username of the target bot or
-   * channel in the format @username
+   * Unique identifier for the target chat
    */
-  chat_id: number | string
+  chat_id: number
 }
 
 /**
@@ -4120,7 +4237,7 @@ export interface ReadBusinessMessageParams {
   chat_id: number
 
   /**
-   * Unique identifier of the message to mark as read
+   * Unique identifier of the message to mark as read, at least 1
    */
   message_id: number
 }
@@ -4138,9 +4255,10 @@ export interface DeleteBusinessMessagesParams {
   business_connection_id: string
 
   /**
-   * A JSON-serialized list of 1-100 identifiers of messages to delete. All
-   * messages must be from the same chat. See deleteMessage for limitations on
-   * which messages can be deleted.
+   * A JSON-serialized list of identifiers of messages to delete. All messages
+   * must be from the same chat. See deleteMessage for limitations on which
+   * messages can be deleted. Must have 1-100 elements. Each element must be at
+   * least 1.
    */
   message_ids: number[]
 }
@@ -4157,12 +4275,12 @@ export interface SetBusinessAccountNameParams {
   business_connection_id: string
 
   /**
-   * The new value of the first name for the business account; 1-64 characters
+   * The new value of the first name for the business account, 1-64 characters
    */
   first_name: string
 
   /**
-   * The new value of the last name for the business account; 0-64 characters
+   * The new value of the last name for the business account, 0-64 characters
    */
   last_name?: string | undefined
 }
@@ -4179,7 +4297,7 @@ export interface SetBusinessAccountUsernameParams {
   business_connection_id: string
 
   /**
-   * The new value of the username for the business account; 0-32 characters
+   * The new value of the username for the business account, 0-32 characters
    */
   username?: string | undefined
 }
@@ -4196,7 +4314,7 @@ export interface SetBusinessAccountBioParams {
   business_connection_id: string
 
   /**
-   * The new value of the bio for the business account; 0-140 characters
+   * The new value of the bio for the business account, 0-140 characters
    */
   bio?: string | undefined
 }
@@ -4292,7 +4410,7 @@ export interface TransferBusinessAccountStarsParams {
   business_connection_id: string
 
   /**
-   * Number of Telegram Stars to transfer; 1-10000
+   * Number of Telegram Stars to transfer, 1-10000
    */
   star_count: number
 }
@@ -4360,7 +4478,7 @@ export interface GetBusinessAccountGiftsParams {
   offset?: string | undefined
 
   /**
-   * The maximum number of gifts to be returned; 1-100. Defaults to 100.
+   * The maximum number of gifts to be returned, 1-100, defaults to 100
    */
   limit?: number | undefined
 }
@@ -4372,7 +4490,7 @@ export interface GetBusinessAccountGiftsParams {
  */
 export interface GetUserGiftsParams {
   /**
-   * Unique identifier of the user
+   * Unique identifier of the user, at least 1
    */
   user_id: number
 
@@ -4395,15 +4513,15 @@ export interface GetUserGiftsParams {
   exclude_limited_non_upgradable?: boolean | undefined
 
   /**
+   * Pass True to exclude unique gifts
+   */
+  exclude_unique?: boolean | undefined
+
+  /**
    * Pass True to exclude gifts that were assigned from the TON blockchain and
    * can't be resold or transferred in Telegram
    */
   exclude_from_blockchain?: boolean | undefined
-
-  /**
-   * Pass True to exclude unique gifts
-   */
-  exclude_unique?: boolean | undefined
 
   /**
    * Pass True to sort results by gift price instead of send date. Sorting is
@@ -4418,7 +4536,7 @@ export interface GetUserGiftsParams {
   offset?: string | undefined
 
   /**
-   * The maximum number of gifts to be returned; 1-100. Defaults to 100.
+   * The maximum number of gifts to be returned, 1-100, defaults to 100
    */
   limit?: number | undefined
 }
@@ -4431,7 +4549,7 @@ export interface GetUserGiftsParams {
 export interface GetChatGiftsParams {
   /**
    * Unique identifier for the target chat or username of the target channel in
-   * the format @username
+   * the format @username, if a String, must be non-empty
    */
   chat_id: number | string
 
@@ -4468,15 +4586,15 @@ export interface GetChatGiftsParams {
   exclude_limited_non_upgradable?: boolean | undefined
 
   /**
+   * Pass True to exclude unique gifts
+   */
+  exclude_unique?: boolean | undefined
+
+  /**
    * Pass True to exclude gifts that were assigned from the TON blockchain and
    * can't be resold or transferred in Telegram
    */
   exclude_from_blockchain?: boolean | undefined
-
-  /**
-   * Pass True to exclude unique gifts
-   */
-  exclude_unique?: boolean | undefined
 
   /**
    * Pass True to sort results by gift price instead of send date. Sorting is
@@ -4491,7 +4609,7 @@ export interface GetChatGiftsParams {
   offset?: string | undefined
 
   /**
-   * The maximum number of gifts to be returned; 1-100. Defaults to 100.
+   * The maximum number of gifts to be returned, 1-100, defaults to 100
    */
   limit?: number | undefined
 }
@@ -4593,10 +4711,9 @@ export interface PostStoryParams {
   content: InputStoryContent
 
   /**
-   * Period after which the story is moved to the archive, in seconds; must be
-   * one of 6 * 3600, 12 * 3600, 86400, or 2 * 86400
+   * A JSON-serialized list of clickable areas to be shown on the story
    */
-  active_period: number
+  areas?: StoryArea[] | undefined
 
   /**
    * Caption of the story, 0-2048 characters after entities parsing
@@ -4604,8 +4721,8 @@ export interface PostStoryParams {
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the story caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -4616,9 +4733,10 @@ export interface PostStoryParams {
   caption_entities?: MessageEntity[] | undefined
 
   /**
-   * A JSON-serialized list of clickable areas to be shown on the story
+   * Period after which the story is moved to the archive, in seconds, must be
+   * one of 21600, 43200, 86400, or 172800: 6 hours, 12 hours, 1 day, or 2 days
    */
-  areas?: StoryArea[] | undefined
+  active_period: number
 
   /**
    * Pass True to keep the story accessible after it expires
@@ -4645,17 +4763,19 @@ export interface RepostStoryParams {
 
   /**
    * Unique identifier of the chat which posted the story that should be reposted
+   * or username of the channel in the format @username, if a String, must be
+   * non-empty
    */
-  from_chat_id: number
+  from_chat_id: number | string
 
   /**
    * Unique identifier of the story that should be reposted
    */
-  from_story_id: number
+  story_id: number
 
   /**
-   * Period after which the story is moved to the archive, in seconds; must be
-   * one of 6 * 3600, 12 * 3600, 86400, or 2 * 86400
+   * Period after which the story is moved to the archive, in seconds, must be
+   * one of 21600, 43200, 86400, or 172800: 6 hours, 12 hours, 1 day, or 2 days
    */
   active_period: number
 
@@ -4693,13 +4813,18 @@ export interface EditStoryParams {
   content: InputStoryContent
 
   /**
+   * A JSON-serialized list of clickable areas to be shown on the story
+   */
+  areas?: StoryArea[] | undefined
+
+  /**
    * Caption of the story, 0-2048 characters after entities parsing
    */
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the story caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the caption. See formatting options for more
+   * details. Must be one of "Markdown", "MarkdownV2", or "HTML".
    */
   parse_mode?: string | undefined
 
@@ -4708,11 +4833,6 @@ export interface EditStoryParams {
    * can be specified instead of parse_mode
    */
   caption_entities?: MessageEntity[] | undefined
-
-  /**
-   * A JSON-serialized list of clickable areas to be shown on the story
-   */
-  areas?: StoryArea[] | undefined
 }
 
 /**
@@ -4756,7 +4876,8 @@ export interface AnswerWebAppQueryParams {
  */
 export interface SavePreparedInlineMessageParams {
   /**
-   * Unique identifier of the target user that can use the prepared message
+   * Unique identifier of the target user that can use the prepared message, at
+   * least 1
    */
   user_id: number
 
@@ -4793,7 +4914,7 @@ export interface SavePreparedInlineMessageParams {
  */
 export interface SavePreparedKeyboardButtonParams {
   /**
-   * Unique identifier of the target user that can use the button
+   * Unique identifier of the target user that can use the button, at least 1
    */
   user_id: number
 
