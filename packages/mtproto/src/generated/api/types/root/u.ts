@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -23,6 +23,7 @@ import type * as root_r$ from '../root/r.js'
 import type * as root_s$ from '../root/s.js'
 import type * as root_t$ from '../root/t.js'
 import type * as root_w$ from '../root/w.js'
+import type * as wallet$ from '../wallet.js'
 import type { TlObject } from '../../../../tl/object.js'
 
 /** Any `Update`. */
@@ -168,6 +169,7 @@ export type TypeUpdate =
   | UpdateSavedRingtones
   | UpdateSentPhoneCode
   | UpdateSentStoryReaction
+  | UpdateSentWalletTransaction
   | UpdateServiceNotification
   | UpdateSmsJob
   | UpdateStarGiftAuctionState
@@ -188,6 +190,10 @@ export type TypeUpdate =
   | UpdateUserPhone
   | UpdateUserStatus
   | UpdateUserTyping
+  | UpdateWalletGaslessInfo
+  | UpdateWalletState
+  | UpdateWalletTonConnectPendingDisconnect
+  | UpdateWalletTonConnectSession
   | UpdateWebBrowserException
   | UpdateWebBrowserSettings
   | UpdateWebPage
@@ -1331,6 +1337,14 @@ export interface UpdateSentStoryReaction {
   readonly reaction: root_r$.TypeReaction
 }
 
+/** `updateSentWalletTransaction#b1434d4a` */
+export interface UpdateSentWalletTransaction {
+  readonly _: 'updateSentWalletTransaction'
+  readonly gasless?: true
+  readonly msg_hash: string
+  readonly transaction?: root_w$.TypeWalletTransaction
+}
+
 /** `updateServiceNotification#ebe46819` */
 export interface UpdateServiceNotification {
   readonly _: 'updateServiceNotification'
@@ -1537,6 +1551,34 @@ export interface UpdateUserTyping {
   readonly action: root_s$.TypeSendMessageAction
 }
 
+/** `updateWalletGaslessInfo#a8ae1cac` */
+export interface UpdateWalletGaslessInfo {
+  readonly _: 'updateWalletGaslessInfo'
+  readonly available?: true
+  readonly left: number
+  readonly reset_at: number
+  readonly min_amount: bigint
+  readonly relayer_address: string
+}
+
+/** `updateWalletState#6ac3f2aa` */
+export interface UpdateWalletState {
+  readonly _: 'updateWalletState'
+  readonly state: root_w$.TypeWalletState
+}
+
+/** `updateWalletTonConnectPendingDisconnect#d1ee8199` */
+export interface UpdateWalletTonConnectPendingDisconnect {
+  readonly _: 'updateWalletTonConnectPendingDisconnect'
+  readonly session_ids: readonly bigint[]
+}
+
+/** `updateWalletTonConnectSession#50a38e0e` */
+export interface UpdateWalletTonConnectSession {
+  readonly _: 'updateWalletTonConnectSession'
+  readonly session: root_t$.TypeTonConnectSession
+}
+
 /** `updateWebBrowserException#140502d1` */
 export interface UpdateWebBrowserException {
   readonly _: 'updateWebBrowserException'
@@ -1603,13 +1645,14 @@ export interface UrlAuthResultDefault {
   readonly _: 'urlAuthResultDefault'
 }
 
-/** `urlAuthResultRequest#3cd623ec` */
+/** `urlAuthResultRequest#bdca6167` */
 export interface UrlAuthResultRequest {
   readonly _: 'urlAuthResultRequest'
   readonly request_write_access?: true
   readonly request_phone_number?: true
   readonly match_codes_first?: true
   readonly is_app?: true
+  readonly request_wallet?: true
   readonly bot: TypeUser
   readonly domain: string
   readonly browser?: string
@@ -1619,6 +1662,8 @@ export interface UrlAuthResultRequest {
   readonly match_codes?: readonly string[]
   readonly user_id_hint?: bigint
   readonly verified_app_name?: string
+  readonly tc_session_id?: bigint
+  readonly tc_client_id?: string
 }
 
 /** `user#b1b8cc83` */
@@ -1683,7 +1728,7 @@ export interface UserEmpty {
   readonly id: bigint
 }
 
-/** `userFull#06cbe645` */
+/** `userFull#b90c2afd` */
 export interface UserFull {
   readonly _: 'userFull'
   readonly blocked?: true
@@ -1744,6 +1789,8 @@ export interface UserFull {
   readonly saved_music?: root_d$.TypeDocument
   readonly note?: root_t$.TypeTextWithEntities
   readonly bot_manager_id?: bigint
+  readonly wallet_card?: wallet$.TypeCard
+  readonly share_theme?: root_s$.TypeShareTheme
 }
 
 /** `userProfilePhoto#82d1f706` */
@@ -1801,5 +1848,7 @@ export interface Username {
   readonly _: 'username'
   readonly editable?: true
   readonly active?: true
+  readonly deletable?: true
+  readonly expired?: true
   readonly username: string
 }

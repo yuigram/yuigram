@@ -1,18 +1,19 @@
 // GENERATED FILE — do not edit.
 // Wire layout for auth
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 58 combinators. */
+/** 59 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0xe894ad4d, n: 'auth.acceptLoginToken', f: [{ n: 'token', t: 'bytes' }] },
   { id: 0x2ea2c0d4, n: 'auth.authorization', f: [{ n: 'flags', b: 1 }, { n: 'setup_password_required', t: 'true', c: 'flags', i: 1 }, { n: 'otherwise_relogin_days', t: 'int', c: 'flags', i: 1 }, { n: 'tmp_sessions', t: 'int', c: 'flags', i: 0 }, { n: 'future_auth_token', t: 'bytes', c: 'flags', i: 2 }, { n: 'user', t: 'obj' }] },
   { id: 0x44747e9a, n: 'auth.authorizationSignUpRequired', f: [{ n: 'flags', b: 1 }, { n: 'terms_of_service', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0xcdd42a05, n: 'auth.bindTempAuthKey', f: [{ n: 'perm_auth_key_id', t: 'long' }, { n: 'nonce', t: 'long' }, { n: 'expires_at', t: 'int' }, { n: 'encrypted_message', t: 'bytes' }] },
   { id: 0x1f040578, n: 'auth.cancelCode', f: [{ n: 'phone_number', t: 'string' }, { n: 'phone_code_hash', t: 'string' }] },
+  { id: 0x490dada1, n: 'auth.cancelWebTokenAuthorization', f: [{ n: 'web_auth_token', t: 'string' }] },
   { id: 0x56e59f9c, n: 'auth.checkPaidAuth', f: [{ n: 'phone_number', t: 'string' }, { n: 'phone_code_hash', t: 'string' }, { n: 'form_id', t: 'long' }] },
   { id: 0xd18b4d16, n: 'auth.checkPassword', f: [{ n: 'password', t: 'obj' }] },
   { id: 0x0d36bf79, n: 'auth.checkRecoveryPassword', f: [{ n: 'code', t: 'string' }] },
@@ -33,7 +34,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x67a3ff2c, n: 'auth.importBotAuthorization', f: [{ n: 'flags', t: 'int' }, { n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'bot_auth_token', t: 'string' }] },
   { id: 0x95ac5ce4, n: 'auth.importLoginToken', f: [{ n: 'token', t: 'bytes' }] },
   { id: 0x2db873a9, n: 'auth.importWebTokenAuthorization', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }, { n: 'web_auth_token', t: 'string' }] },
-  { id: 0x777df37a, n: 'auth.initFirebasePnvLogin', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }] },
+  { id: 0x644f15c0, n: 'auth.initFirebasePnvLogin', f: [{ n: 'flags', b: 1 }, { n: 'except_ids', t: { v: 'long' }, c: 'flags', i: 0 }, { n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }] },
   { id: 0x518ad0b7, n: 'auth.initPasskeyLogin', f: [{ n: 'api_id', t: 'int' }, { n: 'api_hash', t: 'string' }] },
   { id: 0x3e72ba19, n: 'auth.logOut', f: [] },
   { id: 0xc3a2835f, n: 'auth.loggedOut', f: [{ n: 'flags', b: 1 }, { n: 'future_auth_token', t: 'bytes', c: 'flags', i: 0 }] },

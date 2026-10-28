@@ -41,6 +41,7 @@ import {
   uniqueGift,
   upgradeGift,
   upgradeOptions,
+  WITHDRAWAL_PASSWORD_LIFETIME,
 } from '../src/gifts/gifts.js'
 import {
   boost,
@@ -57,6 +58,8 @@ import {
   setWorkHours,
 } from '../src/premium/premium.js'
 import type { TlValue } from '../src/tl/index.js'
+import { PasswordServer } from './server/password.js'
+import { DH_PRIME } from './server/server.js'
 
 const PEER: TypeInputPeer = { _: 'inputPeerUser', user_id: 5n, access_hash: 50n }
 
@@ -91,6 +94,7 @@ function fake(answers: readonly unknown[] = []) {
   const api = {
     account: {
       getPassword: named('account.getPassword'),
+      getTmpPassword: named('account.getTmpPassword'),
       getBotBusinessConnection: named('account.getBotBusinessConnection'),
       createBusinessChatLink: named('account.createBusinessChatLink'),
       editBusinessChatLink: named('account.editBusinessChatLink'),
@@ -549,6 +553,45 @@ describe('sending and settling gifts', () => {
 
     expect(await fetchSavedGifts(client, [])).toEqual([])
     expect(client.asked).toHaveLength(0)
+  })
+
+  it('withdraws with a temporary password bought by a proof of the real one', async () => {
+    // Since layer 232 the withdrawal carries a temporary password rather than
+    // the proof itself. The proof goes to account.getTmpPassword, for the
+    // shortest lifetime Telegram allows, and only what that returns travels on.
+    const owner = new PasswordServer({
+      password: 'hunter2',
+      p: DH_PRIME,
+      g: 3n,
+      salt1: Uint8Array.of(1, 2, 3, 4),
+      salt2: Uint8Array.of(5, 6, 7, 8),
+    })
+    const temporary = Uint8Array.of(9, 8, 7)
+    const client = fake([
+      owner.describe(),
+      { _: 'account.tmpPassword', tmp_password: temporary, valid_until: 1_800_000_060 },
+      { _: 'payments.starGiftWithdrawalUrl', url: 'https://example.invalid/w' },
+    ])
+
+    const url = await giftWithdrawalUrl(client, 'a-slug', 'hunter2')
+
+    expect(url).toBe('https://example.invalid/w')
+    expect(order(client)).toEqual([
+      'account.getPassword',
+      'account.getTmpPassword',
+      'payments.getStarGiftWithdrawalUrl',
+    ])
+    const bought = sent(client, 'account.getTmpPassword') as Record<string, unknown>
+    expect(bought['period']).toBe(WITHDRAWAL_PASSWORD_LIFETIME)
+    expect(WITHDRAWAL_PASSWORD_LIFETIME).toBe(60)
+    expect(owner.accepts(bought['password'] as never)).toBe(true)
+    expect(sent(client, 'payments.getStarGiftWithdrawalUrl')).toEqual({
+      stargift: { _: 'inputSavedStarGiftSlug', slug: 'a-slug' },
+      tmp_password: temporary,
+    })
+    expect(JSON.stringify(client.asked, (_k, v) => (typeof v === 'bigint' ? '' : v))).not.toContain(
+      'hunter2',
+    )
   })
 
   it('proves a password rather than sending one, for a withdrawal', async () => {

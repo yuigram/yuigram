@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for messages
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -31,7 +31,7 @@ export interface AcceptEncryption {
   readonly key_fingerprint: bigint
 }
 
-/** `messages.acceptUrlAuth#67a3f0de` */
+/** `messages.acceptUrlAuth#18dd4e92` */
 export interface AcceptUrlAuth {
   readonly _: 'messages.acceptUrlAuth'
   readonly write_allowed?: true
@@ -41,6 +41,7 @@ export interface AcceptUrlAuth {
   readonly button_id?: number
   readonly url?: string
   readonly match_code?: string
+  readonly tonconnect_session?: root_i$.TypeInputTonConnectOauthSession
 }
 
 /** `messages.addChatUser#cbc6d107` */
@@ -1462,6 +1463,12 @@ export interface GetSearchResultsPositions {
   readonly limit: number
 }
 
+/** `messages.getShareThemeBackdrops#f4599ef2` */
+export interface GetShareThemeBackdrops {
+  readonly _: 'messages.getShareThemeBackdrops'
+  readonly hash: number
+}
+
 /** `messages.getSplitRanges#1cff7e08` */
 export interface GetSplitRanges {
   readonly _: 'messages.getSplitRanges'
@@ -2576,6 +2583,13 @@ export interface SetInlineGameScore {
   readonly id: root_i$.TypeInputBotInlineMessageID
   readonly user_id: root_i$.TypeInputUser
   readonly score: number
+}
+
+/** `messages.setShareTheme#698a9b1a` */
+export interface SetShareTheme {
+  readonly _: 'messages.setShareTheme'
+  readonly peer: root_i$.TypeInputPeer
+  readonly theme: root_s$.TypeShareTheme
 }
 
 /** `messages.setTyping#58943ee2` */

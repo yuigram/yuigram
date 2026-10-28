@@ -37,15 +37,15 @@ const API_ONLY = new TlScope('api', [CORE, API])
 
 describe('the pinned layer', () => {
   it('is the layer the tables were generated from', () => {
-    expect(TL_LAYER).toBe(229)
+    expect(TL_LAYER).toBe(232)
   })
 })
 
 describe('table contents', () => {
   it('holds the whole published schema across the three tables', () => {
-    // 2,471 API combinators, of which six are the language's own core.
-    expect(CORE.size + MTPROTO.size + API.size).toBe(2471 + MTPROTO.size)
-    expect(API.size + CORE.size).toBe(2471)
+    // 2,579 API combinators, of which six are the language's own core.
+    expect(CORE.size + MTPROTO.size + API.size).toBe(2579 + MTPROTO.size)
+    expect(API.size + CORE.size).toBe(2579)
   })
 
   it('shares no identifier between tables', () => {

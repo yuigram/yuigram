@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// api registry (2465 combinators)
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// api registry (2573 combinators)
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 

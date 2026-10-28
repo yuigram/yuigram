@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL type barrel
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -30,6 +30,8 @@ export type * as stats from './stats.js'
 export type * as stickers from './stickers.js'
 export type * as storage from './storage.js'
 export type * as stories from './stories.js'
+export type * as toncenter from './toncenter.js'
 export type * as updates from './updates.js'
 export type * as upload from './upload.js'
 export type * as users from './users.js'
+export type * as wallet from './wallet.js'

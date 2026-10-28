@@ -110,8 +110,8 @@ const ACTIONS = API_ENTRIES.filter(
 
 describe('every action in the schema', () => {
   it('has a reading of its own', () => {
-    // Layer 229: sixty-eight actions besides the empty one.
-    expect(ACTIONS).toHaveLength(68)
+    // Layer 232: seventy-one actions besides the empty one.
+    expect(ACTIONS).toHaveLength(71)
     const unread = ACTIONS.filter(
       (entry) =>
         readAction(sampler()(entry) as unknown as TypeMessageAction)?.kind === 'unsupported',

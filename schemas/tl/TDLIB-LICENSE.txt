@@ -1,7 +1,9 @@
-Yuigram's TL schema for layer 229 (schemas/tl/api.229.tl in the repository)
+Yuigram's TL schema for layer 232 (schemas/tl/api.232.tl in the repository)
 contains td/generate/scheme/telegram_api.tl from TDLib (https://github.com/tdlib/td),
-revision 42e6a5259551178d1dab54a22ad96d14bd906e20. The generated code in @yuigram/mtproto —
+revision 4c6377aa7386c39217878a9a56d581922ad37ca4. The generated code in @yuigram/mtproto —
 src/generated, and the files built from it — is produced from that schema.
+The repository's schemas of earlier layers taken from TDLib name their own revision in
+their header and in schemas/tl/sources.json, under the same notice and licence.
 
 Copyright Aliaksei Levin (levlam@telegram.org), Arseny Smirnov (arseny30@gmail.com) 2014-2026
 

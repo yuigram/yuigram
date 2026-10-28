@@ -1,12 +1,12 @@
 // GENERATED FILE — do not edit.
 // Wire layout for payments
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 102 combinators. */
+/** 115 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0xf6e26854, n: 'payments.applyGiftCode', f: [{ n: 'slug', t: 'string' }] },
   { id: 0x80ed747d, n: 'payments.assignAppStoreTransaction', f: [{ n: 'receipt', t: 'bytes' }, { n: 'purpose', t: 'obj' }] },
@@ -25,8 +25,13 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x98d5ea1d, n: 'payments.connectedStarRefBots', f: [{ n: 'count', t: 'int' }, { n: 'connected_bots', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
   { id: 0x74bf076b, n: 'payments.convertStarGift', f: [{ n: 'stargift', t: 'obj' }] },
   { id: 0xb0f9684f, n: 'payments.craftStarGift', f: [{ n: 'stargift', t: { v: 'obj' } }] },
+  { id: 0xa2197cf6, n: 'payments.createOnrampSession', f: [{ n: 'flags', b: 1 }, { n: 'provider', t: 'string' }, { n: 'crypto_currency', t: 'string' }, { n: 'address', t: 'string' }, { n: 'payment_method', t: 'string', c: 'flags', i: 0 }, { n: 'base_currency', t: 'string', c: 'flags', i: 1 }, { n: 'base_amount', t: 'string', c: 'flags', i: 2 }, { n: 'memo', t: 'string', c: 'flags', i: 3 }, { n: 'theme', t: 'string', c: 'flags', i: 4 }, { n: 'success_return_url', t: 'string', c: 'flags', i: 5 }, { n: 'fail_return_url', t: 'string', c: 'flags', i: 6 }, { n: 'crypto_amount', t: 'string', c: 'flags', i: 7 }] },
   { id: 0x1f4a0e87, n: 'payments.createStarGiftCollection', f: [{ n: 'peer', t: 'obj' }, { n: 'title', t: 'string' }, { n: 'stargift', t: { v: 'obj' } }] },
+  { id: 0xbbcce4c2, n: 'payments.currencyRates', f: [{ n: 'rates', t: { v: 'obj' } }] },
+  { id: 0x3cdaf8aa, n: 'payments.deleteStarGift', f: [{ n: 'stargift', t: 'obj' }] },
   { id: 0xad5648e8, n: 'payments.deleteStarGiftCollection', f: [{ n: 'peer', t: 'obj' }, { n: 'collection_id', t: 'int' }] },
+  { id: 0xc0a2ea9f, n: 'payments.depositStarGift', f: [{ n: 'flags', b: 1 }, { n: 'hide_sender', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'slug', t: 'string' }] },
+  { id: 0x4aa5f0fe, n: 'payments.displayStarGift', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj', c: 'flags', i: 0 }, { n: 'slug', t: 'string' }] },
   { id: 0xe4fca4a3, n: 'payments.editConnectedStarRefBot', f: [{ n: 'flags', b: 1 }, { n: 'revoked', t: 'true', c: 'flags', i: 0 }, { n: 'peer', t: 'obj' }, { n: 'link', t: 'string' }] },
   { id: 0x0f91b065, n: 'payments.exportInvoice', f: [{ n: 'invoice_media', t: 'obj' }] },
   { id: 0xaed0cbd9, n: 'payments.exportedInvoice', f: [{ n: 'url', t: 'string' }] },
@@ -35,7 +40,13 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xb7d998f0, n: 'payments.getConnectedStarRefBot', f: [{ n: 'peer', t: 'obj' }, { n: 'bot', t: 'obj' }] },
   { id: 0x5869a553, n: 'payments.getConnectedStarRefBots', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'offset_date', t: 'int', c: 'flags', i: 2 }, { n: 'offset_link', t: 'string', c: 'flags', i: 2 }, { n: 'limit', t: 'int' }] },
   { id: 0xfd05dd00, n: 'payments.getCraftStarGifts', f: [{ n: 'gift_id', t: 'long' }, { n: 'offset', t: 'string' }, { n: 'limit', t: 'int' }] },
+  { id: 0xd35983e8, n: 'payments.getCurrencyRates', f: [] },
   { id: 0xf4239425, n: 'payments.getGiveawayInfo', f: [{ n: 'peer', t: 'obj' }, { n: 'msg_id', t: 'int' }] },
+  { id: 0x2ec29951, n: 'payments.getOnrampAvailability', f: [{ n: 'flags', b: 1 }, { n: 'provider', t: 'string' }, { n: 'crypto_currency', t: 'string' }, { n: 'base_currency', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0x1c8bedf3, n: 'payments.getOnrampBaseCurrencies', f: [{ n: 'provider', t: 'string' }, { n: 'crypto_currency', t: 'string' }] },
+  { id: 0x80e851fd, n: 'payments.getOnrampLimits', f: [{ n: 'flags', b: 1 }, { n: 'provider', t: 'string' }, { n: 'crypto_currency', t: 'string' }, { n: 'base_currency', t: 'string' }, { n: 'payment_method', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0x3f3e00dc, n: 'payments.getOnrampProviders', f: [{ n: 'flags', b: 1 }, { n: 'crypto_currency', t: 'string', c: 'flags', i: 0 }] },
+  { id: 0xe06645fa, n: 'payments.getOnrampQuote', f: [{ n: 'flags', b: 1 }, { n: 'provider', t: 'string' }, { n: 'crypto_currency', t: 'string' }, { n: 'base_currency', t: 'string' }, { n: 'base_amount', t: 'string', c: 'flags', i: 0 }, { n: 'crypto_amount', t: 'string', c: 'flags', i: 1 }, { n: 'payment_method', t: 'string', c: 'flags', i: 2 }] },
   { id: 0x37148dbb, n: 'payments.getPaymentForm', f: [{ n: 'flags', b: 1 }, { n: 'invoice', t: 'obj' }, { n: 'theme_params', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0x2478d1cc, n: 'payments.getPaymentReceipt', f: [{ n: 'peer', t: 'obj' }, { n: 'msg_id', t: 'int' }] },
   { id: 0x2757ba54, n: 'payments.getPremiumGiftCodeOptions', f: [{ n: 'flags', b: 1 }, { n: 'boost_peer', t: 'obj', c: 'flags', i: 0 }] },
@@ -49,7 +60,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x981b91dd, n: 'payments.getStarGiftCollections', f: [{ n: 'peer', t: 'obj' }, { n: 'hash', t: 'long' }] },
   { id: 0x6d038b58, n: 'payments.getStarGiftUpgradeAttributes', f: [{ n: 'gift_id', t: 'long' }] },
   { id: 0x9c9abcb1, n: 'payments.getStarGiftUpgradePreview', f: [{ n: 'gift_id', t: 'long' }] },
-  { id: 0xd06e93a8, n: 'payments.getStarGiftWithdrawalUrl', f: [{ n: 'stargift', t: 'obj' }, { n: 'password', t: 'obj' }] },
+  { id: 0xc8ca817b, n: 'payments.getStarGiftWithdrawalUrl', f: [{ n: 'flags', b: 1 }, { n: 'stargift', t: 'obj' }, { n: 'tmp_password', t: 'bytes' }] },
   { id: 0xc4563590, n: 'payments.getStarGifts', f: [{ n: 'hash', t: 'int' }] },
   { id: 0xd3c96bc8, n: 'payments.getStarsGiftOptions', f: [{ n: 'flags', b: 1 }, { n: 'user_id', t: 'obj', c: 'flags', i: 0 }] },
   { id: 0xbd1efd3e, n: 'payments.getStarsGiveawayOptions', f: [] },
@@ -90,6 +101,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x6b39f4ec, n: 'payments.starGiftAuctionState', f: [{ n: 'gift', t: 'obj' }, { n: 'state', t: 'obj' }, { n: 'user_state', t: 'obj' }, { n: 'timeout', t: 'int' }, { n: 'users', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }] },
   { id: 0x8a2932f3, n: 'payments.starGiftCollections', f: [{ n: 'collections', t: { v: 'obj' } }] },
   { id: 0xa0ba4f17, n: 'payments.starGiftCollectionsNotModified', f: [] },
+  { id: 0x725bb4eb, n: 'payments.starGiftDepositPayload', f: [{ n: 'nft_address', t: 'string' }, { n: 'payload', t: 'bytes' }, { n: 'amount', t: 'long' }] },
   { id: 0x46c6e36f, n: 'payments.starGiftUpgradeAttributes', f: [{ n: 'attributes', t: { v: 'obj' } }] },
   { id: 0x3de1dfed, n: 'payments.starGiftUpgradePreview', f: [{ n: 'sample_attributes', t: { v: 'obj' } }, { n: 'prices', t: { v: 'obj' } }, { n: 'next_prices', t: { v: 'obj' } }] },
   { id: 0x84aa3a9c, n: 'payments.starGiftWithdrawalUrl', f: [{ n: 'url', t: 'string' }] },
@@ -110,4 +122,5 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xaed6e4f5, n: 'payments.upgradeStarGift', f: [{ n: 'flags', b: 1 }, { n: 'keep_original_details', t: 'true', c: 'flags', i: 0 }, { n: 'stargift', t: 'obj' }] },
   { id: 0xb6c8f12b, n: 'payments.validateRequestedInfo', f: [{ n: 'flags', b: 1 }, { n: 'save', t: 'true', c: 'flags', i: 0 }, { n: 'invoice', t: 'obj' }, { n: 'info', t: 'obj' }] },
   { id: 0xd1451883, n: 'payments.validatedRequestedInfo', f: [{ n: 'flags', b: 1 }, { n: 'id', t: 'string', c: 'flags', i: 0 }, { n: 'shipping_options', t: { v: 'obj' }, c: 'flags', i: 1 }] },
+  { id: 0xec2030ae, n: 'payments.withdrawStarGift', f: [{ n: 'flags', b: 1 }, { n: 'keep_on_profile', t: 'true', c: 'flags', i: 0 }, { n: 'stargift', t: 'obj' }, { n: 'tmp_password', t: 'bytes' }] },
 ]

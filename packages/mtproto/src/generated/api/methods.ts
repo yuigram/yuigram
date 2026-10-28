@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// TL methods (813)
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// TL methods (859)
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -429,6 +429,9 @@ export interface AuthMethods {
   /** `auth.cancelCode#1f040578` */
   cancelCode(params: Omit<types.auth.CancelCode, '_'>): Promise<boolean>
 
+  /** `auth.cancelWebTokenAuthorization#490dada1` */
+  cancelWebTokenAuthorization(params: Omit<types.auth.CancelWebTokenAuthorization, '_'>): Promise<boolean>
+
   /** `auth.checkPaidAuth#56e59f9c` */
   checkPaidAuth(params: Omit<types.auth.CheckPaidAuth, '_'>): Promise<types.auth.TypeSentCode>
 
@@ -468,7 +471,7 @@ export interface AuthMethods {
   /** `auth.importWebTokenAuthorization#2db873a9` */
   importWebTokenAuthorization(params: Omit<types.auth.ImportWebTokenAuthorization, '_'>): Promise<types.auth.TypeAuthorization>
 
-  /** `auth.initFirebasePnvLogin#777df37a` */
+  /** `auth.initFirebasePnvLogin#644f15c0` */
   initFirebasePnvLogin(params: Omit<types.auth.InitFirebasePnvLogin, '_'>): Promise<types.auth.TypeFirebasePnvIntent>
 
   /** `auth.initPasskeyLogin#518ad0b7` */
@@ -513,6 +516,9 @@ export interface BotsMethods {
   /** `bots.addPreviewMedia#17aeb75a` */
   addPreviewMedia(params: Omit<types.bots.AddPreviewMedia, '_'>): Promise<types.TypeBotPreviewMedia>
 
+  /** `bots.addUsername#3501c08a` */
+  addUsername(params: Omit<types.bots.AddUsername, '_'>): Promise<boolean>
+
   /** `bots.allowSendMessage#f132e3ef` */
   allowSendMessage(params: Omit<types.bots.AllowSendMessage, '_'>): Promise<types.TypeUpdates>
 
@@ -525,7 +531,7 @@ export interface BotsMethods {
   /** `bots.checkDownloadFileParams#50077589` */
   checkDownloadFileParams(params: Omit<types.bots.CheckDownloadFileParams, '_'>): Promise<boolean>
 
-  /** `bots.checkUsername#87f2219b` */
+  /** `bots.checkUsername#e3ac4c61` */
   checkUsername(params: Omit<types.bots.CheckUsername, '_'>): Promise<boolean>
 
   /** `bots.createBot#e5b17f2b` */
@@ -576,6 +582,9 @@ export interface BotsMethods {
   /** `bots.invokeWebViewCustomMethod#087fc5e7` */
   invokeWebViewCustomMethod(params: Omit<types.bots.InvokeWebViewCustomMethod, '_'>): Promise<types.TypeDataJSON>
 
+  /** `bots.removeUsername#c704147d` */
+  removeUsername(params: Omit<types.bots.RemoveUsername, '_'>): Promise<boolean>
+
   /** `bots.reorderPreviewMedias#b627f3aa` */
   reorderPreviewMedias(params: Omit<types.bots.ReorderPreviewMedias, '_'>): Promise<boolean>
 
@@ -606,7 +615,7 @@ export interface BotsMethods {
   /** `bots.setBotMenuButton#4504d54f` */
   setBotMenuButton(params: Omit<types.bots.SetBotMenuButton, '_'>): Promise<boolean>
 
-  /** `bots.setCustomVerification#8b89dfbd` */
+  /** `bots.setCustomVerification#f4946757` */
   setCustomVerification(params: Omit<types.bots.SetCustomVerification, '_'>): Promise<boolean>
 
   /** `bots.setJoinChatResults#e71a4810` */
@@ -894,6 +903,9 @@ export interface ContactsMethods {
   /** `contacts.exportContactToken#f8654027` */
   exportContactToken(): Promise<types.TypeExportedContactToken>
 
+  /** `contacts.exportNoPaidMessagesToken#83c586ae` */
+  exportNoPaidMessagesToken(params?: Omit<types.contacts.ExportNoPaidMessagesToken, '_'>): Promise<types.TypeExportedNoPaidMessagesToken>
+
   /** `contacts.getBirthdays#daeda864` */
   getBirthdays(): Promise<types.contacts.TypeContactBirthdays>
 
@@ -926,6 +938,9 @@ export interface ContactsMethods {
 
   /** `contacts.importContacts#2c800be5` */
   importContacts(params: Omit<types.contacts.ImportContacts, '_'>): Promise<types.contacts.TypeImportedContacts>
+
+  /** `contacts.importNoPaidMessagesToken#35a7c6ca` */
+  importNoPaidMessagesToken(params: Omit<types.contacts.ImportNoPaidMessagesToken, '_'>): Promise<types.TypeUser>
 
   /** `contacts.resetSaved#879537f1` */
   resetSaved(): Promise<boolean>
@@ -1095,7 +1110,7 @@ export interface MessagesMethods {
   /** `messages.acceptEncryption#3dbc0415` */
   acceptEncryption(params: Omit<types.messages.AcceptEncryption, '_'>): Promise<types.TypeEncryptedChat>
 
-  /** `messages.acceptUrlAuth#67a3f0de` */
+  /** `messages.acceptUrlAuth#18dd4e92` */
   acceptUrlAuth(params?: Omit<types.messages.AcceptUrlAuth, '_'>): Promise<types.TypeUrlAuthResult>
 
   /** `messages.addChatUser#cbc6d107` */
@@ -1503,6 +1518,9 @@ export interface MessagesMethods {
   /** `messages.getSearchResultsPositions#9c7f2f10` */
   getSearchResultsPositions(params: Omit<types.messages.GetSearchResultsPositions, '_'>): Promise<types.messages.TypeSearchResultsPositions>
 
+  /** `messages.getShareThemeBackdrops#f4599ef2` */
+  getShareThemeBackdrops(params: Omit<types.messages.GetShareThemeBackdrops, '_'>): Promise<types.TypeShareThemeBackdrops>
+
   /** `messages.getSplitRanges#1cff7e08` */
   getSplitRanges(): Promise<readonly types.TypeMessageRange[]>
 
@@ -1785,6 +1803,9 @@ export interface MessagesMethods {
   /** `messages.setInlineGameScore#15ad9f64` */
   setInlineGameScore(params: Omit<types.messages.SetInlineGameScore, '_'>): Promise<boolean>
 
+  /** `messages.setShareTheme#698a9b1a` */
+  setShareTheme(params: Omit<types.messages.SetShareTheme, '_'>): Promise<boolean>
+
   /** `messages.setTyping#58943ee2` */
   setTyping(params: Omit<types.messages.SetTyping, '_'>): Promise<boolean>
 
@@ -1908,11 +1929,23 @@ export interface PaymentsMethods {
   /** `payments.craftStarGift#b0f9684f` */
   craftStarGift(params: Omit<types.payments.CraftStarGift, '_'>): Promise<types.TypeUpdates>
 
+  /** `payments.createOnrampSession#a2197cf6` */
+  createOnrampSession(params: Omit<types.payments.CreateOnrampSession, '_'>): Promise<types.TypeOnrampSession>
+
   /** `payments.createStarGiftCollection#1f4a0e87` */
   createStarGiftCollection(params: Omit<types.payments.CreateStarGiftCollection, '_'>): Promise<types.TypeStarGiftCollection>
 
+  /** `payments.deleteStarGift#3cdaf8aa` */
+  deleteStarGift(params: Omit<types.payments.DeleteStarGift, '_'>): Promise<boolean>
+
   /** `payments.deleteStarGiftCollection#ad5648e8` */
   deleteStarGiftCollection(params: Omit<types.payments.DeleteStarGiftCollection, '_'>): Promise<boolean>
+
+  /** `payments.depositStarGift#c0a2ea9f` */
+  depositStarGift(params: Omit<types.payments.DepositStarGift, '_'>): Promise<types.payments.TypeStarGiftDepositPayload>
+
+  /** `payments.displayStarGift#4aa5f0fe` */
+  displayStarGift(params: Omit<types.payments.DisplayStarGift, '_'>): Promise<boolean>
 
   /** `payments.editConnectedStarRefBot#e4fca4a3` */
   editConnectedStarRefBot(params: Omit<types.payments.EditConnectedStarRefBot, '_'>): Promise<types.payments.TypeConnectedStarRefBots>
@@ -1935,8 +1968,26 @@ export interface PaymentsMethods {
   /** `payments.getCraftStarGifts#fd05dd00` */
   getCraftStarGifts(params: Omit<types.payments.GetCraftStarGifts, '_'>): Promise<types.payments.TypeSavedStarGifts>
 
+  /** `payments.getCurrencyRates#d35983e8` */
+  getCurrencyRates(): Promise<types.payments.TypeCurrencyRates>
+
   /** `payments.getGiveawayInfo#f4239425` */
   getGiveawayInfo(params: Omit<types.payments.GetGiveawayInfo, '_'>): Promise<types.payments.TypeGiveawayInfo>
+
+  /** `payments.getOnrampAvailability#2ec29951` */
+  getOnrampAvailability(params: Omit<types.payments.GetOnrampAvailability, '_'>): Promise<types.TypeOnrampAvailability>
+
+  /** `payments.getOnrampBaseCurrencies#1c8bedf3` */
+  getOnrampBaseCurrencies(params: Omit<types.payments.GetOnrampBaseCurrencies, '_'>): Promise<readonly string[]>
+
+  /** `payments.getOnrampLimits#80e851fd` */
+  getOnrampLimits(params: Omit<types.payments.GetOnrampLimits, '_'>): Promise<types.TypeOnrampLimits>
+
+  /** `payments.getOnrampProviders#3f3e00dc` */
+  getOnrampProviders(params?: Omit<types.payments.GetOnrampProviders, '_'>): Promise<readonly types.TypeOnrampProviderInfo[]>
+
+  /** `payments.getOnrampQuote#e06645fa` */
+  getOnrampQuote(params: Omit<types.payments.GetOnrampQuote, '_'>): Promise<types.TypeOnrampQuote>
 
   /** `payments.getPaymentForm#37148dbb` */
   getPaymentForm(params: Omit<types.payments.GetPaymentForm, '_'>): Promise<types.payments.TypePaymentForm>
@@ -1977,7 +2028,7 @@ export interface PaymentsMethods {
   /** `payments.getStarGiftUpgradePreview#9c9abcb1` */
   getStarGiftUpgradePreview(params: Omit<types.payments.GetStarGiftUpgradePreview, '_'>): Promise<types.payments.TypeStarGiftUpgradePreview>
 
-  /** `payments.getStarGiftWithdrawalUrl#d06e93a8` */
+  /** `payments.getStarGiftWithdrawalUrl#c8ca817b` */
   getStarGiftWithdrawalUrl(params: Omit<types.payments.GetStarGiftWithdrawalUrl, '_'>): Promise<types.payments.TypeStarGiftWithdrawalUrl>
 
   /** `payments.getStarGifts#c4563590` */
@@ -2066,6 +2117,9 @@ export interface PaymentsMethods {
 
   /** `payments.validateRequestedInfo#b6c8f12b` */
   validateRequestedInfo(params: Omit<types.payments.ValidateRequestedInfo, '_'>): Promise<types.payments.TypeValidatedRequestedInfo>
+
+  /** `payments.withdrawStarGift#ec2030ae` */
+  withdrawStarGift(params: Omit<types.payments.WithdrawStarGift, '_'>): Promise<boolean>
 }
 
 /** Methods in the `phone` namespace. */
@@ -2425,6 +2479,15 @@ export interface StoriesMethods {
   updateAlbum(params: Omit<types.stories.UpdateAlbum, '_'>): Promise<types.TypeStoryAlbum>
 }
 
+/** Methods in the `toncenter` namespace. */
+export interface ToncenterMethods {
+  /** `toncenter.getStreamingUrl#cdaf63c7` */
+  getStreamingUrl(): Promise<types.toncenter.TypeStreamingUrl>
+
+  /** `toncenter.performApiRequest#8d7bdd61` */
+  performApiRequest(params: Omit<types.toncenter.PerformApiRequest, '_'>): Promise<types.toncenter.TypeApiResponse>
+}
+
 /** Methods in the `updates` namespace. */
 export interface UpdatesMethods {
   /** `updates.getChannelDifference#03173d78` */
@@ -2486,6 +2549,87 @@ export interface UsersMethods {
 
   /** `users.suggestBirthday#fc533372` */
   suggestBirthday(params: Omit<types.users.SuggestBirthday, '_'>): Promise<types.TypeUpdates>
+}
+
+/** Methods in the `wallet` namespace. */
+export interface WalletMethods {
+  /** `wallet.disableBackup#0b0bf0da` */
+  disableBackup(params?: Omit<types.wallet.DisableBackup, '_'>): Promise<types.TypeWalletState>
+
+  /** `wallet.enableBackup#4500c525` */
+  enableBackup(params: Omit<types.wallet.EnableBackup, '_'>): Promise<types.TypeWalletState>
+
+  /** `wallet.exportSecretPhrase#9077c9ac` */
+  exportSecretPhrase(params?: Omit<types.wallet.ExportSecretPhrase, '_'>): Promise<types.wallet.TypeSecretPhraseParts>
+
+  /** `wallet.fetchEncryptedSecretPhrasePart#f53925cf` */
+  fetchEncryptedSecretPhrasePart(params: Omit<types.wallet.FetchEncryptedSecretPhrasePart, '_'>): Promise<types.wallet.TypeEncryptedSecretPhrasePart>
+
+  /** `wallet.getBackupHolderDcs#d179d494` */
+  getBackupHolderDcs(): Promise<readonly types.wallet.TypeHolderDc[]>
+
+  /** `wallet.getExistingWaltBalance#691f4360` */
+  getExistingWaltBalance(): Promise<types.wallet.TypeExistingBalance>
+
+  /** `wallet.getGaslessInfo#742df0a1` */
+  getGaslessInfo(): Promise<types.TypeUpdates>
+
+  /** `wallet.getNfts#8c12f3a4` */
+  getNfts(params: Omit<types.wallet.GetNfts, '_'>): Promise<types.wallet.TypeNftItems>
+
+  /** `wallet.getProofChallenge#2025e697` */
+  getProofChallenge(): Promise<types.wallet.TypeProofChallenge>
+
+  /** `wallet.getState#ab83b33a` */
+  getState(): Promise<types.TypeWalletState>
+
+  /** `wallet.getTransactions#a8830a83` */
+  getTransactions(params: Omit<types.wallet.GetTransactions, '_'>): Promise<types.wallet.TypeTransactions>
+
+  /** `wallet.getTransactionsByIDs#811ceab6` */
+  getTransactionsByIDs(params: Omit<types.wallet.GetTransactionsByIDs, '_'>): Promise<types.wallet.TypeTransactions>
+
+  /** `wallet.getTransactionsByMsgHash#a6bb795d` */
+  getTransactionsByMsgHash(params: Omit<types.wallet.GetTransactionsByMsgHash, '_'>): Promise<types.wallet.TypeTransactions>
+
+  /** `wallet.getUserAddresses#5275dfdd` */
+  getUserAddresses(params: Omit<types.wallet.GetUserAddresses, '_'>): Promise<types.wallet.TypeUserAddresses>
+
+  /** `wallet.replaceWallet#d8c72eec` */
+  replaceWallet(params: Omit<types.wallet.ReplaceWallet, '_'>): Promise<types.TypeWalletState>
+
+  /** `wallet.sendTransfer#d9e5d9e2` */
+  sendTransfer(params: Omit<types.wallet.SendTransfer, '_'>): Promise<types.TypeUpdates>
+
+  /** `wallet.setCardStickers#068509ac` */
+  setCardStickers(params: Omit<types.wallet.SetCardStickers, '_'>): Promise<types.wallet.TypeCard>
+
+  /** `wallet.tonConnectClaimRequest#66b57b41` */
+  tonConnectClaimRequest(params: Omit<types.wallet.TonConnectClaimRequest, '_'>): Promise<boolean>
+
+  /** `wallet.tonConnectCloseSession#d63f61ce` */
+  tonConnectCloseSession(params: Omit<types.wallet.TonConnectCloseSession, '_'>): Promise<boolean>
+
+  /** `wallet.tonConnectCreateSession#cc931046` */
+  tonConnectCreateSession(params: Omit<types.wallet.TonConnectCreateSession, '_'>): Promise<types.TypeTonConnectSession>
+
+  /** `wallet.tonConnectGetPending#11aee065` */
+  tonConnectGetPending(params?: Omit<types.wallet.TonConnectGetPending, '_'>): Promise<types.wallet.TypeTonConnectPending>
+
+  /** `wallet.tonConnectGetSessions#a7ffb56e` */
+  tonConnectGetSessions(): Promise<types.wallet.TypeTonConnectSessions>
+
+  /** `wallet.tonConnectNextEventId#775d7244` */
+  tonConnectNextEventId(params: Omit<types.wallet.TonConnectNextEventId, '_'>): Promise<types.TypeTonConnectNextEventId>
+
+  /** `wallet.tonConnectRegisterKey#338bcf1c` */
+  tonConnectRegisterKey(params: Omit<types.wallet.TonConnectRegisterKey, '_'>): Promise<types.wallet.TypeTonConnectChallenge>
+
+  /** `wallet.tonConnectSubmitConnectResult#c2c00779` */
+  tonConnectSubmitConnectResult(params: Omit<types.wallet.TonConnectSubmitConnectResult, '_'>): Promise<boolean>
+
+  /** `wallet.tonConnectSubmitResponse#fac67d3c` */
+  tonConnectSubmitResponse(params: Omit<types.wallet.TonConnectSubmitResponse, '_'>): Promise<boolean>
 }
 
 /**
@@ -2562,6 +2706,9 @@ export interface ApiMethods {
   /** The `stories` namespace. */
   readonly stories: StoriesMethods
 
+  /** The `toncenter` namespace. */
+  readonly toncenter: ToncenterMethods
+
   /** The `updates` namespace. */
   readonly updates: UpdatesMethods
 
@@ -2570,6 +2717,9 @@ export interface ApiMethods {
 
   /** The `users` namespace. */
   readonly users: UsersMethods
+
+  /** The `wallet` namespace. */
+  readonly wallet: WalletMethods
 
   /** `initConnection#c1cd5ea9` */
   initConnection(params: Omit<types.InitConnection, '_'>): Promise<TlObject>

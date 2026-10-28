@@ -666,6 +666,8 @@ export async function fetchSavedGifts(
  * The password is required by the protocol rather than by this: withdrawing a
  * collectible is irreversible, so Telegram asks the owner to prove they are at
  * the keyboard. The password is used to compute a proof and is never sent.
+ * The proof buys a temporary password, valid for {@link WITHDRAWAL_PASSWORD_LIFETIME}
+ * seconds, and that is what the withdrawal request carries.
  */
 export async function giftWithdrawalUrl(
   client: Gifting,
@@ -679,13 +681,26 @@ export async function giftWithdrawalUrl(
     (await client.api.account.getPassword()) as unknown as TlValue,
   )
 
+  const temporary = await client.api.account.getTmpPassword({
+    password: await passwordProof(password, challenge),
+    period: WITHDRAWAL_PASSWORD_LIFETIME,
+  })
+
   const answer = await client.api.payments.getStarGiftWithdrawalUrl({
     stargift: await giftRef(client, gift),
-    password: await passwordProof(password, challenge),
+    tmp_password: temporary.tmp_password,
   })
 
   return answer.url
 }
+
+/**
+ * How long the temporary password a withdrawal asks for stays valid, in seconds.
+ *
+ * The shortest Telegram allows. It is used at once, by the next request, and a
+ * credential for an irreversible operation should not outlive its one use.
+ */
+export const WITHDRAWAL_PASSWORD_LIFETIME = 60
 
 /**
  * How long an offer stands when the caller does not say.
