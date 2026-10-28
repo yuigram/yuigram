@@ -103,9 +103,22 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-      # `changeset publish` creates the tags locally; the 0.1.0 release showed
-      # they do not reach the remote on their own, and tags were pushed by hand
-      # afterwards. Doing it explicitly is one line and removes the guesswork.
+      # `changeset publish` tags what it published on the runner only. The
+      # action decides whether anything was published by reading the command's
+      # output, and @changesets/cli 3 no longer lists the tags it made, so that
+      # decision came out false for 1.0.0 and the tags were pushed by hand.
+      # Every tag the runner has and the remote does not is pushed instead, one
+      # by one and never forced; a run that only opens the version pull request
+      # made none.
       - name: Push release tags
-        if: steps.changesets.outputs.published == 'true'
-        run: git push origin --tags
+        run: |
+          set -euo pipefail
+          remote=$(git ls-remote --tags --refs origin | sed 's#.*refs/tags/##' | sort)
+          new=$(comm -23 <(git tag --list | sort) <(printf '%s\n' "$remote"))
+          if [ -z "$new" ]; then
+            echo "No new tags."
+            exit 0
+          fi
+          while IFS= read -r tag; do
+            git push origin "refs/tags/$tag"
+          done <<< "$new"
