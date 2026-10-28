@@ -4,13 +4,15 @@
  * Schema tooling entry point.
  *
  * ```
- * fetch       download the documentation, commit a snapshot, emit sources
- * regenerate  the same, plus a report of what changed about the surface
- * emit        re-emit from the committed schema, without the network
+ * fetch       download the stable documentation, write its snapshot, emit sources
+ * regenerate  the same, but only when what the page says changed, with reports
+ * emit        re-emit from the newest committed snapshot, without the network
  * ```
  *
- * `regenerate` is what the scheduled workflow runs. It never publishes: it
- * updates the committed snapshot and reports what changed, leaving a human to
+ * `regenerate` is what the scheduled workflow runs, as
+ * `regenerate --report-dir <dir>`. It never publishes: it updates the committed
+ * snapshot when the stable page changed, and writes for the workflow what to
+ * propose and what the staging copy says ahead of it, leaving a person to
  * decide whether a new capability deserves a first-class abstraction or only a
  * generated type.
  */
@@ -19,18 +21,20 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { diffSchemas, formatDiff } from './bot-api/diff.js'
+import { formatDiff } from './bot-api/diff.js'
+import {
+  classify,
+  type Drift,
+  DriftError,
+  latestVersion,
+  PREVIEW_URL,
+  previewReport,
+  proposal,
+  STABLE_URL,
+} from './bot-api/drift.js'
 import type { BotApiSchema } from './bot-api/ir.js'
 import { parseBotApi } from './bot-api/parse.js'
 import { describeServiceDetection, emitAll, writeGenerated } from './emit/index.js'
-
-/** Documentation sources, most current first. */
-const SOURCES: readonly string[] = [
-  // corefork publishes ahead of the stable page, which buys lead time on
-  // unreleased features at no cost.
-  'https://corefork.telegram.org/bots/api',
-  'https://core.telegram.org/bots/api',
-]
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const SCHEMA_DIR = join(ROOT, 'schemas', 'bot-api')
@@ -39,24 +43,16 @@ const GENERATED_DIR = join(ROOT, 'packages', 'bot-api', 'src', 'generated')
 /** Largest a single generated file may become, in bytes. */
 const FILE_BUDGET = 300_000
 
-/** Fetch the documentation, falling back through the source list. */
-async function fetchDocumentation(): Promise<{ html: string; url: string }> {
-  const failures: string[] = []
+/** Download one documentation page. */
+async function fetchPage(url: string): Promise<string> {
+  const response = await fetch(url, { headers: { 'user-agent': 'yuigram-schema' } })
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`)
+  return await response.text()
+}
 
-  for (const url of SOURCES) {
-    try {
-      const response = await fetch(url, { headers: { 'user-agent': 'yuigram-schema' } })
-      if (!response.ok) {
-        failures.push(`${url}: HTTP ${response.status}`)
-        continue
-      }
-      return { html: await response.text(), url }
-    } catch (error) {
-      failures.push(`${url}: ${String(error)}`)
-    }
-  }
-
-  throw new Error(`could not fetch the Bot API documentation:\n  ${failures.join('\n  ')}`)
+/** Download and parse one documentation page. */
+async function readPage(url: string): Promise<BotApiSchema> {
+  return parseBotApi(await fetchPage(url), url)
 }
 
 /** Serialize a schema deterministically, so drift detection stays meaningful. */
@@ -73,16 +69,17 @@ async function readSnapshot(version: string): Promise<BotApiSchema | undefined> 
   }
 }
 
-/** Fetch, parse and write the snapshot. Returns the schema and any drift report. */
-async function run(mode: 'fetch' | 'regenerate'): Promise<void> {
-  const { html, url } = await fetchDocumentation()
-  const schema = parseBotApi(html, url)
+/** The newest committed snapshot, by version number rather than by name. */
+async function readLatestSnapshot(): Promise<BotApiSchema | undefined> {
+  const versions = (await readdir(SCHEMA_DIR))
+    .filter((name) => /^\d+\.\d+(?:\.\d+)?\.json$/.test(name))
+    .map((name) => name.replace(/\.json$/, ''))
+  const latest = latestVersion(versions)
+  return latest === undefined ? undefined : await readSnapshot(latest)
+}
 
-  process.stdout.write(`Bot API ${schema.version} from ${url}\n`)
-  process.stdout.write(`  ${schema.methods.length} methods, ${schema.objects.length} objects\n`)
-
-  const previous = await readSnapshot(schema.version)
-
+/** Write a schema's snapshot and the sources generated from it. */
+async function writeSchema(schema: BotApiSchema): Promise<void> {
   await mkdir(SCHEMA_DIR, { recursive: true })
   await writeFile(join(SCHEMA_DIR, `${schema.version}.json`), serialize(schema), 'utf8')
 
@@ -112,42 +109,125 @@ async function run(mode: 'fetch' | 'regenerate'): Promise<void> {
     }
     process.exitCode = 1
   }
+}
 
-  if (mode === 'regenerate') {
-    if (previous === undefined) {
-      process.stdout.write(`\nNew schema version ${schema.version}.\n`)
-      return
-    }
+/** Download the stable page and write it, whether or not it changed. */
+async function commandFetch(): Promise<void> {
+  const stable = await readPage(STABLE_URL)
+  process.stdout.write(`Bot API ${stable.version} from ${STABLE_URL}\n`)
+  process.stdout.write(`  ${stable.methods.length} methods, ${stable.objects.length} objects\n`)
+  await writeSchema(stable)
+}
 
-    const diff = diffSchemas(previous, schema)
-    process.stdout.write(`\n${formatDiff(diff)}\n`)
+/** What became of the staging copy on this run. */
+type Preview =
+  | { readonly state: 'same' }
+  | { readonly state: 'differs'; readonly report: string }
+  | { readonly state: 'unavailable'; readonly reason: string }
+
+/**
+ * Read the staging copy and compare it with the stable page.
+ *
+ * Its absence is reported rather than fatal: it is a look ahead, and the
+ * stable page alone decides what is generated.
+ */
+async function readPreview(stable: BotApiSchema): Promise<Preview> {
+  try {
+    const report = previewReport(stable, await readPage(PREVIEW_URL))
+    return report === undefined ? { state: 'same' } : { state: 'differs', report }
+  } catch (error) {
+    return { state: 'unavailable', reason: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/** One paragraph for the run's summary. */
+function describeRun(drift: Drift, preview: Preview): string {
+  const stable =
+    drift.kind === 'unchanged'
+      ? `The stable page states Bot API ${drift.version}, as committed. Nothing was regenerated.`
+      : drift.kind === 'new-version'
+        ? `The stable page states Bot API ${drift.to}; ${drift.from} is committed. Regenerated.`
+        : `The stable page of Bot API ${drift.version} changed without a new version number. ` +
+          'Regenerated.'
+
+  const staging =
+    preview.state === 'same'
+      ? 'The staging copy agrees with it.'
+      : preview.state === 'differs'
+        ? 'The staging copy differs from it; see the preview report.'
+        : `The staging copy could not be read: ${preview.reason}`
+
+  return `${stable} ${staging}\n`
+}
+
+/**
+ * Regenerate when the stable page changed, and report.
+ *
+ * With `--report-dir`, writes there:
+ *
+ * - `summary.md`, always;
+ * - `proposal.json` (`branch`, `title`) and `proposal.md` (the pull request
+ *   body), when the stable page changed;
+ * - `preview.json` (`state`: `same`, `differs` or `unavailable`) and, when the
+ *   staging copy differs, `preview.md`.
+ */
+async function commandRegenerate(reportDir: string | undefined): Promise<void> {
+  const stable = await readPage(STABLE_URL)
+  process.stdout.write(`Bot API ${stable.version} from ${STABLE_URL}\n`)
+  process.stdout.write(`  ${stable.methods.length} methods, ${stable.objects.length} objects\n`)
+
+  const committed = await readLatestSnapshot()
+  if (committed === undefined) {
+    throw new DriftError(`no committed snapshot in ${SCHEMA_DIR} to compare with; run fetch`)
+  }
+
+  const drift = classify(committed, stable)
+  const preview = await readPreview(stable)
+
+  if (drift.kind !== 'unchanged') {
+    process.stdout.write(`\n${formatDiff(drift.diff)}\n`)
+    await writeSchema(stable)
+  }
+
+  const summary = describeRun(drift, preview)
+  process.stdout.write(`\n${summary}`)
+
+  if (reportDir === undefined) return
+
+  await mkdir(reportDir, { recursive: true })
+  await writeFile(join(reportDir, 'summary.md'), summary, 'utf8')
+  await writeFile(
+    join(reportDir, 'preview.json'),
+    `${JSON.stringify({ state: preview.state })}\n`,
+    'utf8',
+  )
+  if (preview.state === 'differs') {
+    await writeFile(join(reportDir, 'preview.md'), preview.report, 'utf8')
+  }
+
+  if (drift.kind !== 'unchanged') {
+    const proposed = proposal(drift, stable)
+    await writeFile(
+      join(reportDir, 'proposal.json'),
+      `${JSON.stringify({ branch: proposed.branch, title: proposed.title })}\n`,
+      'utf8',
+    )
+    await writeFile(join(reportDir, 'proposal.md'), proposed.body, 'utf8')
   }
 }
 
 /**
- * Re-emit from the committed schema, without touching the network.
+ * Re-emit from the newest committed snapshot, without touching the network.
  *
  * This is what CI runs to prove the generated sources still match the schema
  * they claim to come from. A hand edit or a stale regeneration then fails on a
  * pull request rather than reaching a release.
  */
 async function emitOffline(): Promise<void> {
-  const versions = (await readdir(SCHEMA_DIR))
-    .filter((name) => name.endsWith('.json'))
-    .map((name) => name.replace(/\.json$/, ''))
-    .sort()
+  const schema = await readLatestSnapshot()
 
-  const latest = versions.at(-1)
-
-  if (latest === undefined) {
-    process.stderr.write(`no committed schema found in ${SCHEMA_DIR}\n`)
-    process.exitCode = 1
-    return
-  }
-
-  const schema = await readSnapshot(latest)
   if (schema === undefined) {
-    process.stderr.write(`could not read the committed schema for ${latest}\n`)
+    process.stderr.write(`no committed schema found in ${SCHEMA_DIR}\n`)
     process.exitCode = 1
     return
   }
@@ -156,17 +236,29 @@ async function emitOffline(): Promise<void> {
   process.stdout.write(`Re-emitted ${written.length} files from Bot API ${schema.version}\n`)
 }
 
+/** The value after a flag, if the flag is given. */
+function option(args: readonly string[], name: string): string | undefined {
+  const at = args.indexOf(name)
+  if (at === -1) return undefined
+  const value = args[at + 1]
+  if (value === undefined || value.startsWith('--')) throw new Error(`${name} needs a value`)
+  return value
+}
+
 const mode = process.argv[2]
+const args = process.argv.slice(3)
 
 switch (mode) {
   case 'fetch':
+    await commandFetch()
+    break
   case 'regenerate':
-    await run(mode)
+    await commandRegenerate(option(args, '--report-dir'))
     break
   case 'emit':
     await emitOffline()
     break
   default:
-    process.stderr.write('usage: cli.ts <fetch|regenerate|emit>\n')
+    process.stderr.write('usage: cli.ts <fetch|regenerate [--report-dir <dir>]|emit>\n')
     process.exitCode = 1
 }
