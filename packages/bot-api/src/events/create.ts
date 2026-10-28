@@ -25,8 +25,8 @@ import type { Logger } from '@yuigram/core'
 import type { RawApi } from '../api.js'
 import type { DownloadDeps } from '../download.js'
 import { PAYLOAD_ALIASES } from '../generated/contexts.js'
-import { MESSAGE_KINDS } from '../generated/events.js'
-import type { CallbackQuery, Message } from '../generated/types/index.js'
+import { MESSAGE_KINDS, type UpdatePayloads } from '../generated/events.js'
+import type { Message } from '../generated/types/index.js'
 import type { NormalizedUpdate } from '../normalize.js'
 import { callbackQueryActions, messageActions } from './actions.js'
 import { boundPrototypeFor, MESSAGE_TABLES, QUERY_TABLES } from './bound.js'
@@ -146,7 +146,10 @@ export function createEventContext(options: CreateEventContextOptions): AnyEvent
   }
 
   if (kind === 'callback_query') {
-    Object.assign(context, callbackQueryActions(api, payload as unknown as CallbackQuery))
+    Object.assign(
+      context,
+      callbackQueryActions(api, payload as unknown as UpdatePayloads['callback_query']),
+    )
   }
 
   return context as unknown as AnyEventContext
