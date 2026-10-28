@@ -42,6 +42,36 @@ function normalize(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
+/** What a section has read so far, below its heading. */
+interface SectionBody {
+  readonly paragraphs: string[]
+  table: HTMLElement | undefined
+  subtypes: readonly string[]
+}
+
+/** Read one node below a section's heading into the section. */
+function readBodyNode(node: HTMLElement, body: SectionBody): void {
+  if (node.tagName === 'TABLE') {
+    body.table ??= node
+    return
+  }
+
+  // Prose after the table belongs to the next topic, not this one.
+  if (body.table !== undefined) return
+
+  if (node.tagName === 'P') {
+    body.paragraphs.push(normalize(node.textContent))
+  } else if (node.tagName === 'UL') {
+    // A list of type names is an abstract type's variants. Any other list is
+    // part of the prose, and is read into it in place: the staging
+    // documentation turns the "- " lines of a paragraph into lists, and moves
+    // the sentence that states the return type into the last item.
+    const variants = readSubtypes(node)
+    if (variants !== undefined) body.subtypes = variants
+    else body.paragraphs.push(readProseList(node))
+  }
+}
+
 /** Split the document into `<h4>` sections. */
 function collectSections(root: HTMLElement): Section[] {
   const sections: Section[] = []
@@ -49,9 +79,7 @@ function collectSections(root: HTMLElement): Section[] {
 
   let current: { anchor: string; title: string; group: string } | undefined
   let group = 'General'
-  let paragraphs: string[] = []
-  let table: HTMLElement | undefined
-  let subtypes: string[] = []
+  let body: SectionBody = { paragraphs: [], table: undefined, subtypes: [] }
 
   const flush = (): void => {
     if (current === undefined) return
@@ -59,9 +87,9 @@ function collectSections(root: HTMLElement): Section[] {
       anchor: current.anchor,
       title: current.title,
       group: current.group,
-      description: normalize(paragraphs.join(' ')),
-      table,
-      subtypes,
+      description: normalize(body.paragraphs.join(' ')),
+      table: body.table,
+      subtypes: body.subtypes,
     })
   }
 
@@ -70,28 +98,13 @@ function collectSections(root: HTMLElement): Section[] {
       flush()
       current = undefined
       group = normalize(node.textContent)
-      continue
-    }
-
-    if (node.tagName === 'H4') {
+    } else if (node.tagName === 'H4') {
       flush()
       const anchor = node.querySelector('a.anchor')?.getAttribute('name') ?? ''
       current = { anchor, title: normalize(node.textContent), group }
-      paragraphs = []
-      table = undefined
-      subtypes = []
-      continue
-    }
-
-    if (current === undefined) continue
-
-    if (node.tagName === 'P') {
-      // Prose after the table belongs to the next topic, not this one.
-      if (table === undefined) paragraphs.push(normalize(node.textContent))
-    } else if (node.tagName === 'TABLE') {
-      table ??= node
-    } else if (node.tagName === 'UL' && table === undefined) {
-      subtypes = readSubtypes(node) ?? subtypes
+      body = { paragraphs: [], table: undefined, subtypes: [] }
+    } else if (current !== undefined) {
+      readBodyNode(node, body)
     }
   }
 
@@ -109,6 +122,14 @@ function readSubtypes(node: HTMLElement): string[] | undefined {
   const items = node.querySelectorAll('li').map((li) => normalize(li.textContent))
   if (items.length === 0) return undefined
   return items.every((item) => /^[A-Z][A-Za-z0-9]*$/.test(item)) ? items : undefined
+}
+
+/** A list in the prose, as the "- " lines the stable documentation writes it in. */
+function readProseList(node: HTMLElement): string {
+  return node
+    .querySelectorAll('li')
+    .map((li) => `- ${normalize(li.textContent)}`)
+    .join(' ')
 }
 
 /** Whether a table's header row matches the expected columns. */

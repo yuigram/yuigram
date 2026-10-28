@@ -47,3 +47,52 @@ describe('the parts of the page that define the API', () => {
     expect(schema.releasedAt).toBe('august-24-2026')
   })
 })
+
+/** One method section, with its prose written as given. */
+const methodPage = (prose: string): string => `<html><body>
+<h3>Available methods</h3>
+<h4><a class="anchor" name="deletething"></a>deleteThing</h4>
+${prose}
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody><tr><td>id</td><td>Integer</td><td>Yes</td><td>Which one.</td></tr></tbody></table>
+</body></html>`
+
+describe('a list in the prose', () => {
+  // The stable documentation writes limitations as "- " lines inside one
+  // paragraph; the staging documentation writes the same text as a list, with
+  // the return sentence moved into its last item. Both must read alike.
+  const lines = methodPage(
+    '<p>Use this method to delete a thing, with the following limitations:<br>- It must exist.<br>- It must be yours.<br>Returns <em>True</em> on success.</p>',
+  )
+  const list = methodPage(
+    '<p>Use this method to delete a thing, with the following limitations:</p><ul><li>It must exist.</li><li>It must be yours. Returns <em>True</em> on success.</li></ul>',
+  )
+
+  it('is read into the description in place', () => {
+    const [method] = parseBotApi(list, 'https://corefork.telegram.org/bots/api').methods
+
+    expect(method?.description).toBe(
+      'Use this method to delete a thing, with the following limitations: - It must exist. - It must be yours. Returns True on success.',
+    )
+  })
+
+  it('gives the return type its last item states, as the lines did', () => {
+    const fromLines = parseBotApi(lines, 'https://core.telegram.org/bots/api').methods[0]
+    const fromList = parseBotApi(list, 'https://corefork.telegram.org/bots/api').methods[0]
+
+    expect(fromLines?.returns).toEqual({ kind: 'true' })
+    expect(fromList?.returns).toEqual({ kind: 'true' })
+  })
+
+  it('stays the variants of an abstract type when every item is a type name', () => {
+    const page = `<html><body><h3>Available types</h3>
+<h4><a class="anchor" name="shape"></a>Shape</h4>
+<p>This object describes a shape. It should be one of</p>
+<ul><li><a href="#circle">Circle</a></li><li><a href="#square">Square</a></li></ul>
+</body></html>`
+    const [shape] = parseBotApi(page, 'https://core.telegram.org/bots/api').objects
+
+    expect(shape?.subtypes).toEqual(['Circle', 'Square'])
+    expect(shape?.description).toBe('This object describes a shape. It should be one of')
+  })
+})
