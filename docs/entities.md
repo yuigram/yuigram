@@ -204,7 +204,7 @@ write it back. Both are in this repository, with no dependency added.
 ```ts
 const body = fromHtml`Hello, <b>${name}</b>`
 
-await account.call(sendMessage({ peer, ...body, random_id }))
+await account.api.call(sendMessage({ peer, ...body, random_id }))
 ```
 
 Called as template tags they escape what is interpolated and leave the literal parts alone. The

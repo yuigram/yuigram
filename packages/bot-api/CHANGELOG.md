@@ -1,5 +1,13 @@
 # @yuigram/bot-api
 
+## 1.1.0
+
+### Patch Changes
+
+- bf61fa2: Documentation links in the generated Bot API types point at the stable page,
+  `core.telegram.org/bots/api`, rather than at Telegram's staging copy of it.
+- @yuigram/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
