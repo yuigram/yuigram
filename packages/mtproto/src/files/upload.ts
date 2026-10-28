@@ -63,6 +63,25 @@ export interface UploadSource {
   read(offset: number, length: number): Promise<Uint8Array>
 }
 
+/**
+ * How far an upload has come.
+ *
+ * Counted in bytes the datacenter has acknowledged, part by part: a part read
+ * and not yet accepted is not counted, and a part sent again is counted once.
+ * That is the one figure the protocol states — the datacenter answers each part
+ * it keeps — rather than bytes read from the source, which can be well ahead of
+ * what has arrived.
+ */
+export interface UploadProgress {
+  /** Bytes the datacenter has acknowledged so far. */
+  readonly sent: number
+  /**
+   * The file's length: the source's, when it states one, and otherwise known
+   * only once the file has ended, which the last report states.
+   */
+  readonly total: number | undefined
+}
+
 /** How a file is sent. */
 export interface UploadOptions {
   readonly source: UploadSource
@@ -80,6 +99,14 @@ export interface UploadOptions {
   readonly attempts?: number
   /** Stop the upload. */
   readonly signal?: AbortSignal
+  /**
+   * Told how far the upload has come, each time the datacenter acknowledges a
+   * part. Parts sent together may be acknowledged in any order; the count only
+   * grows. A promise it returns is awaited before the part counts as done, so
+   * the upload never finishes ahead of what it has said; an error it throws or
+   * rejects with fails the upload.
+   */
+  readonly onProgress?: (progress: UploadProgress) => unknown
   /** The identifier the parts are accumulated under. Supplied only in a test. */
   readonly fileId?: bigint
   /** Randomness for that identifier. */
@@ -97,7 +124,7 @@ export interface UploadOptions {
  */
 export type UploadRequest = Pick<
   UploadOptions,
-  'source' | 'name' | 'concurrency' | 'attempts' | 'signal'
+  'source' | 'name' | 'concurrency' | 'attempts' | 'signal' | 'onProgress'
 >
 
 /** A file the datacenter can now be told to use. */
@@ -190,6 +217,10 @@ interface Outcome {
 class Transfer {
   #dcId: number
   #redirections = 0
+  /** Bytes the datacenter has acknowledged, for the progress reported. */
+  #acknowledged = 0
+  /** The file's length, once it is known: from the source, or at its end. */
+  #total: number | undefined
   /** The file's first bytes, copied from the first part as it is read. */
   #head: Uint8Array = new Uint8Array(0)
 
@@ -199,6 +230,7 @@ class Transfer {
     private readonly partSize: number,
   ) {
     this.#dcId = options.dcId
+    this.#total = options.source.size
   }
 
   get dcId(): number {
@@ -301,6 +333,9 @@ class Transfer {
       if (bytes.length < this.partSize) break
     }
 
+    // The file has ended, so its length is known for the part that says so.
+    this.#total = size
+
     if (held === undefined) {
       // Nothing was read at all. The datacenter is still told about a file, the
       // same way a known-length empty file is one part rather than none.
@@ -350,8 +385,6 @@ class Transfer {
                 bytes: part.bytes,
               },
         )
-
-        return
       } catch (error) {
         if (error instanceof CancelledError) throw error
 
@@ -364,7 +397,11 @@ class Transfer {
         }
 
         failure = error
+        continue
       }
+
+      await this.#acknowledge(part.bytes.length)
+      return
     }
 
     throw failure
@@ -387,6 +424,18 @@ class Transfer {
     }
 
     this.#dcId = error.dcId
+  }
+
+  /**
+   * Count a part the datacenter kept, and say so.
+   *
+   * Outside the attempts above: the part has arrived, so an error the callback
+   * throws is the caller's, and must not be mistaken for the part failing and
+   * send it again.
+   */
+  async #acknowledge(bytes: number): Promise<void> {
+    this.#acknowledged += bytes
+    await this.options.onProgress?.({ sent: this.#acknowledged, total: this.#total })
   }
 
   #stopIfAbandoned(): void {

@@ -481,8 +481,12 @@ concept in two places.
   a second vocabulary between the caller and the method the reference is for.
 - **Cancellation.** An `AbortSignal`, which the transfer already honours between parts.
 
-**Left unspecified deliberately.** Progress reporting: the transfer layer has no notion of it,
-and inventing one would be designing an API rather than exposing a contract.
+**Progress, added later.** At first left out, on the reasoning that the transfer layer had no
+notion of it. It has one the protocol states: the datacenter answers every part it keeps. So
+`onProgress` reports bytes acknowledged that way — not bytes read from the source, which can run
+well ahead of what has arrived — and the length once it is known. An error the callback throws
+fails the upload without sending the part again: the part arrived, and the callback failing is
+not the part failing.
 
 **Status: Decided.**
 

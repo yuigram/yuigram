@@ -404,7 +404,7 @@ export const CALLBACKS = {
   downloadTo: ['0.write'],
   signIn: ['0.phone', '0.code', '0.password'],
   signInQr: ['0.onToken', '0.onApproved', '0.password'],
-  upload: ['0.source.read'],
+  upload: ['0.source.read', '0.onProgress'],
 } as const
 
 /** Properties a caller may read, which are state rather than calls. */

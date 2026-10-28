@@ -590,6 +590,35 @@ describe('callbacks', () => {
     expect(outcome.size).toBe(4096 * 3)
   })
 
+  it('tells the caller how far an upload has come, every part before the call settles', async () => {
+    const { attach } = hosting((query) =>
+      query._ === 'upload.saveFilePart' ? { _: 'boolTrue' } : undefined,
+    )
+    const caller = await attach({ account: 'main' })
+    await caller.connect()
+
+    // Three parts of the default size, the last one short.
+    const size = 512 * 1024 * 2 + 100
+    const reports: Array<{ sent: number; total: number | undefined }> = []
+    const uploaded = await caller.upload({
+      source: {
+        size,
+        read: async (offset: number, length: number) =>
+          new Uint8Array(Math.max(0, Math.min(length, size - offset))).fill(1),
+      },
+      concurrency: 1,
+      onProgress: async (progress: { sent: number; total: number | undefined }) => {
+        await settle(2)
+        reports.push(progress)
+      },
+    } as never)
+
+    expect(uploaded.size).toBe(size)
+    expect(reports).toHaveLength(uploaded.parts)
+    expect(reports.every((report) => report.total === size)).toBe(true)
+    expect(reports.at(-1)?.sent).toBe(size)
+  })
+
   it('reports a callback that failed as the failure of the call', async () => {
     const { attach } = hosting((query) => {
       if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')

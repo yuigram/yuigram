@@ -500,6 +500,7 @@ export {
   type UpgradeOptions,
   type UploadedDocumentOptions,
   type UploadedFile,
+  type UploadProgress,
   type UploadRequest,
   type UploadSource,
   type UserPresence,

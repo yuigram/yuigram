@@ -1125,6 +1125,10 @@ export class Account<Ext = unknown> {
    * reads a filesystem, and a caller that wants to send something on disk opens
    * it themselves.
    *
+   * `onProgress` is told how far it has come, in bytes the datacenter has
+   * acknowledged, and is awaited when it returns a promise. Every method that
+   * sends a file takes what this returns, so this is where progress is told.
+   *
    * Loaded on demand, for the reason a download is.
    */
   async upload(request: UploadRequest): Promise<UploadedFile> {
