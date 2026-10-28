@@ -26,7 +26,8 @@
 import type { RawApi } from '../api.js'
 import { ConfigError, ValidationError } from '../core.js'
 import { collect, type DownloadDeps, type DownloadTarget, fetchFileStream } from '../download.js'
-import type { CallbackQuery, Message, ReactionType } from '../generated/types/index.js'
+import type { UpdatePayloads } from '../generated/events.js'
+import type { Message, ReactionType } from '../generated/types/index.js'
 import type {
   AnswerOptions,
   CallbackQueryActions,
@@ -279,6 +280,12 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
  * button on a chat message, `inline_message_id` for one on an inline-mode
  * result. Neither is guaranteed, so each action states which it needs.
  *
+ * The query is read as whatever the `callback_query` update carries, and its
+ * two fields are found by asking whether it has them. The staging
+ * documentation already types that update as a choice of three objects, one
+ * per place a button can be pressed, each carrying only the field its place
+ * has; reading them this way works for one object and for the choice alike.
+ *
  * They are on the context rather than behind a check the caller writes, because
  * a callback query kind *can* do these things — the button was pressed
  * somewhere. Whether a particular query can is a call-time question, answered
@@ -286,8 +293,12 @@ export function messageActions(deps: MessageActionDeps): MessageActions {
  * function. Kinds that can never reach a chat, such as `poll_answer`, do not
  * carry these actions at all.
  */
-export function callbackQueryActions(api: RawApi, query: CallbackQuery): CallbackQueryActions {
-  const message = query.message
+export function callbackQueryActions(
+  api: RawApi,
+  query: UpdatePayloads['callback_query'],
+): CallbackQueryActions {
+  const message = 'message' in query ? query.message : undefined
+  const inlineMessageId = 'inline_message_id' in query ? query.inline_message_id : undefined
 
   /** The chat the button lives in, or an error explaining why there is none. */
   function requireMessage(action: string): Message {
@@ -328,9 +339,9 @@ export function callbackQueryActions(api: RawApi, query: CallbackQuery): Callbac
     async edit(text: string, options: EditOptions = {}): Promise<Message | true> {
       // The one action that works for both forms, which is why the error above
       // points at it.
-      if (query.inline_message_id !== undefined) {
+      if (inlineMessageId !== undefined) {
         return api.editMessageText({
-          inline_message_id: query.inline_message_id,
+          inline_message_id: inlineMessageId,
           text,
           ...options,
         } as never) as Promise<Message | true>
