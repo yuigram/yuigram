@@ -90,27 +90,33 @@ jobs:
 
       - name: Create release pull request or publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          version: pnpm version-packages
-          publish: pnpm release
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
-          # Keeps the identity configured above instead of overwriting it.
-          setupGitUser: false
+          version-script: pnpm version-packages
+          publish-script: pnpm release
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+          # One GitHub Release per version, written from docs/releases, rather
+          # than one per package.
+          create-github-releases: false
+          # Through the GitHub API, commits and tags would be attributed to the
+          # token's owner, the workflow's bot. With the Git CLI they keep the
+          # identity configured above, and the tags stay the annotated ones
+          # `changeset publish` made.
+          push-with-git-cli: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-      # `changeset publish` tags what it published on the runner only. The
-      # action decides whether anything was published by reading the command's
-      # output, and @changesets/cli 3 no longer lists the tags it made, so that
-      # decision came out false for 1.0.0 and the tags were pushed by hand.
-      # Every tag the runner has and the remote does not is pushed instead, one
-      # by one and never forced; a run that only opens the version pull request
-      # made none.
+      # The action pushes the tags of what it published, read from the output
+      # file @changesets/cli 3 writes. This pushes any tag the runner has and the
+      # remote does not, one by one and never forced, in case the action did
+      # not: for 1.0.0 it misread the output, and the tags were pushed by hand.
+      # It runs even when the step above failed, since a failure after
+      # publishing still leaves tags that belong on the remote; a run that
+      # published nothing made none.
       - name: Push release tags
+        if: ${{ !cancelled() }}
         run: |
           set -euo pipefail
           remote=$(git ls-remote --tags --refs origin | sed 's#.*refs/tags/##' | sort)
