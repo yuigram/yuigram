@@ -784,9 +784,21 @@ one interface rather than a union of the things bytes can arrive in, and what th
 look like for bytes already in memory. The source stays the caller's — nothing retains it, and
 it holds no reference to the account.
 
-An upload reports no progress: it takes no callback. Each part is read from the source once, so
-a caller that wants a figure can count what its `read` hands over — bytes read to be sent, not
-bytes Telegram has confirmed.
+An upload reports how far it has come through `onProgress`, in bytes the datacenter has
+acknowledged: each part it keeps is answered, and that answer is what is counted, so a part read
+and not yet accepted is not, and one sent again is counted once. Parts sent together are
+acknowledged in any order, and the count only grows. A source that states its length gives the
+total with every report; one that does not gives it with the last.
+
+```ts
+await account.upload({
+  source,
+  onProgress: ({ sent, total }) => console.log(`${sent} of ${total ?? '?'} bytes`),
+})
+```
+
+Every method that sends a file takes the reference an upload returns rather than uploading
+itself, so this is the one place progress is reported, whatever the file is for.
 
 The result carries the reference that names the file, which is what a method taking an
 `InputFile` wants. Uploads go to the account's own datacenter; unlike a download, there is no

@@ -14,7 +14,12 @@
 import { CancelledError, NetworkError, ValidationError } from '@yuigram/core'
 import { describe, expect, it } from 'vitest'
 import { md5 } from '../src/crypto/hash.js'
-import { type UploadSource, upload } from '../src/files/upload.js'
+import {
+  type UploadProgress,
+  type UploadRequest,
+  type UploadSource,
+  upload,
+} from '../src/files/upload.js'
 import { MigrationError } from '../src/session/dispatcher.js'
 import type { TlValue } from '../src/tl/index.js'
 import { FileServer } from './server/files.js'
@@ -797,5 +802,204 @@ describe('a source that does not give what it promised', () => {
     ).rejects.toThrow(/which needs/)
 
     expect(server.assembled(FILE)).toBeUndefined()
+  })
+})
+
+describe('reporting how far an upload has come', () => {
+  /** Every report an upload made, in order. */
+  function recorder() {
+    const reports: UploadProgress[] = []
+    return { reports, onProgress: (progress: UploadProgress) => reports.push(progress) }
+  }
+
+  it('counts each part once the datacenter has acknowledged it', async () => {
+    const { reach } = one()
+    const { reports, onProgress } = recorder()
+    const bytes = content(PART * 5 + 100)
+
+    await upload({ source: known(bytes), reach, dcId: 2, partSize: PART, fileId: FILE, onProgress })
+
+    expect(reports).toHaveLength(6)
+    expect(reports.every((report) => report.total === bytes.length)).toBe(true)
+    // Parts sent together are acknowledged in any order; the count only grows.
+    const sent = reports.map((report) => report.sent)
+    expect(sent).toEqual([...sent].sort((a, b) => a - b))
+    expect(new Set(sent).size).toBe(sent.length)
+    expect(sent.at(-1)).toBe(bytes.length)
+  })
+
+  it('does not count a part that has been read and not yet acknowledged', async () => {
+    const server = new FileServer(2)
+    const { reports, onProgress } = recorder()
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let reachedSecond: () => void = () => {}
+    const second = new Promise<void>((resolve) => {
+      reachedSecond = resolve
+    })
+
+    const uploading = upload({
+      source: known(content(PART * 2)),
+      reach: () => ({
+        invoke: async (query: TlValue) => {
+          if (query['file_part'] === 1) {
+            reachedSecond()
+            await held
+          }
+          return server.invoke(query)
+        },
+      }),
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      concurrency: 1,
+      onProgress,
+    })
+
+    await second
+    expect(reports.map((report) => report.sent)).toEqual([PART])
+
+    release()
+    await uploading
+    expect(reports.map((report) => report.sent)).toEqual([PART, PART * 2])
+  })
+
+  it('counts a part that had to be sent again once', async () => {
+    const server = new FileServer(2)
+    const { reports, onProgress } = recorder()
+    let failures = 0
+
+    await upload({
+      source: known(content(PART * 3)),
+      reach: () => ({
+        invoke: async (query: TlValue) => {
+          if (query['file_part'] === 1 && failures === 0) {
+            failures += 1
+            throw new NetworkError('the connection dropped')
+          }
+          return server.invoke(query)
+        },
+      }),
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      onProgress,
+    })
+
+    expect(failures).toBe(1)
+    expect(reports).toHaveLength(3)
+    expect(reports.at(-1)?.sent).toBe(PART * 3)
+  })
+
+  it('states the length only once a source that does not know it has ended', async () => {
+    const { reach } = one()
+    const { reports, onProgress } = recorder()
+    const bytes = content(PART * 2 + 10)
+
+    await upload({
+      source: unknown(bytes),
+      reach,
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      onProgress,
+    })
+
+    expect(reports.map((report) => report.total)).toEqual([undefined, undefined, bytes.length])
+    expect(reports.at(-1)?.sent).toBe(bytes.length)
+  })
+
+  it('reports an empty file as having arrived', async () => {
+    const { reach } = one()
+    const { reports, onProgress } = recorder()
+
+    await upload({
+      source: unknown(new Uint8Array(0)),
+      reach,
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      onProgress,
+    })
+
+    expect(reports).toEqual([{ sent: 0, total: 0 }])
+  })
+
+  it('fails the upload with what the callback threw, without sending the part again', async () => {
+    const server = new FileServer(2)
+    const sent: number[] = []
+    const thrown = new Error('the progress bar broke')
+
+    const uploading = upload({
+      source: known(content(PART * 2)),
+      reach: () => ({
+        invoke: async (query: TlValue) => {
+          sent.push(query['file_part'] as number)
+          return server.invoke(query)
+        },
+      }),
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      concurrency: 1,
+      onProgress: () => {
+        throw thrown
+      },
+    })
+
+    await expect(uploading).rejects.toBe(thrown)
+    // The part arrived; the callback failing is not the part failing.
+    expect(sent).toEqual([0])
+  })
+
+  it('is part of what a client asks an upload for', () => {
+    const request: UploadRequest = {
+      source: known(content(1)),
+      onProgress: (progress) => progress.sent,
+    }
+
+    expect(typeof request.onProgress).toBe('function')
+  })
+})
+
+describe('a progress callback that answers later', () => {
+  it('is waited for, so the upload never finishes ahead of what it has said', async () => {
+    const { reach } = one()
+    const told: number[] = []
+
+    await upload({
+      source: known(content(PART * 2)),
+      reach,
+      dcId: 2,
+      partSize: PART,
+      fileId: FILE,
+      concurrency: 1,
+      onProgress: async ({ sent }) => {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        told.push(sent)
+      },
+    })
+
+    expect(told).toEqual([PART, PART * 2])
+  })
+
+  it('fails the upload with what it rejected with', async () => {
+    const { reach } = one()
+    const thrown = new Error('the window that showed it closed')
+
+    await expect(
+      upload({
+        source: known(content(PART)),
+        reach,
+        dcId: 2,
+        partSize: PART,
+        fileId: FILE,
+        onProgress: async () => {
+          throw thrown
+        },
+      }),
+    ).rejects.toBe(thrown)
   })
 })

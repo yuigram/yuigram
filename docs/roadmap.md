@@ -316,14 +316,15 @@ listed, with their state, in [releases/1.0.0-checklist.md](releases/1.0.0-checkl
     see [storage.md](storage.md) §2); and a Koa webhook adapter (`koaWebhook`, see
     [bot-api.md](bot-api.md), webhooks). MTProxy is checked against a local proxy and OpenSSL,
     not yet against a real proxy or through one to Telegram
+  - Built since, of the options some account methods did not take that mtcute's do: an upload
+    progress callback (`onProgress` on `account.upload`, in bytes the datacenter acknowledged)
   - Still open at the level of single methods: options some account methods do not take that
-    mtcute's do — an upload progress callback, cancelling one sign-in step, a timeout on a
-    callback answer, acting through a business connection, code settings for `sendCode`,
-    rescheduling or rich content in `editMessage`, paid invite links, declining a gift offer,
-    clearing mentions, a contact's note, a web-app switch button on inline answers, answering a
-    content-protection request. Most of these calls can be made through `account.api`, which
-    makes the call and nothing more: the account method's peer resolution and reading of the
-    answer are not part of it
+    mtcute's do — cancelling one sign-in step, a timeout on a callback answer, acting through a
+    business connection, code settings for `sendCode`, rescheduling or rich content in
+    `editMessage`, paid invite links, declining a gift offer, clearing mentions, a contact's note,
+    a web-app switch button on inline answers, answering a content-protection request. Most of
+    these calls can be made through `account.api`, which makes the call and nothing more: the
+    account method's peer resolution and reading of the answer are not part of it
   - Outside the comparison: converting session strings from Telethon, Pyrogram, GramJS and
     MTKruto, which mtcute provides in a separate package (Yuigram reads and writes mtcute's own
     version-3 string), and a SOCKS or HTTP proxy helper — one can be put in an account's path

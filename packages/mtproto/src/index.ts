@@ -177,7 +177,12 @@ export {
   isProbablyText,
   mimeTypeOfName,
 } from './files/types.js'
-export type { UploadedFile, UploadRequest, UploadSource } from './files/upload.js'
+export type {
+  UploadedFile,
+  UploadProgress,
+  UploadRequest,
+  UploadSource,
+} from './files/upload.js'
 export {
   fromHtml,
   type HtmlParseOptions,
