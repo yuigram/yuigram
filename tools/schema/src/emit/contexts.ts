@@ -164,7 +164,8 @@ export function payloadObject(
       name: head.name,
       description: head.description,
       required: carried.length === members.length && carried.every((field) => field.required),
-      type: types.size === 1 && only !== undefined ? only : { kind: 'union', of: [...types.values()] },
+      type:
+        types.size === 1 && only !== undefined ? only : { kind: 'union', of: [...types.values()] },
     }
   })
 
