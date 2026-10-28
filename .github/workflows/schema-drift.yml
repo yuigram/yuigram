@@ -1,31 +1,46 @@
 name: Schema drift
 
-# Watches Telegram for Bot API and TL schema changes and opens a pull request
-# when the surface moves. Automation does the mechanical work; a human decides
-# whether a change needs design.
+# Watches Telegram for Bot API and TL schema changes. Automation does the
+# mechanical work; a person decides whether a change needs design, and merges.
+# Nothing here publishes, and nothing reaches master without review.
 #
-# The generators land in Phase 3 (Bot API) and Phase 5 (TL). Until then this
-# workflow reports that it has nothing to do rather than failing, so the
-# schedule is live and proven before it is needed.
+# Bot API: the stable documentation is the source of the generated surface.
+# When what it says changes — a new version, or the same version re-edited — a
+# pull request is opened or updated for that version, with the surface diff as
+# its body. The staging copy (corefork) carries changes before they are
+# announced, under the version already released, so it is compared with the
+# stable page and reported in an issue, never generated.
+#
+# TL: the layer the documentation and TDLib state is compared with the pin, and
+# a newer one is reported in an issue. Moving the pin is a reviewed change
+# (docs/codegen.md §3.3), so no schema is fetched or regenerated here.
+#
+# Changes are decided by content, not by the fetch time, so a run that finds
+# nothing new changes nothing.
 
 on:
   schedule:
-    # 03:00 UTC daily.
-    - cron: '0 3 * * *'
+    # Every six hours, off the hour.
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
-# Opening a pull request needs more than read: the branch has to be written and
-# the pull request created. This also depends on the organisation allowing
-# Actions to create pull requests at all.
+# The pull request branch has to be written and the pull request and issues
+# opened. This also depends on the organisation allowing Actions to create pull
+# requests at all.
 permissions:
   contents: write
   pull-requests: write
+  issues: write
+
+concurrency:
+  group: schema-drift
+  cancel-in-progress: false
 
 jobs:
-  drift:
-    name: Detect schema drift
+  bot-api:
+    name: Bot API
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -39,30 +54,114 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Check for a schema generator
-        id: generator
+      - name: Regenerate from the stable documentation
+        id: regenerate
         run: |
-          if [ -d tools/schema ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No schema generator yet — see docs/codegen.md. Nothing to check."
+          report="$RUNNER_TEMP/bot-api"
+          pnpm --filter @yuigram/schema regenerate --report-dir "$report"
+          cat "$report/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "preview=$(jq -r .state "$report/preview.json")" >> "$GITHUB_OUTPUT"
+          if [ -f "$report/proposal.json" ]; then
+            {
+              echo "changed=true"
+              echo "branch=$(jq -r .branch "$report/proposal.json")"
+              echo "title=$(jq -r .title "$report/proposal.json")"
+            } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Regenerate and diff
-        if: steps.generator.outputs.present == 'true'
-        run: pnpm --filter @yuigram/schema regenerate
+      # A pull request opened with the workflow's token does not start CI of
+      # its own, so the regenerated surface is built and tested here.
+      - name: Check the regenerated surface
+        id: check
+        if: steps.regenerate.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          pnpm typecheck
+          pnpm exec vitest run packages/bot-api tools/schema
 
-      - name: Open pull request on change
-        if: steps.generator.outputs.present == 'true'
+      - name: Record the check in the pull request
+        if: steps.regenerate.outputs.changed == 'true'
+        env:
+          OUTCOME: ${{ steps.check.outcome }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo
+            if [ "$OUTCOME" = success ]; then
+              echo "Checked in [the run that opened this pull request]($RUN): \`pnpm typecheck\`" \
+                "and the Bot API and generator tests pass. CI does not start on its own for a" \
+                "pull request a workflow opened; it starts when a person pushes to the branch," \
+                "or closes and reopens the pull request."
+            else
+              echo "The check in [the run that opened this pull request]($RUN) failed. The pull" \
+                "request stays a draft until the generated surface builds and its tests pass."
+            fi
+          } >> "$RUNNER_TEMP/bot-api/proposal.md"
+
+      - name: Open or update the pull request
+        if: steps.regenerate.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          branch: chore/schema-update
-          title: 'chore: update Telegram schema'
-          commit-message: 'chore: update Telegram schema'
-          body: |
-            Automated schema regeneration.
-
-            Review the diff before merging: a new capability may deserve a
-            first-class abstraction rather than only a generated type.
+          branch: ${{ steps.regenerate.outputs.branch }}
+          title: ${{ steps.regenerate.outputs.title }}
+          commit-message: ${{ steps.regenerate.outputs.title }}
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          body-path: ${{ runner.temp }}/bot-api/proposal.md
+          add-paths: |
+            schemas/bot-api/*.json
+            packages/bot-api/src/generated/**
           labels: schema
+          draft: ${{ steps.check.outcome == 'failure' }}
+          delete-branch: true
+
+      # An unreadable staging copy leaves the issue as it is: a failed read is
+      # not news that the pages agree.
+      - name: Report the staging documentation
+        if: steps.regenerate.outputs.preview != 'unavailable'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW: ${{ steps.regenerate.outputs.preview }}
+          TITLE: 'Bot API: the staging documentation differs from the stable page'
+        run: |
+          if [ "$PREVIEW" = differs ]; then
+            bash .github/scripts/drift-issue.sh open "$TITLE" "$RUNNER_TEMP/bot-api/preview.md"
+          else
+            bash .github/scripts/drift-issue.sh close "$TITLE" \
+              'The staging documentation says what the stable page says again.'
+          fi
+
+  tl-layer:
+    name: TL layer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Compare the layer the sources state with the pin
+        run: |
+          report="$RUNNER_TEMP/tl"
+          pnpm --filter @yuigram/tl-codegen layers --report-dir "$report"
+          cat "$report/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report a newer layer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'TL: a newer layer is available'
+        run: |
+          if [ -f "$RUNNER_TEMP/tl/layer.md" ]; then
+            bash .github/scripts/drift-issue.sh open "$TITLE" "$RUNNER_TEMP/tl/layer.md"
+          else
+            bash .github/scripts/drift-issue.sh close "$TITLE" \
+              'The pin is at the newest layer the sources state.'
+          fi
