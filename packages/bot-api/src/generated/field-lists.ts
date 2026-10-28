@@ -1,5 +1,5 @@
 // GENERATED FILE — do not edit.
-// Optional field lists (123 fields)
+// Optional field lists (121 fields)
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
@@ -129,14 +129,12 @@ export const MESSAGE_FIELDS = [
 ] as const
 
 /**
- * Optional fields of `CallbackQuery`, for the presence filters. 4 of them,
- * covering 1 event kind.
+ * Optional fields of `CallbackQuery`, for the presence filters. 2 of them,
+ * covering no event kinds.
  */
 export const CALLBACK_QUERY_FIELDS = [
   'data',
   'game_short_name',
-  'inline_message_id',
-  'message',
 ] as const
 
 /**

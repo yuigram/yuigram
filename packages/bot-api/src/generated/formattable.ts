@@ -1,5 +1,5 @@
 // GENERATED FILE — do not edit.
-// Formatted-text slots (119 across 39 methods)
+// Formatted-text slots (122 across 41 methods)
 // Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
@@ -19,8 +19,6 @@ export interface FormattableSlot {
 /** The slots of every method that has any. */
 export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> = {
   answerGuestQuery: [
-    { path: ['result'], text: 'caption', entities: 'caption_entities' },
-    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'animation'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'audio'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'document'], text: 'caption', entities: 'caption_entities' },
@@ -28,10 +26,10 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
+    { path: ['result'], text: 'caption', entities: 'caption_entities' },
   ],
   answerInlineQuery: [
-    { path: ['results', '*'], text: 'caption', entities: 'caption_entities' },
-    { path: ['results', '*', 'input_message_content'], text: 'message_text', entities: 'entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'animation'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'audio'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'document'], text: 'caption', entities: 'caption_entities' },
@@ -39,10 +37,10 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['results', '*', 'input_message_content'], text: 'message_text', entities: 'entities' },
+    { path: ['results', '*'], text: 'caption', entities: 'caption_entities' },
   ],
   answerWebAppQuery: [
-    { path: ['result'], text: 'caption', entities: 'caption_entities' },
-    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'animation'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'audio'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'document'], text: 'caption', entities: 'caption_entities' },
@@ -50,10 +48,15 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
+    { path: ['result'], text: 'caption', entities: 'caption_entities' },
   ],
   copyMessage: [
     { path: [], text: 'caption', entities: 'caption_entities' },
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+  ],
+  createInvoiceLink: [
+    { path: [], text: 'paid_media_caption', entities: 'paid_media_caption_entities' },
   ],
   editEphemeralMessageCaption: [
     { path: [], text: 'caption', entities: 'caption_entities' },
@@ -94,6 +97,9 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
   editStory: [
     { path: [], text: 'caption', entities: 'caption_entities' },
   ],
+  forwardMessage: [
+    { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+  ],
   giftPremiumSubscription: [
     { path: [], text: 'text', entities: 'text_entities' },
   ],
@@ -101,8 +107,6 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: [], text: 'caption', entities: 'caption_entities' },
   ],
   savePreparedInlineMessage: [
-    { path: ['result'], text: 'caption', entities: 'caption_entities' },
-    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'animation'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'audio'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'document'], text: 'caption', entities: 'caption_entities' },
@@ -110,6 +114,8 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'message_text', entities: 'entities' },
+    { path: ['result'], text: 'caption', entities: 'caption_entities' },
   ],
   sendAnimation: [
     { path: [], text: 'caption', entities: 'caption_entities' },
@@ -141,6 +147,7 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: [], text: 'text', entities: 'text_entities' },
   ],
   sendInvoice: [
+    { path: [], text: 'paid_media_caption', entities: 'paid_media_caption_entities' },
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
   ],
   sendLivePhoto: [
@@ -151,8 +158,8 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
   ],
   sendMediaGroup: [
-    { path: ['media', '*'], text: 'caption', entities: 'caption_entities' },
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+    { path: ['media', '*'], text: 'caption', entities: 'caption_entities' },
   ],
   sendMessage: [
     { path: [], text: 'text', entities: 'entities' },
@@ -171,8 +178,8 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
   ],
   sendPoll: [
     { path: [], text: 'question', entities: 'question_entities' },
-    { path: [], text: 'explanation', entities: 'explanation_entities' },
     { path: [], text: 'description', entities: 'description_entities' },
+    { path: [], text: 'explanation', entities: 'explanation_entities' },
     { path: ['options', '*'], text: 'text', entities: 'text_entities' },
     { path: ['options', '*', 'media'], text: 'caption', entities: 'caption_entities' },
     { path: ['explanation_media'], text: 'caption', entities: 'caption_entities' },

@@ -201,6 +201,7 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
 export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
   allow_paid_broadcast: new Set([
     'copyMessage',
+    'forwardMessage',
     'sendAnimation',
     'sendAudio',
     'sendContact',
@@ -224,6 +225,7 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
   business_connection_id: new Set([
     'convertGiftToStars',
+    'copyMessage',
     'createInvoiceLink',
     'deleteBusinessMessages',
     'deleteStory',
@@ -234,6 +236,7 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'editMessageReplyMarkup',
     'editMessageText',
     'editStory',
+    'forwardMessage',
     'getBusinessAccountGifts',
     'getBusinessAccountStarBalance',
     'getBusinessConnection',
@@ -250,6 +253,7 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendDice',
     'sendDocument',
     'sendGame',
+    'sendInvoice',
     'sendLivePhoto',
     'sendLocation',
     'sendMediaGroup',
@@ -323,6 +327,7 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendLocation',
     'sendMediaGroup',
     'sendMessage',
+    'sendPaidMedia',
     'sendPhoto',
     'sendPoll',
     'sendRichMessage',
