@@ -9,7 +9,7 @@ import type { EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, Inpu
 /**
  * Parameters for `sendRichMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#sendrichmessage
+ * @see https://core.telegram.org/bots/api#sendrichmessage
  */
 export interface SendRichMessageParams {
   /**
@@ -95,7 +95,7 @@ export interface SendRichMessageParams {
 /**
  * Parameters for `sendRichMessageDraft`.
  *
- * @see https://corefork.telegram.org/bots/api#sendrichmessagedraft
+ * @see https://core.telegram.org/bots/api#sendrichmessagedraft
  */
 export interface SendRichMessageDraftParams {
   /**

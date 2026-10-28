@@ -12,7 +12,7 @@ import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './paym
  * This object represents an incoming update. At most one of the optional
  * fields can be present in any given update.
  *
- * @see https://corefork.telegram.org/bots/api#update
+ * @see https://core.telegram.org/bots/api#update
  */
 export interface Update {
   /**
@@ -190,7 +190,7 @@ export interface Update {
 /**
  * Describes the current status of a webhook.
  *
- * @see https://corefork.telegram.org/bots/api#webhookinfo
+ * @see https://core.telegram.org/bots/api#webhookinfo
  */
 export interface WebhookInfo {
   /**

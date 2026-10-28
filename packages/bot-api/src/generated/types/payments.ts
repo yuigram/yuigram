@@ -9,7 +9,7 @@ import type { Chat, Gift, PaidMedia, User } from './available-types.js'
 /**
  * This object represents a portion of the price for goods or services.
  *
- * @see https://corefork.telegram.org/bots/api#labeledprice
+ * @see https://core.telegram.org/bots/api#labeledprice
  */
 export interface LabeledPrice {
   /**
@@ -29,7 +29,7 @@ export interface LabeledPrice {
 /**
  * This object contains basic information about an invoice.
  *
- * @see https://corefork.telegram.org/bots/api#invoice
+ * @see https://core.telegram.org/bots/api#invoice
  */
 export interface Invoice {
   /**
@@ -64,7 +64,7 @@ export interface Invoice {
 /**
  * This object represents a shipping address.
  *
- * @see https://corefork.telegram.org/bots/api#shippingaddress
+ * @see https://core.telegram.org/bots/api#shippingaddress
  */
 export interface ShippingAddress {
   /**
@@ -101,7 +101,7 @@ export interface ShippingAddress {
 /**
  * This object represents information about an order.
  *
- * @see https://corefork.telegram.org/bots/api#orderinfo
+ * @see https://core.telegram.org/bots/api#orderinfo
  */
 export interface OrderInfo {
   /**
@@ -128,7 +128,7 @@ export interface OrderInfo {
 /**
  * This object represents one shipping option.
  *
- * @see https://corefork.telegram.org/bots/api#shippingoption
+ * @see https://core.telegram.org/bots/api#shippingoption
  */
 export interface ShippingOption {
   /**
@@ -153,7 +153,7 @@ export interface ShippingOption {
  * following this transaction, the funds may be debited from your balance. This
  * is outside of Telegram's control.
  *
- * @see https://corefork.telegram.org/bots/api#successfulpayment
+ * @see https://core.telegram.org/bots/api#successfulpayment
  */
 export interface SuccessfulPayment {
   /**
@@ -214,7 +214,7 @@ export interface SuccessfulPayment {
 /**
  * This object contains basic information about a refunded payment.
  *
- * @see https://corefork.telegram.org/bots/api#refundedpayment
+ * @see https://core.telegram.org/bots/api#refundedpayment
  */
 export interface RefundedPayment {
   /**
@@ -250,7 +250,7 @@ export interface RefundedPayment {
 /**
  * This object contains information about an incoming shipping query.
  *
- * @see https://corefork.telegram.org/bots/api#shippingquery
+ * @see https://core.telegram.org/bots/api#shippingquery
  */
 export interface ShippingQuery {
   /**
@@ -277,7 +277,7 @@ export interface ShippingQuery {
 /**
  * This object contains information about an incoming pre-checkout query.
  *
- * @see https://corefork.telegram.org/bots/api#precheckoutquery
+ * @see https://core.telegram.org/bots/api#precheckoutquery
  */
 export interface PreCheckoutQuery {
   /**
@@ -322,7 +322,7 @@ export interface PreCheckoutQuery {
 /**
  * This object contains information about a paid media purchase.
  *
- * @see https://corefork.telegram.org/bots/api#paidmediapurchased
+ * @see https://core.telegram.org/bots/api#paidmediapurchased
  */
 export interface PaidMediaPurchased {
   /**
@@ -340,7 +340,7 @@ export interface PaidMediaPurchased {
  * This object describes the state of a revenue withdrawal operation.
  * Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#revenuewithdrawalstate
+ * @see https://core.telegram.org/bots/api#revenuewithdrawalstate
  */
 export type RevenueWithdrawalState =
   | RevenueWithdrawalStateFailed
@@ -350,7 +350,7 @@ export type RevenueWithdrawalState =
 /**
  * The withdrawal is in progress.
  *
- * @see https://corefork.telegram.org/bots/api#revenuewithdrawalstatepending
+ * @see https://core.telegram.org/bots/api#revenuewithdrawalstatepending
  */
 export interface RevenueWithdrawalStatePending {
   /**
@@ -362,7 +362,7 @@ export interface RevenueWithdrawalStatePending {
 /**
  * The withdrawal succeeded.
  *
- * @see https://corefork.telegram.org/bots/api#revenuewithdrawalstatesucceeded
+ * @see https://core.telegram.org/bots/api#revenuewithdrawalstatesucceeded
  */
 export interface RevenueWithdrawalStateSucceeded {
   /**
@@ -384,7 +384,7 @@ export interface RevenueWithdrawalStateSucceeded {
 /**
  * The withdrawal failed and the transaction was refunded.
  *
- * @see https://corefork.telegram.org/bots/api#revenuewithdrawalstatefailed
+ * @see https://core.telegram.org/bots/api#revenuewithdrawalstatefailed
  */
 export interface RevenueWithdrawalStateFailed {
   /**
@@ -397,7 +397,7 @@ export interface RevenueWithdrawalStateFailed {
  * Contains information about the affiliate that received a commission via this
  * transaction.
  *
- * @see https://corefork.telegram.org/bots/api#affiliateinfo
+ * @see https://core.telegram.org/bots/api#affiliateinfo
  */
 export interface AffiliateInfo {
   /**
@@ -434,7 +434,7 @@ export interface AffiliateInfo {
  * This object describes the source of a transaction, or its recipient for
  * outgoing transactions. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartner
+ * @see https://core.telegram.org/bots/api#transactionpartner
  */
 export type TransactionPartner =
   | TransactionPartnerAffiliateProgram
@@ -448,7 +448,7 @@ export type TransactionPartner =
 /**
  * Describes a transaction with a user.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartneruser
+ * @see https://core.telegram.org/bots/api#transactionpartneruser
  */
 export interface TransactionPartnerUser {
   /**
@@ -516,7 +516,7 @@ export interface TransactionPartnerUser {
 /**
  * Describes a transaction with a chat.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerchat
+ * @see https://core.telegram.org/bots/api#transactionpartnerchat
  */
 export interface TransactionPartnerChat {
   /**
@@ -539,7 +539,7 @@ export interface TransactionPartnerChat {
  * Describes the affiliate program that issued the affiliate commission
  * received via this transaction.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartneraffiliateprogram
+ * @see https://core.telegram.org/bots/api#transactionpartneraffiliateprogram
  */
 export interface TransactionPartnerAffiliateProgram {
   /**
@@ -562,7 +562,7 @@ export interface TransactionPartnerAffiliateProgram {
 /**
  * Describes a withdrawal transaction with Fragment.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerfragment
+ * @see https://core.telegram.org/bots/api#transactionpartnerfragment
  */
 export interface TransactionPartnerFragment {
   /**
@@ -579,7 +579,7 @@ export interface TransactionPartnerFragment {
 /**
  * Describes a withdrawal transaction to the Telegram Ads platform.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnertelegramads
+ * @see https://core.telegram.org/bots/api#transactionpartnertelegramads
  */
 export interface TransactionPartnerTelegramAds {
   /**
@@ -591,7 +591,7 @@ export interface TransactionPartnerTelegramAds {
 /**
  * Describes a transaction with payment for paid broadcasting.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnertelegramapi
+ * @see https://core.telegram.org/bots/api#transactionpartnertelegramapi
  */
 export interface TransactionPartnerTelegramApi {
   /**
@@ -609,7 +609,7 @@ export interface TransactionPartnerTelegramApi {
 /**
  * Describes a transaction with an unknown source or recipient.
  *
- * @see https://corefork.telegram.org/bots/api#transactionpartnerother
+ * @see https://core.telegram.org/bots/api#transactionpartnerother
  */
 export interface TransactionPartnerOther {
   /**
@@ -624,7 +624,7 @@ export interface TransactionPartnerOther {
  * Apple, Google) following this transaction, the refunded Stars will be
  * deducted from the bot's balance. This is outside of Telegram's control.
  *
- * @see https://corefork.telegram.org/bots/api#startransaction
+ * @see https://core.telegram.org/bots/api#startransaction
  */
 export interface StarTransaction {
   /**
@@ -668,7 +668,7 @@ export interface StarTransaction {
 /**
  * Contains a list of Telegram Star transactions.
  *
- * @see https://corefork.telegram.org/bots/api#startransactions
+ * @see https://core.telegram.org/bots/api#startransactions
  */
 export interface StarTransactions {
   /**

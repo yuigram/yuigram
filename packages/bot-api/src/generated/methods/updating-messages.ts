@@ -9,7 +9,7 @@ import type { InlineKeyboardMarkup, InputChecklist, InputMedia, InputRichMessage
 /**
  * Parameters for `editMessageText`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagetext
+ * @see https://core.telegram.org/bots/api#editmessagetext
  */
 export interface EditMessageTextParams {
   /**
@@ -76,7 +76,7 @@ export interface EditMessageTextParams {
 /**
  * Parameters for `editMessageCaption`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagecaption
+ * @see https://core.telegram.org/bots/api#editmessagecaption
  */
 export interface EditMessageCaptionParams {
   /**
@@ -136,7 +136,7 @@ export interface EditMessageCaptionParams {
 /**
  * Parameters for `editMessageMedia`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagemedia
+ * @see https://core.telegram.org/bots/api#editmessagemedia
  */
 export interface EditMessageMediaParams {
   /**
@@ -178,7 +178,7 @@ export interface EditMessageMediaParams {
 /**
  * Parameters for `editMessageLiveLocation`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagelivelocation
+ * @see https://core.telegram.org/bots/api#editmessagelivelocation
  */
 export interface EditMessageLiveLocationParams {
   /**
@@ -252,7 +252,7 @@ export interface EditMessageLiveLocationParams {
 /**
  * Parameters for `stopMessageLiveLocation`.
  *
- * @see https://corefork.telegram.org/bots/api#stopmessagelivelocation
+ * @see https://core.telegram.org/bots/api#stopmessagelivelocation
  */
 export interface StopMessageLiveLocationParams {
   /**
@@ -289,7 +289,7 @@ export interface StopMessageLiveLocationParams {
 /**
  * Parameters for `editMessageChecklist`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagechecklist
+ * @see https://core.telegram.org/bots/api#editmessagechecklist
  */
 export interface EditMessageChecklistParams {
   /**
@@ -323,7 +323,7 @@ export interface EditMessageChecklistParams {
 /**
  * Parameters for `editMessageReplyMarkup`.
  *
- * @see https://corefork.telegram.org/bots/api#editmessagereplymarkup
+ * @see https://core.telegram.org/bots/api#editmessagereplymarkup
  */
 export interface EditMessageReplyMarkupParams {
   /**
@@ -360,7 +360,7 @@ export interface EditMessageReplyMarkupParams {
 /**
  * Parameters for `stopPoll`.
  *
- * @see https://corefork.telegram.org/bots/api#stoppoll
+ * @see https://core.telegram.org/bots/api#stoppoll
  */
 export interface StopPollParams {
   /**
@@ -389,7 +389,7 @@ export interface StopPollParams {
 /**
  * Parameters for `editEphemeralMessageText`.
  *
- * @see https://corefork.telegram.org/bots/api#editephemeralmessagetext
+ * @see https://core.telegram.org/bots/api#editephemeralmessagetext
  */
 export interface EditEphemeralMessageTextParams {
   /**
@@ -445,7 +445,7 @@ export interface EditEphemeralMessageTextParams {
 /**
  * Parameters for `editEphemeralMessageMedia`.
  *
- * @see https://corefork.telegram.org/bots/api#editephemeralmessagemedia
+ * @see https://core.telegram.org/bots/api#editephemeralmessagemedia
  */
 export interface EditEphemeralMessageMediaParams {
   /**
@@ -478,7 +478,7 @@ export interface EditEphemeralMessageMediaParams {
 /**
  * Parameters for `editEphemeralMessageCaption`.
  *
- * @see https://corefork.telegram.org/bots/api#editephemeralmessagecaption
+ * @see https://core.telegram.org/bots/api#editephemeralmessagecaption
  */
 export interface EditEphemeralMessageCaptionParams {
   /**
@@ -529,7 +529,7 @@ export interface EditEphemeralMessageCaptionParams {
 /**
  * Parameters for `editEphemeralMessageReplyMarkup`.
  *
- * @see https://corefork.telegram.org/bots/api#editephemeralmessagereplymarkup
+ * @see https://core.telegram.org/bots/api#editephemeralmessagereplymarkup
  */
 export interface EditEphemeralMessageReplyMarkupParams {
   /**
@@ -557,7 +557,7 @@ export interface EditEphemeralMessageReplyMarkupParams {
 /**
  * Parameters for `approveSuggestedPost`.
  *
- * @see https://corefork.telegram.org/bots/api#approvesuggestedpost
+ * @see https://core.telegram.org/bots/api#approvesuggestedpost
  */
 export interface ApproveSuggestedPostParams {
   /**
@@ -582,7 +582,7 @@ export interface ApproveSuggestedPostParams {
 /**
  * Parameters for `declineSuggestedPost`.
  *
- * @see https://corefork.telegram.org/bots/api#declinesuggestedpost
+ * @see https://core.telegram.org/bots/api#declinesuggestedpost
  */
 export interface DeclineSuggestedPostParams {
   /**
@@ -604,7 +604,7 @@ export interface DeclineSuggestedPostParams {
 /**
  * Parameters for `deleteMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#deletemessage
+ * @see https://core.telegram.org/bots/api#deletemessage
  */
 export interface DeleteMessageParams {
   /**
@@ -622,7 +622,7 @@ export interface DeleteMessageParams {
 /**
  * Parameters for `deleteMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#deletemessages
+ * @see https://core.telegram.org/bots/api#deletemessages
  */
 export interface DeleteMessagesParams {
   /**
@@ -641,7 +641,7 @@ export interface DeleteMessagesParams {
 /**
  * Parameters for `deleteEphemeralMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#deleteephemeralmessage
+ * @see https://core.telegram.org/bots/api#deleteephemeralmessage
  */
 export interface DeleteEphemeralMessageParams {
   /**
@@ -664,7 +664,7 @@ export interface DeleteEphemeralMessageParams {
 /**
  * Parameters for `deleteMessageReaction`.
  *
- * @see https://corefork.telegram.org/bots/api#deletemessagereaction
+ * @see https://core.telegram.org/bots/api#deletemessagereaction
  */
 export interface DeleteMessageReactionParams {
   /**
@@ -694,7 +694,7 @@ export interface DeleteMessageReactionParams {
 /**
  * Parameters for `deleteAllMessageReactions`.
  *
- * @see https://corefork.telegram.org/bots/api#deleteallmessagereactions
+ * @see https://core.telegram.org/bots/api#deleteallmessagereactions
  */
 export interface DeleteAllMessageReactionsParams {
   /**

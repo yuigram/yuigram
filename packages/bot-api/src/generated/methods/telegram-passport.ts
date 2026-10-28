@@ -9,7 +9,7 @@ import type { PassportElementError } from '../types/index.js'
 /**
  * Parameters for `setPassportDataErrors`.
  *
- * @see https://corefork.telegram.org/bots/api#setpassportdataerrors
+ * @see https://core.telegram.org/bots/api#setpassportdataerrors
  */
 export interface SetPassportDataErrorsParams {
   /**

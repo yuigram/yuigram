@@ -9,7 +9,7 @@ import type { File, PhotoSize } from './available-types.js'
 /**
  * This object represents a sticker.
  *
- * @see https://corefork.telegram.org/bots/api#sticker
+ * @see https://core.telegram.org/bots/api#sticker
  */
 export interface Sticker {
   /**
@@ -96,7 +96,7 @@ export interface Sticker {
 /**
  * This object represents a sticker set.
  *
- * @see https://corefork.telegram.org/bots/api#stickerset
+ * @see https://core.telegram.org/bots/api#stickerset
  */
 export interface StickerSet {
   /**
@@ -130,7 +130,7 @@ export interface StickerSet {
  * This object describes the position on faces where a mask should be placed by
  * default.
  *
- * @see https://corefork.telegram.org/bots/api#maskposition
+ * @see https://core.telegram.org/bots/api#maskposition
  */
 export interface MaskPosition {
   /**
@@ -162,7 +162,7 @@ export interface MaskPosition {
 /**
  * This object describes a sticker to be added to a sticker set.
  *
- * @see https://corefork.telegram.org/bots/api#inputsticker
+ * @see https://core.telegram.org/bots/api#inputsticker
  */
 export interface InputSticker {
   /**

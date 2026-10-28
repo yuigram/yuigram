@@ -9,7 +9,7 @@ import type { InputFile } from '../../input-file.js'
 /**
  * Parameters for `getUpdates`.
  *
- * @see https://corefork.telegram.org/bots/api#getupdates
+ * @see https://core.telegram.org/bots/api#getupdates
  */
 export interface GetUpdatesParams {
   /**
@@ -52,7 +52,7 @@ export interface GetUpdatesParams {
 /**
  * Parameters for `setWebhook`.
  *
- * @see https://corefork.telegram.org/bots/api#setwebhook
+ * @see https://core.telegram.org/bots/api#setwebhook
  */
 export interface SetWebhookParams {
   /**
@@ -110,7 +110,7 @@ export interface SetWebhookParams {
 /**
  * Parameters for `deleteWebhook`.
  *
- * @see https://corefork.telegram.org/bots/api#deletewebhook
+ * @see https://core.telegram.org/bots/api#deletewebhook
  */
 export interface DeleteWebhookParams {
   /**
@@ -122,7 +122,7 @@ export interface DeleteWebhookParams {
 /**
  * Parameters for `getWebhookInfo`.
  *
- * @see https://corefork.telegram.org/bots/api#getwebhookinfo
+ * @see https://core.telegram.org/bots/api#getwebhookinfo
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface GetWebhookInfoParams {}

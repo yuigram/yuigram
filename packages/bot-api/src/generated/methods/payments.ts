@@ -9,7 +9,7 @@ import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOptio
 /**
  * Parameters for `sendInvoice`.
  *
- * @see https://corefork.telegram.org/bots/api#sendinvoice
+ * @see https://core.telegram.org/bots/api#sendinvoice
  */
 export interface SendInvoiceParams {
   /**
@@ -210,7 +210,7 @@ export interface SendInvoiceParams {
 /**
  * Parameters for `createInvoiceLink`.
  *
- * @see https://corefork.telegram.org/bots/api#createinvoicelink
+ * @see https://core.telegram.org/bots/api#createinvoicelink
  */
 export interface CreateInvoiceLinkParams {
   /**
@@ -356,7 +356,7 @@ export interface CreateInvoiceLinkParams {
 /**
  * Parameters for `answerShippingQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answershippingquery
+ * @see https://core.telegram.org/bots/api#answershippingquery
  */
 export interface AnswerShippingQueryParams {
   /**
@@ -389,7 +389,7 @@ export interface AnswerShippingQueryParams {
 /**
  * Parameters for `answerPreCheckoutQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answerprecheckoutquery
+ * @see https://core.telegram.org/bots/api#answerprecheckoutquery
  */
 export interface AnswerPreCheckoutQueryParams {
   /**
@@ -416,7 +416,7 @@ export interface AnswerPreCheckoutQueryParams {
 /**
  * Parameters for `getMyStarBalance`.
  *
- * @see https://corefork.telegram.org/bots/api#getmystarbalance
+ * @see https://core.telegram.org/bots/api#getmystarbalance
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface GetMyStarBalanceParams {}
@@ -424,7 +424,7 @@ export interface GetMyStarBalanceParams {}
 /**
  * Parameters for `getStarTransactions`.
  *
- * @see https://corefork.telegram.org/bots/api#getstartransactions
+ * @see https://core.telegram.org/bots/api#getstartransactions
  */
 export interface GetStarTransactionsParams {
   /**
@@ -442,7 +442,7 @@ export interface GetStarTransactionsParams {
 /**
  * Parameters for `refundStarPayment`.
  *
- * @see https://corefork.telegram.org/bots/api#refundstarpayment
+ * @see https://core.telegram.org/bots/api#refundstarpayment
  */
 export interface RefundStarPaymentParams {
   /**
@@ -459,7 +459,7 @@ export interface RefundStarPaymentParams {
 /**
  * Parameters for `editUserStarSubscription`.
  *
- * @see https://corefork.telegram.org/bots/api#edituserstarsubscription
+ * @see https://core.telegram.org/bots/api#edituserstarsubscription
  */
 export interface EditUserStarSubscriptionParams {
   /**
