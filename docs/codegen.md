@@ -765,15 +765,15 @@ A schema bump that adds surface is a minor release. One that removes or changes 
 is a major release, because it breaks compilation for someone — with one exception, the raw
 MTProto API.
 
-`account.api`, `account.call` and the TL types are generated from the pinned layer and say what
-Telegram's schema says. When a newer layer changes or removes a constructor or a method, the raw
-API follows in a minor release, and the release notes list each such change. Holding the pin back
-to keep the raw API still would keep every user on a layer Telegram is moving away from, and a
-major version for each such change would make the major number count Telegram's edits rather than
-Yuigram's. Yuigram's own API — `Bot`, `Account` and `App`, contexts, filters, the readings of
-updates and messages — has no such exception: a change that breaks it is a major release, whoever
-caused it, a Telegram change included. So is a change to the Bot API surface, which is the API a
-bot is written against rather than an escape hatch beneath one.
+`account.api`, its untyped `account.api.call` and the TL types are generated from the pinned layer
+and say what Telegram's schema says. When a newer layer changes or removes a constructor or a
+method, the raw API follows in a minor release, and the release notes list each such change.
+Holding the pin back to keep the raw API still would keep every user on a layer Telegram is moving
+away from, and a major version for each such change would make the major number count Telegram's
+edits rather than Yuigram's. Yuigram's own API — `Bot`, `Account` and `App`, contexts, filters,
+the readings of updates and messages — has no such exception: a change that breaks it is a major
+release, whoever caused it, a Telegram change included. So is a change to the Bot API surface,
+which is the API a bot is written against rather than an escape hatch beneath one.
 
 ---
 
