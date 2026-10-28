@@ -27,17 +27,17 @@ import { TlFetchError } from './fetch.js'
 /** The revision the schema is read at, and what each file read there must be. */
 export const TDLIB = {
   repository: 'https://github.com/tdlib/td',
-  revision: '42e6a5259551178d1dab54a22ad96d14bd906e20',
+  revision: '4c6377aa7386c39217878a9a56d581922ad37ca4',
   licence: 'Boost Software License 1.0',
   /** The layer the pin is for. A file stating another is refused. */
-  layer: 229,
+  layer: 232,
   schema: {
     path: 'td/generate/scheme/telegram_api.tl',
-    sha256: '4c44853dd138f6484281317b2a6da7e778b770014bf2d63db76d4138b33bec4f',
+    sha256: '6628b4c4457112b819f4bd35104170b3610822eed4a54240a304adb28cb66ec6',
   },
   version: {
     path: 'td/telegram/Version.h',
-    sha256: '30a7bb6f94190d0a814d258ca67ccd57b7e4c5a04faa091ade0e43c43129ea63',
+    sha256: '2d955d40b9b8640653c4641e2460fcce6522e5b3932c5499461f0075fb33110c',
   },
   licenceText: {
     path: 'LICENSE_1_0.txt',
@@ -349,6 +349,8 @@ export function tdlibNotice(versionHeader: string, licence: string): string {
     `contains ${TDLIB.schema.path} from TDLib (${TDLIB.repository}),`,
     `revision ${TDLIB.revision}. The generated code in @yuigram/mtproto —`,
     'src/generated, and the files built from it — is produced from that schema.',
+    "The repository's schemas of earlier layers taken from TDLib name their own revision in",
+    'their header and in schemas/tl/sources.json, under the same notice and licence.',
     '',
     ...copyright,
     '',

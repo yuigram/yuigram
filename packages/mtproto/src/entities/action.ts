@@ -3,7 +3,7 @@
 /**
  * Reading what a service message says happened.
  *
- * `MessageAction` is seventy constructors, and each names its fields the way
+ * `MessageAction` is over seventy constructors, and each names its fields the way
  * the schema does: a user added is `users: bigint[]`, a peer that came near is
  * a `Peer` constructor, a gift's note is `textWithEntities`. A reader wants
  * none of those shapes. It wants to switch on what happened and read the
@@ -561,6 +561,35 @@ export type ServiceAction =
       readonly raw: Raw<'messageActionManagedBotCreated'>
     }
   | {
+      readonly kind: 'gram-transfer'
+      /** The amount, as Telegram states it. */
+      readonly amount: bigint
+      /** The address on the other side of the transfer. */
+      readonly address: string
+      readonly transactionId: string
+      readonly comment: string | undefined
+      /** Whether the comment travelled encrypted. */
+      readonly commentEncrypted: boolean
+      readonly raw: Raw<'messageActionGramTransfer'>
+    }
+  | {
+      readonly kind: 'wallet-connect-request'
+      readonly sessionId: bigint
+      readonly expiresAt: number
+      readonly topic: string | undefined
+      readonly traceId: string | undefined
+      /** The name of the application asking to connect. */
+      readonly appName: string | undefined
+      readonly accepted: boolean
+      readonly declined: boolean
+      readonly raw: Raw<'messageActionWalletTonConnectRequest'>
+    }
+  | {
+      /** A token that lets its holder write without paying for messages was used. */
+      readonly kind: 'no-paid-messages-token-used'
+      readonly raw: Raw<'messageActionNoPaidMessagesTokenUsed'>
+    }
+  | {
       readonly kind: 'unsupported'
       /** An action this build of the schema has no reading for. */
       readonly raw: TypeMessageAction
@@ -1090,6 +1119,30 @@ function readGifts(raw: TypeMessageAction): ServiceAction | undefined {
         expired: raw.expired === true,
         raw,
       }
+    case 'messageActionGramTransfer':
+      return {
+        kind: 'gram-transfer',
+        amount: raw.amount,
+        address: raw.peer_address,
+        transactionId: raw.transaction_id,
+        comment: raw.comment,
+        commentEncrypted: raw.comment_encrypted === true,
+        raw,
+      }
+    case 'messageActionWalletTonConnectRequest':
+      return {
+        kind: 'wallet-connect-request',
+        sessionId: raw.session_id,
+        expiresAt: raw.expires,
+        topic: raw.topic,
+        traceId: raw.trace_id,
+        appName: raw.dapp_name,
+        accepted: raw.accepted === true,
+        declined: raw.declined === true,
+        raw,
+      }
+    case 'messageActionNoPaidMessagesTokenUsed':
+      return { kind: 'no-paid-messages-token-used', raw }
     default:
       return undefined
   }

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for payments
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -135,6 +135,22 @@ export interface CraftStarGift {
   readonly stargift: readonly root_i$.TypeInputSavedStarGift[]
 }
 
+/** `payments.createOnrampSession#a2197cf6` */
+export interface CreateOnrampSession {
+  readonly _: 'payments.createOnrampSession'
+  readonly provider: string
+  readonly crypto_currency: string
+  readonly address: string
+  readonly payment_method?: string
+  readonly base_currency?: string
+  readonly base_amount?: string
+  readonly memo?: string
+  readonly theme?: string
+  readonly success_return_url?: string
+  readonly fail_return_url?: string
+  readonly crypto_amount?: string
+}
+
 /** `payments.createStarGiftCollection#1f4a0e87` */
 export interface CreateStarGiftCollection {
   readonly _: 'payments.createStarGiftCollection'
@@ -143,11 +159,38 @@ export interface CreateStarGiftCollection {
   readonly stargift: readonly root_i$.TypeInputSavedStarGift[]
 }
 
+/** `payments.currencyRates#bbcce4c2` */
+export interface CurrencyRates {
+  readonly _: 'payments.currencyRates'
+  readonly rates: readonly root_c$.TypeCurrencyRate[]
+}
+
+/** `payments.deleteStarGift#3cdaf8aa` */
+export interface DeleteStarGift {
+  readonly _: 'payments.deleteStarGift'
+  readonly stargift: root_i$.TypeInputSavedStarGift
+}
+
 /** `payments.deleteStarGiftCollection#ad5648e8` */
 export interface DeleteStarGiftCollection {
   readonly _: 'payments.deleteStarGiftCollection'
   readonly peer: root_i$.TypeInputPeer
   readonly collection_id: number
+}
+
+/** `payments.depositStarGift#c0a2ea9f` */
+export interface DepositStarGift {
+  readonly _: 'payments.depositStarGift'
+  readonly hide_sender?: true
+  readonly peer: root_i$.TypeInputPeer
+  readonly slug: string
+}
+
+/** `payments.displayStarGift#4aa5f0fe` */
+export interface DisplayStarGift {
+  readonly _: 'payments.displayStarGift'
+  readonly peer?: root_i$.TypeInputPeer
+  readonly slug: string
 }
 
 /** `payments.editConnectedStarRefBot#e4fca4a3` */
@@ -207,11 +250,57 @@ export interface GetCraftStarGifts {
   readonly limit: number
 }
 
+/** `payments.getCurrencyRates#d35983e8` */
+export interface GetCurrencyRates {
+  readonly _: 'payments.getCurrencyRates'
+}
+
 /** `payments.getGiveawayInfo#f4239425` */
 export interface GetGiveawayInfo {
   readonly _: 'payments.getGiveawayInfo'
   readonly peer: root_i$.TypeInputPeer
   readonly msg_id: number
+}
+
+/** `payments.getOnrampAvailability#2ec29951` */
+export interface GetOnrampAvailability {
+  readonly _: 'payments.getOnrampAvailability'
+  readonly provider: string
+  readonly crypto_currency: string
+  readonly base_currency?: string
+}
+
+/** `payments.getOnrampBaseCurrencies#1c8bedf3` */
+export interface GetOnrampBaseCurrencies {
+  readonly _: 'payments.getOnrampBaseCurrencies'
+  readonly provider: string
+  readonly crypto_currency: string
+}
+
+/** `payments.getOnrampLimits#80e851fd` */
+export interface GetOnrampLimits {
+  readonly _: 'payments.getOnrampLimits'
+  readonly provider: string
+  readonly crypto_currency: string
+  readonly base_currency: string
+  readonly payment_method?: string
+}
+
+/** `payments.getOnrampProviders#3f3e00dc` */
+export interface GetOnrampProviders {
+  readonly _: 'payments.getOnrampProviders'
+  readonly crypto_currency?: string
+}
+
+/** `payments.getOnrampQuote#e06645fa` */
+export interface GetOnrampQuote {
+  readonly _: 'payments.getOnrampQuote'
+  readonly provider: string
+  readonly crypto_currency: string
+  readonly base_currency: string
+  readonly base_amount?: string
+  readonly crypto_amount?: string
+  readonly payment_method?: string
 }
 
 /** `payments.getPaymentForm#37148dbb` */
@@ -315,11 +404,11 @@ export interface GetStarGiftUpgradePreview {
   readonly gift_id: bigint
 }
 
-/** `payments.getStarGiftWithdrawalUrl#d06e93a8` */
+/** `payments.getStarGiftWithdrawalUrl#c8ca817b` */
 export interface GetStarGiftWithdrawalUrl {
   readonly _: 'payments.getStarGiftWithdrawalUrl'
   readonly stargift: root_i$.TypeInputSavedStarGift
-  readonly password: root_i$.TypeInputCheckPasswordSRP
+  readonly tmp_password: Uint8Array
 }
 
 /** `payments.getStarGifts#c4563590` */
@@ -674,6 +763,14 @@ export interface StarGiftCollectionsNotModified {
   readonly _: 'payments.starGiftCollectionsNotModified'
 }
 
+/** `payments.starGiftDepositPayload#725bb4eb` */
+export interface StarGiftDepositPayload {
+  readonly _: 'payments.starGiftDepositPayload'
+  readonly nft_address: string
+  readonly payload: Uint8Array
+  readonly amount: bigint
+}
+
 /** `payments.starGiftUpgradeAttributes#46c6e36f` */
 export interface StarGiftUpgradeAttributes {
   readonly _: 'payments.starGiftUpgradeAttributes'
@@ -789,6 +886,10 @@ export type TypeCheckedGiftCode =
 export type TypeConnectedStarRefBots =
   | ConnectedStarRefBots
 
+/** Any `payments.CurrencyRates`. */
+export type TypeCurrencyRates =
+  | CurrencyRates
+
 /** Any `payments.ExportedInvoice`. */
 export type TypeExportedInvoice =
   | ExportedInvoice
@@ -843,6 +944,10 @@ export type TypeStarGiftAuctionState =
 export type TypeStarGiftCollections =
   | StarGiftCollections
   | StarGiftCollectionsNotModified
+
+/** Any `payments.StarGiftDepositPayload`. */
+export type TypeStarGiftDepositPayload =
+  | StarGiftDepositPayload
 
 /** Any `payments.StarGiftUpgradeAttributes`. */
 export type TypeStarGiftUpgradeAttributes =
@@ -958,4 +1063,12 @@ export interface ValidatedRequestedInfo {
   readonly _: 'payments.validatedRequestedInfo'
   readonly id?: string
   readonly shipping_options?: readonly root_s$.TypeShippingOption[]
+}
+
+/** `payments.withdrawStarGift#ec2030ae` */
+export interface WithdrawStarGift {
+  readonly _: 'payments.withdrawStarGift'
+  readonly keep_on_profile?: true
+  readonly stargift: root_i$.TypeInputSavedStarGift
+  readonly tmp_password: Uint8Array
 }

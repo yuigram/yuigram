@@ -43,9 +43,11 @@ digest). They are deliberately **not** taken from Telegram's own client applicat
 GPL-licensed. The test suites generate their keys, except one known-answer test, which holds
 Telegram's two public server keys as they appear in that TDLib file: public data, no code.
 
-The TL schema of the current layer, `schemas/tl/api.229.tl`, is TDLib's
+The TL schema of the current layer, `schemas/tl/api.232.tl`, is TDLib's
 `td/generate/scheme/telegram_api.tl` at a pinned revision, checked by digest — Telegram's
-documentation page serves an older layer. TDLib is distributed under the Boost Software License
+documentation page serves an older layer. The schema of the layer before it,
+`schemas/tl/api.229.tl`, is the same file at an earlier revision, kept as the record of what
+that release spoke; each names its revision in its header. TDLib is distributed under the Boost Software License
 1.0. Its notice is kept beside the schema (`schemas/tl/TDLIB-LICENSE.txt`) and ships with
 `@yuigram/mtproto` (`TDLIB-LICENSE.txt`), whose generated code is produced from that schema.
 Six definitions are not TDLib's: the constructors the TL language owns, `null` among them, are

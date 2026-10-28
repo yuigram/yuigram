@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -32,7 +32,7 @@ export interface CdnPublicKey {
   readonly public_key: string
 }
 
-/** `channel#d49f34c6` */
+/** `channel#7ad15240` */
 export interface Channel {
   readonly _: 'channel'
   readonly creator?: true
@@ -63,6 +63,7 @@ export interface Channel {
   readonly broadcast_messages_allowed?: true
   readonly monoforum?: true
   readonly forum_tabs?: true
+  readonly in_news?: true
   readonly id: bigint
   readonly access_hash?: bigint
   readonly title: string
@@ -85,6 +86,7 @@ export interface Channel {
   readonly send_paid_messages_stars?: bigint
   readonly linked_monoforum_id?: bigint
   readonly linked_community_id?: bigint
+  readonly pinned_msg_id?: number
 }
 
 /** `channelAdminLogEvent#1fad68cd` */
@@ -471,7 +473,7 @@ export interface ChannelForbidden {
   readonly until_date?: number
 }
 
-/** `channelFull#a04e8d3a` */
+/** `channelFull#c4c4dd40` */
 export interface ChannelFull {
   readonly _: 'channelFull'
   readonly can_view_participants?: true
@@ -542,6 +544,7 @@ export interface ChannelFull {
   readonly send_paid_messages_stars?: bigint
   readonly main_tab?: root_p$.TypeProfileTab
   readonly guard_bot_id?: bigint
+  readonly share_theme?: root_s$.TypeShareTheme
 }
 
 /** `channelLocation#209b82db` */
@@ -1117,6 +1120,13 @@ export interface ContactStatus {
   readonly status: root_u$.TypeUserStatus
 }
 
+/** `currencyRate#30d9743c` */
+export interface CurrencyRate {
+  readonly _: 'currencyRate'
+  readonly currency: string
+  readonly rate: number
+}
+
 /** Any `CdnConfig`. */
 export type TypeCdnConfig =
   | CdnConfig
@@ -1322,3 +1332,7 @@ export type TypeContactBirthday =
 /** Any `ContactStatus`. */
 export type TypeContactStatus =
   | ContactStatus
+
+/** Any `CurrencyRate`. */
+export type TypeCurrencyRate =
+  | CurrencyRate

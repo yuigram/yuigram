@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -463,6 +463,47 @@ export interface SendMessageUploadRoundAction {
 export interface SendMessageUploadVideoAction {
   readonly _: 'sendMessageUploadVideoAction'
   readonly progress: number
+}
+
+/** `shareThemeBackdropOption#45c1d652` */
+export interface ShareThemeBackdropOption {
+  readonly _: 'shareThemeBackdropOption'
+  readonly backdrop_id: number
+  readonly name: string
+  readonly center_color: number
+  readonly edge_color: number
+  readonly pattern_color: number
+  readonly text_color: number
+}
+
+/** `shareThemeBackdrops#aaeadce0` */
+export interface ShareThemeBackdrops {
+  readonly _: 'shareThemeBackdrops'
+  readonly hash: number
+  readonly backdrops: readonly TypeShareThemeBackdropOption[]
+}
+
+/** `shareThemeBackdropsNotModified#7a3f6dff` */
+export interface ShareThemeBackdropsNotModified {
+  readonly _: 'shareThemeBackdropsNotModified'
+}
+
+/** `shareThemeDefault#95ace84f` */
+export interface ShareThemeDefault {
+  readonly _: 'shareThemeDefault'
+}
+
+/** `shareThemeEmojiBackdrop#64b334e1` */
+export interface ShareThemeEmojiBackdrop {
+  readonly _: 'shareThemeEmojiBackdrop'
+  readonly backdrop_id?: number
+  readonly emojis?: readonly root_r$.TypeReaction[]
+}
+
+/** `shareThemeGift#ebece66d` */
+export interface ShareThemeGift {
+  readonly _: 'shareThemeGift'
+  readonly stargift: TypeStarGift
 }
 
 /** `shippingOption#b6213cdf` */
@@ -1371,6 +1412,22 @@ export type TypeSendMessageAction =
   | SendMessageUploadRoundAction
   | SendMessageUploadVideoAction
   | SpeakingInGroupCallAction
+
+/** Any `ShareTheme`. */
+export type TypeShareTheme =
+  | root_i$.InputShareThemeGift
+  | ShareThemeDefault
+  | ShareThemeEmojiBackdrop
+  | ShareThemeGift
+
+/** Any `ShareThemeBackdropOption`. */
+export type TypeShareThemeBackdropOption =
+  | ShareThemeBackdropOption
+
+/** Any `ShareThemeBackdrops`. */
+export type TypeShareThemeBackdrops =
+  | ShareThemeBackdrops
+  | ShareThemeBackdropsNotModified
 
 /** Any `ShippingOption`. */
 export type TypeShippingOption =

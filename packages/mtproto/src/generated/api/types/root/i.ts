@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -1191,12 +1191,6 @@ export interface InputPageBlockMap {
   readonly caption: root_p$.TypePageCaption
 }
 
-/** `inputPasskeyCredentialFirebasePNV#5b1ccb28` */
-export interface InputPasskeyCredentialFirebasePNV {
-  readonly _: 'inputPasskeyCredentialFirebasePNV'
-  readonly pnv_token: string
-}
-
 /** `inputPasskeyCredentialPublicKey#3c27b78f` */
 export interface InputPasskeyCredentialPublicKey {
   readonly _: 'inputPasskeyCredentialPublicKey'
@@ -1528,7 +1522,7 @@ export interface InputReplyToEphemeralMessage {
   readonly id: number
 }
 
-/** `inputReplyToMessage#3bd4b7c2` */
+/** `inputReplyToMessage#75c1ad70` */
 export interface InputReplyToMessage {
   readonly _: 'inputReplyToMessage'
   readonly reply_to_msg_id: number
@@ -1540,6 +1534,7 @@ export interface InputReplyToMessage {
   readonly monoforum_peer_id?: TypeInputPeer
   readonly todo_item_id?: number
   readonly poll_option?: Uint8Array
+  readonly quote_rich?: readonly root_r$.TypeRichText[]
 }
 
 /** `inputReplyToMonoForum#69d66c45` */
@@ -1711,6 +1706,12 @@ export interface InputSendMessageRichMessageDraftAction {
   readonly keep_on_stop?: true
   readonly random_id: bigint
   readonly rich_message: TypeInputRichMessage
+}
+
+/** `inputShareThemeGift#3fb92b5b` */
+export interface InputShareThemeGift {
+  readonly _: 'inputShareThemeGift'
+  readonly stargift: TypeInputSavedStarGift
 }
 
 /** `inputSingleMedia#1cc6e91f` */
@@ -1949,6 +1950,15 @@ export interface InputThemeSlug {
   readonly slug: string
 }
 
+/** `inputTonConnectOauthSession#629f66ce` */
+export interface InputTonConnectOauthSession {
+  readonly _: 'inputTonConnectOauthSession'
+  readonly session_id: bigint
+  readonly challenge_answer: Uint8Array
+  readonly body: Uint8Array
+  readonly proof: root_w$.TypeWalletOwnershipProof
+}
+
 /** `inputUser#f21158c6` */
 export interface InputUser {
   readonly _: 'inputUser'
@@ -1991,6 +2001,26 @@ export interface InputWallPaperNoFile {
 export interface InputWallPaperSlug {
   readonly _: 'inputWallPaperSlug'
   readonly slug: string
+}
+
+/** `inputWalletCardSticker#57df45a7` */
+export interface InputWalletCardSticker {
+  readonly _: 'inputWalletCardSticker'
+  readonly coordinates: root_m$.TypeMediaAreaCoordinates
+  readonly nft_address: string
+}
+
+/** `inputWalletImported#66a66a3b` */
+export interface InputWalletImported {
+  readonly _: 'inputWalletImported'
+  readonly public_key: Uint8Array
+  readonly anchor_public_key?: Uint8Array
+  readonly proof: root_w$.TypeWalletOwnershipProof
+}
+
+/** `inputWalletNew#63a440dc` */
+export interface InputWalletNew {
+  readonly _: 'inputWalletNew'
 }
 
 /** `inputWebDocument#9bed434d` */
@@ -2384,7 +2414,6 @@ export type TypeInputNotifyPeer =
 
 /** Any `InputPasskeyCredential`. */
 export type TypeInputPasskeyCredential =
-  | InputPasskeyCredentialFirebasePNV
   | InputPasskeyCredentialPublicKey
 
 /** Any `InputPasskeyResponse`. */
@@ -2549,6 +2578,10 @@ export type TypeInputTheme =
 export type TypeInputThemeSettings =
   | InputThemeSettings
 
+/** Any `InputTonConnectOauthSession`. */
+export type TypeInputTonConnectOauthSession =
+  | InputTonConnectOauthSession
+
 /** Any `InputUser`. */
 export type TypeInputUser =
   | InputUser
@@ -2561,6 +2594,15 @@ export type TypeInputWallPaper =
   | InputWallPaper
   | InputWallPaperNoFile
   | InputWallPaperSlug
+
+/** Any `InputWalletCardSticker`. */
+export type TypeInputWalletCardSticker =
+  | InputWalletCardSticker
+
+/** Any `InputWalletReplacement`. */
+export type TypeInputWalletReplacement =
+  | InputWalletImported
+  | InputWalletNew
 
 /** Any `InputWebDocument`. */
 export type TypeInputWebDocument =

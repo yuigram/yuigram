@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Codec table barrel
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -29,9 +29,11 @@ import { ENTRIES as stats$ } from './stats.js'
 import { ENTRIES as stickers$ } from './stickers.js'
 import { ENTRIES as storage$ } from './storage.js'
 import { ENTRIES as stories$ } from './stories.js'
+import { ENTRIES as toncenter$ } from './toncenter.js'
 import { ENTRIES as updates$ } from './updates.js'
 import { ENTRIES as upload$ } from './upload.js'
 import { ENTRIES as users$ } from './users.js'
+import { ENTRIES as wallet$ } from './wallet.js'
 
 /** Every combinator in this table, in one flat list. */
 export const ENTRIES: readonly TlEntry[] = [
@@ -59,7 +61,9 @@ export const ENTRIES: readonly TlEntry[] = [
   ...stickers$,
   ...storage$,
   ...stories$,
+  ...toncenter$,
   ...updates$,
   ...upload$,
   ...users$,
+  ...wallet$,
 ]

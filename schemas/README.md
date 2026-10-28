@@ -28,8 +28,9 @@ They are committed deliberately, for four reasons:
 ## Licences
 
 The files here are inputs taken from others, kept as they were retrieved, and the repository's
-licence does not relabel them. `tl/api.229.tl` and the IR read from it are TDLib's schema,
-under the Boost Software License 1.0; its notice is `tl/TDLIB-LICENSE.txt`. The other TL files,
+licence does not relabel them. `tl/api.229.tl`, `tl/api.232.tl` and the IR read from them are
+TDLib's schema, at the revision each names, under the Boost Software License 1.0; the notice is
+`tl/TDLIB-LICENSE.txt`. The other TL files,
 `tl/errors.json` and the Bot API snapshots are read from Telegram's documentation, which states
 no licence ([../docs/licensing.md](../docs/licensing.md) §5). `tl/sources.json` records where
 each came from.

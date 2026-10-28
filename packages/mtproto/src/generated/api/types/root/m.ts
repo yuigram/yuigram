@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -354,6 +354,16 @@ export interface MessageActionGiveawayResults {
   readonly unclaimed_count: number
 }
 
+/** `messageActionGramTransfer#9329ea33` */
+export interface MessageActionGramTransfer {
+  readonly _: 'messageActionGramTransfer'
+  readonly comment_encrypted?: true
+  readonly amount: bigint
+  readonly peer_address: string
+  readonly transaction_id: string
+  readonly comment?: string
+}
+
 /** `messageActionGroupCall#7a0d7f42` */
 export interface MessageActionGroupCall {
   readonly _: 'messageActionGroupCall'
@@ -405,6 +415,11 @@ export interface MessageActionNoForwardsToggle {
   readonly _: 'messageActionNoForwardsToggle'
   readonly prev_value: boolean
   readonly new_value: boolean
+}
+
+/** `messageActionNoPaidMessagesTokenUsed#c1d2f1c6` */
+export interface MessageActionNoPaidMessagesTokenUsed {
+  readonly _: 'messageActionNoPaidMessagesTokenUsed'
 }
 
 /** `messageActionPaidMessagesPrice#84b88578` */
@@ -680,6 +695,18 @@ export interface MessageActionTopicEdit {
   readonly hidden?: boolean
 }
 
+/** `messageActionWalletTonConnectRequest#69b8c4bf` */
+export interface MessageActionWalletTonConnectRequest {
+  readonly _: 'messageActionWalletTonConnectRequest'
+  readonly accepted?: true
+  readonly declined?: true
+  readonly session_id: bigint
+  readonly expires: number
+  readonly topic?: string
+  readonly trace_id?: string
+  readonly dapp_name?: string
+}
+
 /** `messageActionWebViewDataSent#b4c38cb5` */
 export interface MessageActionWebViewDataSent {
   readonly _: 'messageActionWebViewDataSent'
@@ -858,6 +885,13 @@ export interface MessageEntityTextUrl {
   readonly offset: number
   readonly length: number
   readonly url: string
+}
+
+/** `messageEntityTonAddress#fdabbfcd` */
+export interface MessageEntityTonAddress {
+  readonly _: 'messageEntityTonAddress'
+  readonly offset: number
+  readonly length: number
 }
 
 /** `messageEntityUnderline#9c4e7e8b` */
@@ -1167,7 +1201,7 @@ export interface MessageReplies {
   readonly read_max_id?: number
 }
 
-/** `messageReplyHeader#1b97dd66` */
+/** `messageReplyHeader#ddb5ab75` */
 export interface MessageReplyHeader {
   readonly _: 'messageReplyHeader'
   readonly reply_to_scheduled?: true
@@ -1184,6 +1218,7 @@ export interface MessageReplyHeader {
   readonly quote_offset?: number
   readonly todo_item_id?: number
   readonly poll_option?: Uint8Array
+  readonly quote_rich?: readonly root_r$.TypeRichText[]
 }
 
 /** `messageReplyStoryHeader#0e5af939` */
@@ -1317,6 +1352,7 @@ export type TypeMessageAction =
   | MessageActionGiftTon
   | MessageActionGiveawayLaunch
   | MessageActionGiveawayResults
+  | MessageActionGramTransfer
   | MessageActionGroupCall
   | MessageActionGroupCallScheduled
   | MessageActionHistoryClear
@@ -1325,6 +1361,7 @@ export type TypeMessageAction =
   | MessageActionNewCreatorPending
   | MessageActionNoForwardsRequest
   | MessageActionNoForwardsToggle
+  | MessageActionNoPaidMessagesTokenUsed
   | MessageActionPaidMessagesPrice
   | MessageActionPaidMessagesRefunded
   | MessageActionPaymentRefunded
@@ -1356,6 +1393,7 @@ export type TypeMessageAction =
   | MessageActionTodoCompletions
   | MessageActionTopicCreate
   | MessageActionTopicEdit
+  | MessageActionWalletTonConnectRequest
   | MessageActionWebViewDataSent
   | MessageActionWebViewDataSentMe
 
@@ -1383,6 +1421,7 @@ export type TypeMessageEntity =
   | MessageEntitySpoiler
   | MessageEntityStrike
   | MessageEntityTextUrl
+  | MessageEntityTonAddress
   | MessageEntityUnderline
   | MessageEntityUnknown
   | MessageEntityUrl

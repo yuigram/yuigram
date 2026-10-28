@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for bots
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -11,6 +11,7 @@ import type * as root_e$ from './root/e.js'
 import type * as root_i$ from './root/i.js'
 import type * as root_j$ from './root/j.js'
 import type * as root_k$ from './root/k.js'
+import type * as root_t$ from './root/t.js'
 import type * as root_u$ from './root/u.js'
 import type { TlObject } from '../../../tl/object.js'
 
@@ -27,6 +28,13 @@ export interface AddPreviewMedia {
   readonly bot: root_i$.TypeInputUser
   readonly lang_code: string
   readonly media: root_i$.TypeInputMedia
+}
+
+/** `bots.addUsername#3501c08a` */
+export interface AddUsername {
+  readonly _: 'bots.addUsername'
+  readonly bot: root_i$.TypeInputUser
+  readonly username: string
 }
 
 /** `bots.allowSendMessage#f132e3ef` */
@@ -64,9 +72,10 @@ export interface CheckDownloadFileParams {
   readonly url: string
 }
 
-/** `bots.checkUsername#87f2219b` */
+/** `bots.checkUsername#e3ac4c61` */
 export interface CheckUsername {
   readonly _: 'bots.checkUsername'
+  readonly additional?: true
   readonly username: string
 }
 
@@ -203,6 +212,13 @@ export interface PreviewInfo {
   readonly lang_codes: readonly string[]
 }
 
+/** `bots.removeUsername#c704147d` */
+export interface RemoveUsername {
+  readonly _: 'bots.removeUsername'
+  readonly bot: root_i$.TypeInputUser
+  readonly username: string
+}
+
 /** `bots.reorderPreviewMedias#b627f3aa` */
 export interface ReorderPreviewMedias {
   readonly _: 'bots.reorderPreviewMedias'
@@ -282,13 +298,13 @@ export interface SetBotMenuButton {
   readonly button: root_b$.TypeBotMenuButton
 }
 
-/** `bots.setCustomVerification#8b89dfbd` */
+/** `bots.setCustomVerification#f4946757` */
 export interface SetCustomVerification {
   readonly _: 'bots.setCustomVerification'
   readonly enabled?: true
   readonly bot?: root_i$.TypeInputUser
   readonly peer: root_i$.TypeInputPeer
-  readonly custom_description?: string
+  readonly custom_description?: root_t$.TypeTextWithEntities
 }
 
 /** `bots.setJoinChatResults#e71a4810` */

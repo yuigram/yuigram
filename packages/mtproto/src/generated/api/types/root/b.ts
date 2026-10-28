@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -10,6 +10,7 @@ import type * as root_i$ from '../root/i.js'
 import type * as root_m$ from '../root/m.js'
 import type * as root_p$ from '../root/p.js'
 import type * as root_r$ from '../root/r.js'
+import type * as root_t$ from '../root/t.js'
 import type * as root_w$ from '../root/w.js'
 import type { TlObject } from '../../../../tl/object.js'
 
@@ -304,21 +305,21 @@ export interface BotPreviewMedia {
   readonly media: root_m$.TypeMessageMedia
 }
 
-/** `botVerification#f93cd45c` */
+/** `botVerification#f72e0ed9` */
 export interface BotVerification {
   readonly _: 'botVerification'
   readonly bot_id: bigint
   readonly icon: bigint
-  readonly description: string
+  readonly description: root_t$.TypeTextWithEntities
 }
 
-/** `botVerifierSettings#b0cd6617` */
+/** `botVerifierSettings#a12aefff` */
 export interface BotVerifierSettings {
   readonly _: 'botVerifierSettings'
   readonly can_modify_custom_description?: true
   readonly icon: bigint
   readonly company: string
-  readonly custom_description?: string
+  readonly custom_description?: root_t$.TypeTextWithEntities
 }
 
 /** `businessAwayMessage#ef156a5c` */

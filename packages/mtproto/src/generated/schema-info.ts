@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Pinned protocol layer
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -11,4 +11,4 @@
  * emitted from this layer, so announcing another would claim a wire
  * contract the generated types do not implement.
  */
-export const TL_LAYER = 229 as const
+export const TL_LAYER = 232 as const

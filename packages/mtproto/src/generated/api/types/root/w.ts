@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -9,6 +9,7 @@ import type * as root_i$ from '../root/i.js'
 import type * as root_p$ from '../root/p.js'
 import type * as root_s$ from '../root/s.js'
 import type * as root_t$ from '../root/t.js'
+import type * as wallet$ from '../wallet.js'
 import type { TlObject } from '../../../../tl/object.js'
 
 /** Any `WallPaper`. */
@@ -19,6 +20,32 @@ export type TypeWallPaper =
 /** Any `WallPaperSettings`. */
 export type TypeWallPaperSettings =
   | WallPaperSettings
+
+/** Any `WalletOwnershipProof`. */
+export type TypeWalletOwnershipProof =
+  | WalletOwnershipProof
+
+/** Any `WalletState`. */
+export type TypeWalletState =
+  | WalletState
+  | WalletStateEmpty
+
+/** Any `WalletTransaction`. */
+export type TypeWalletTransaction =
+  | WalletTransaction
+
+/** Any `WalletTransactionPeer`. */
+export type TypeWalletTransactionPeer =
+  | WalletTransactionPeerAddress
+  | WalletTransactionPeerChannel
+  | WalletTransactionPeerOnramp
+  | WalletTransactionPeerTelegramGift
+  | WalletTransactionPeerUnsupported
+  | WalletTransactionPeerUser
+
+/** Any `WalletUserAddress`. */
+export type TypeWalletUserAddress =
+  | WalletUserAddress
 
 /** Any `WebAuthorization`. */
 export type TypeWebAuthorization =
@@ -93,6 +120,98 @@ export interface WallPaperSettings {
   readonly intensity?: number
   readonly rotation?: number
   readonly emoticon?: string
+}
+
+/** `walletOwnershipProof#60bccb0d` */
+export interface WalletOwnershipProof {
+  readonly _: 'walletOwnershipProof'
+  readonly timestamp: number
+  readonly signature: Uint8Array
+}
+
+/** `walletState#95c5346b` */
+export interface WalletState {
+  readonly _: 'walletState'
+  readonly backup_enabled?: true
+  readonly can_export_phrase?: true
+  readonly can_enable_backup?: true
+  readonly address: string
+  readonly public_key: Uint8Array
+  readonly balance: bigint
+}
+
+/** `walletStateEmpty#9cb9b2ec` */
+export interface WalletStateEmpty {
+  readonly _: 'walletStateEmpty'
+  readonly creating?: true
+}
+
+/** `walletTransaction#952dc143` */
+export interface WalletTransaction {
+  readonly _: 'walletTransaction'
+  readonly incoming?: true
+  readonly gasless?: true
+  readonly failed?: true
+  readonly key_change?: true
+  readonly comment_encrypted?: true
+  readonly id: string
+  readonly amount: bigint
+  readonly fee: bigint
+  readonly date: number
+  readonly peer: TypeWalletTransactionPeer
+  readonly comment?: string
+  readonly tx_hash?: string
+  readonly nft?: wallet$.TypeNftItem
+}
+
+/** `walletTransactionPeerAddress#062cc1bc` */
+export interface WalletTransactionPeerAddress {
+  readonly _: 'walletTransactionPeerAddress'
+  readonly address: string
+  readonly domain?: string
+}
+
+/** `walletTransactionPeerChannel#54e70c31` */
+export interface WalletTransactionPeerChannel {
+  readonly _: 'walletTransactionPeerChannel'
+  readonly channel_id: bigint
+  readonly address: string
+  readonly domain?: string
+}
+
+/** `walletTransactionPeerOnramp#e595186e` */
+export interface WalletTransactionPeerOnramp {
+  readonly _: 'walletTransactionPeerOnramp'
+  readonly address: string
+  readonly domain?: string
+  readonly provider_name: string
+}
+
+/** `walletTransactionPeerTelegramGift#f4729499` */
+export interface WalletTransactionPeerTelegramGift {
+  readonly _: 'walletTransactionPeerTelegramGift'
+  readonly own_profile?: true
+}
+
+/** `walletTransactionPeerUnsupported#728bed5a` */
+export interface WalletTransactionPeerUnsupported {
+  readonly _: 'walletTransactionPeerUnsupported'
+}
+
+/** `walletTransactionPeerUser#d4ea706d` */
+export interface WalletTransactionPeerUser {
+  readonly _: 'walletTransactionPeerUser'
+  readonly user_id: bigint
+  readonly address: string
+  readonly domain?: string
+}
+
+/** `walletUserAddress#fe78eecc` */
+export interface WalletUserAddress {
+  readonly _: 'walletUserAddress'
+  readonly user_id?: bigint
+  readonly address: string
+  readonly public_key: Uint8Array
 }
 
 /** `webAuthorization#a6f8f452` */

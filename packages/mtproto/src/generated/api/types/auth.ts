@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for auth
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -49,6 +49,12 @@ export interface CancelCode {
   readonly _: 'auth.cancelCode'
   readonly phone_number: string
   readonly phone_code_hash: string
+}
+
+/** `auth.cancelWebTokenAuthorization#490dada1` */
+export interface CancelWebTokenAuthorization {
+  readonly _: 'auth.cancelWebTokenAuthorization'
+  readonly web_auth_token: string
 }
 
 /** `auth.checkPaidAuth#56e59f9c` */
@@ -182,9 +188,10 @@ export interface ImportWebTokenAuthorization {
   readonly web_auth_token: string
 }
 
-/** `auth.initFirebasePnvLogin#777df37a` */
+/** `auth.initFirebasePnvLogin#644f15c0` */
 export interface InitFirebasePnvLogin {
   readonly _: 'auth.initFirebasePnvLogin'
+  readonly except_ids?: readonly bigint[]
   readonly api_id: number
   readonly api_hash: string
 }

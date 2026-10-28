@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for contacts
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -105,6 +105,13 @@ export interface ExportContactToken {
   readonly _: 'contacts.exportContactToken'
 }
 
+/** `contacts.exportNoPaidMessagesToken#83c586ae` */
+export interface ExportNoPaidMessagesToken {
+  readonly _: 'contacts.exportNoPaidMessagesToken'
+  readonly revoke?: true
+  readonly temporary?: true
+}
+
 /** `contacts.found#b3134d9d` */
 export interface Found {
   readonly _: 'contacts.found'
@@ -191,6 +198,13 @@ export interface ImportContactToken {
 export interface ImportContacts {
   readonly _: 'contacts.importContacts'
   readonly contacts: readonly root_i$.TypeInputContact[]
+}
+
+/** `contacts.importNoPaidMessagesToken#35a7c6ca` */
+export interface ImportNoPaidMessagesToken {
+  readonly _: 'contacts.importNoPaidMessagesToken'
+  readonly user_id: root_i$.TypeInputUser
+  readonly token: string
 }
 
 /** `contacts.importedContacts#77d01c3b` */

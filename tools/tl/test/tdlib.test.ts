@@ -230,16 +230,17 @@ describe('integrity and layer', () => {
   it('reads the layer Version.h states once, and only the pinned one', () => {
     const header = (body: string) => `namespace td {\n\n${body}\n\n}\n`
 
-    expect(layerFromVersionHeader(header('constexpr int32 MTPROTO_LAYER = 229;'))).toBe(229)
-    expect(() => layerFromVersionHeader(header('constexpr int32 MTPROTO_LAYER = 230;'))).toThrow(
-      /states layer 230, and the pin is for layer 229/,
+    const pinned = TDLIB.layer
+    const stating = (layer: number) => `constexpr int32 MTPROTO_LAYER = ${layer};`
+
+    expect(layerFromVersionHeader(header(stating(pinned)))).toBe(pinned)
+    expect(() => layerFromVersionHeader(header(stating(pinned + 1)))).toThrow(
+      `states layer ${pinned + 1}, and the pin is for layer ${pinned}`,
     )
     expect(() => layerFromVersionHeader(header(''))).toThrow(/0 times/)
-    expect(() =>
-      layerFromVersionHeader(
-        header('constexpr int32 MTPROTO_LAYER = 229;\nconstexpr int32 MTPROTO_LAYER = 229;'),
-      ),
-    ).toThrow(/2 times/)
+    expect(() => layerFromVersionHeader(header(`${stating(pinned)}\n${stating(pinned)}`))).toThrow(
+      /2 times/,
+    )
   })
 })
 

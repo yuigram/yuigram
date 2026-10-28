@@ -1,12 +1,12 @@
 // GENERATED FILE — do not edit.
 // Wire layout for contacts
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 41 combinators. */
+/** 43 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0xf831a20f, n: 'contacts.acceptContact', f: [{ n: 'id', t: 'obj' }] },
   { id: 0xd9ba2e54, n: 'contacts.addContact', f: [{ n: 'flags', b: 1 }, { n: 'add_phone_privacy_exception', t: 'true', c: 'flags', i: 0 }, { n: 'id', t: 'obj' }, { n: 'first_name', t: 'string' }, { n: 'last_name', t: 'string' }, { n: 'phone', t: 'string' }, { n: 'note', t: 'obj', c: 'flags', i: 1 }] },
@@ -21,6 +21,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x096a0e00, n: 'contacts.deleteContacts', f: [{ n: 'id', t: { v: 'obj' } }] },
   { id: 0xba6705f0, n: 'contacts.editCloseFriends', f: [{ n: 'id', t: { v: 'long' } }] },
   { id: 0xf8654027, n: 'contacts.exportContactToken', f: [] },
+  { id: 0x83c586ae, n: 'contacts.exportNoPaidMessagesToken', f: [{ n: 'flags', b: 1 }, { n: 'revoke', t: 'true', c: 'flags', i: 0 }, { n: 'temporary', t: 'true', c: 'flags', i: 1 }] },
   { id: 0xb3134d9d, n: 'contacts.found', f: [{ n: 'my_results', t: { v: 'obj' } }, { n: 'results', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
   { id: 0xdaeda864, n: 'contacts.getBirthdays', f: [] },
   { id: 0x9a868f80, n: 'contacts.getBlocked', f: [{ n: 'flags', b: 1 }, { n: 'my_stories_from', t: 'true', c: 'flags', i: 0 }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }] },
@@ -33,6 +34,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x973478b6, n: 'contacts.getTopPeers', f: [{ n: 'flags', b: 1 }, { n: 'correspondents', t: 'true', c: 'flags', i: 0 }, { n: 'bots_pm', t: 'true', c: 'flags', i: 1 }, { n: 'bots_inline', t: 'true', c: 'flags', i: 2 }, { n: 'phone_calls', t: 'true', c: 'flags', i: 3 }, { n: 'forward_users', t: 'true', c: 'flags', i: 4 }, { n: 'forward_chats', t: 'true', c: 'flags', i: 5 }, { n: 'groups', t: 'true', c: 'flags', i: 10 }, { n: 'channels', t: 'true', c: 'flags', i: 15 }, { n: 'bots_app', t: 'true', c: 'flags', i: 16 }, { n: 'bots_guestchat', t: 'true', c: 'flags', i: 17 }, { n: 'offset', t: 'int' }, { n: 'limit', t: 'int' }, { n: 'hash', t: 'long' }] },
   { id: 0x13005788, n: 'contacts.importContactToken', f: [{ n: 'token', t: 'string' }] },
   { id: 0x2c800be5, n: 'contacts.importContacts', f: [{ n: 'contacts', t: { v: 'obj' } }] },
+  { id: 0x35a7c6ca, n: 'contacts.importNoPaidMessagesToken', f: [{ n: 'user_id', t: 'obj' }, { n: 'token', t: 'string' }] },
   { id: 0x77d01c3b, n: 'contacts.importedContacts', f: [{ n: 'imported', t: { v: 'obj' } }, { n: 'popular_invites', t: { v: 'obj' } }, { n: 'retry_contacts', t: { v: 'long' } }, { n: 'users', t: { v: 'obj' } }] },
   { id: 0x879537f1, n: 'contacts.resetSaved', f: [] },
   { id: 0x1ae373ac, n: 'contacts.resetTopPeerRating', f: [{ n: 'category', t: 'obj' }, { n: 'peer', t: 'obj' }] },

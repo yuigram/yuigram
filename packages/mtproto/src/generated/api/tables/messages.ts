@@ -1,15 +1,15 @@
 // GENERATED FILE — do not edit.
 // Wire layout for messages
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
 import type { TlEntry } from '../../../tl/schema.js'
 
-/** 355 combinators. */
+/** 357 combinators. */
 export const ENTRIES: readonly TlEntry[] = [
   { id: 0x3dbc0415, n: 'messages.acceptEncryption', f: [{ n: 'peer', t: 'obj' }, { n: 'g_b', t: 'bytes' }, { n: 'key_fingerprint', t: 'long' }] },
-  { id: 0x67a3f0de, n: 'messages.acceptUrlAuth', f: [{ n: 'flags', b: 1 }, { n: 'write_allowed', t: 'true', c: 'flags', i: 0 }, { n: 'share_phone_number', t: 'true', c: 'flags', i: 3 }, { n: 'peer', t: 'obj', c: 'flags', i: 1 }, { n: 'msg_id', t: 'int', c: 'flags', i: 1 }, { n: 'button_id', t: 'int', c: 'flags', i: 1 }, { n: 'url', t: 'string', c: 'flags', i: 2 }, { n: 'match_code', t: 'string', c: 'flags', i: 4 }] },
+  { id: 0x18dd4e92, n: 'messages.acceptUrlAuth', f: [{ n: 'flags', b: 1 }, { n: 'write_allowed', t: 'true', c: 'flags', i: 0 }, { n: 'share_phone_number', t: 'true', c: 'flags', i: 3 }, { n: 'peer', t: 'obj', c: 'flags', i: 1 }, { n: 'msg_id', t: 'int', c: 'flags', i: 1 }, { n: 'button_id', t: 'int', c: 'flags', i: 1 }, { n: 'url', t: 'string', c: 'flags', i: 2 }, { n: 'match_code', t: 'string', c: 'flags', i: 4 }, { n: 'tonconnect_session', t: 'obj', c: 'flags', i: 5 }] },
   { id: 0xcbc6d107, n: 'messages.addChatUser', f: [{ n: 'chat_id', t: 'long' }, { n: 'user_id', t: 'obj' }, { n: 'fwd_limit', t: 'int' }] },
   { id: 0x19bc4b6d, n: 'messages.addPollAnswer', f: [{ n: 'peer', t: 'obj' }, { n: 'msg_id', t: 'int' }, { n: 'answer', t: 'obj' }] },
   { id: 0xef8d3e6c, n: 'messages.affectedFoundMessages', f: [{ n: 'pts', t: 'int' }, { n: 'pts_count', t: 'int' }, { n: 'offset', t: 'int' }, { n: 'messages', t: { v: 'int' } }] },
@@ -194,6 +194,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0x1bbcf300, n: 'messages.getSearchCounters', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'saved_peer_id', t: 'obj', c: 'flags', i: 2 }, { n: 'top_msg_id', t: 'int', c: 'flags', i: 0 }, { n: 'filters', t: { v: 'obj' } }] },
   { id: 0x6aa3f6bd, n: 'messages.getSearchResultsCalendar', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'saved_peer_id', t: 'obj', c: 'flags', i: 2 }, { n: 'filter', t: 'obj' }, { n: 'offset_id', t: 'int' }, { n: 'offset_date', t: 'int' }] },
   { id: 0x9c7f2f10, n: 'messages.getSearchResultsPositions', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'saved_peer_id', t: 'obj', c: 'flags', i: 2 }, { n: 'filter', t: 'obj' }, { n: 'offset_id', t: 'int' }, { n: 'limit', t: 'int' }] },
+  { id: 0xf4599ef2, n: 'messages.getShareThemeBackdrops', f: [{ n: 'hash', t: 'int' }] },
   { id: 0x1cff7e08, n: 'messages.getSplitRanges', f: [] },
   { id: 0x3d6ce850, n: 'messages.getSponsoredMessages', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'msg_id', t: 'int', c: 'flags', i: 0 }] },
   { id: 0xc8a0ec74, n: 'messages.getStickerSet', f: [{ n: 'stickerset', t: 'obj' }, { n: 'hash', t: 'int' }] },
@@ -321,6 +322,7 @@ export const ENTRIES: readonly TlEntry[] = [
   { id: 0xb80e5fe4, n: 'messages.setHistoryTTL', f: [{ n: 'peer', t: 'obj' }, { n: 'period', t: 'int' }] },
   { id: 0xbb12a419, n: 'messages.setInlineBotResults', f: [{ n: 'flags', b: 1 }, { n: 'gallery', t: 'true', c: 'flags', i: 0 }, { n: 'private', t: 'true', c: 'flags', i: 1 }, { n: 'query_id', t: 'long' }, { n: 'results', t: { v: 'obj' } }, { n: 'cache_time', t: 'int' }, { n: 'next_offset', t: 'string', c: 'flags', i: 2 }, { n: 'switch_pm', t: 'obj', c: 'flags', i: 3 }, { n: 'switch_webview', t: 'obj', c: 'flags', i: 4 }] },
   { id: 0x15ad9f64, n: 'messages.setInlineGameScore', f: [{ n: 'flags', b: 1 }, { n: 'edit_message', t: 'true', c: 'flags', i: 0 }, { n: 'force', t: 'true', c: 'flags', i: 1 }, { n: 'id', t: 'obj' }, { n: 'user_id', t: 'obj' }, { n: 'score', t: 'int' }] },
+  { id: 0x698a9b1a, n: 'messages.setShareTheme', f: [{ n: 'peer', t: 'obj' }, { n: 'theme', t: 'obj' }] },
   { id: 0x58943ee2, n: 'messages.setTyping', f: [{ n: 'flags', b: 1 }, { n: 'peer', t: 'obj' }, { n: 'top_msg_id', t: 'int', c: 'flags', i: 0 }, { n: 'action', t: 'obj' }] },
   { id: 0xffda656d, n: 'messages.sponsoredMessages', f: [{ n: 'flags', b: 1 }, { n: 'posts_between', t: 'int', c: 'flags', i: 0 }, { n: 'start_delay', t: 'int', c: 'flags', i: 1 }, { n: 'between_delay', t: 'int', c: 'flags', i: 2 }, { n: 'messages', t: { v: 'obj' } }, { n: 'chats', t: { v: 'obj' } }, { n: 'users', t: { v: 'obj' } }] },
   { id: 0x1839490f, n: 'messages.sponsoredMessagesEmpty', f: [] },

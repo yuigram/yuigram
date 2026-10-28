@@ -18,8 +18,8 @@
 Yuigram implements MTProto itself. This document is the implementation specification for that
 subsystem — derived from Telegram's own protocol documentation, not from any existing client.
 
-Reference point: **TL layer 229** — 2,471 schema entries, 552 error types. The layer moved from
-223 with the capabilities that only exist above it; [codegen.md](codegen.md) §3.3 records where
+Reference point: **TL layer 232** — 2,579 schema entries, 552 error types. The layer moved from
+223 to 229 with the capabilities that only exist above it, and to 232 to keep up with Telegram; [codegen.md](codegen.md) §3.3 records where
 each layer's schema is read from — the documentation page, or TDLib where the page is behind —
 and what the move costs while the documentation page is still describing the older one.
 

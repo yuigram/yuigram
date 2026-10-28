@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -203,6 +203,12 @@ export interface TextSuperscript {
   readonly text: root_r$.TypeRichText
 }
 
+/** `textTonAddress#3cd2a36a` */
+export interface TextTonAddress {
+  readonly _: 'textTonAddress'
+  readonly text: root_r$.TypeRichText
+}
+
 /** `textUnderline#c12622c4` */
 export interface TextUnderline {
   readonly _: 'textUnderline'
@@ -281,6 +287,46 @@ export interface TodoList {
   readonly others_can_complete?: true
   readonly title: TypeTextWithEntities
   readonly list: readonly TypeTodoItem[]
+}
+
+/** `tonConnectManifest#12229264` */
+export interface TonConnectManifest {
+  readonly _: 'tonConnectManifest'
+  readonly url: string
+  readonly name: string
+  readonly icon?: root_w$.TypeWebDocument
+}
+
+/** `tonConnectNextEventId#582464e3` */
+export interface TonConnectNextEventId {
+  readonly _: 'tonConnectNextEventId'
+  readonly event_id: bigint
+}
+
+/** `tonConnectRequest#a15f8513` */
+export interface TonConnectRequest {
+  readonly _: 'tonConnectRequest'
+  readonly session_id: bigint
+  readonly msg_id: number
+  readonly body: Uint8Array
+  readonly expires: number
+  readonly topic?: string
+  readonly trace_id?: string
+}
+
+/** `tonConnectSession#126556c6` */
+export interface TonConnectSession {
+  readonly _: 'tonConnectSession'
+  readonly pending?: true
+  readonly closing?: true
+  readonly closed?: true
+  readonly id: bigint
+  readonly dapp_client_id: string
+  readonly client_id?: string
+  readonly nonce: Uint8Array
+  readonly manifest?: TypeTonConnectManifest
+  readonly manifest_error?: number
+  readonly date: number
 }
 
 /** `topPeer#edcdc05b` */
@@ -375,6 +421,22 @@ export type TypeTodoItem =
 /** Any `TodoList`. */
 export type TypeTodoList =
   | TodoList
+
+/** Any `TonConnectManifest`. */
+export type TypeTonConnectManifest =
+  | TonConnectManifest
+
+/** Any `TonConnectNextEventId`. */
+export type TypeTonConnectNextEventId =
+  | TonConnectNextEventId
+
+/** Any `TonConnectRequest`. */
+export type TypeTonConnectRequest =
+  | TonConnectRequest
+
+/** Any `TonConnectSession`. */
+export type TypeTonConnectSession =
+  | TonConnectSession
 
 /** Any `TopPeer`. */
 export type TypeTopPeer =

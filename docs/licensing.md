@@ -28,6 +28,7 @@ Verified against published package metadata and `LICENSE` files on 2026-08-19.
 | Telethon `errors.csv` | — | MIT | LonamiWebs |
 | Telegram TL schema | layer 223 | *unstated* — see §5 | Telegram |
 | TDLib `td/generate/scheme/telegram_api.tl` — the layer-229 schema (added later; replaces Telegram Desktop's `api.tl`) | `42e6a5259551` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
+| TDLib `td/generate/scheme/telegram_api.tl` — the layer-232 schema (added later; the current pin) | `4c6377aa7386` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
 | TDLib `PublicRsaKeySharedMain.cpp` — the two server public keys only (added later) | `4d06d1ba3a19` | Boost 1.0 | Aliaksei Levin, Arseny Smirnov |
 | Telegram Bot API documentation | 10.2 | *unstated* — see §5 | Telegram |
 | Telegram error database (`/api/errors.json`) — codes, names and methods only | layer 227 | *unstated* — see §5 | Telegram |
@@ -226,7 +227,7 @@ project holds itself to: third-party provenance is disclosed, never hidden.
 | SQLite driver | better-sqlite3 | MIT | Yes, optional adapter | Yes | Free | Notice | No | Keep out of core — native build step |
 | Multipart encoding | native `FormData` / `Blob` | Node core | Yes | — | Free | None | No | No `formdata-node` dependency |
 | TL schema definitions | Telegram | unstated | Yes (practice) | Yes | — | Cite source | No | **FLAG** §5 |
-| TL schema, layer 229 | TDLib `telegram_api.tl` (pinned revision) | Boost 1.0 | Yes | Normalized: TDLib's own definitions left out, the language's taken from the documentation | Free | Copyright notice and licence text with the copy and with `@yuigram/mtproto` (`TDLIB-LICENSE.txt`) | No | Pinned by digest; `schemas/tl/sources.json` records the inputs |
+| TL schemas, layers 229 and 232 | TDLib `telegram_api.tl` (a pinned revision each) | Boost 1.0 | Yes | Normalized: TDLib's own definitions left out, the language's taken from the documentation | Free | Copyright notice and licence text with the copy and with `@yuigram/mtproto` (`TDLIB-LICENSE.txt`) | No | Pinned by digest; `schemas/tl/sources.json` records the inputs |
 | Bot API descriptions | Telegram | unstated | Yes (practice) | Yes | — | Cite source URL | No | **FLAG** §5 |
 | Server RSA public keys | TDLib (Telegram) | Boost 1.0 (the keys themselves: data) | Yes | No | — | Cite source and revision | No | Never from GPL client source |
 | Telegram client source | Telegram | GPL-family | **No** | — | — | — | — | Do not read or port |

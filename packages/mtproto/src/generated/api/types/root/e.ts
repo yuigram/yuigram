@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // TL types for the root namespace
-// Source: Telegram TL layer 229, schemas/tl/api.229.tl
+// Source: Telegram TL layer 232, schemas/tl/api.232.tl
 // SPDX-License-Identifier: MIT AND BSL-1.0
 // Derived from TDLib's schema, under the Boost Software License 1.0: see TDLIB-LICENSE.txt.
 
@@ -269,6 +269,14 @@ export interface ExportedMessageLink {
   readonly html: string
 }
 
+/** `exportedNoPaidMessagesToken#695dd042` */
+export interface ExportedNoPaidMessagesToken {
+  readonly _: 'exportedNoPaidMessagesToken'
+  readonly token: string
+  readonly url: string
+  readonly expires?: number
+}
+
 /** `exportedStoryLink#3fc9053b` */
 export interface ExportedStoryLink {
   readonly _: 'exportedStoryLink'
@@ -360,6 +368,10 @@ export type TypeExportedContactToken =
 /** Any `ExportedMessageLink`. */
 export type TypeExportedMessageLink =
   | ExportedMessageLink
+
+/** Any `ExportedNoPaidMessagesToken`. */
+export type TypeExportedNoPaidMessagesToken =
+  | ExportedNoPaidMessagesToken
 
 /** Any `ExportedStoryLink`. */
 export type TypeExportedStoryLink =

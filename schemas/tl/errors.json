@@ -1,9 +1,9 @@
 {
   "provenance": {
     "source": "https://core.telegram.org/api/errors.json",
-    "retrieved": "2026-09-30",
+    "retrieved": "2026-10-28",
     "databaseLayer": 227,
-    "schemaLayer": 229,
+    "schemaLayer": 232,
     "recorded": "Error codes, names and the methods listed for each. The descriptions are not recorded. Not exhaustive: Telegram may send a name the database does not list."
   },
   "errors": {
