@@ -1,5 +1,5 @@
 ---
-"@yuigram/mtproto": major
+"@yuigram/mtproto": minor
 ---
 
 TL layer 232, from 229.
@@ -9,7 +9,8 @@ share themes and tokens that waive paid messages, 63 constructors and 46 methods
 all. Service messages read three new actions: `gram-transfer`,
 `wallet-connect-request` and `no-paid-messages-token-used`.
 
-Telegram changed five existing parts of the raw API incompatibly:
+Telegram changed five existing parts of the raw API incompatibly. The raw API
+follows the schema in a minor release (docs/codegen.md §7):
 
 - `botVerification.description` and `botVerifierSettings.custom_description` are
   formatted text (`TextWithEntities`) rather than strings, and
