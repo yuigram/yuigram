@@ -7,7 +7,7 @@
 /**
  * Describes Telegram Passport data shared with the bot by the user.
  *
- * @see https://corefork.telegram.org/bots/api#passportdata
+ * @see https://core.telegram.org/bots/api#passportdata
  */
 export interface PassportData {
   /**
@@ -27,7 +27,7 @@ export interface PassportData {
  * Telegram Passport files are in JPEG format when decrypted and don't exceed
  * 10MB.
  *
- * @see https://corefork.telegram.org/bots/api#passportfile
+ * @see https://core.telegram.org/bots/api#passportfile
  */
 export interface PassportFile {
   /**
@@ -56,7 +56,7 @@ export interface PassportFile {
  * Describes documents or other Telegram Passport elements shared with the bot
  * by the user.
  *
- * @see https://corefork.telegram.org/bots/api#encryptedpassportelement
+ * @see https://core.telegram.org/bots/api#encryptedpassportelement
  */
 export interface EncryptedPassportElement {
   /**
@@ -137,7 +137,7 @@ export interface EncryptedPassportElement {
  * EncryptedPassportElement. See the Telegram Passport Documentation for a
  * complete description of the data decryption and authentication processes.
  *
- * @see https://corefork.telegram.org/bots/api#encryptedcredentials
+ * @see https://core.telegram.org/bots/api#encryptedcredentials
  */
 export interface EncryptedCredentials {
   /**
@@ -163,7 +163,7 @@ export interface EncryptedCredentials {
  * This object represents an error in the Telegram Passport element which was
  * submitted that should be resolved by the user. It should be one of:
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerror
+ * @see https://core.telegram.org/bots/api#passportelementerror
  */
 export type PassportElementError =
   | PassportElementErrorDataField
@@ -180,7 +180,7 @@ export type PassportElementError =
  * Represents an issue in one of the data fields that was provided by the user.
  * The error is considered resolved when the field's value changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrordatafield
+ * @see https://core.telegram.org/bots/api#passportelementerrordatafield
  */
 export interface PassportElementErrorDataField {
   /**
@@ -216,7 +216,7 @@ export interface PassportElementErrorDataField {
  * considered resolved when the file with the front side of the document
  * changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorfrontside
+ * @see https://core.telegram.org/bots/api#passportelementerrorfrontside
  */
 export interface PassportElementErrorFrontSide {
   /**
@@ -245,7 +245,7 @@ export interface PassportElementErrorFrontSide {
  * Represents an issue with the reverse side of a document. The error is
  * considered resolved when the file with reverse side of the document changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorreverseside
+ * @see https://core.telegram.org/bots/api#passportelementerrorreverseside
  */
 export interface PassportElementErrorReverseSide {
   /**
@@ -274,7 +274,7 @@ export interface PassportElementErrorReverseSide {
  * Represents an issue with the selfie with a document. The error is considered
  * resolved when the file with the selfie changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorselfie
+ * @see https://core.telegram.org/bots/api#passportelementerrorselfie
  */
 export interface PassportElementErrorSelfie {
   /**
@@ -303,7 +303,7 @@ export interface PassportElementErrorSelfie {
  * Represents an issue with a document scan. The error is considered resolved
  * when the file with the document scan changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorfile
+ * @see https://core.telegram.org/bots/api#passportelementerrorfile
  */
 export interface PassportElementErrorFile {
   /**
@@ -333,7 +333,7 @@ export interface PassportElementErrorFile {
  * Represents an issue with a list of scans. The error is considered resolved
  * when the list of files containing the scans changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorfiles
+ * @see https://core.telegram.org/bots/api#passportelementerrorfiles
  */
 export interface PassportElementErrorFiles {
   /**
@@ -363,7 +363,7 @@ export interface PassportElementErrorFiles {
  * Represents an issue with one of the files that constitute the translation of
  * a document. The error is considered resolved when the file changes.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrortranslationfile
+ * @see https://core.telegram.org/bots/api#passportelementerrortranslationfile
  */
 export interface PassportElementErrorTranslationFile {
   /**
@@ -394,7 +394,7 @@ export interface PassportElementErrorTranslationFile {
  * Represents an issue with the translated version of a document. The error is
  * considered resolved when a file with the document translation change.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrortranslationfiles
+ * @see https://core.telegram.org/bots/api#passportelementerrortranslationfiles
  */
 export interface PassportElementErrorTranslationFiles {
   /**
@@ -425,7 +425,7 @@ export interface PassportElementErrorTranslationFiles {
  * Represents an issue in an unspecified place. The error is considered
  * resolved when new data is added.
  *
- * @see https://corefork.telegram.org/bots/api#passportelementerrorunspecified
+ * @see https://core.telegram.org/bots/api#passportelementerrorunspecified
  */
 export interface PassportElementErrorUnspecified {
   /**

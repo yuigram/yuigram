@@ -10,7 +10,7 @@ import type { InputFile } from '../../input-file.js'
 /**
  * Parameters for `sendSticker`.
  *
- * @see https://corefork.telegram.org/bots/api#sendsticker
+ * @see https://core.telegram.org/bots/api#sendsticker
  */
 export interface SendStickerParams {
   /**
@@ -104,7 +104,7 @@ export interface SendStickerParams {
 /**
  * Parameters for `getStickerSet`.
  *
- * @see https://corefork.telegram.org/bots/api#getstickerset
+ * @see https://core.telegram.org/bots/api#getstickerset
  */
 export interface GetStickerSetParams {
   /**
@@ -116,7 +116,7 @@ export interface GetStickerSetParams {
 /**
  * Parameters for `getCustomEmojiStickers`.
  *
- * @see https://corefork.telegram.org/bots/api#getcustomemojistickers
+ * @see https://core.telegram.org/bots/api#getcustomemojistickers
  */
 export interface GetCustomEmojiStickersParams {
   /**
@@ -129,7 +129,7 @@ export interface GetCustomEmojiStickersParams {
 /**
  * Parameters for `uploadStickerFile`.
  *
- * @see https://corefork.telegram.org/bots/api#uploadstickerfile
+ * @see https://core.telegram.org/bots/api#uploadstickerfile
  */
 export interface UploadStickerFileParams {
   /**
@@ -153,7 +153,7 @@ export interface UploadStickerFileParams {
 /**
  * Parameters for `createNewStickerSet`.
  *
- * @see https://corefork.telegram.org/bots/api#createnewstickerset
+ * @see https://core.telegram.org/bots/api#createnewstickerset
  */
 export interface CreateNewStickerSetParams {
   /**
@@ -198,7 +198,7 @@ export interface CreateNewStickerSetParams {
 /**
  * Parameters for `addStickerToSet`.
  *
- * @see https://corefork.telegram.org/bots/api#addstickertoset
+ * @see https://core.telegram.org/bots/api#addstickertoset
  */
 export interface AddStickerToSetParams {
   /**
@@ -222,7 +222,7 @@ export interface AddStickerToSetParams {
 /**
  * Parameters for `setStickerPositionInSet`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickerpositioninset
+ * @see https://core.telegram.org/bots/api#setstickerpositioninset
  */
 export interface SetStickerPositionInSetParams {
   /**
@@ -239,7 +239,7 @@ export interface SetStickerPositionInSetParams {
 /**
  * Parameters for `deleteStickerFromSet`.
  *
- * @see https://corefork.telegram.org/bots/api#deletestickerfromset
+ * @see https://core.telegram.org/bots/api#deletestickerfromset
  */
 export interface DeleteStickerFromSetParams {
   /**
@@ -251,7 +251,7 @@ export interface DeleteStickerFromSetParams {
 /**
  * Parameters for `replaceStickerInSet`.
  *
- * @see https://corefork.telegram.org/bots/api#replacestickerinset
+ * @see https://core.telegram.org/bots/api#replacestickerinset
  */
 export interface ReplaceStickerInSetParams {
   /**
@@ -280,7 +280,7 @@ export interface ReplaceStickerInSetParams {
 /**
  * Parameters for `setStickerEmojiList`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickeremojilist
+ * @see https://core.telegram.org/bots/api#setstickeremojilist
  */
 export interface SetStickerEmojiListParams {
   /**
@@ -297,7 +297,7 @@ export interface SetStickerEmojiListParams {
 /**
  * Parameters for `setStickerKeywords`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickerkeywords
+ * @see https://core.telegram.org/bots/api#setstickerkeywords
  */
 export interface SetStickerKeywordsParams {
   /**
@@ -315,7 +315,7 @@ export interface SetStickerKeywordsParams {
 /**
  * Parameters for `setStickerMaskPosition`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickermaskposition
+ * @see https://core.telegram.org/bots/api#setstickermaskposition
  */
 export interface SetStickerMaskPositionParams {
   /**
@@ -333,7 +333,7 @@ export interface SetStickerMaskPositionParams {
 /**
  * Parameters for `setStickerSetTitle`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickersettitle
+ * @see https://core.telegram.org/bots/api#setstickersettitle
  */
 export interface SetStickerSetTitleParams {
   /**
@@ -350,7 +350,7 @@ export interface SetStickerSetTitleParams {
 /**
  * Parameters for `setStickerSetThumbnail`.
  *
- * @see https://corefork.telegram.org/bots/api#setstickersetthumbnail
+ * @see https://core.telegram.org/bots/api#setstickersetthumbnail
  */
 export interface SetStickerSetThumbnailParams {
   /**
@@ -390,7 +390,7 @@ export interface SetStickerSetThumbnailParams {
 /**
  * Parameters for `setCustomEmojiStickerSetThumbnail`.
  *
- * @see https://corefork.telegram.org/bots/api#setcustomemojistickersetthumbnail
+ * @see https://core.telegram.org/bots/api#setcustomemojistickersetthumbnail
  */
 export interface SetCustomEmojiStickerSetThumbnailParams {
   /**
@@ -408,7 +408,7 @@ export interface SetCustomEmojiStickerSetThumbnailParams {
 /**
  * Parameters for `deleteStickerSet`.
  *
- * @see https://corefork.telegram.org/bots/api#deletestickerset
+ * @see https://core.telegram.org/bots/api#deletestickerset
  */
 export interface DeleteStickerSetParams {
   /**

@@ -10,7 +10,7 @@ import type { Animation, MessageEntity, PhotoSize, User } from './available-type
  * This object represents a game. Use BotFather to create and edit games, their
  * short names will act as unique identifiers.
  *
- * @see https://corefork.telegram.org/bots/api#game
+ * @see https://core.telegram.org/bots/api#game
  */
 export interface Game {
   /**
@@ -53,7 +53,7 @@ export interface Game {
  * A placeholder, currently holds no information. Use BotFather to set up your
  * game.
  *
- * @see https://corefork.telegram.org/bots/api#callbackgame
+ * @see https://core.telegram.org/bots/api#callbackgame
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface CallbackGame {}
@@ -61,7 +61,7 @@ export interface CallbackGame {}
 /**
  * This object represents one row of the high scores table for a game.
  *
- * @see https://corefork.telegram.org/bots/api#gamehighscore
+ * @see https://core.telegram.org/bots/api#gamehighscore
  */
 export interface GameHighScore {
   /**

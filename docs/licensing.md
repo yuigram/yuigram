@@ -169,7 +169,7 @@ licence position.
 |---|---|---|
 | `@puregram/api/schema/*.json` | MPL-2.0 | **Do not use.** Contaminates. |
 | `ark0f/tg-bot-api` custom v2 / OpenAPI | **Apache-2.0 OR MIT** | **Preferred fallback.** Regenerated nightly and on upstream commits. Dual licence lets Yuigram take the MIT arm. |
-| Yuigram's own scraper over `core.telegram.org` / `corefork.telegram.org` | see §5 | **Preferred primary.** Full control, no third-party dependency, `corefork` lead time. |
+| Yuigram's own scraper over `core.telegram.org`, with `corefork.telegram.org` read as a preview | see §5 | **Preferred primary.** Full control, no third-party dependency; `corefork` gives lead time without being generated from. |
 
 **Recommendation: build an independent scraper, and use `ark0f` as a cross-check in CI.**
 

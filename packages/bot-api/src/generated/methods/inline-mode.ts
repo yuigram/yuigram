@@ -9,7 +9,7 @@ import type { InlineQueryResult, InlineQueryResultsButton } from '../types/index
 /**
  * Parameters for `answerInlineQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answerinlinequery
+ * @see https://core.telegram.org/bots/api#answerinlinequery
  */
 export interface AnswerInlineQueryParams {
   /**

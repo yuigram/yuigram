@@ -9,7 +9,7 @@ import type { Animation, Audio, CopyTextButton, DisabledButton, Document, InputM
 /**
  * Rich formatted message.
  *
- * @see https://corefork.telegram.org/bots/api#richmessage
+ * @see https://core.telegram.org/bots/api#richmessage
  */
 export interface RichMessage {
   /**
@@ -27,7 +27,7 @@ export interface RichMessage {
  * Describes a rich message to be sent. Exactly one of the fields html,
  * markdown, or blocks must be used.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichmessage
+ * @see https://core.telegram.org/bots/api#inputrichmessage
  */
 export interface InputRichMessage {
   /**
@@ -71,7 +71,7 @@ export interface InputRichMessage {
 /**
  * Describes a media element embedded in an outgoing rich message.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichmessagemedia
+ * @see https://core.telegram.org/bots/api#inputrichmessagemedia
  */
 export interface InputRichMessageMedia {
   /**
@@ -92,7 +92,7 @@ export interface InputRichMessageMedia {
  * This object represents a button in a RichMessage. Exactly one of the fields
  * other than text and style must be used to specify the type of the button.
  *
- * @see https://corefork.telegram.org/bots/api#richmessagebutton
+ * @see https://core.telegram.org/bots/api#richmessagebutton
  */
 export interface RichMessageButton {
   /**
@@ -180,7 +180,7 @@ export interface RichMessageButton {
  * This object represents a rich formatted text. Currently, it can be either a
  * String for plain text, an Array of RichText, or any of the following types:
  *
- * @see https://corefork.telegram.org/bots/api#richtext
+ * @see https://core.telegram.org/bots/api#richtext
  */
 export type RichText =
   | string
@@ -215,7 +215,7 @@ export type RichText =
 /**
  * A bold text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextbold
+ * @see https://core.telegram.org/bots/api#richtextbold
  */
 export interface RichTextBold {
   /**
@@ -232,7 +232,7 @@ export interface RichTextBold {
 /**
  * An italicized text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextitalic
+ * @see https://core.telegram.org/bots/api#richtextitalic
  */
 export interface RichTextItalic {
   /**
@@ -249,7 +249,7 @@ export interface RichTextItalic {
 /**
  * An underlined text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextunderline
+ * @see https://core.telegram.org/bots/api#richtextunderline
  */
 export interface RichTextUnderline {
   /**
@@ -266,7 +266,7 @@ export interface RichTextUnderline {
 /**
  * A strikethrough text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextstrikethrough
+ * @see https://core.telegram.org/bots/api#richtextstrikethrough
  */
 export interface RichTextStrikethrough {
   /**
@@ -283,7 +283,7 @@ export interface RichTextStrikethrough {
 /**
  * A text covered by a spoiler.
  *
- * @see https://corefork.telegram.org/bots/api#richtextspoiler
+ * @see https://core.telegram.org/bots/api#richtextspoiler
  */
 export interface RichTextSpoiler {
   /**
@@ -300,7 +300,7 @@ export interface RichTextSpoiler {
 /**
  * Formatted date and time.
  *
- * @see https://corefork.telegram.org/bots/api#richtextdatetime
+ * @see https://core.telegram.org/bots/api#richtextdatetime
  */
 export interface RichTextDateTime {
   /**
@@ -328,7 +328,7 @@ export interface RichTextDateTime {
 /**
  * A mention of a Telegram user by their identifier.
  *
- * @see https://corefork.telegram.org/bots/api#richtexttextmention
+ * @see https://core.telegram.org/bots/api#richtexttextmention
  */
 export interface RichTextTextMention {
   /**
@@ -350,7 +350,7 @@ export interface RichTextTextMention {
 /**
  * A subscript text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextsubscript
+ * @see https://core.telegram.org/bots/api#richtextsubscript
  */
 export interface RichTextSubscript {
   /**
@@ -367,7 +367,7 @@ export interface RichTextSubscript {
 /**
  * A superscript text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextsuperscript
+ * @see https://core.telegram.org/bots/api#richtextsuperscript
  */
 export interface RichTextSuperscript {
   /**
@@ -384,7 +384,7 @@ export interface RichTextSuperscript {
 /**
  * A marked text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextmarked
+ * @see https://core.telegram.org/bots/api#richtextmarked
  */
 export interface RichTextMarked {
   /**
@@ -401,7 +401,7 @@ export interface RichTextMarked {
 /**
  * A monowidth text.
  *
- * @see https://corefork.telegram.org/bots/api#richtextcode
+ * @see https://core.telegram.org/bots/api#richtextcode
  */
 export interface RichTextCode {
   /**
@@ -418,7 +418,7 @@ export interface RichTextCode {
 /**
  * A custom emoji.
  *
- * @see https://corefork.telegram.org/bots/api#richtextcustomemoji
+ * @see https://core.telegram.org/bots/api#richtextcustomemoji
  */
 export interface RichTextCustomEmoji {
   /**
@@ -441,7 +441,7 @@ export interface RichTextCustomEmoji {
 /**
  * A mathematical expression.
  *
- * @see https://corefork.telegram.org/bots/api#richtextmathematicalexpression
+ * @see https://core.telegram.org/bots/api#richtextmathematicalexpression
  */
 export interface RichTextMathematicalExpression {
   /**
@@ -458,7 +458,7 @@ export interface RichTextMathematicalExpression {
 /**
  * A text with a link.
  *
- * @see https://corefork.telegram.org/bots/api#richtexturl
+ * @see https://core.telegram.org/bots/api#richtexturl
  */
 export interface RichTextUrl {
   /**
@@ -480,7 +480,7 @@ export interface RichTextUrl {
 /**
  * A text with an email address.
  *
- * @see https://corefork.telegram.org/bots/api#richtextemailaddress
+ * @see https://core.telegram.org/bots/api#richtextemailaddress
  */
 export interface RichTextEmailAddress {
   /**
@@ -502,7 +502,7 @@ export interface RichTextEmailAddress {
 /**
  * A text with a phone number.
  *
- * @see https://corefork.telegram.org/bots/api#richtextphonenumber
+ * @see https://core.telegram.org/bots/api#richtextphonenumber
  */
 export interface RichTextPhoneNumber {
   /**
@@ -524,7 +524,7 @@ export interface RichTextPhoneNumber {
 /**
  * A text with a bank card number.
  *
- * @see https://corefork.telegram.org/bots/api#richtextbankcardnumber
+ * @see https://core.telegram.org/bots/api#richtextbankcardnumber
  */
 export interface RichTextBankCardNumber {
   /**
@@ -546,7 +546,7 @@ export interface RichTextBankCardNumber {
 /**
  * A mention by a username.
  *
- * @see https://corefork.telegram.org/bots/api#richtextmention
+ * @see https://core.telegram.org/bots/api#richtextmention
  */
 export interface RichTextMention {
   /**
@@ -568,7 +568,7 @@ export interface RichTextMention {
 /**
  * A hashtag.
  *
- * @see https://corefork.telegram.org/bots/api#richtexthashtag
+ * @see https://core.telegram.org/bots/api#richtexthashtag
  */
 export interface RichTextHashtag {
   /**
@@ -590,7 +590,7 @@ export interface RichTextHashtag {
 /**
  * A cashtag.
  *
- * @see https://corefork.telegram.org/bots/api#richtextcashtag
+ * @see https://core.telegram.org/bots/api#richtextcashtag
  */
 export interface RichTextCashtag {
   /**
@@ -612,7 +612,7 @@ export interface RichTextCashtag {
 /**
  * A bot command.
  *
- * @see https://corefork.telegram.org/bots/api#richtextbotcommand
+ * @see https://core.telegram.org/bots/api#richtextbotcommand
  */
 export interface RichTextBotCommand {
   /**
@@ -634,7 +634,7 @@ export interface RichTextBotCommand {
 /**
  * A button.
  *
- * @see https://corefork.telegram.org/bots/api#richtextbutton
+ * @see https://core.telegram.org/bots/api#richtextbutton
  */
 export interface RichTextButton {
   /**
@@ -651,7 +651,7 @@ export interface RichTextButton {
 /**
  * An anchor.
  *
- * @see https://corefork.telegram.org/bots/api#richtextanchor
+ * @see https://core.telegram.org/bots/api#richtextanchor
  */
 export interface RichTextAnchor {
   /**
@@ -668,7 +668,7 @@ export interface RichTextAnchor {
 /**
  * A link to an anchor.
  *
- * @see https://corefork.telegram.org/bots/api#richtextanchorlink
+ * @see https://core.telegram.org/bots/api#richtextanchorlink
  */
 export interface RichTextAnchorLink {
   /**
@@ -691,7 +691,7 @@ export interface RichTextAnchorLink {
 /**
  * A reference.
  *
- * @see https://corefork.telegram.org/bots/api#richtextreference
+ * @see https://core.telegram.org/bots/api#richtextreference
  */
 export interface RichTextReference {
   /**
@@ -713,7 +713,7 @@ export interface RichTextReference {
 /**
  * A link to a reference.
  *
- * @see https://corefork.telegram.org/bots/api#richtextreferencelink
+ * @see https://core.telegram.org/bots/api#richtextreferencelink
  */
 export interface RichTextReferenceLink {
   /**
@@ -735,7 +735,7 @@ export interface RichTextReferenceLink {
 /**
  * Caption of a rich formatted block.
  *
- * @see https://corefork.telegram.org/bots/api#richblockcaption
+ * @see https://core.telegram.org/bots/api#richblockcaption
  */
 export interface RichBlockCaption {
   /**
@@ -752,7 +752,7 @@ export interface RichBlockCaption {
 /**
  * Cell in a table.
  *
- * @see https://corefork.telegram.org/bots/api#richblocktablecell
+ * @see https://core.telegram.org/bots/api#richblocktablecell
  */
 export interface RichBlockTableCell {
   /**
@@ -791,7 +791,7 @@ export interface RichBlockTableCell {
 /**
  * An item of a list.
  *
- * @see https://corefork.telegram.org/bots/api#richblocklistitem
+ * @see https://core.telegram.org/bots/api#richblocklistitem
  */
 export interface RichBlockListItem {
   /**
@@ -831,7 +831,7 @@ export interface RichBlockListItem {
  * This object represents a block in a rich formatted message. Currently, it
  * can be any of the following types:
  *
- * @see https://corefork.telegram.org/bots/api#richblock
+ * @see https://core.telegram.org/bots/api#richblock
  */
 export type RichBlock =
   | RichBlockAnchor
@@ -862,7 +862,7 @@ export type RichBlock =
 /**
  * A text paragraph, corresponding to the HTML tag <p>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockparagraph
+ * @see https://core.telegram.org/bots/api#richblockparagraph
  */
 export interface RichBlockParagraph {
   /**
@@ -880,7 +880,7 @@ export interface RichBlockParagraph {
  * A section heading, corresponding to the HTML tags <h1>, <h2>, <h3>, <h4>,
  * <h5>, or <h6>.
  *
- * @see https://corefork.telegram.org/bots/api#richblocksectionheading
+ * @see https://core.telegram.org/bots/api#richblocksectionheading
  */
 export interface RichBlockSectionHeading {
   /**
@@ -903,7 +903,7 @@ export interface RichBlockSectionHeading {
  * A preformatted text block, corresponding to the nested HTML tags <pre> and
  * <code>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockpreformatted
+ * @see https://core.telegram.org/bots/api#richblockpreformatted
  */
 export interface RichBlockPreformatted {
   /**
@@ -925,7 +925,7 @@ export interface RichBlockPreformatted {
 /**
  * A footer, corresponding to the HTML tag <footer>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockfooter
+ * @see https://core.telegram.org/bots/api#richblockfooter
  */
 export interface RichBlockFooter {
   /**
@@ -942,7 +942,7 @@ export interface RichBlockFooter {
 /**
  * A divider, corresponding to the HTML tag <hr/>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockdivider
+ * @see https://core.telegram.org/bots/api#richblockdivider
  */
 export interface RichBlockDivider {
   /**
@@ -955,7 +955,7 @@ export interface RichBlockDivider {
  * A block with a mathematical expression in LaTeX format, corresponding to the
  * custom HTML tag <tg-math-block>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockmathematicalexpression
+ * @see https://core.telegram.org/bots/api#richblockmathematicalexpression
  */
 export interface RichBlockMathematicalExpression {
   /**
@@ -973,7 +973,7 @@ export interface RichBlockMathematicalExpression {
  * A block with an anchor, corresponding to the HTML tag <a> with the attribute
  * name.
  *
- * @see https://corefork.telegram.org/bots/api#richblockanchor
+ * @see https://core.telegram.org/bots/api#richblockanchor
  */
 export interface RichBlockAnchor {
   /**
@@ -991,7 +991,7 @@ export interface RichBlockAnchor {
  * A list of blocks, corresponding to the HTML tag <ul> or <ol> with multiple
  * nested tags <li>.
  *
- * @see https://corefork.telegram.org/bots/api#richblocklist
+ * @see https://core.telegram.org/bots/api#richblocklist
  */
 export interface RichBlockList {
   /**
@@ -1008,7 +1008,7 @@ export interface RichBlockList {
 /**
  * A block quotation, corresponding to the HTML tag <blockquote>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockblockquotation
+ * @see https://core.telegram.org/bots/api#richblockblockquotation
  */
 export interface RichBlockBlockQuotation {
   /**
@@ -1031,7 +1031,7 @@ export interface RichBlockBlockQuotation {
  * A block quotation, corresponding to the HTML tag <blockquote> with custom
  * attribute "expandable".
  *
- * @see https://corefork.telegram.org/bots/api#richblockexpandableblockquotation
+ * @see https://core.telegram.org/bots/api#richblockexpandableblockquotation
  */
 export interface RichBlockExpandableBlockQuotation {
   /**
@@ -1054,7 +1054,7 @@ export interface RichBlockExpandableBlockQuotation {
  * A quotation with centered text, loosely corresponding to the HTML tag
  * <aside>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockpullquotation
+ * @see https://core.telegram.org/bots/api#richblockpullquotation
  */
 export interface RichBlockPullQuotation {
   /**
@@ -1076,7 +1076,7 @@ export interface RichBlockPullQuotation {
 /**
  * A collage, corresponding to the custom HTML tag <tg-collage>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockcollage
+ * @see https://core.telegram.org/bots/api#richblockcollage
  */
 export interface RichBlockCollage {
   /**
@@ -1098,7 +1098,7 @@ export interface RichBlockCollage {
 /**
  * A slideshow, corresponding to the custom HTML tag <tg-slideshow>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockslideshow
+ * @see https://core.telegram.org/bots/api#richblockslideshow
  */
 export interface RichBlockSlideshow {
   /**
@@ -1120,7 +1120,7 @@ export interface RichBlockSlideshow {
 /**
  * A table, corresponding to the HTML tag <table>.
  *
- * @see https://corefork.telegram.org/bots/api#richblocktable
+ * @see https://core.telegram.org/bots/api#richblocktable
  */
 export interface RichBlockTable {
   /**
@@ -1158,7 +1158,7 @@ export interface RichBlockTable {
  * An expandable block for details disclosure, corresponding to the HTML tag
  * <details>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockdetails
+ * @see https://core.telegram.org/bots/api#richblockdetails
  */
 export interface RichBlockDetails {
   /**
@@ -1185,7 +1185,7 @@ export interface RichBlockDetails {
 /**
  * A block with a map, corresponding to the custom HTML tag <tg-map>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockmap
+ * @see https://core.telegram.org/bots/api#richblockmap
  */
 export interface RichBlockMap {
   /**
@@ -1223,7 +1223,7 @@ export interface RichBlockMap {
  * A block containing a list of buttons that are shown in one row,
  * corresponding to the custom HTML tag <tg-button-row>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockbuttons
+ * @see https://core.telegram.org/bots/api#richblockbuttons
  */
 export interface RichBlockButtons {
   /**
@@ -1246,7 +1246,7 @@ export interface RichBlockButtons {
 /**
  * A block with an animation, corresponding to the HTML tag <video>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockanimation
+ * @see https://core.telegram.org/bots/api#richblockanimation
  */
 export interface RichBlockAnimation {
   /**
@@ -1273,7 +1273,7 @@ export interface RichBlockAnimation {
 /**
  * A block with a music file, corresponding to the HTML tag <audio>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockaudio
+ * @see https://core.telegram.org/bots/api#richblockaudio
  */
 export interface RichBlockAudio {
   /**
@@ -1296,7 +1296,7 @@ export interface RichBlockAudio {
  * A block with a general file, corresponding to the custom HTML tag
  * <tg-document>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockdocument
+ * @see https://core.telegram.org/bots/api#richblockdocument
  */
 export interface RichBlockDocument {
   /**
@@ -1318,7 +1318,7 @@ export interface RichBlockDocument {
 /**
  * A block with a photo, corresponding to the HTML tag <img>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockphoto
+ * @see https://core.telegram.org/bots/api#richblockphoto
  */
 export interface RichBlockPhoto {
   /**
@@ -1345,7 +1345,7 @@ export interface RichBlockPhoto {
 /**
  * A block with a video, corresponding to the HTML tag <video>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockvideo
+ * @see https://core.telegram.org/bots/api#richblockvideo
  */
 export interface RichBlockVideo {
   /**
@@ -1372,7 +1372,7 @@ export interface RichBlockVideo {
 /**
  * A block with a voice note, corresponding to the HTML tag <audio>.
  *
- * @see https://corefork.telegram.org/bots/api#richblockvoicenote
+ * @see https://core.telegram.org/bots/api#richblockvoicenote
  */
 export interface RichBlockVoiceNote {
   /**
@@ -1397,7 +1397,7 @@ export interface RichBlockVoiceNote {
  * it can't be received in messages. See https://t.me/addemoji/AIActions for
  * examples of custom emoji that are recommended for usage in the block.
  *
- * @see https://corefork.telegram.org/bots/api#richblockthinking
+ * @see https://core.telegram.org/bots/api#richblockthinking
  */
 export interface RichBlockThinking {
   /**
@@ -1415,7 +1415,7 @@ export interface RichBlockThinking {
 /**
  * An item of a list to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblocklistitem
+ * @see https://core.telegram.org/bots/api#inputrichblocklistitem
  */
 export interface InputRichBlockListItem {
   /**
@@ -1450,7 +1450,7 @@ export interface InputRichBlockListItem {
  * This object represents a block in a rich formatted message to be sent.
  * Currently, it can be any of the following types:
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblock
+ * @see https://core.telegram.org/bots/api#inputrichblock
  */
 export type InputRichBlock =
   | InputRichBlockAnchor
@@ -1481,7 +1481,7 @@ export type InputRichBlock =
 /**
  * A text paragraph, corresponding to the HTML tag <p>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockparagraph
+ * @see https://core.telegram.org/bots/api#inputrichblockparagraph
  */
 export interface InputRichBlockParagraph {
   /**
@@ -1499,7 +1499,7 @@ export interface InputRichBlockParagraph {
  * A section heading, corresponding to the HTML tags <h1>, <h2>, <h3>, <h4>,
  * <h5>, or <h6>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblocksectionheading
+ * @see https://core.telegram.org/bots/api#inputrichblocksectionheading
  */
 export interface InputRichBlockSectionHeading {
   /**
@@ -1522,7 +1522,7 @@ export interface InputRichBlockSectionHeading {
  * A preformatted text block, corresponding to the nested HTML tags <pre> and
  * <code>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockpreformatted
+ * @see https://core.telegram.org/bots/api#inputrichblockpreformatted
  */
 export interface InputRichBlockPreformatted {
   /**
@@ -1544,7 +1544,7 @@ export interface InputRichBlockPreformatted {
 /**
  * A footer, corresponding to the HTML tag <footer>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockfooter
+ * @see https://core.telegram.org/bots/api#inputrichblockfooter
  */
 export interface InputRichBlockFooter {
   /**
@@ -1561,7 +1561,7 @@ export interface InputRichBlockFooter {
 /**
  * A divider, corresponding to the HTML tag <hr/>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockdivider
+ * @see https://core.telegram.org/bots/api#inputrichblockdivider
  */
 export interface InputRichBlockDivider {
   /**
@@ -1574,7 +1574,7 @@ export interface InputRichBlockDivider {
  * A block with a mathematical expression in LaTeX format, corresponding to the
  * custom HTML tag <tg-math-block>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockmathematicalexpression
+ * @see https://core.telegram.org/bots/api#inputrichblockmathematicalexpression
  */
 export interface InputRichBlockMathematicalExpression {
   /**
@@ -1592,7 +1592,7 @@ export interface InputRichBlockMathematicalExpression {
  * A block with an anchor, corresponding to the HTML tag <a> with the attribute
  * name.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockanchor
+ * @see https://core.telegram.org/bots/api#inputrichblockanchor
  */
 export interface InputRichBlockAnchor {
   /**
@@ -1610,7 +1610,7 @@ export interface InputRichBlockAnchor {
  * A list of blocks, corresponding to the HTML tag <ul> or <ol> with multiple
  * nested tags <li>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblocklist
+ * @see https://core.telegram.org/bots/api#inputrichblocklist
  */
 export interface InputRichBlockList {
   /**
@@ -1627,7 +1627,7 @@ export interface InputRichBlockList {
 /**
  * A block quotation, corresponding to the HTML tag <blockquote>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockblockquotation
+ * @see https://core.telegram.org/bots/api#inputrichblockblockquotation
  */
 export interface InputRichBlockBlockQuotation {
   /**
@@ -1650,7 +1650,7 @@ export interface InputRichBlockBlockQuotation {
  * A block quotation, corresponding to the HTML tag <blockquote> with custom
  * attribute "expandable".
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockexpandableblockquotation
+ * @see https://core.telegram.org/bots/api#inputrichblockexpandableblockquotation
  */
 export interface InputRichBlockExpandableBlockQuotation {
   /**
@@ -1673,7 +1673,7 @@ export interface InputRichBlockExpandableBlockQuotation {
  * A quotation with centered text, loosely corresponding to the HTML tag
  * <aside>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockpullquotation
+ * @see https://core.telegram.org/bots/api#inputrichblockpullquotation
  */
 export interface InputRichBlockPullQuotation {
   /**
@@ -1695,7 +1695,7 @@ export interface InputRichBlockPullQuotation {
 /**
  * A collage, corresponding to the custom HTML tag <tg-collage>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockcollage
+ * @see https://core.telegram.org/bots/api#inputrichblockcollage
  */
 export interface InputRichBlockCollage {
   /**
@@ -1717,7 +1717,7 @@ export interface InputRichBlockCollage {
 /**
  * A slideshow, corresponding to the custom HTML tag <tg-slideshow>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockslideshow
+ * @see https://core.telegram.org/bots/api#inputrichblockslideshow
  */
 export interface InputRichBlockSlideshow {
   /**
@@ -1739,7 +1739,7 @@ export interface InputRichBlockSlideshow {
 /**
  * A table, corresponding to the HTML tag <table>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblocktable
+ * @see https://core.telegram.org/bots/api#inputrichblocktable
  */
 export interface InputRichBlockTable {
   /**
@@ -1777,7 +1777,7 @@ export interface InputRichBlockTable {
  * An expandable block for details disclosure, corresponding to the HTML tag
  * <details>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockdetails
+ * @see https://core.telegram.org/bots/api#inputrichblockdetails
  */
 export interface InputRichBlockDetails {
   /**
@@ -1806,7 +1806,7 @@ export interface InputRichBlockDetails {
  * width and height must not exceed 10000 in total. The width and height ratio
  * must be at most 20.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockmap
+ * @see https://core.telegram.org/bots/api#inputrichblockmap
  */
 export interface InputRichBlockMap {
   /**
@@ -1844,7 +1844,7 @@ export interface InputRichBlockMap {
  * A block containing a list of buttons that are shown in one row,
  * corresponding to the custom HTML tag <tg-button-row>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockbuttons
+ * @see https://core.telegram.org/bots/api#inputrichblockbuttons
  */
 export interface InputRichBlockButtons {
   /**
@@ -1867,7 +1867,7 @@ export interface InputRichBlockButtons {
 /**
  * A block with an animation, corresponding to the HTML tag <video>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockanimation
+ * @see https://core.telegram.org/bots/api#inputrichblockanimation
  */
 export interface InputRichBlockAnimation {
   /**
@@ -1889,7 +1889,7 @@ export interface InputRichBlockAnimation {
 /**
  * A block with a music file, corresponding to the HTML tag <audio>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockaudio
+ * @see https://core.telegram.org/bots/api#inputrichblockaudio
  */
 export interface InputRichBlockAudio {
   /**
@@ -1912,7 +1912,7 @@ export interface InputRichBlockAudio {
  * A block with a general file, corresponding to the custom HTML tag
  * <tg-document>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockdocument
+ * @see https://core.telegram.org/bots/api#inputrichblockdocument
  */
 export interface InputRichBlockDocument {
   /**
@@ -1934,7 +1934,7 @@ export interface InputRichBlockDocument {
 /**
  * A block with a photo, corresponding to the HTML tag <img>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockphoto
+ * @see https://core.telegram.org/bots/api#inputrichblockphoto
  */
 export interface InputRichBlockPhoto {
   /**
@@ -1956,7 +1956,7 @@ export interface InputRichBlockPhoto {
 /**
  * A block with a video, corresponding to the HTML tag <video>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockvideo
+ * @see https://core.telegram.org/bots/api#inputrichblockvideo
  */
 export interface InputRichBlockVideo {
   /**
@@ -1978,7 +1978,7 @@ export interface InputRichBlockVideo {
 /**
  * A block with a voice note, corresponding to the HTML tag <audio>.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockvoicenote
+ * @see https://core.telegram.org/bots/api#inputrichblockvoicenote
  */
 export interface InputRichBlockVoiceNote {
   /**
@@ -2003,7 +2003,7 @@ export interface InputRichBlockVoiceNote {
  * it can't be received in messages. See https://t.me/addemoji/AIActions for
  * examples of custom emoji that are recommended for usage in the block.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichblockthinking
+ * @see https://core.telegram.org/bots/api#inputrichblockthinking
  */
 export interface InputRichBlockThinking {
   /**

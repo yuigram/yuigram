@@ -12,7 +12,7 @@ import type { InputRichMessage } from './rich-messages.js'
  * This object represents an incoming inline query. When the user sends an
  * empty query, your bot could return some default or trending results.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequery
+ * @see https://core.telegram.org/bots/api#inlinequery
  */
 export interface InlineQuery {
   /**
@@ -54,7 +54,7 @@ export interface InlineQuery {
  * This object represents a button to be shown above inline query results. You
  * must use exactly one of the optional fields.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultsbutton
+ * @see https://core.telegram.org/bots/api#inlinequeryresultsbutton
  */
 export interface InlineQueryResultsButton {
   /**
@@ -90,7 +90,7 @@ export interface InlineQueryResultsButton {
  * in inline query results will be available to end users and therefore must be
  * assumed to be public.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresult
+ * @see https://core.telegram.org/bots/api#inlinequeryresult
  */
 export type InlineQueryResult =
   | InlineQueryResultArticle
@@ -117,7 +117,7 @@ export type InlineQueryResult =
 /**
  * Represents a link to an article or web page.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultarticle
+ * @see https://core.telegram.org/bots/api#inlinequeryresultarticle
  */
 export interface InlineQueryResultArticle {
   /**
@@ -176,7 +176,7 @@ export interface InlineQueryResultArticle {
  * user with optional caption. Alternatively, you can use input_message_content
  * to send a message with the specified content instead of the photo.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultphoto
+ * @see https://core.telegram.org/bots/api#inlinequeryresultphoto
  */
 export interface InlineQueryResultPhoto {
   /**
@@ -259,7 +259,7 @@ export interface InlineQueryResultPhoto {
  * use input_message_content to send a message with the specified content
  * instead of the animation.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultgif
+ * @see https://core.telegram.org/bots/api#inlinequeryresultgif
  */
 export interface InlineQueryResultGif {
   /**
@@ -347,7 +347,7 @@ export interface InlineQueryResultGif {
  * optional caption. Alternatively, you can use input_message_content to send a
  * message with the specified content instead of the animation.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultmpeg4gif
+ * @see https://core.telegram.org/bots/api#inlinequeryresultmpeg4gif
  */
 export interface InlineQueryResultMpeg4Gif {
   /**
@@ -438,7 +438,7 @@ export interface InlineQueryResultMpeg4Gif {
  * InlineQueryResultVideo message contains an embedded video (e.g., YouTube),
  * you must replace its content using input_message_content.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultvideo
+ * @see https://core.telegram.org/bots/api#inlinequeryresultvideo
  */
 export interface InlineQueryResultVideo {
   /**
@@ -531,7 +531,7 @@ export interface InlineQueryResultVideo {
  * sent by the user. Alternatively, you can use input_message_content to send a
  * message with the specified content instead of the audio.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultaudio
+ * @see https://core.telegram.org/bots/api#inlinequeryresultaudio
  */
 export interface InlineQueryResultAudio {
   /**
@@ -598,7 +598,7 @@ export interface InlineQueryResultAudio {
  * Alternatively, you can use input_message_content to send a message with the
  * specified content instead of the the voice message.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultvoice
+ * @see https://core.telegram.org/bots/api#inlinequeryresultvoice
  */
 export interface InlineQueryResultVoice {
   /**
@@ -660,7 +660,7 @@ export interface InlineQueryResultVoice {
  * to send a message with the specified content instead of the file. Currently,
  * only .PDF and .ZIP files can be sent using this method.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultdocument
+ * @see https://core.telegram.org/bots/api#inlinequeryresultdocument
  */
 export interface InlineQueryResultDocument {
   /**
@@ -742,7 +742,7 @@ export interface InlineQueryResultDocument {
  * user. Alternatively, you can use input_message_content to send a message
  * with the specified content instead of the location.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultlocation
+ * @see https://core.telegram.org/bots/api#inlinequeryresultlocation
  */
 export interface InlineQueryResultLocation {
   /**
@@ -826,7 +826,7 @@ export interface InlineQueryResultLocation {
  * Alternatively, you can use input_message_content to send a message with the
  * specified content instead of the venue.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultvenue
+ * @see https://core.telegram.org/bots/api#inlinequeryresultvenue
  */
 export interface InlineQueryResultVenue {
   /**
@@ -912,7 +912,7 @@ export interface InlineQueryResultVenue {
  * sent by the user. Alternatively, you can use input_message_content to send a
  * message with the specified content instead of the contact.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcontact
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcontact
  */
 export interface InlineQueryResultContact {
   /**
@@ -974,7 +974,7 @@ export interface InlineQueryResultContact {
 /**
  * Represents a Game.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultgame
+ * @see https://core.telegram.org/bots/api#inlinequeryresultgame
  */
 export interface InlineQueryResultGame {
   /**
@@ -1004,7 +1004,7 @@ export interface InlineQueryResultGame {
  * you can use input_message_content to send a message with the specified
  * content instead of the photo.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedphoto
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedphoto
  */
 export interface InlineQueryResultCachedPhoto {
   /**
@@ -1071,7 +1071,7 @@ export interface InlineQueryResultCachedPhoto {
  * caption. Alternatively, you can use input_message_content to send a message
  * with specified content instead of the animation.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedgif
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedgif
  */
 export interface InlineQueryResultCachedGif {
   /**
@@ -1134,7 +1134,7 @@ export interface InlineQueryResultCachedGif {
  * use input_message_content to send a message with the specified content
  * instead of the animation.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedmpeg4gif
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedmpeg4gif
  */
 export interface InlineQueryResultCachedMpeg4Gif {
   /**
@@ -1197,7 +1197,7 @@ export interface InlineQueryResultCachedMpeg4Gif {
  * input_message_content to send a message with the specified content instead
  * of the sticker.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedsticker
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedsticker
  */
 export interface InlineQueryResultCachedSticker {
   /**
@@ -1232,7 +1232,7 @@ export interface InlineQueryResultCachedSticker {
  * can use input_message_content to send a message with the specified content
  * instead of the file.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcacheddocument
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcacheddocument
  */
 export interface InlineQueryResultCachedDocument {
   /**
@@ -1294,7 +1294,7 @@ export interface InlineQueryResultCachedDocument {
  * Alternatively, you can use input_message_content to send a message with the
  * specified content instead of the video.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedvideo
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedvideo
  */
 export interface InlineQueryResultCachedVideo {
   /**
@@ -1361,7 +1361,7 @@ export interface InlineQueryResultCachedVideo {
  * use input_message_content to send a message with the specified content
  * instead of the voice message.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedvoice
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedvoice
  */
 export interface InlineQueryResultCachedVoice {
   /**
@@ -1418,7 +1418,7 @@ export interface InlineQueryResultCachedVoice {
  * use input_message_content to send a message with the specified content
  * instead of the audio.
  *
- * @see https://corefork.telegram.org/bots/api#inlinequeryresultcachedaudio
+ * @see https://core.telegram.org/bots/api#inlinequeryresultcachedaudio
  */
 export interface InlineQueryResultCachedAudio {
   /**
@@ -1468,7 +1468,7 @@ export interface InlineQueryResultCachedAudio {
  * This object represents the content of a message to be sent as a result of an
  * inline query. Telegram clients currently support the following types:
  *
- * @see https://corefork.telegram.org/bots/api#inputmessagecontent
+ * @see https://core.telegram.org/bots/api#inputmessagecontent
  */
 export type InputMessageContent =
   | InputContactMessageContent
@@ -1482,7 +1482,7 @@ export type InputMessageContent =
  * Represents the content of a text message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputtextmessagecontent
+ * @see https://core.telegram.org/bots/api#inputtextmessagecontent
  */
 export interface InputTextMessageContent {
   /**
@@ -1512,7 +1512,7 @@ export interface InputTextMessageContent {
  * Represents the content of a rich message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputrichmessagecontent
+ * @see https://core.telegram.org/bots/api#inputrichmessagecontent
  */
 export interface InputRichMessageContent {
   /**
@@ -1526,7 +1526,7 @@ export interface InputRichMessageContent {
  * Represents the content of a location message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputlocationmessagecontent
+ * @see https://core.telegram.org/bots/api#inputlocationmessagecontent
  */
 export interface InputLocationMessageContent {
   /**
@@ -1569,7 +1569,7 @@ export interface InputLocationMessageContent {
  * Represents the content of a venue message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputvenuemessagecontent
+ * @see https://core.telegram.org/bots/api#inputvenuemessagecontent
  */
 export interface InputVenueMessageContent {
   /**
@@ -1619,7 +1619,7 @@ export interface InputVenueMessageContent {
  * Represents the content of a contact message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputcontactmessagecontent
+ * @see https://core.telegram.org/bots/api#inputcontactmessagecontent
  */
 export interface InputContactMessageContent {
   /**
@@ -1647,7 +1647,7 @@ export interface InputContactMessageContent {
  * Represents the content of an invoice message to be sent as the result of an
  * inline query.
  *
- * @see https://corefork.telegram.org/bots/api#inputinvoicemessagecontent
+ * @see https://core.telegram.org/bots/api#inputinvoicemessagecontent
  */
 export interface InputInvoiceMessageContent {
   /**
@@ -1778,7 +1778,7 @@ export interface InputInvoiceMessageContent {
  * Represents a result of an inline query that was chosen by the user and sent
  * to their chat partner.
  *
- * @see https://corefork.telegram.org/bots/api#choseninlineresult
+ * @see https://core.telegram.org/bots/api#choseninlineresult
  */
 export interface ChosenInlineResult {
   /**

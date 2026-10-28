@@ -10,7 +10,7 @@ import type { InputFile } from '../../input-file.js'
 /**
  * Parameters for `getMe`.
  *
- * @see https://corefork.telegram.org/bots/api#getme
+ * @see https://core.telegram.org/bots/api#getme
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface GetMeParams {}
@@ -18,7 +18,7 @@ export interface GetMeParams {}
 /**
  * Parameters for `logOut`.
  *
- * @see https://corefork.telegram.org/bots/api#logout
+ * @see https://core.telegram.org/bots/api#logout
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface LogOutParams {}
@@ -26,7 +26,7 @@ export interface LogOutParams {}
 /**
  * Parameters for `close`.
  *
- * @see https://corefork.telegram.org/bots/api#close
+ * @see https://core.telegram.org/bots/api#close
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface CloseParams {}
@@ -34,7 +34,7 @@ export interface CloseParams {}
 /**
  * Parameters for `sendMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#sendmessage
+ * @see https://core.telegram.org/bots/api#sendmessage
  */
 export interface SendMessageParams {
   /**
@@ -136,7 +136,7 @@ export interface SendMessageParams {
 /**
  * Parameters for `forwardMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#forwardmessage
+ * @see https://core.telegram.org/bots/api#forwardmessage
  */
 export interface ForwardMessageParams {
   /**
@@ -200,7 +200,7 @@ export interface ForwardMessageParams {
 /**
  * Parameters for `forwardMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#forwardmessages
+ * @see https://core.telegram.org/bots/api#forwardmessages
  */
 export interface ForwardMessagesParams {
   /**
@@ -250,7 +250,7 @@ export interface ForwardMessagesParams {
 /**
  * Parameters for `copyMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#copymessage
+ * @see https://core.telegram.org/bots/api#copymessage
  */
 export interface CopyMessageParams {
   /**
@@ -358,7 +358,7 @@ export interface CopyMessageParams {
 /**
  * Parameters for `copyMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#copymessages
+ * @see https://core.telegram.org/bots/api#copymessages
  */
 export interface CopyMessagesParams {
   /**
@@ -413,7 +413,7 @@ export interface CopyMessagesParams {
 /**
  * Parameters for `sendPhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#sendphoto
+ * @see https://core.telegram.org/bots/api#sendphoto
  */
 export interface SendPhotoParams {
   /**
@@ -531,7 +531,7 @@ export interface SendPhotoParams {
 /**
  * Parameters for `sendLivePhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#sendlivephoto
+ * @see https://core.telegram.org/bots/api#sendlivephoto
  */
 export interface SendLivePhotoParams {
   /**
@@ -656,7 +656,7 @@ export interface SendLivePhotoParams {
 /**
  * Parameters for `sendAudio`.
  *
- * @see https://corefork.telegram.org/bots/api#sendaudio
+ * @see https://core.telegram.org/bots/api#sendaudio
  */
 export interface SendAudioParams {
   /**
@@ -788,7 +788,7 @@ export interface SendAudioParams {
 /**
  * Parameters for `sendDocument`.
  *
- * @see https://corefork.telegram.org/bots/api#senddocument
+ * @see https://core.telegram.org/bots/api#senddocument
  */
 export interface SendDocumentParams {
   /**
@@ -912,7 +912,7 @@ export interface SendDocumentParams {
 /**
  * Parameters for `sendVideo`.
  *
- * @see https://corefork.telegram.org/bots/api#sendvideo
+ * @see https://core.telegram.org/bots/api#sendvideo
  */
 export interface SendVideoParams {
   /**
@@ -1074,7 +1074,7 @@ export interface SendVideoParams {
 /**
  * Parameters for `sendAnimation`.
  *
- * @see https://corefork.telegram.org/bots/api#sendanimation
+ * @see https://core.telegram.org/bots/api#sendanimation
  */
 export interface SendAnimationParams {
   /**
@@ -1217,7 +1217,7 @@ export interface SendAnimationParams {
 /**
  * Parameters for `sendVoice`.
  *
- * @see https://corefork.telegram.org/bots/api#sendvoice
+ * @see https://core.telegram.org/bots/api#sendvoice
  */
 export interface SendVoiceParams {
   /**
@@ -1327,7 +1327,7 @@ export interface SendVoiceParams {
 /**
  * Parameters for `sendVideoNote`.
  *
- * @see https://corefork.telegram.org/bots/api#sendvideonote
+ * @see https://core.telegram.org/bots/api#sendvideonote
  */
 export interface SendVideoNoteParams {
   /**
@@ -1437,7 +1437,7 @@ export interface SendVideoNoteParams {
 /**
  * Parameters for `sendPaidMedia`.
  *
- * @see https://corefork.telegram.org/bots/api#sendpaidmedia
+ * @see https://core.telegram.org/bots/api#sendpaidmedia
  */
 export interface SendPaidMediaParams {
   /**
@@ -1546,7 +1546,7 @@ export interface SendPaidMediaParams {
 /**
  * Parameters for `sendMediaGroup`.
  *
- * @see https://corefork.telegram.org/bots/api#sendmediagroup
+ * @see https://core.telegram.org/bots/api#sendmediagroup
  */
 export interface SendMediaGroupParams {
   /**
@@ -1612,7 +1612,7 @@ export interface SendMediaGroupParams {
 /**
  * Parameters for `sendLocation`.
  *
- * @see https://corefork.telegram.org/bots/api#sendlocation
+ * @see https://core.telegram.org/bots/api#sendlocation
  */
 export interface SendLocationParams {
   /**
@@ -1727,7 +1727,7 @@ export interface SendLocationParams {
 /**
  * Parameters for `sendVenue`.
  *
- * @see https://corefork.telegram.org/bots/api#sendvenue
+ * @see https://core.telegram.org/bots/api#sendvenue
  */
 export interface SendVenueParams {
   /**
@@ -1849,7 +1849,7 @@ export interface SendVenueParams {
 /**
  * Parameters for `sendContact`.
  *
- * @see https://corefork.telegram.org/bots/api#sendcontact
+ * @see https://core.telegram.org/bots/api#sendcontact
  */
 export interface SendContactParams {
   /**
@@ -1949,7 +1949,7 @@ export interface SendContactParams {
 /**
  * Parameters for `sendPoll`.
  *
- * @see https://corefork.telegram.org/bots/api#sendpoll
+ * @see https://core.telegram.org/bots/api#sendpoll
  */
 export interface SendPollParams {
   /**
@@ -2156,7 +2156,7 @@ export interface SendPollParams {
 /**
  * Parameters for `sendChecklist`.
  *
- * @see https://corefork.telegram.org/bots/api#sendchecklist
+ * @see https://core.telegram.org/bots/api#sendchecklist
  */
 export interface SendChecklistParams {
   /**
@@ -2205,7 +2205,7 @@ export interface SendChecklistParams {
 /**
  * Parameters for `sendDice`.
  *
- * @see https://corefork.telegram.org/bots/api#senddice
+ * @see https://core.telegram.org/bots/api#senddice
  */
 export interface SendDiceParams {
   /**
@@ -2286,7 +2286,7 @@ export interface SendDiceParams {
 /**
  * Parameters for `sendMessageDraft`.
  *
- * @see https://corefork.telegram.org/bots/api#sendmessagedraft
+ * @see https://core.telegram.org/bots/api#sendmessagedraft
  */
 export interface SendMessageDraftParams {
   /**
@@ -2343,7 +2343,7 @@ export interface SendMessageDraftParams {
 /**
  * Parameters for `sendChatAction`.
  *
- * @see https://corefork.telegram.org/bots/api#sendchataction
+ * @see https://core.telegram.org/bots/api#sendchataction
  */
 export interface SendChatActionParams {
   /**
@@ -2379,7 +2379,7 @@ export interface SendChatActionParams {
 /**
  * Parameters for `setMessageReaction`.
  *
- * @see https://corefork.telegram.org/bots/api#setmessagereaction
+ * @see https://core.telegram.org/bots/api#setmessagereaction
  */
 export interface SetMessageReactionParams {
   /**
@@ -2412,7 +2412,7 @@ export interface SetMessageReactionParams {
 /**
  * Parameters for `getUserProfilePhotos`.
  *
- * @see https://corefork.telegram.org/bots/api#getuserprofilephotos
+ * @see https://core.telegram.org/bots/api#getuserprofilephotos
  */
 export interface GetUserProfilePhotosParams {
   /**
@@ -2436,7 +2436,7 @@ export interface GetUserProfilePhotosParams {
 /**
  * Parameters for `getUserProfileAudios`.
  *
- * @see https://corefork.telegram.org/bots/api#getuserprofileaudios
+ * @see https://core.telegram.org/bots/api#getuserprofileaudios
  */
 export interface GetUserProfileAudiosParams {
   /**
@@ -2460,7 +2460,7 @@ export interface GetUserProfileAudiosParams {
 /**
  * Parameters for `setUserEmojiStatus`.
  *
- * @see https://corefork.telegram.org/bots/api#setuseremojistatus
+ * @see https://core.telegram.org/bots/api#setuseremojistatus
  */
 export interface SetUserEmojiStatusParams {
   /**
@@ -2483,7 +2483,7 @@ export interface SetUserEmojiStatusParams {
 /**
  * Parameters for `getFile`.
  *
- * @see https://corefork.telegram.org/bots/api#getfile
+ * @see https://core.telegram.org/bots/api#getfile
  */
 export interface GetFileParams {
   /**
@@ -2495,7 +2495,7 @@ export interface GetFileParams {
 /**
  * Parameters for `banChatMember`.
  *
- * @see https://corefork.telegram.org/bots/api#banchatmember
+ * @see https://core.telegram.org/bots/api#banchatmember
  */
 export interface BanChatMemberParams {
   /**
@@ -2528,7 +2528,7 @@ export interface BanChatMemberParams {
 /**
  * Parameters for `unbanChatMember`.
  *
- * @see https://corefork.telegram.org/bots/api#unbanchatmember
+ * @see https://core.telegram.org/bots/api#unbanchatmember
  */
 export interface UnbanChatMemberParams {
   /**
@@ -2551,7 +2551,7 @@ export interface UnbanChatMemberParams {
 /**
  * Parameters for `restrictChatMember`.
  *
- * @see https://corefork.telegram.org/bots/api#restrictchatmember
+ * @see https://core.telegram.org/bots/api#restrictchatmember
  */
 export interface RestrictChatMemberParams {
   /**
@@ -2590,7 +2590,7 @@ export interface RestrictChatMemberParams {
 /**
  * Parameters for `promoteChatMember`.
  *
- * @see https://corefork.telegram.org/bots/api#promotechatmember
+ * @see https://core.telegram.org/bots/api#promotechatmember
  */
 export interface PromoteChatMemberParams {
   /**
@@ -2715,7 +2715,7 @@ export interface PromoteChatMemberParams {
 /**
  * Parameters for `setChatAdministratorCustomTitle`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatadministratorcustomtitle
+ * @see https://core.telegram.org/bots/api#setchatadministratorcustomtitle
  */
 export interface SetChatAdministratorCustomTitleParams {
   /**
@@ -2739,7 +2739,7 @@ export interface SetChatAdministratorCustomTitleParams {
 /**
  * Parameters for `setChatMemberTag`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatmembertag
+ * @see https://core.telegram.org/bots/api#setchatmembertag
  */
 export interface SetChatMemberTagParams {
   /**
@@ -2762,7 +2762,7 @@ export interface SetChatMemberTagParams {
 /**
  * Parameters for `banChatSenderChat`.
  *
- * @see https://corefork.telegram.org/bots/api#banchatsenderchat
+ * @see https://core.telegram.org/bots/api#banchatsenderchat
  */
 export interface BanChatSenderChatParams {
   /**
@@ -2780,7 +2780,7 @@ export interface BanChatSenderChatParams {
 /**
  * Parameters for `unbanChatSenderChat`.
  *
- * @see https://corefork.telegram.org/bots/api#unbanchatsenderchat
+ * @see https://core.telegram.org/bots/api#unbanchatsenderchat
  */
 export interface UnbanChatSenderChatParams {
   /**
@@ -2798,7 +2798,7 @@ export interface UnbanChatSenderChatParams {
 /**
  * Parameters for `setChatPermissions`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatpermissions
+ * @see https://core.telegram.org/bots/api#setchatpermissions
  */
 export interface SetChatPermissionsParams {
   /**
@@ -2825,7 +2825,7 @@ export interface SetChatPermissionsParams {
 /**
  * Parameters for `exportChatInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#exportchatinvitelink
+ * @see https://core.telegram.org/bots/api#exportchatinvitelink
  */
 export interface ExportChatInviteLinkParams {
   /**
@@ -2838,7 +2838,7 @@ export interface ExportChatInviteLinkParams {
 /**
  * Parameters for `createChatInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#createchatinvitelink
+ * @see https://core.telegram.org/bots/api#createchatinvitelink
  */
 export interface CreateChatInviteLinkParams {
   /**
@@ -2873,7 +2873,7 @@ export interface CreateChatInviteLinkParams {
 /**
  * Parameters for `editChatInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#editchatinvitelink
+ * @see https://core.telegram.org/bots/api#editchatinvitelink
  */
 export interface EditChatInviteLinkParams {
   /**
@@ -2913,7 +2913,7 @@ export interface EditChatInviteLinkParams {
 /**
  * Parameters for `createChatSubscriptionInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#createchatsubscriptioninvitelink
+ * @see https://core.telegram.org/bots/api#createchatsubscriptioninvitelink
  */
 export interface CreateChatSubscriptionInviteLinkParams {
   /**
@@ -2943,7 +2943,7 @@ export interface CreateChatSubscriptionInviteLinkParams {
 /**
  * Parameters for `editChatSubscriptionInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#editchatsubscriptioninvitelink
+ * @see https://core.telegram.org/bots/api#editchatsubscriptioninvitelink
  */
 export interface EditChatSubscriptionInviteLinkParams {
   /**
@@ -2966,7 +2966,7 @@ export interface EditChatSubscriptionInviteLinkParams {
 /**
  * Parameters for `revokeChatInviteLink`.
  *
- * @see https://corefork.telegram.org/bots/api#revokechatinvitelink
+ * @see https://core.telegram.org/bots/api#revokechatinvitelink
  */
 export interface RevokeChatInviteLinkParams {
   /**
@@ -2984,7 +2984,7 @@ export interface RevokeChatInviteLinkParams {
 /**
  * Parameters for `approveChatJoinRequest`.
  *
- * @see https://corefork.telegram.org/bots/api#approvechatjoinrequest
+ * @see https://core.telegram.org/bots/api#approvechatjoinrequest
  */
 export interface ApproveChatJoinRequestParams {
   /**
@@ -3002,7 +3002,7 @@ export interface ApproveChatJoinRequestParams {
 /**
  * Parameters for `declineChatJoinRequest`.
  *
- * @see https://corefork.telegram.org/bots/api#declinechatjoinrequest
+ * @see https://core.telegram.org/bots/api#declinechatjoinrequest
  */
 export interface DeclineChatJoinRequestParams {
   /**
@@ -3020,7 +3020,7 @@ export interface DeclineChatJoinRequestParams {
 /**
  * Parameters for `answerChatJoinRequestQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answerchatjoinrequestquery
+ * @see https://core.telegram.org/bots/api#answerchatjoinrequestquery
  */
 export interface AnswerChatJoinRequestQueryParams {
   /**
@@ -3039,7 +3039,7 @@ export interface AnswerChatJoinRequestQueryParams {
 /**
  * Parameters for `sendChatJoinRequestWebApp`.
  *
- * @see https://corefork.telegram.org/bots/api#sendchatjoinrequestwebapp
+ * @see https://core.telegram.org/bots/api#sendchatjoinrequestwebapp
  */
 export interface SendChatJoinRequestWebAppParams {
   /**
@@ -3057,7 +3057,7 @@ export interface SendChatJoinRequestWebAppParams {
 /**
  * Parameters for `setChatPhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatphoto
+ * @see https://core.telegram.org/bots/api#setchatphoto
  */
 export interface SetChatPhotoParams {
   /**
@@ -3075,7 +3075,7 @@ export interface SetChatPhotoParams {
 /**
  * Parameters for `deleteChatPhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#deletechatphoto
+ * @see https://core.telegram.org/bots/api#deletechatphoto
  */
 export interface DeleteChatPhotoParams {
   /**
@@ -3088,7 +3088,7 @@ export interface DeleteChatPhotoParams {
 /**
  * Parameters for `setChatTitle`.
  *
- * @see https://corefork.telegram.org/bots/api#setchattitle
+ * @see https://core.telegram.org/bots/api#setchattitle
  */
 export interface SetChatTitleParams {
   /**
@@ -3106,7 +3106,7 @@ export interface SetChatTitleParams {
 /**
  * Parameters for `setChatDescription`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatdescription
+ * @see https://core.telegram.org/bots/api#setchatdescription
  */
 export interface SetChatDescriptionParams {
   /**
@@ -3124,7 +3124,7 @@ export interface SetChatDescriptionParams {
 /**
  * Parameters for `pinChatMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#pinchatmessage
+ * @see https://core.telegram.org/bots/api#pinchatmessage
  */
 export interface PinChatMessageParams {
   /**
@@ -3155,7 +3155,7 @@ export interface PinChatMessageParams {
 /**
  * Parameters for `unpinChatMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#unpinchatmessage
+ * @see https://core.telegram.org/bots/api#unpinchatmessage
  */
 export interface UnpinChatMessageParams {
   /**
@@ -3181,7 +3181,7 @@ export interface UnpinChatMessageParams {
 /**
  * Parameters for `unpinAllChatMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#unpinallchatmessages
+ * @see https://core.telegram.org/bots/api#unpinallchatmessages
  */
 export interface UnpinAllChatMessagesParams {
   /**
@@ -3194,7 +3194,7 @@ export interface UnpinAllChatMessagesParams {
 /**
  * Parameters for `leaveChat`.
  *
- * @see https://corefork.telegram.org/bots/api#leavechat
+ * @see https://core.telegram.org/bots/api#leavechat
  */
 export interface LeaveChatParams {
   /**
@@ -3208,7 +3208,7 @@ export interface LeaveChatParams {
 /**
  * Parameters for `getChat`.
  *
- * @see https://corefork.telegram.org/bots/api#getchat
+ * @see https://core.telegram.org/bots/api#getchat
  */
 export interface GetChatParams {
   /**
@@ -3221,7 +3221,7 @@ export interface GetChatParams {
 /**
  * Parameters for `getChatAdministrators`.
  *
- * @see https://corefork.telegram.org/bots/api#getchatadministrators
+ * @see https://core.telegram.org/bots/api#getchatadministrators
  */
 export interface GetChatAdministratorsParams {
   /**
@@ -3240,7 +3240,7 @@ export interface GetChatAdministratorsParams {
 /**
  * Parameters for `getChatMemberCount`.
  *
- * @see https://corefork.telegram.org/bots/api#getchatmembercount
+ * @see https://core.telegram.org/bots/api#getchatmembercount
  */
 export interface GetChatMemberCountParams {
   /**
@@ -3253,7 +3253,7 @@ export interface GetChatMemberCountParams {
 /**
  * Parameters for `getChatMember`.
  *
- * @see https://corefork.telegram.org/bots/api#getchatmember
+ * @see https://core.telegram.org/bots/api#getchatmember
  */
 export interface GetChatMemberParams {
   /**
@@ -3271,7 +3271,7 @@ export interface GetChatMemberParams {
 /**
  * Parameters for `getUserPersonalChatMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#getuserpersonalchatmessages
+ * @see https://core.telegram.org/bots/api#getuserpersonalchatmessages
  */
 export interface GetUserPersonalChatMessagesParams {
   /**
@@ -3288,7 +3288,7 @@ export interface GetUserPersonalChatMessagesParams {
 /**
  * Parameters for `setChatStickerSet`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatstickerset
+ * @see https://core.telegram.org/bots/api#setchatstickerset
  */
 export interface SetChatStickerSetParams {
   /**
@@ -3306,7 +3306,7 @@ export interface SetChatStickerSetParams {
 /**
  * Parameters for `deleteChatStickerSet`.
  *
- * @see https://corefork.telegram.org/bots/api#deletechatstickerset
+ * @see https://core.telegram.org/bots/api#deletechatstickerset
  */
 export interface DeleteChatStickerSetParams {
   /**
@@ -3319,7 +3319,7 @@ export interface DeleteChatStickerSetParams {
 /**
  * Parameters for `getForumTopicIconStickers`.
  *
- * @see https://corefork.telegram.org/bots/api#getforumtopiciconstickers
+ * @see https://core.telegram.org/bots/api#getforumtopiciconstickers
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface GetForumTopicIconStickersParams {}
@@ -3327,7 +3327,7 @@ export interface GetForumTopicIconStickersParams {}
 /**
  * Parameters for `createForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#createforumtopic
+ * @see https://core.telegram.org/bots/api#createforumtopic
  */
 export interface CreateForumTopicParams {
   /**
@@ -3358,7 +3358,7 @@ export interface CreateForumTopicParams {
 /**
  * Parameters for `editForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#editforumtopic
+ * @see https://core.telegram.org/bots/api#editforumtopic
  */
 export interface EditForumTopicParams {
   /**
@@ -3390,7 +3390,7 @@ export interface EditForumTopicParams {
 /**
  * Parameters for `closeForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#closeforumtopic
+ * @see https://core.telegram.org/bots/api#closeforumtopic
  */
 export interface CloseForumTopicParams {
   /**
@@ -3408,7 +3408,7 @@ export interface CloseForumTopicParams {
 /**
  * Parameters for `reopenForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#reopenforumtopic
+ * @see https://core.telegram.org/bots/api#reopenforumtopic
  */
 export interface ReopenForumTopicParams {
   /**
@@ -3426,7 +3426,7 @@ export interface ReopenForumTopicParams {
 /**
  * Parameters for `deleteForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#deleteforumtopic
+ * @see https://core.telegram.org/bots/api#deleteforumtopic
  */
 export interface DeleteForumTopicParams {
   /**
@@ -3444,7 +3444,7 @@ export interface DeleteForumTopicParams {
 /**
  * Parameters for `unpinAllForumTopicMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#unpinallforumtopicmessages
+ * @see https://core.telegram.org/bots/api#unpinallforumtopicmessages
  */
 export interface UnpinAllForumTopicMessagesParams {
   /**
@@ -3462,7 +3462,7 @@ export interface UnpinAllForumTopicMessagesParams {
 /**
  * Parameters for `editGeneralForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#editgeneralforumtopic
+ * @see https://core.telegram.org/bots/api#editgeneralforumtopic
  */
 export interface EditGeneralForumTopicParams {
   /**
@@ -3480,7 +3480,7 @@ export interface EditGeneralForumTopicParams {
 /**
  * Parameters for `closeGeneralForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#closegeneralforumtopic
+ * @see https://core.telegram.org/bots/api#closegeneralforumtopic
  */
 export interface CloseGeneralForumTopicParams {
   /**
@@ -3493,7 +3493,7 @@ export interface CloseGeneralForumTopicParams {
 /**
  * Parameters for `reopenGeneralForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#reopengeneralforumtopic
+ * @see https://core.telegram.org/bots/api#reopengeneralforumtopic
  */
 export interface ReopenGeneralForumTopicParams {
   /**
@@ -3506,7 +3506,7 @@ export interface ReopenGeneralForumTopicParams {
 /**
  * Parameters for `hideGeneralForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#hidegeneralforumtopic
+ * @see https://core.telegram.org/bots/api#hidegeneralforumtopic
  */
 export interface HideGeneralForumTopicParams {
   /**
@@ -3519,7 +3519,7 @@ export interface HideGeneralForumTopicParams {
 /**
  * Parameters for `unhideGeneralForumTopic`.
  *
- * @see https://corefork.telegram.org/bots/api#unhidegeneralforumtopic
+ * @see https://core.telegram.org/bots/api#unhidegeneralforumtopic
  */
 export interface UnhideGeneralForumTopicParams {
   /**
@@ -3532,7 +3532,7 @@ export interface UnhideGeneralForumTopicParams {
 /**
  * Parameters for `unpinAllGeneralForumTopicMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#unpinallgeneralforumtopicmessages
+ * @see https://core.telegram.org/bots/api#unpinallgeneralforumtopicmessages
  */
 export interface UnpinAllGeneralForumTopicMessagesParams {
   /**
@@ -3545,7 +3545,7 @@ export interface UnpinAllGeneralForumTopicMessagesParams {
 /**
  * Parameters for `answerCallbackQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answercallbackquery
+ * @see https://core.telegram.org/bots/api#answercallbackquery
  */
 export interface AnswerCallbackQueryParams {
   /**
@@ -3584,7 +3584,7 @@ export interface AnswerCallbackQueryParams {
 /**
  * Parameters for `answerGuestQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answerguestquery
+ * @see https://core.telegram.org/bots/api#answerguestquery
  */
 export interface AnswerGuestQueryParams {
   /**
@@ -3601,7 +3601,7 @@ export interface AnswerGuestQueryParams {
 /**
  * Parameters for `getUserChatBoosts`.
  *
- * @see https://corefork.telegram.org/bots/api#getuserchatboosts
+ * @see https://core.telegram.org/bots/api#getuserchatboosts
  */
 export interface GetUserChatBoostsParams {
   /**
@@ -3619,7 +3619,7 @@ export interface GetUserChatBoostsParams {
 /**
  * Parameters for `getBusinessConnection`.
  *
- * @see https://corefork.telegram.org/bots/api#getbusinessconnection
+ * @see https://core.telegram.org/bots/api#getbusinessconnection
  */
 export interface GetBusinessConnectionParams {
   /**
@@ -3631,7 +3631,7 @@ export interface GetBusinessConnectionParams {
 /**
  * Parameters for `getManagedBotToken`.
  *
- * @see https://corefork.telegram.org/bots/api#getmanagedbottoken
+ * @see https://core.telegram.org/bots/api#getmanagedbottoken
  */
 export interface GetManagedBotTokenParams {
   /**
@@ -3643,7 +3643,7 @@ export interface GetManagedBotTokenParams {
 /**
  * Parameters for `replaceManagedBotToken`.
  *
- * @see https://corefork.telegram.org/bots/api#replacemanagedbottoken
+ * @see https://core.telegram.org/bots/api#replacemanagedbottoken
  */
 export interface ReplaceManagedBotTokenParams {
   /**
@@ -3655,7 +3655,7 @@ export interface ReplaceManagedBotTokenParams {
 /**
  * Parameters for `getManagedBotAccessSettings`.
  *
- * @see https://corefork.telegram.org/bots/api#getmanagedbotaccesssettings
+ * @see https://core.telegram.org/bots/api#getmanagedbotaccesssettings
  */
 export interface GetManagedBotAccessSettingsParams {
   /**
@@ -3667,7 +3667,7 @@ export interface GetManagedBotAccessSettingsParams {
 /**
  * Parameters for `setManagedBotAccessSettings`.
  *
- * @see https://corefork.telegram.org/bots/api#setmanagedbotaccesssettings
+ * @see https://core.telegram.org/bots/api#setmanagedbotaccesssettings
  */
 export interface SetManagedBotAccessSettingsParams {
   /**
@@ -3692,7 +3692,7 @@ export interface SetManagedBotAccessSettingsParams {
 /**
  * Parameters for `setMyCommands`.
  *
- * @see https://corefork.telegram.org/bots/api#setmycommands
+ * @see https://core.telegram.org/bots/api#setmycommands
  */
 export interface SetMyCommandsParams {
   /**
@@ -3718,7 +3718,7 @@ export interface SetMyCommandsParams {
 /**
  * Parameters for `deleteMyCommands`.
  *
- * @see https://corefork.telegram.org/bots/api#deletemycommands
+ * @see https://core.telegram.org/bots/api#deletemycommands
  */
 export interface DeleteMyCommandsParams {
   /**
@@ -3738,7 +3738,7 @@ export interface DeleteMyCommandsParams {
 /**
  * Parameters for `getMyCommands`.
  *
- * @see https://corefork.telegram.org/bots/api#getmycommands
+ * @see https://core.telegram.org/bots/api#getmycommands
  */
 export interface GetMyCommandsParams {
   /**
@@ -3756,7 +3756,7 @@ export interface GetMyCommandsParams {
 /**
  * Parameters for `setMyName`.
  *
- * @see https://corefork.telegram.org/bots/api#setmyname
+ * @see https://core.telegram.org/bots/api#setmyname
  */
 export interface SetMyNameParams {
   /**
@@ -3775,7 +3775,7 @@ export interface SetMyNameParams {
 /**
  * Parameters for `getMyName`.
  *
- * @see https://corefork.telegram.org/bots/api#getmyname
+ * @see https://core.telegram.org/bots/api#getmyname
  */
 export interface GetMyNameParams {
   /**
@@ -3787,7 +3787,7 @@ export interface GetMyNameParams {
 /**
  * Parameters for `setMyDescription`.
  *
- * @see https://corefork.telegram.org/bots/api#setmydescription
+ * @see https://core.telegram.org/bots/api#setmydescription
  */
 export interface SetMyDescriptionParams {
   /**
@@ -3806,7 +3806,7 @@ export interface SetMyDescriptionParams {
 /**
  * Parameters for `getMyDescription`.
  *
- * @see https://corefork.telegram.org/bots/api#getmydescription
+ * @see https://core.telegram.org/bots/api#getmydescription
  */
 export interface GetMyDescriptionParams {
   /**
@@ -3818,7 +3818,7 @@ export interface GetMyDescriptionParams {
 /**
  * Parameters for `setMyShortDescription`.
  *
- * @see https://corefork.telegram.org/bots/api#setmyshortdescription
+ * @see https://core.telegram.org/bots/api#setmyshortdescription
  */
 export interface SetMyShortDescriptionParams {
   /**
@@ -3838,7 +3838,7 @@ export interface SetMyShortDescriptionParams {
 /**
  * Parameters for `getMyShortDescription`.
  *
- * @see https://corefork.telegram.org/bots/api#getmyshortdescription
+ * @see https://core.telegram.org/bots/api#getmyshortdescription
  */
 export interface GetMyShortDescriptionParams {
   /**
@@ -3850,7 +3850,7 @@ export interface GetMyShortDescriptionParams {
 /**
  * Parameters for `setMyProfilePhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#setmyprofilephoto
+ * @see https://core.telegram.org/bots/api#setmyprofilephoto
  */
 export interface SetMyProfilePhotoParams {
   /**
@@ -3862,7 +3862,7 @@ export interface SetMyProfilePhotoParams {
 /**
  * Parameters for `removeMyProfilePhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#removemyprofilephoto
+ * @see https://core.telegram.org/bots/api#removemyprofilephoto
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface RemoveMyProfilePhotoParams {}
@@ -3870,7 +3870,7 @@ export interface RemoveMyProfilePhotoParams {}
 /**
  * Parameters for `setChatMenuButton`.
  *
- * @see https://corefork.telegram.org/bots/api#setchatmenubutton
+ * @see https://core.telegram.org/bots/api#setchatmenubutton
  */
 export interface SetChatMenuButtonParams {
   /**
@@ -3889,7 +3889,7 @@ export interface SetChatMenuButtonParams {
 /**
  * Parameters for `getChatMenuButton`.
  *
- * @see https://corefork.telegram.org/bots/api#getchatmenubutton
+ * @see https://core.telegram.org/bots/api#getchatmenubutton
  */
 export interface GetChatMenuButtonParams {
   /**
@@ -3902,7 +3902,7 @@ export interface GetChatMenuButtonParams {
 /**
  * Parameters for `setMyDefaultAdministratorRights`.
  *
- * @see https://corefork.telegram.org/bots/api#setmydefaultadministratorrights
+ * @see https://core.telegram.org/bots/api#setmydefaultadministratorrights
  */
 export interface SetMyDefaultAdministratorRightsParams {
   /**
@@ -3922,7 +3922,7 @@ export interface SetMyDefaultAdministratorRightsParams {
 /**
  * Parameters for `getMyDefaultAdministratorRights`.
  *
- * @see https://corefork.telegram.org/bots/api#getmydefaultadministratorrights
+ * @see https://core.telegram.org/bots/api#getmydefaultadministratorrights
  */
 export interface GetMyDefaultAdministratorRightsParams {
   /**
@@ -3936,7 +3936,7 @@ export interface GetMyDefaultAdministratorRightsParams {
 /**
  * Parameters for `getAvailableGifts`.
  *
- * @see https://corefork.telegram.org/bots/api#getavailablegifts
+ * @see https://core.telegram.org/bots/api#getavailablegifts
  */
 // biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
 export interface GetAvailableGiftsParams {}
@@ -3944,7 +3944,7 @@ export interface GetAvailableGiftsParams {}
 /**
  * Parameters for `sendGift`.
  *
- * @see https://corefork.telegram.org/bots/api#sendgift
+ * @see https://core.telegram.org/bots/api#sendgift
  */
 export interface SendGiftParams {
   /**
@@ -3995,7 +3995,7 @@ export interface SendGiftParams {
 /**
  * Parameters for `giftPremiumSubscription`.
  *
- * @see https://corefork.telegram.org/bots/api#giftpremiumsubscription
+ * @see https://core.telegram.org/bots/api#giftpremiumsubscription
  */
 export interface GiftPremiumSubscriptionParams {
   /**
@@ -4041,7 +4041,7 @@ export interface GiftPremiumSubscriptionParams {
 /**
  * Parameters for `verifyUser`.
  *
- * @see https://corefork.telegram.org/bots/api#verifyuser
+ * @see https://core.telegram.org/bots/api#verifyuser
  */
 export interface VerifyUserParams {
   /**
@@ -4059,7 +4059,7 @@ export interface VerifyUserParams {
 /**
  * Parameters for `verifyChat`.
  *
- * @see https://corefork.telegram.org/bots/api#verifychat
+ * @see https://core.telegram.org/bots/api#verifychat
  */
 export interface VerifyChatParams {
   /**
@@ -4079,7 +4079,7 @@ export interface VerifyChatParams {
 /**
  * Parameters for `removeUserVerification`.
  *
- * @see https://corefork.telegram.org/bots/api#removeuserverification
+ * @see https://core.telegram.org/bots/api#removeuserverification
  */
 export interface RemoveUserVerificationParams {
   /**
@@ -4091,7 +4091,7 @@ export interface RemoveUserVerificationParams {
 /**
  * Parameters for `removeChatVerification`.
  *
- * @see https://corefork.telegram.org/bots/api#removechatverification
+ * @see https://core.telegram.org/bots/api#removechatverification
  */
 export interface RemoveChatVerificationParams {
   /**
@@ -4104,7 +4104,7 @@ export interface RemoveChatVerificationParams {
 /**
  * Parameters for `readBusinessMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#readbusinessmessage
+ * @see https://core.telegram.org/bots/api#readbusinessmessage
  */
 export interface ReadBusinessMessageParams {
   /**
@@ -4128,7 +4128,7 @@ export interface ReadBusinessMessageParams {
 /**
  * Parameters for `deleteBusinessMessages`.
  *
- * @see https://corefork.telegram.org/bots/api#deletebusinessmessages
+ * @see https://core.telegram.org/bots/api#deletebusinessmessages
  */
 export interface DeleteBusinessMessagesParams {
   /**
@@ -4148,7 +4148,7 @@ export interface DeleteBusinessMessagesParams {
 /**
  * Parameters for `setBusinessAccountName`.
  *
- * @see https://corefork.telegram.org/bots/api#setbusinessaccountname
+ * @see https://core.telegram.org/bots/api#setbusinessaccountname
  */
 export interface SetBusinessAccountNameParams {
   /**
@@ -4170,7 +4170,7 @@ export interface SetBusinessAccountNameParams {
 /**
  * Parameters for `setBusinessAccountUsername`.
  *
- * @see https://corefork.telegram.org/bots/api#setbusinessaccountusername
+ * @see https://core.telegram.org/bots/api#setbusinessaccountusername
  */
 export interface SetBusinessAccountUsernameParams {
   /**
@@ -4187,7 +4187,7 @@ export interface SetBusinessAccountUsernameParams {
 /**
  * Parameters for `setBusinessAccountBio`.
  *
- * @see https://corefork.telegram.org/bots/api#setbusinessaccountbio
+ * @see https://core.telegram.org/bots/api#setbusinessaccountbio
  */
 export interface SetBusinessAccountBioParams {
   /**
@@ -4204,7 +4204,7 @@ export interface SetBusinessAccountBioParams {
 /**
  * Parameters for `setBusinessAccountProfilePhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#setbusinessaccountprofilephoto
+ * @see https://core.telegram.org/bots/api#setbusinessaccountprofilephoto
  */
 export interface SetBusinessAccountProfilePhotoParams {
   /**
@@ -4228,7 +4228,7 @@ export interface SetBusinessAccountProfilePhotoParams {
 /**
  * Parameters for `removeBusinessAccountProfilePhoto`.
  *
- * @see https://corefork.telegram.org/bots/api#removebusinessaccountprofilephoto
+ * @see https://core.telegram.org/bots/api#removebusinessaccountprofilephoto
  */
 export interface RemoveBusinessAccountProfilePhotoParams {
   /**
@@ -4248,7 +4248,7 @@ export interface RemoveBusinessAccountProfilePhotoParams {
 /**
  * Parameters for `setBusinessAccountGiftSettings`.
  *
- * @see https://corefork.telegram.org/bots/api#setbusinessaccountgiftsettings
+ * @see https://core.telegram.org/bots/api#setbusinessaccountgiftsettings
  */
 export interface SetBusinessAccountGiftSettingsParams {
   /**
@@ -4271,7 +4271,7 @@ export interface SetBusinessAccountGiftSettingsParams {
 /**
  * Parameters for `getBusinessAccountStarBalance`.
  *
- * @see https://corefork.telegram.org/bots/api#getbusinessaccountstarbalance
+ * @see https://core.telegram.org/bots/api#getbusinessaccountstarbalance
  */
 export interface GetBusinessAccountStarBalanceParams {
   /**
@@ -4283,7 +4283,7 @@ export interface GetBusinessAccountStarBalanceParams {
 /**
  * Parameters for `transferBusinessAccountStars`.
  *
- * @see https://corefork.telegram.org/bots/api#transferbusinessaccountstars
+ * @see https://core.telegram.org/bots/api#transferbusinessaccountstars
  */
 export interface TransferBusinessAccountStarsParams {
   /**
@@ -4300,7 +4300,7 @@ export interface TransferBusinessAccountStarsParams {
 /**
  * Parameters for `getBusinessAccountGifts`.
  *
- * @see https://corefork.telegram.org/bots/api#getbusinessaccountgifts
+ * @see https://core.telegram.org/bots/api#getbusinessaccountgifts
  */
 export interface GetBusinessAccountGiftsParams {
   /**
@@ -4368,7 +4368,7 @@ export interface GetBusinessAccountGiftsParams {
 /**
  * Parameters for `getUserGifts`.
  *
- * @see https://corefork.telegram.org/bots/api#getusergifts
+ * @see https://core.telegram.org/bots/api#getusergifts
  */
 export interface GetUserGiftsParams {
   /**
@@ -4426,7 +4426,7 @@ export interface GetUserGiftsParams {
 /**
  * Parameters for `getChatGifts`.
  *
- * @see https://corefork.telegram.org/bots/api#getchatgifts
+ * @see https://core.telegram.org/bots/api#getchatgifts
  */
 export interface GetChatGiftsParams {
   /**
@@ -4499,7 +4499,7 @@ export interface GetChatGiftsParams {
 /**
  * Parameters for `convertGiftToStars`.
  *
- * @see https://corefork.telegram.org/bots/api#convertgifttostars
+ * @see https://core.telegram.org/bots/api#convertgifttostars
  */
 export interface ConvertGiftToStarsParams {
   /**
@@ -4517,7 +4517,7 @@ export interface ConvertGiftToStarsParams {
 /**
  * Parameters for `upgradeGift`.
  *
- * @see https://corefork.telegram.org/bots/api#upgradegift
+ * @see https://core.telegram.org/bots/api#upgradegift
  */
 export interface UpgradeGiftParams {
   /**
@@ -4549,7 +4549,7 @@ export interface UpgradeGiftParams {
 /**
  * Parameters for `transferGift`.
  *
- * @see https://corefork.telegram.org/bots/api#transfergift
+ * @see https://core.telegram.org/bots/api#transfergift
  */
 export interface TransferGiftParams {
   /**
@@ -4579,7 +4579,7 @@ export interface TransferGiftParams {
 /**
  * Parameters for `postStory`.
  *
- * @see https://corefork.telegram.org/bots/api#poststory
+ * @see https://core.telegram.org/bots/api#poststory
  */
 export interface PostStoryParams {
   /**
@@ -4635,7 +4635,7 @@ export interface PostStoryParams {
 /**
  * Parameters for `repostStory`.
  *
- * @see https://corefork.telegram.org/bots/api#repoststory
+ * @see https://core.telegram.org/bots/api#repoststory
  */
 export interface RepostStoryParams {
   /**
@@ -4674,7 +4674,7 @@ export interface RepostStoryParams {
 /**
  * Parameters for `editStory`.
  *
- * @see https://corefork.telegram.org/bots/api#editstory
+ * @see https://core.telegram.org/bots/api#editstory
  */
 export interface EditStoryParams {
   /**
@@ -4718,7 +4718,7 @@ export interface EditStoryParams {
 /**
  * Parameters for `deleteStory`.
  *
- * @see https://corefork.telegram.org/bots/api#deletestory
+ * @see https://core.telegram.org/bots/api#deletestory
  */
 export interface DeleteStoryParams {
   /**
@@ -4735,7 +4735,7 @@ export interface DeleteStoryParams {
 /**
  * Parameters for `answerWebAppQuery`.
  *
- * @see https://corefork.telegram.org/bots/api#answerwebappquery
+ * @see https://core.telegram.org/bots/api#answerwebappquery
  */
 export interface AnswerWebAppQueryParams {
   /**
@@ -4752,7 +4752,7 @@ export interface AnswerWebAppQueryParams {
 /**
  * Parameters for `savePreparedInlineMessage`.
  *
- * @see https://corefork.telegram.org/bots/api#savepreparedinlinemessage
+ * @see https://core.telegram.org/bots/api#savepreparedinlinemessage
  */
 export interface SavePreparedInlineMessageParams {
   /**
@@ -4789,7 +4789,7 @@ export interface SavePreparedInlineMessageParams {
 /**
  * Parameters for `savePreparedKeyboardButton`.
  *
- * @see https://corefork.telegram.org/bots/api#savepreparedkeyboardbutton
+ * @see https://core.telegram.org/bots/api#savepreparedkeyboardbutton
  */
 export interface SavePreparedKeyboardButtonParams {
   /**

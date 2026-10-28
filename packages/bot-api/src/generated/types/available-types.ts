@@ -13,7 +13,7 @@ import type { PassportData } from './telegram-passport.js'
 /**
  * This object represents a Telegram user or bot.
  *
- * @see https://corefork.telegram.org/bots/api#user
+ * @see https://core.telegram.org/bots/api#user
  */
 export interface User {
   /**
@@ -120,7 +120,7 @@ export interface User {
 /**
  * This object represents a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chat
+ * @see https://core.telegram.org/bots/api#chat
  */
 export interface Chat {
   /**
@@ -172,7 +172,7 @@ export interface Chat {
 /**
  * This object contains full information about a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatfullinfo
+ * @see https://core.telegram.org/bots/api#chatfullinfo
  */
 export interface ChatFullInfo {
   /**
@@ -478,7 +478,7 @@ export interface ChatFullInfo {
 /**
  * This object represents a message.
  *
- * @see https://corefork.telegram.org/bots/api#message
+ * @see https://core.telegram.org/bots/api#message
  */
 export interface Message {
   /**
@@ -1160,7 +1160,7 @@ export interface Message {
 /**
  * This object represents a unique message identifier.
  *
- * @see https://corefork.telegram.org/bots/api#messageid
+ * @see https://core.telegram.org/bots/api#messageid
  */
 export interface MessageId {
   /**
@@ -1176,7 +1176,7 @@ export interface MessageId {
  * This object describes a message that was deleted or is otherwise
  * inaccessible to the bot.
  *
- * @see https://corefork.telegram.org/bots/api#inaccessiblemessage
+ * @see https://core.telegram.org/bots/api#inaccessiblemessage
  */
 export interface InaccessibleMessage {
   /**
@@ -1200,7 +1200,7 @@ export interface InaccessibleMessage {
  * This object describes a message that can be inaccessible to the bot. It can
  * be one of
  *
- * @see https://corefork.telegram.org/bots/api#maybeinaccessiblemessage
+ * @see https://core.telegram.org/bots/api#maybeinaccessiblemessage
  */
 export type MaybeInaccessibleMessage =
   | InaccessibleMessage
@@ -1210,7 +1210,7 @@ export type MaybeInaccessibleMessage =
  * This object represents one special entity in a text message. For example,
  * hashtags, usernames, URLs, etc.
  *
- * @see https://corefork.telegram.org/bots/api#messageentity
+ * @see https://core.telegram.org/bots/api#messageentity
  */
 export interface MessageEntity {
   /**
@@ -1275,7 +1275,7 @@ export interface MessageEntity {
  * This object contains information about the quoted part of a message that is
  * replied to by the given message.
  *
- * @see https://corefork.telegram.org/bots/api#textquote
+ * @see https://core.telegram.org/bots/api#textquote
  */
 export interface TextQuote {
   /**
@@ -1307,7 +1307,7 @@ export interface TextQuote {
  * This object contains information about a message that is being replied to,
  * which may come from another chat or forum topic.
  *
- * @see https://corefork.telegram.org/bots/api#externalreplyinfo
+ * @see https://core.telegram.org/bots/api#externalreplyinfo
  */
 export interface ExternalReplyInfo {
   /**
@@ -1448,7 +1448,7 @@ export interface ExternalReplyInfo {
 /**
  * Describes reply parameters for the message that is being sent.
  *
- * @see https://corefork.telegram.org/bots/api#replyparameters
+ * @see https://core.telegram.org/bots/api#replyparameters
  */
 export interface ReplyParameters {
   /**
@@ -1520,7 +1520,7 @@ export interface ReplyParameters {
 }
 
 /**
- * @see https://corefork.telegram.org/bots/api#ephemeralmessageparameters
+ * @see https://core.telegram.org/bots/api#ephemeralmessageparameters
  */
 export interface EphemeralMessageParameters {
   /**
@@ -1546,7 +1546,7 @@ export interface EphemeralMessageParameters {
 /**
  * This object describes the origin of a message. It can be one of
  *
- * @see https://corefork.telegram.org/bots/api#messageorigin
+ * @see https://core.telegram.org/bots/api#messageorigin
  */
 export type MessageOrigin =
   | MessageOriginChannel
@@ -1557,7 +1557,7 @@ export type MessageOrigin =
 /**
  * The message was originally sent by a known user.
  *
- * @see https://corefork.telegram.org/bots/api#messageoriginuser
+ * @see https://core.telegram.org/bots/api#messageoriginuser
  */
 export interface MessageOriginUser {
   /**
@@ -1579,7 +1579,7 @@ export interface MessageOriginUser {
 /**
  * The message was originally sent by an unknown user.
  *
- * @see https://corefork.telegram.org/bots/api#messageoriginhiddenuser
+ * @see https://core.telegram.org/bots/api#messageoriginhiddenuser
  */
 export interface MessageOriginHiddenUser {
   /**
@@ -1601,7 +1601,7 @@ export interface MessageOriginHiddenUser {
 /**
  * The message was originally sent on behalf of a chat to a group chat.
  *
- * @see https://corefork.telegram.org/bots/api#messageoriginchat
+ * @see https://core.telegram.org/bots/api#messageoriginchat
  */
 export interface MessageOriginChat {
   /**
@@ -1629,7 +1629,7 @@ export interface MessageOriginChat {
 /**
  * The message was originally sent to a channel chat.
  *
- * @see https://corefork.telegram.org/bots/api#messageoriginchannel
+ * @see https://core.telegram.org/bots/api#messageoriginchannel
  */
 export interface MessageOriginChannel {
   /**
@@ -1661,7 +1661,7 @@ export interface MessageOriginChannel {
 /**
  * This object represents one size of a photo or a file / sticker thumbnail.
  *
- * @see https://corefork.telegram.org/bots/api#photosize
+ * @see https://core.telegram.org/bots/api#photosize
  */
 export interface PhotoSize {
   /**
@@ -1695,7 +1695,7 @@ export interface PhotoSize {
  * This object represents an animation file (GIF or H.264/MPEG-4 AVC video
  * without sound).
  *
- * @see https://corefork.telegram.org/bots/api#animation
+ * @see https://core.telegram.org/bots/api#animation
  */
 export interface Animation {
   /**
@@ -1752,7 +1752,7 @@ export interface Animation {
  * This object represents an audio file to be treated as music by the Telegram
  * clients.
  *
- * @see https://corefork.telegram.org/bots/api#audio
+ * @see https://core.telegram.org/bots/api#audio
  */
 export interface Audio {
   /**
@@ -1809,7 +1809,7 @@ export interface Audio {
  * This object represents a general file (as opposed to photos, voice messages
  * and audio files).
  *
- * @see https://corefork.telegram.org/bots/api#document
+ * @see https://core.telegram.org/bots/api#document
  */
 export interface Document {
   /**
@@ -1850,7 +1850,7 @@ export interface Document {
 /**
  * This object represents a live photo.
  *
- * @see https://corefork.telegram.org/bots/api#livephoto
+ * @see https://core.telegram.org/bots/api#livephoto
  */
 export interface LivePhoto {
   /**
@@ -1902,7 +1902,7 @@ export interface LivePhoto {
 /**
  * This object represents a story.
  *
- * @see https://corefork.telegram.org/bots/api#story
+ * @see https://core.telegram.org/bots/api#story
  */
 export interface Story {
   /**
@@ -1919,7 +1919,7 @@ export interface Story {
 /**
  * This object represents a video file of a specific quality.
  *
- * @see https://corefork.telegram.org/bots/api#videoquality
+ * @see https://core.telegram.org/bots/api#videoquality
  */
 export interface VideoQuality {
   /**
@@ -1961,7 +1961,7 @@ export interface VideoQuality {
 /**
  * This object represents a video file.
  *
- * @see https://corefork.telegram.org/bots/api#video
+ * @see https://core.telegram.org/bots/api#video
  */
 export interface Video {
   /**
@@ -2032,7 +2032,7 @@ export interface Video {
 /**
  * This object represents a video message.
  *
- * @see https://corefork.telegram.org/bots/api#videonote
+ * @see https://core.telegram.org/bots/api#videonote
  */
 export interface VideoNote {
   /**
@@ -2071,7 +2071,7 @@ export interface VideoNote {
 /**
  * This object represents a voice note.
  *
- * @see https://corefork.telegram.org/bots/api#voice
+ * @see https://core.telegram.org/bots/api#voice
  */
 export interface Voice {
   /**
@@ -2107,7 +2107,7 @@ export interface Voice {
 /**
  * Describes the paid media added to a message.
  *
- * @see https://corefork.telegram.org/bots/api#paidmediainfo
+ * @see https://core.telegram.org/bots/api#paidmediainfo
  */
 export interface PaidMediaInfo {
   /**
@@ -2124,7 +2124,7 @@ export interface PaidMediaInfo {
 /**
  * This object describes paid media. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#paidmedia
+ * @see https://core.telegram.org/bots/api#paidmedia
  */
 export type PaidMedia =
   | PaidMediaLivePhoto
@@ -2135,7 +2135,7 @@ export type PaidMedia =
 /**
  * The paid media is a live photo.
  *
- * @see https://corefork.telegram.org/bots/api#paidmedialivephoto
+ * @see https://core.telegram.org/bots/api#paidmedialivephoto
  */
 export interface PaidMediaLivePhoto {
   /**
@@ -2152,7 +2152,7 @@ export interface PaidMediaLivePhoto {
 /**
  * The paid media is a photo.
  *
- * @see https://corefork.telegram.org/bots/api#paidmediaphoto
+ * @see https://core.telegram.org/bots/api#paidmediaphoto
  */
 export interface PaidMediaPhoto {
   /**
@@ -2169,7 +2169,7 @@ export interface PaidMediaPhoto {
 /**
  * The paid media isn't available before the payment.
  *
- * @see https://corefork.telegram.org/bots/api#paidmediapreview
+ * @see https://core.telegram.org/bots/api#paidmediapreview
  */
 export interface PaidMediaPreview {
   /**
@@ -2196,7 +2196,7 @@ export interface PaidMediaPreview {
 /**
  * The paid media is a video.
  *
- * @see https://corefork.telegram.org/bots/api#paidmediavideo
+ * @see https://core.telegram.org/bots/api#paidmediavideo
  */
 export interface PaidMediaVideo {
   /**
@@ -2213,7 +2213,7 @@ export interface PaidMediaVideo {
 /**
  * This object represents a phone contact.
  *
- * @see https://corefork.telegram.org/bots/api#contact
+ * @see https://core.telegram.org/bots/api#contact
  */
 export interface Contact {
   /**
@@ -2249,7 +2249,7 @@ export interface Contact {
 /**
  * This object represents an animated emoji that displays a random value.
  *
- * @see https://corefork.telegram.org/bots/api#dice
+ * @see https://core.telegram.org/bots/api#dice
  */
 export interface Dice {
   /**
@@ -2267,7 +2267,7 @@ export interface Dice {
 /**
  * Represents an HTTP link.
  *
- * @see https://corefork.telegram.org/bots/api#link
+ * @see https://core.telegram.org/bots/api#link
  */
 export interface Link {
   /**
@@ -2279,7 +2279,7 @@ export interface Link {
 /**
  * At most one of the optional fields can be present in any given object.
  *
- * @see https://corefork.telegram.org/bots/api#pollmedia
+ * @see https://core.telegram.org/bots/api#pollmedia
  */
 export interface PollMedia {
   /**
@@ -2340,7 +2340,7 @@ export interface PollMedia {
  * This object represents the content of a poll description or a quiz
  * explanation to be sent. It should be one of
  *
- * @see https://corefork.telegram.org/bots/api#inputpollmedia
+ * @see https://core.telegram.org/bots/api#inputpollmedia
  */
 export type InputPollMedia =
   | InputMediaAnimation
@@ -2356,7 +2356,7 @@ export type InputPollMedia =
  * This object represents the content of a poll option to be sent. It should be
  * one of
  *
- * @see https://corefork.telegram.org/bots/api#inputpolloptionmedia
+ * @see https://core.telegram.org/bots/api#inputpolloptionmedia
  */
 export type InputPollOptionMedia =
   | InputMediaAnimation
@@ -2371,7 +2371,7 @@ export type InputPollOptionMedia =
 /**
  * This object contains information about one answer option in a poll.
  *
- * @see https://corefork.telegram.org/bots/api#polloption
+ * @see https://core.telegram.org/bots/api#polloption
  */
 export interface PollOption {
   /**
@@ -2423,7 +2423,7 @@ export interface PollOption {
  * This object contains information about one answer option in a poll to be
  * sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputpolloption
+ * @see https://core.telegram.org/bots/api#inputpolloption
  */
 export interface InputPollOption {
   /**
@@ -2452,7 +2452,7 @@ export interface InputPollOption {
 /**
  * This object represents an answer of a user in a non-anonymous poll.
  *
- * @see https://corefork.telegram.org/bots/api#pollanswer
+ * @see https://core.telegram.org/bots/api#pollanswer
  */
 export interface PollAnswer {
   /**
@@ -2486,7 +2486,7 @@ export interface PollAnswer {
 /**
  * This object contains information about a poll.
  *
- * @see https://corefork.telegram.org/bots/api#poll
+ * @see https://core.telegram.org/bots/api#poll
  */
 export interface Poll {
   /**
@@ -2609,7 +2609,7 @@ export interface Poll {
 /**
  * Describes a task in a checklist.
  *
- * @see https://corefork.telegram.org/bots/api#checklisttask
+ * @see https://core.telegram.org/bots/api#checklisttask
  */
 export interface ChecklistTask {
   /**
@@ -2647,7 +2647,7 @@ export interface ChecklistTask {
 /**
  * Describes a checklist.
  *
- * @see https://corefork.telegram.org/bots/api#checklist
+ * @see https://core.telegram.org/bots/api#checklist
  */
 export interface Checklist {
   /**
@@ -2680,7 +2680,7 @@ export interface Checklist {
 /**
  * Describes a task to add to a checklist.
  *
- * @see https://corefork.telegram.org/bots/api#inputchecklisttask
+ * @see https://core.telegram.org/bots/api#inputchecklisttask
  */
 export interface InputChecklistTask {
   /**
@@ -2711,7 +2711,7 @@ export interface InputChecklistTask {
 /**
  * Describes a checklist to create.
  *
- * @see https://corefork.telegram.org/bots/api#inputchecklist
+ * @see https://core.telegram.org/bots/api#inputchecklist
  */
 export interface InputChecklist {
   /**
@@ -2751,7 +2751,7 @@ export interface InputChecklist {
 /**
  * This object represents a point on the map.
  *
- * @see https://corefork.telegram.org/bots/api#location
+ * @see https://core.telegram.org/bots/api#location
  */
 export interface Location {
   /**
@@ -2791,7 +2791,7 @@ export interface Location {
 /**
  * This object represents a venue.
  *
- * @see https://corefork.telegram.org/bots/api#venue
+ * @see https://core.telegram.org/bots/api#venue
  */
 export interface Venue {
   /**
@@ -2834,7 +2834,7 @@ export interface Venue {
 /**
  * Describes data sent from a Web App to the bot.
  *
- * @see https://corefork.telegram.org/bots/api#webappdata
+ * @see https://core.telegram.org/bots/api#webappdata
  */
 export interface WebAppData {
   /**
@@ -2853,7 +2853,7 @@ export interface WebAppData {
  * This object represents the content of a service message, sent whenever a
  * user in the chat triggers a proximity alert set by another user.
  *
- * @see https://corefork.telegram.org/bots/api#proximityalerttriggered
+ * @see https://core.telegram.org/bots/api#proximityalerttriggered
  */
 export interface ProximityAlertTriggered {
   /**
@@ -2876,7 +2876,7 @@ export interface ProximityAlertTriggered {
  * This object represents a service message about a change in auto-delete timer
  * settings.
  *
- * @see https://corefork.telegram.org/bots/api#messageautodeletetimerchanged
+ * @see https://core.telegram.org/bots/api#messageautodeletetimerchanged
  */
 export interface MessageAutoDeleteTimerChanged {
   /**
@@ -2889,7 +2889,7 @@ export interface MessageAutoDeleteTimerChanged {
  * This object contains information about the bot that was created to be
  * managed by the current bot.
  *
- * @see https://corefork.telegram.org/bots/api#managedbotcreated
+ * @see https://core.telegram.org/bots/api#managedbotcreated
  */
 export interface ManagedBotCreated {
   /**
@@ -2903,7 +2903,7 @@ export interface ManagedBotCreated {
  * This object contains information about the creation, token update, or owner
  * update of a bot that is managed by the current bot.
  *
- * @see https://corefork.telegram.org/bots/api#managedbotupdated
+ * @see https://core.telegram.org/bots/api#managedbotupdated
  */
 export interface ManagedBotUpdated {
   /**
@@ -2922,7 +2922,7 @@ export interface ManagedBotUpdated {
  * This object contains information about changes to a user payment
  * subscription toward the current bot.
  *
- * @see https://corefork.telegram.org/bots/api#botsubscriptionupdated
+ * @see https://core.telegram.org/bots/api#botsubscriptionupdated
  */
 export interface BotSubscriptionUpdated {
   /**
@@ -2947,7 +2947,7 @@ export interface BotSubscriptionUpdated {
 /**
  * This object describes an update about a user stopping message generation.
  *
- * @see https://corefork.telegram.org/bots/api#messagegenerationstopped
+ * @see https://core.telegram.org/bots/api#messagegenerationstopped
  */
 export interface MessageGenerationStopped {
   /**
@@ -2969,7 +2969,7 @@ export interface MessageGenerationStopped {
 /**
  * Describes a service message about an option added to a poll.
  *
- * @see https://corefork.telegram.org/bots/api#polloptionadded
+ * @see https://core.telegram.org/bots/api#polloptionadded
  */
 export interface PollOptionAdded {
   /**
@@ -2998,7 +2998,7 @@ export interface PollOptionAdded {
 /**
  * Describes a service message about an option deleted from a poll.
  *
- * @see https://corefork.telegram.org/bots/api#polloptiondeleted
+ * @see https://core.telegram.org/bots/api#polloptiondeleted
  */
 export interface PollOptionDeleted {
   /**
@@ -3027,7 +3027,7 @@ export interface PollOptionDeleted {
 /**
  * This object represents a service message about a user boosting a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostadded
+ * @see https://core.telegram.org/bots/api#chatboostadded
  */
 export interface ChatBoostAdded {
   /**
@@ -3040,7 +3040,7 @@ export interface ChatBoostAdded {
  * This object describes the way a background is filled based on the selected
  * colors. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#backgroundfill
+ * @see https://core.telegram.org/bots/api#backgroundfill
  */
 export type BackgroundFill =
   | BackgroundFillFreeformGradient
@@ -3050,7 +3050,7 @@ export type BackgroundFill =
 /**
  * The background is filled using the selected color.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundfillsolid
+ * @see https://core.telegram.org/bots/api#backgroundfillsolid
  */
 export interface BackgroundFillSolid {
   /**
@@ -3067,7 +3067,7 @@ export interface BackgroundFillSolid {
 /**
  * The background is a gradient fill.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundfillgradient
+ * @see https://core.telegram.org/bots/api#backgroundfillgradient
  */
 export interface BackgroundFillGradient {
   /**
@@ -3095,7 +3095,7 @@ export interface BackgroundFillGradient {
  * The background is a freeform gradient that rotates after every message in
  * the chat.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundfillfreeformgradient
+ * @see https://core.telegram.org/bots/api#backgroundfillfreeformgradient
  */
 export interface BackgroundFillFreeformGradient {
   /**
@@ -3113,7 +3113,7 @@ export interface BackgroundFillFreeformGradient {
 /**
  * This object describes the type of a background. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#backgroundtype
+ * @see https://core.telegram.org/bots/api#backgroundtype
  */
 export type BackgroundType =
   | BackgroundTypeChatTheme
@@ -3124,7 +3124,7 @@ export type BackgroundType =
 /**
  * The background is automatically filled based on the selected colors.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundtypefill
+ * @see https://core.telegram.org/bots/api#backgroundtypefill
  */
 export interface BackgroundTypeFill {
   /**
@@ -3146,7 +3146,7 @@ export interface BackgroundTypeFill {
 /**
  * The background is a wallpaper in the JPEG format.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundtypewallpaper
+ * @see https://core.telegram.org/bots/api#backgroundtypewallpaper
  */
 export interface BackgroundTypeWallpaper {
   /**
@@ -3181,7 +3181,7 @@ export interface BackgroundTypeWallpaper {
  * “application/x-tgwallpattern”) pattern to be combined with the background
  * fill chosen by the user.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundtypepattern
+ * @see https://core.telegram.org/bots/api#backgroundtypepattern
  */
 export interface BackgroundTypePattern {
   /**
@@ -3219,7 +3219,7 @@ export interface BackgroundTypePattern {
 /**
  * The background is taken directly from a built-in chat theme.
  *
- * @see https://corefork.telegram.org/bots/api#backgroundtypechattheme
+ * @see https://core.telegram.org/bots/api#backgroundtypechattheme
  */
 export interface BackgroundTypeChatTheme {
   /**
@@ -3236,7 +3236,7 @@ export interface BackgroundTypeChatTheme {
 /**
  * This object represents a chat background.
  *
- * @see https://corefork.telegram.org/bots/api#chatbackground
+ * @see https://core.telegram.org/bots/api#chatbackground
  */
 export interface ChatBackground {
   /**
@@ -3249,7 +3249,7 @@ export interface ChatBackground {
  * Describes a service message about checklist tasks marked as done or not
  * done.
  *
- * @see https://corefork.telegram.org/bots/api#checklisttasksdone
+ * @see https://core.telegram.org/bots/api#checklisttasksdone
  */
 export interface ChecklistTasksDone {
   /**
@@ -3273,7 +3273,7 @@ export interface ChecklistTasksDone {
 /**
  * Describes a service message about tasks added to a checklist.
  *
- * @see https://corefork.telegram.org/bots/api#checklisttasksadded
+ * @see https://core.telegram.org/bots/api#checklisttasksadded
  */
 export interface ChecklistTasksAdded {
   /**
@@ -3293,7 +3293,7 @@ export interface ChecklistTasksAdded {
  * Describes a service message about a chat or a bot being added to a
  * community.
  *
- * @see https://corefork.telegram.org/bots/api#communitychatadded
+ * @see https://core.telegram.org/bots/api#communitychatadded
  */
 export interface CommunityChatAdded {
   /**
@@ -3306,7 +3306,7 @@ export interface CommunityChatAdded {
  * Describes a service message about a chat being joined by a user from a
  * community.
  *
- * @see https://corefork.telegram.org/bots/api#communitychatjoined
+ * @see https://core.telegram.org/bots/api#communitychatjoined
  */
 export interface CommunityChatJoined {
   /**
@@ -3319,7 +3319,7 @@ export interface CommunityChatJoined {
  * Describes a service message about a chat or a bot being removed from a
  * community. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#communitychatremoved
+ * @see https://core.telegram.org/bots/api#communitychatremoved
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface CommunityChatRemoved {}
@@ -3328,7 +3328,7 @@ export interface CommunityChatRemoved {}
  * This object represents a service message about a new forum topic created in
  * the chat.
  *
- * @see https://corefork.telegram.org/bots/api#forumtopiccreated
+ * @see https://core.telegram.org/bots/api#forumtopiccreated
  */
 export interface ForumTopicCreated {
   /**
@@ -3357,7 +3357,7 @@ export interface ForumTopicCreated {
  * This object represents a service message about a forum topic closed in the
  * chat. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#forumtopicclosed
+ * @see https://core.telegram.org/bots/api#forumtopicclosed
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface ForumTopicClosed {}
@@ -3365,7 +3365,7 @@ export interface ForumTopicClosed {}
 /**
  * This object represents a service message about an edited forum topic.
  *
- * @see https://corefork.telegram.org/bots/api#forumtopicedited
+ * @see https://core.telegram.org/bots/api#forumtopicedited
  */
 export interface ForumTopicEdited {
   /**
@@ -3384,7 +3384,7 @@ export interface ForumTopicEdited {
  * This object represents a service message about a forum topic reopened in the
  * chat. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#forumtopicreopened
+ * @see https://core.telegram.org/bots/api#forumtopicreopened
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface ForumTopicReopened {}
@@ -3393,7 +3393,7 @@ export interface ForumTopicReopened {}
  * This object represents a service message about General forum topic hidden in
  * the chat. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#generalforumtopichidden
+ * @see https://core.telegram.org/bots/api#generalforumtopichidden
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface GeneralForumTopicHidden {}
@@ -3402,7 +3402,7 @@ export interface GeneralForumTopicHidden {}
  * This object represents a service message about General forum topic unhidden
  * in the chat. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#generalforumtopicunhidden
+ * @see https://core.telegram.org/bots/api#generalforumtopicunhidden
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface GeneralForumTopicUnhidden {}
@@ -3411,7 +3411,7 @@ export interface GeneralForumTopicUnhidden {}
  * This object contains information about a user that was shared with the bot
  * using a KeyboardButtonRequestUsers button.
  *
- * @see https://corefork.telegram.org/bots/api#shareduser
+ * @see https://core.telegram.org/bots/api#shareduser
  */
 export interface SharedUser {
   /**
@@ -3449,7 +3449,7 @@ export interface SharedUser {
  * This object contains information about the users whose identifiers were
  * shared with the bot using a KeyboardButtonRequestUsers button.
  *
- * @see https://corefork.telegram.org/bots/api#usersshared
+ * @see https://core.telegram.org/bots/api#usersshared
  */
 export interface UsersShared {
   /**
@@ -3467,7 +3467,7 @@ export interface UsersShared {
  * This object contains information about a chat that was shared with the bot
  * using a KeyboardButtonRequestChat button.
  *
- * @see https://corefork.telegram.org/bots/api#chatshared
+ * @see https://core.telegram.org/bots/api#chatshared
  */
 export interface ChatShared {
   /**
@@ -3507,7 +3507,7 @@ export interface ChatShared {
  * from a link, or accepting an explicit request from a Web App sent by the
  * method requestWriteAccess.
  *
- * @see https://corefork.telegram.org/bots/api#writeaccessallowed
+ * @see https://core.telegram.org/bots/api#writeaccessallowed
  */
 export interface WriteAccessAllowed {
   /**
@@ -3533,7 +3533,7 @@ export interface WriteAccessAllowed {
  * This object represents a service message about a video chat scheduled in the
  * chat.
  *
- * @see https://corefork.telegram.org/bots/api#videochatscheduled
+ * @see https://core.telegram.org/bots/api#videochatscheduled
  */
 export interface VideoChatScheduled {
   /**
@@ -3547,7 +3547,7 @@ export interface VideoChatScheduled {
  * This object represents a service message about a video chat started in the
  * chat. Currently holds no information.
  *
- * @see https://corefork.telegram.org/bots/api#videochatstarted
+ * @see https://core.telegram.org/bots/api#videochatstarted
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface VideoChatStarted {}
@@ -3556,7 +3556,7 @@ export interface VideoChatStarted {}
  * This object represents a service message about a video chat ended in the
  * chat.
  *
- * @see https://corefork.telegram.org/bots/api#videochatended
+ * @see https://core.telegram.org/bots/api#videochatended
  */
 export interface VideoChatEnded {
   /**
@@ -3569,7 +3569,7 @@ export interface VideoChatEnded {
  * This object represents a service message about new members invited to a
  * video chat.
  *
- * @see https://corefork.telegram.org/bots/api#videochatparticipantsinvited
+ * @see https://core.telegram.org/bots/api#videochatparticipantsinvited
  */
 export interface VideoChatParticipantsInvited {
   /**
@@ -3582,7 +3582,7 @@ export interface VideoChatParticipantsInvited {
  * Describes a service message about a change in the price of paid messages
  * within a chat.
  *
- * @see https://corefork.telegram.org/bots/api#paidmessagepricechanged
+ * @see https://core.telegram.org/bots/api#paidmessagepricechanged
  */
 export interface PaidMessagePriceChanged {
   /**
@@ -3596,7 +3596,7 @@ export interface PaidMessagePriceChanged {
  * Describes a service message about a change in the price of direct messages
  * sent to a channel chat.
  *
- * @see https://corefork.telegram.org/bots/api#directmessagepricechanged
+ * @see https://core.telegram.org/bots/api#directmessagepricechanged
  */
 export interface DirectMessagePriceChanged {
   /**
@@ -3615,7 +3615,7 @@ export interface DirectMessagePriceChanged {
 /**
  * Describes a service message about the approval of a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostapproved
+ * @see https://core.telegram.org/bots/api#suggestedpostapproved
  */
 export interface SuggestedPostApproved {
   /**
@@ -3640,7 +3640,7 @@ export interface SuggestedPostApproved {
  * Describes a service message about the failed approval of a suggested post.
  * Currently, only caused by insufficient user funds at the time of approval.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostapprovalfailed
+ * @see https://core.telegram.org/bots/api#suggestedpostapprovalfailed
  */
 export interface SuggestedPostApprovalFailed {
   /**
@@ -3659,7 +3659,7 @@ export interface SuggestedPostApprovalFailed {
 /**
  * Describes a service message about the rejection of a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostdeclined
+ * @see https://core.telegram.org/bots/api#suggestedpostdeclined
  */
 export interface SuggestedPostDeclined {
   /**
@@ -3678,7 +3678,7 @@ export interface SuggestedPostDeclined {
 /**
  * Describes a service message about a successful payment for a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostpaid
+ * @see https://core.telegram.org/bots/api#suggestedpostpaid
  */
 export interface SuggestedPostPaid {
   /**
@@ -3710,7 +3710,7 @@ export interface SuggestedPostPaid {
 /**
  * Describes a service message about a payment refund for a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostrefunded
+ * @see https://core.telegram.org/bots/api#suggestedpostrefunded
  */
 export interface SuggestedPostRefunded {
   /**
@@ -3733,7 +3733,7 @@ export interface SuggestedPostRefunded {
  * This object represents a service message about the creation of a scheduled
  * giveaway.
  *
- * @see https://corefork.telegram.org/bots/api#giveawaycreated
+ * @see https://core.telegram.org/bots/api#giveawaycreated
  */
 export interface GiveawayCreated {
   /**
@@ -3746,7 +3746,7 @@ export interface GiveawayCreated {
 /**
  * This object represents a message about a scheduled giveaway.
  *
- * @see https://corefork.telegram.org/bots/api#giveaway
+ * @see https://core.telegram.org/bots/api#giveaway
  */
 export interface Giveaway {
   /**
@@ -3806,7 +3806,7 @@ export interface Giveaway {
  * This object represents a message about the completion of a giveaway with
  * public winners.
  *
- * @see https://corefork.telegram.org/bots/api#giveawaywinners
+ * @see https://core.telegram.org/bots/api#giveawaywinners
  */
 export interface GiveawayWinners {
   /**
@@ -3878,7 +3878,7 @@ export interface GiveawayWinners {
  * This object represents a service message about the completion of a giveaway
  * without public winners.
  *
- * @see https://corefork.telegram.org/bots/api#giveawaycompleted
+ * @see https://core.telegram.org/bots/api#giveawaycompleted
  */
 export interface GiveawayCompleted {
   /**
@@ -3906,7 +3906,7 @@ export interface GiveawayCompleted {
 /**
  * Describes the options used for link preview generation.
  *
- * @see https://corefork.telegram.org/bots/api#linkpreviewoptions
+ * @see https://core.telegram.org/bots/api#linkpreviewoptions
  */
 export interface LinkPreviewOptions {
   /**
@@ -3944,7 +3944,7 @@ export interface LinkPreviewOptions {
 /**
  * Describes the price of a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostprice
+ * @see https://core.telegram.org/bots/api#suggestedpostprice
  */
 export interface SuggestedPostPrice {
   /**
@@ -3965,7 +3965,7 @@ export interface SuggestedPostPrice {
 /**
  * Contains information about a suggested post.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostinfo
+ * @see https://core.telegram.org/bots/api#suggestedpostinfo
  */
 export interface SuggestedPostInfo {
   /**
@@ -3991,7 +3991,7 @@ export interface SuggestedPostInfo {
 /**
  * Contains parameters of a post that is being suggested by the bot.
  *
- * @see https://corefork.telegram.org/bots/api#suggestedpostparameters
+ * @see https://core.telegram.org/bots/api#suggestedpostparameters
  */
 export interface SuggestedPostParameters {
   /**
@@ -4012,7 +4012,7 @@ export interface SuggestedPostParameters {
 /**
  * Describes a topic of a direct messages chat.
  *
- * @see https://corefork.telegram.org/bots/api#directmessagestopic
+ * @see https://core.telegram.org/bots/api#directmessagestopic
  */
 export interface DirectMessagesTopic {
   /**
@@ -4034,7 +4034,7 @@ export interface DirectMessagesTopic {
 /**
  * This object represent a user's profile pictures.
  *
- * @see https://corefork.telegram.org/bots/api#userprofilephotos
+ * @see https://core.telegram.org/bots/api#userprofilephotos
  */
 export interface UserProfilePhotos {
   /**
@@ -4051,7 +4051,7 @@ export interface UserProfilePhotos {
 /**
  * This object represents the audios displayed on a user's profile.
  *
- * @see https://corefork.telegram.org/bots/api#userprofileaudios
+ * @see https://core.telegram.org/bots/api#userprofileaudios
  */
 export interface UserProfileAudios {
   /**
@@ -4073,7 +4073,7 @@ export interface UserProfileAudios {
  * can be requested by calling getFile. The maximum file size to download is 20
  * MB
  *
- * @see https://corefork.telegram.org/bots/api#file
+ * @see https://core.telegram.org/bots/api#file
  */
 export interface File {
   /**
@@ -4105,7 +4105,7 @@ export interface File {
 /**
  * Describes a Web App.
  *
- * @see https://corefork.telegram.org/bots/api#webappinfo
+ * @see https://core.telegram.org/bots/api#webappinfo
  */
 export interface WebAppInfo {
   /**
@@ -4120,7 +4120,7 @@ export interface WebAppInfo {
  * Introduction to bots for details and examples). Not supported in channels
  * and for messages sent on behalf of a business account.
  *
- * @see https://corefork.telegram.org/bots/api#replykeyboardmarkup
+ * @see https://core.telegram.org/bots/api#replykeyboardmarkup
  */
 export interface ReplyKeyboardMarkup {
   /**
@@ -4180,7 +4180,7 @@ export interface ReplyKeyboardMarkup {
  * specify the type of the button. For simple text buttons, String can be used
  * instead of this object to specify the button text.
  *
- * @see https://corefork.telegram.org/bots/api#keyboardbutton
+ * @see https://core.telegram.org/bots/api#keyboardbutton
  */
 export interface KeyboardButton {
   /**
@@ -4257,7 +4257,7 @@ export interface KeyboardButton {
  * about the selected users will be shared with the bot when the corresponding
  * button is pressed. More about requesting users »
  *
- * @see https://corefork.telegram.org/bots/api#keyboardbuttonrequestusers
+ * @see https://core.telegram.org/bots/api#keyboardbuttonrequestusers
  */
 export interface KeyboardButtonRequestUsers {
   /**
@@ -4305,7 +4305,7 @@ export interface KeyboardButtonRequestUsers {
  * corresponding button is pressed. The bot will be granted requested rights in
  * the chat if appropriate. More about requesting chats ».
  *
- * @see https://corefork.telegram.org/bots/api#keyboardbuttonrequestchat
+ * @see https://core.telegram.org/bots/api#keyboardbuttonrequestchat
  */
 export interface KeyboardButtonRequestChat {
   /**
@@ -4380,7 +4380,7 @@ export interface KeyboardButtonRequestChat {
  * Information about the created bot will be shared with the bot using the
  * update managed_bot and a Message with the field managed_bot_created.
  *
- * @see https://corefork.telegram.org/bots/api#keyboardbuttonrequestmanagedbot
+ * @see https://core.telegram.org/bots/api#keyboardbuttonrequestmanagedbot
  */
 export interface KeyboardButtonRequestManagedBot {
   /**
@@ -4403,7 +4403,7 @@ export interface KeyboardButtonRequestManagedBot {
  * This object represents type of a poll, which is allowed to be created and
  * sent when the corresponding button is pressed.
  *
- * @see https://corefork.telegram.org/bots/api#keyboardbuttonpolltype
+ * @see https://core.telegram.org/bots/api#keyboardbuttonpolltype
  */
 export interface KeyboardButtonPollType {
   /**
@@ -4422,7 +4422,7 @@ export interface KeyboardButtonPollType {
  * the user presses a button (see ReplyKeyboardMarkup). Not supported in
  * channels and for messages sent on behalf of a business account.
  *
- * @see https://corefork.telegram.org/bots/api#replykeyboardremove
+ * @see https://core.telegram.org/bots/api#replykeyboardremove
  */
 export interface ReplyKeyboardRemove {
   /**
@@ -4448,7 +4448,7 @@ export interface ReplyKeyboardRemove {
  * This object represents an inline keyboard that appears right next to the
  * message it belongs to.
  *
- * @see https://corefork.telegram.org/bots/api#inlinekeyboardmarkup
+ * @see https://core.telegram.org/bots/api#inlinekeyboardmarkup
  */
 export interface InlineKeyboardMarkup {
   /**
@@ -4470,7 +4470,7 @@ export interface InlineKeyboardMarkup {
  * fields other than text, icon_custom_emoji_id, and style must be used to
  * specify the type of the button.
  *
- * @see https://corefork.telegram.org/bots/api#inlinekeyboardbutton
+ * @see https://core.telegram.org/bots/api#inlinekeyboardbutton
  */
 export interface InlineKeyboardButton {
   /**
@@ -4582,7 +4582,7 @@ export interface InlineKeyboardButton {
  * needs to do is tap/click a button and confirm that they want to log in:
  * Sample bot: @DiscussBot
  *
- * @see https://corefork.telegram.org/bots/api#loginurl
+ * @see https://core.telegram.org/bots/api#loginurl
  */
 export interface LoginUrl {
   /**
@@ -4621,7 +4621,7 @@ export interface LoginUrl {
  * This object represents an inline button that switches the current user to
  * inline mode in a chosen chat, with an optional default inline query.
  *
- * @see https://corefork.telegram.org/bots/api#switchinlinequerychosenchat
+ * @see https://core.telegram.org/bots/api#switchinlinequerychosenchat
  */
 export interface SwitchInlineQueryChosenChat {
   /**
@@ -4655,7 +4655,7 @@ export interface SwitchInlineQueryChosenChat {
  * This object represents an inline keyboard button that copies specified text
  * to the clipboard.
  *
- * @see https://corefork.telegram.org/bots/api#copytextbutton
+ * @see https://core.telegram.org/bots/api#copytextbutton
  */
 export interface CopyTextButton {
   /**
@@ -4668,7 +4668,7 @@ export interface CopyTextButton {
  * This object represents a disabled button which does nothing. Currently holds
  * no information.
  *
- * @see https://corefork.telegram.org/bots/api#disabledbutton
+ * @see https://core.telegram.org/bots/api#disabledbutton
  */
 // biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
 export interface DisabledButton {}
@@ -4681,7 +4681,7 @@ export interface DisabledButton {}
  * inline_message_id will be present. Exactly one of the fields data or
  * game_short_name will be present.
  *
- * @see https://corefork.telegram.org/bots/api#callbackquery
+ * @see https://core.telegram.org/bots/api#callbackquery
  */
 export interface CallbackQuery {
   /**
@@ -4732,7 +4732,7 @@ export interface CallbackQuery {
  * privacy mode. Not supported in channels and for messages sent on behalf of a
  * user account.
  *
- * @see https://corefork.telegram.org/bots/api#forcereply
+ * @see https://core.telegram.org/bots/api#forcereply
  */
 export interface ForceReply {
   /**
@@ -4759,7 +4759,7 @@ export interface ForceReply {
 /**
  * Represents a community (a group of chats).
  *
- * @see https://corefork.telegram.org/bots/api#community
+ * @see https://core.telegram.org/bots/api#community
  */
 export interface Community {
   /**
@@ -4780,7 +4780,7 @@ export interface Community {
 /**
  * This object represents a chat photo.
  *
- * @see https://corefork.telegram.org/bots/api#chatphoto
+ * @see https://core.telegram.org/bots/api#chatphoto
  */
 export interface ChatPhoto {
   /**
@@ -4813,7 +4813,7 @@ export interface ChatPhoto {
 /**
  * Represents an invite link for a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatinvitelink
+ * @see https://core.telegram.org/bots/api#chatinvitelink
  */
 export interface ChatInviteLink {
   /**
@@ -4880,7 +4880,7 @@ export interface ChatInviteLink {
 /**
  * Represents the rights of an administrator in a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatadministratorrights
+ * @see https://core.telegram.org/bots/api#chatadministratorrights
  */
 export interface ChatAdministratorRights {
   /**
@@ -4993,7 +4993,7 @@ export interface ChatAdministratorRights {
 /**
  * This object represents changes in the status of a chat member.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberupdated
+ * @see https://core.telegram.org/bots/api#chatmemberupdated
  */
 export interface ChatMemberUpdated {
   /**
@@ -5043,7 +5043,7 @@ export interface ChatMemberUpdated {
  * This object contains information about one member of a chat. Currently, the
  * following 6 types of chat members are supported:
  *
- * @see https://corefork.telegram.org/bots/api#chatmember
+ * @see https://core.telegram.org/bots/api#chatmember
  */
 export type ChatMember =
   | ChatMemberAdministrator
@@ -5057,7 +5057,7 @@ export type ChatMember =
  * Represents a chat member that owns the chat and has all administrator
  * privileges.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberowner
+ * @see https://core.telegram.org/bots/api#chatmemberowner
  */
 export interface ChatMemberOwner {
   /**
@@ -5084,7 +5084,7 @@ export interface ChatMemberOwner {
 /**
  * Represents a chat member that has some additional privileges.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberadministrator
+ * @see https://core.telegram.org/bots/api#chatmemberadministrator
  */
 export interface ChatMemberAdministrator {
   /**
@@ -5217,7 +5217,7 @@ export interface ChatMemberAdministrator {
 /**
  * Represents a chat member that has no additional privileges or restrictions.
  *
- * @see https://corefork.telegram.org/bots/api#chatmembermember
+ * @see https://core.telegram.org/bots/api#chatmembermember
  */
 export interface ChatMemberMember {
   /**
@@ -5245,7 +5245,7 @@ export interface ChatMemberMember {
  * Represents a chat member that is under certain restrictions in the chat.
  * Supergroups only.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberrestricted
+ * @see https://core.telegram.org/bots/api#chatmemberrestricted
  */
 export interface ChatMemberRestricted {
   /**
@@ -5362,7 +5362,7 @@ export interface ChatMemberRestricted {
  * Represents a chat member that isn't currently a member of the chat, but may
  * join it themselves.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberleft
+ * @see https://core.telegram.org/bots/api#chatmemberleft
  */
 export interface ChatMemberLeft {
   /**
@@ -5380,7 +5380,7 @@ export interface ChatMemberLeft {
  * Represents a chat member that was banned in the chat and can't return to the
  * chat or view chat messages.
  *
- * @see https://corefork.telegram.org/bots/api#chatmemberbanned
+ * @see https://core.telegram.org/bots/api#chatmemberbanned
  */
 export interface ChatMemberBanned {
   /**
@@ -5403,7 +5403,7 @@ export interface ChatMemberBanned {
 /**
  * Represents a join request sent to a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatjoinrequest
+ * @see https://core.telegram.org/bots/api#chatjoinrequest
  */
 export interface ChatJoinRequest {
   /**
@@ -5454,7 +5454,7 @@ export interface ChatJoinRequest {
  * Describes actions that a non-administrator user is allowed to take in a
  * chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatpermissions
+ * @see https://core.telegram.org/bots/api#chatpermissions
  */
 export interface ChatPermissions {
   /**
@@ -5547,7 +5547,7 @@ export interface ChatPermissions {
 /**
  * Describes the birthdate of a user.
  *
- * @see https://corefork.telegram.org/bots/api#birthdate
+ * @see https://core.telegram.org/bots/api#birthdate
  */
 export interface Birthdate {
   /**
@@ -5570,7 +5570,7 @@ export interface Birthdate {
  * Contains information about the start page settings of a Telegram Business
  * account.
  *
- * @see https://corefork.telegram.org/bots/api#businessintro
+ * @see https://core.telegram.org/bots/api#businessintro
  */
 export interface BusinessIntro {
   /**
@@ -5592,7 +5592,7 @@ export interface BusinessIntro {
 /**
  * Contains information about the location of a Telegram Business account.
  *
- * @see https://corefork.telegram.org/bots/api#businesslocation
+ * @see https://core.telegram.org/bots/api#businesslocation
  */
 export interface BusinessLocation {
   /**
@@ -5609,7 +5609,7 @@ export interface BusinessLocation {
 /**
  * Describes an interval of time during which a business is open.
  *
- * @see https://corefork.telegram.org/bots/api#businessopeninghoursinterval
+ * @see https://core.telegram.org/bots/api#businessopeninghoursinterval
  */
 export interface BusinessOpeningHoursInterval {
   /**
@@ -5629,7 +5629,7 @@ export interface BusinessOpeningHoursInterval {
 /**
  * Describes the opening hours of a business.
  *
- * @see https://corefork.telegram.org/bots/api#businessopeninghours
+ * @see https://core.telegram.org/bots/api#businessopeninghours
  */
 export interface BusinessOpeningHours {
   /**
@@ -5647,7 +5647,7 @@ export interface BusinessOpeningHours {
  * This object describes the rating of a user based on their Telegram Star
  * spendings.
  *
- * @see https://corefork.telegram.org/bots/api#userrating
+ * @see https://core.telegram.org/bots/api#userrating
  */
 export interface UserRating {
   /**
@@ -5677,7 +5677,7 @@ export interface UserRating {
 /**
  * Describes the position of a clickable area within a story.
  *
- * @see https://corefork.telegram.org/bots/api#storyareaposition
+ * @see https://core.telegram.org/bots/api#storyareaposition
  */
 export interface StoryAreaPosition {
   /**
@@ -5715,7 +5715,7 @@ export interface StoryAreaPosition {
 /**
  * Describes the physical address of a location.
  *
- * @see https://corefork.telegram.org/bots/api#locationaddress
+ * @see https://core.telegram.org/bots/api#locationaddress
  */
 export interface LocationAddress {
   /**
@@ -5744,7 +5744,7 @@ export interface LocationAddress {
  * Describes the type of a clickable area on a story. Currently, it can be one
  * of
  *
- * @see https://corefork.telegram.org/bots/api#storyareatype
+ * @see https://core.telegram.org/bots/api#storyareatype
  */
 export type StoryAreaType =
   | StoryAreaTypeLink
@@ -5757,7 +5757,7 @@ export type StoryAreaType =
  * Describes a story area pointing to a location. Currently, a story can have
  * up to 10 location areas.
  *
- * @see https://corefork.telegram.org/bots/api#storyareatypelocation
+ * @see https://core.telegram.org/bots/api#storyareatypelocation
  */
 export interface StoryAreaTypeLocation {
   /**
@@ -5785,7 +5785,7 @@ export interface StoryAreaTypeLocation {
  * Describes a story area pointing to a suggested reaction. Currently, a story
  * can have up to 5 suggested reaction areas.
  *
- * @see https://corefork.telegram.org/bots/api#storyareatypesuggestedreaction
+ * @see https://core.telegram.org/bots/api#storyareatypesuggestedreaction
  */
 export interface StoryAreaTypeSuggestedReaction {
   /**
@@ -5813,7 +5813,7 @@ export interface StoryAreaTypeSuggestedReaction {
  * Describes a story area pointing to an HTTP or tg:// link. Currently, a story
  * can have up to 3 link areas.
  *
- * @see https://corefork.telegram.org/bots/api#storyareatypelink
+ * @see https://core.telegram.org/bots/api#storyareatypelink
  */
 export interface StoryAreaTypeLink {
   /**
@@ -5831,7 +5831,7 @@ export interface StoryAreaTypeLink {
  * Describes a story area containing weather information. Currently, a story
  * can have up to 3 weather areas.
  *
- * @see https://corefork.telegram.org/bots/api#storyareatypeweather
+ * @see https://core.telegram.org/bots/api#storyareatypeweather
  */
 export interface StoryAreaTypeWeather {
   /**
@@ -5859,7 +5859,7 @@ export interface StoryAreaTypeWeather {
  * Describes a story area pointing to a unique gift. Currently, a story can
  * have at most 1 unique gift area.
  *
- * @see https://corefork.telegram.org/bots/api#storyareatypeuniquegift
+ * @see https://core.telegram.org/bots/api#storyareatypeuniquegift
  */
 export interface StoryAreaTypeUniqueGift {
   /**
@@ -5876,7 +5876,7 @@ export interface StoryAreaTypeUniqueGift {
 /**
  * Describes a clickable area on a story media.
  *
- * @see https://corefork.telegram.org/bots/api#storyarea
+ * @see https://core.telegram.org/bots/api#storyarea
  */
 export interface StoryArea {
   /**
@@ -5893,7 +5893,7 @@ export interface StoryArea {
 /**
  * Represents a location to which a chat is connected.
  *
- * @see https://corefork.telegram.org/bots/api#chatlocation
+ * @see https://core.telegram.org/bots/api#chatlocation
  */
 export interface ChatLocation {
   /**
@@ -5910,7 +5910,7 @@ export interface ChatLocation {
 /**
  * This object describes the type of a reaction. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#reactiontype
+ * @see https://core.telegram.org/bots/api#reactiontype
  */
 export type ReactionType =
   | ReactionTypeCustomEmoji
@@ -5920,7 +5920,7 @@ export type ReactionType =
 /**
  * The reaction is based on an emoji.
  *
- * @see https://corefork.telegram.org/bots/api#reactiontypeemoji
+ * @see https://core.telegram.org/bots/api#reactiontypeemoji
  */
 export interface ReactionTypeEmoji {
   /**
@@ -5941,7 +5941,7 @@ export interface ReactionTypeEmoji {
 /**
  * The reaction is based on a custom emoji.
  *
- * @see https://corefork.telegram.org/bots/api#reactiontypecustomemoji
+ * @see https://core.telegram.org/bots/api#reactiontypecustomemoji
  */
 export interface ReactionTypeCustomEmoji {
   /**
@@ -5958,7 +5958,7 @@ export interface ReactionTypeCustomEmoji {
 /**
  * The reaction is paid.
  *
- * @see https://corefork.telegram.org/bots/api#reactiontypepaid
+ * @see https://core.telegram.org/bots/api#reactiontypepaid
  */
 export interface ReactionTypePaid {
   /**
@@ -5971,7 +5971,7 @@ export interface ReactionTypePaid {
  * Represents a reaction added to a message along with the number of times it
  * was added.
  *
- * @see https://corefork.telegram.org/bots/api#reactioncount
+ * @see https://core.telegram.org/bots/api#reactioncount
  */
 export interface ReactionCount {
   /**
@@ -5989,7 +5989,7 @@ export interface ReactionCount {
  * This object represents a change of a reaction on a message performed by a
  * user.
  *
- * @see https://corefork.telegram.org/bots/api#messagereactionupdated
+ * @see https://core.telegram.org/bots/api#messagereactionupdated
  */
 export interface MessageReactionUpdated {
   /**
@@ -6033,7 +6033,7 @@ export interface MessageReactionUpdated {
  * This object represents reaction changes on a message with anonymous
  * reactions.
  *
- * @see https://corefork.telegram.org/bots/api#messagereactioncountupdated
+ * @see https://core.telegram.org/bots/api#messagereactioncountupdated
  */
 export interface MessageReactionCountUpdated {
   /**
@@ -6060,7 +6060,7 @@ export interface MessageReactionCountUpdated {
 /**
  * This object represents a forum topic.
  *
- * @see https://corefork.telegram.org/bots/api#forumtopic
+ * @see https://core.telegram.org/bots/api#forumtopic
  */
 export interface ForumTopic {
   /**
@@ -6093,7 +6093,7 @@ export interface ForumTopic {
 /**
  * This object describes the background of a gift.
  *
- * @see https://corefork.telegram.org/bots/api#giftbackground
+ * @see https://core.telegram.org/bots/api#giftbackground
  */
 export interface GiftBackground {
   /**
@@ -6115,7 +6115,7 @@ export interface GiftBackground {
 /**
  * This object represents a gift that can be sent by the bot.
  *
- * @see https://corefork.telegram.org/bots/api#gift
+ * @see https://core.telegram.org/bots/api#gift
  */
 export interface Gift {
   /**
@@ -6194,7 +6194,7 @@ export interface Gift {
 /**
  * This object represent a list of gifts.
  *
- * @see https://corefork.telegram.org/bots/api#gifts
+ * @see https://core.telegram.org/bots/api#gifts
  */
 export interface Gifts {
   /**
@@ -6206,7 +6206,7 @@ export interface Gifts {
 /**
  * This object describes the model of a unique gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftmodel
+ * @see https://core.telegram.org/bots/api#uniquegiftmodel
  */
 export interface UniqueGiftModel {
   /**
@@ -6235,7 +6235,7 @@ export interface UniqueGiftModel {
 /**
  * This object describes the symbol shown on the pattern of a unique gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftsymbol
+ * @see https://core.telegram.org/bots/api#uniquegiftsymbol
  */
 export interface UniqueGiftSymbol {
   /**
@@ -6258,7 +6258,7 @@ export interface UniqueGiftSymbol {
 /**
  * This object describes the colors of the backdrop of a unique gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftbackdropcolors
+ * @see https://core.telegram.org/bots/api#uniquegiftbackdropcolors
  */
 export interface UniqueGiftBackdropColors {
   /**
@@ -6285,7 +6285,7 @@ export interface UniqueGiftBackdropColors {
 /**
  * This object describes the backdrop of a unique gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftbackdrop
+ * @see https://core.telegram.org/bots/api#uniquegiftbackdrop
  */
 export interface UniqueGiftBackdrop {
   /**
@@ -6309,7 +6309,7 @@ export interface UniqueGiftBackdrop {
  * This object contains information about the color scheme for a user's name,
  * message replies and link previews based on a unique gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftcolors
+ * @see https://core.telegram.org/bots/api#uniquegiftcolors
  */
 export interface UniqueGiftColors {
   /**
@@ -6346,7 +6346,7 @@ export interface UniqueGiftColors {
 /**
  * This object describes a unique gift that was upgraded from a regular gift.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegift
+ * @see https://core.telegram.org/bots/api#uniquegift
  */
 export interface UniqueGift {
   /**
@@ -6420,7 +6420,7 @@ export interface UniqueGift {
 /**
  * Describes a service message about a regular gift that was sent or received.
  *
- * @see https://corefork.telegram.org/bots/api#giftinfo
+ * @see https://core.telegram.org/bots/api#giftinfo
  */
 export interface GiftInfo {
   /**
@@ -6482,7 +6482,7 @@ export interface GiftInfo {
 /**
  * Describes a service message about a unique gift that was sent or received.
  *
- * @see https://corefork.telegram.org/bots/api#uniquegiftinfo
+ * @see https://core.telegram.org/bots/api#uniquegiftinfo
  */
 export interface UniqueGiftInfo {
   /**
@@ -6551,7 +6551,7 @@ export interface UniqueGiftInfo {
  * This object describes a gift received and owned by a user or a chat.
  * Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#ownedgift
+ * @see https://core.telegram.org/bots/api#ownedgift
  */
 export type OwnedGift =
   | OwnedGiftRegular
@@ -6560,7 +6560,7 @@ export type OwnedGift =
 /**
  * Describes a regular gift owned by a user or a chat.
  *
- * @see https://corefork.telegram.org/bots/api#ownedgiftregular
+ * @see https://core.telegram.org/bots/api#ownedgiftregular
  */
 export interface OwnedGiftRegular {
   /**
@@ -6650,7 +6650,7 @@ export interface OwnedGiftRegular {
 /**
  * Describes a unique gift received and owned by a user or a chat.
  *
- * @see https://corefork.telegram.org/bots/api#ownedgiftunique
+ * @see https://core.telegram.org/bots/api#ownedgiftunique
  */
 export interface OwnedGiftUnique {
   /**
@@ -6707,7 +6707,7 @@ export interface OwnedGiftUnique {
 /**
  * Contains the list of gifts received and owned by a user or a chat.
  *
- * @see https://corefork.telegram.org/bots/api#ownedgifts
+ * @see https://core.telegram.org/bots/api#ownedgifts
  */
 export interface OwnedGifts {
   /**
@@ -6729,7 +6729,7 @@ export interface OwnedGifts {
 /**
  * This object describes the access settings of a bot.
  *
- * @see https://corefork.telegram.org/bots/api#botaccesssettings
+ * @see https://core.telegram.org/bots/api#botaccesssettings
  */
 export interface BotAccessSettings {
   /**
@@ -6749,7 +6749,7 @@ export interface BotAccessSettings {
  * This object describes the types of gifts that can be gifted to a user or a
  * chat.
  *
- * @see https://corefork.telegram.org/bots/api#acceptedgifttypes
+ * @see https://core.telegram.org/bots/api#acceptedgifttypes
  */
 export interface AcceptedGiftTypes {
   /**
@@ -6782,7 +6782,7 @@ export interface AcceptedGiftTypes {
 /**
  * Describes an amount of Telegram Stars.
  *
- * @see https://corefork.telegram.org/bots/api#staramount
+ * @see https://core.telegram.org/bots/api#staramount
  */
 export interface StarAmount {
   /**
@@ -6800,7 +6800,7 @@ export interface StarAmount {
 /**
  * This object represents a bot command.
  *
- * @see https://corefork.telegram.org/bots/api#botcommand
+ * @see https://core.telegram.org/bots/api#botcommand
  */
 export interface BotCommand {
   /**
@@ -6825,7 +6825,7 @@ export interface BotCommand {
  * This object represents the scope to which bot commands are applied.
  * Currently, the following 7 scopes are supported:
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscope
+ * @see https://core.telegram.org/bots/api#botcommandscope
  */
 export type BotCommandScope =
   | BotCommandScopeAllChatAdministrators
@@ -6840,7 +6840,7 @@ export type BotCommandScope =
  * Represents the default scope of bot commands. Default commands are used if
  * no commands with a narrower scope are specified for the user.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopedefault
+ * @see https://core.telegram.org/bots/api#botcommandscopedefault
  */
 export interface BotCommandScopeDefault {
   /**
@@ -6852,7 +6852,7 @@ export interface BotCommandScopeDefault {
 /**
  * Represents the scope of bot commands, covering all private chats.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopeallprivatechats
+ * @see https://core.telegram.org/bots/api#botcommandscopeallprivatechats
  */
 export interface BotCommandScopeAllPrivateChats {
   /**
@@ -6865,7 +6865,7 @@ export interface BotCommandScopeAllPrivateChats {
  * Represents the scope of bot commands, covering all group and supergroup
  * chats.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopeallgroupchats
+ * @see https://core.telegram.org/bots/api#botcommandscopeallgroupchats
  */
 export interface BotCommandScopeAllGroupChats {
   /**
@@ -6878,7 +6878,7 @@ export interface BotCommandScopeAllGroupChats {
  * Represents the scope of bot commands, covering all group and supergroup chat
  * administrators.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopeallchatadministrators
+ * @see https://core.telegram.org/bots/api#botcommandscopeallchatadministrators
  */
 export interface BotCommandScopeAllChatAdministrators {
   /**
@@ -6890,7 +6890,7 @@ export interface BotCommandScopeAllChatAdministrators {
 /**
  * Represents the scope of bot commands, covering a specific chat.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopechat
+ * @see https://core.telegram.org/bots/api#botcommandscopechat
  */
 export interface BotCommandScopeChat {
   /**
@@ -6910,7 +6910,7 @@ export interface BotCommandScopeChat {
  * Represents the scope of bot commands, covering all administrators of a
  * specific group or supergroup chat.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopechatadministrators
+ * @see https://core.telegram.org/bots/api#botcommandscopechatadministrators
  */
 export interface BotCommandScopeChatAdministrators {
   /**
@@ -6930,7 +6930,7 @@ export interface BotCommandScopeChatAdministrators {
  * Represents the scope of bot commands, covering a specific member of a group
  * or supergroup chat.
  *
- * @see https://corefork.telegram.org/bots/api#botcommandscopechatmember
+ * @see https://core.telegram.org/bots/api#botcommandscopechatmember
  */
 export interface BotCommandScopeChatMember {
   /**
@@ -6954,7 +6954,7 @@ export interface BotCommandScopeChatMember {
 /**
  * This object represents the bot's name.
  *
- * @see https://corefork.telegram.org/bots/api#botname
+ * @see https://core.telegram.org/bots/api#botname
  */
 export interface BotName {
   /**
@@ -6966,7 +6966,7 @@ export interface BotName {
 /**
  * This object represents the bot's description.
  *
- * @see https://corefork.telegram.org/bots/api#botdescription
+ * @see https://core.telegram.org/bots/api#botdescription
  */
 export interface BotDescription {
   /**
@@ -6978,7 +6978,7 @@ export interface BotDescription {
 /**
  * This object represents the bot's short description.
  *
- * @see https://corefork.telegram.org/bots/api#botshortdescription
+ * @see https://core.telegram.org/bots/api#botshortdescription
  */
 export interface BotShortDescription {
   /**
@@ -6993,7 +6993,7 @@ export interface BotShortDescription {
  * chat, then it is applied in the chat. Otherwise the default menu button is
  * applied. By default, the menu button opens the list of bot commands.
  *
- * @see https://corefork.telegram.org/bots/api#menubutton
+ * @see https://core.telegram.org/bots/api#menubutton
  */
 export type MenuButton =
   | MenuButtonCommands
@@ -7003,7 +7003,7 @@ export type MenuButton =
 /**
  * Represents a menu button, which opens the bot's list of commands.
  *
- * @see https://corefork.telegram.org/bots/api#menubuttoncommands
+ * @see https://core.telegram.org/bots/api#menubuttoncommands
  */
 export interface MenuButtonCommands {
   /**
@@ -7015,7 +7015,7 @@ export interface MenuButtonCommands {
 /**
  * Represents a menu button, which launches a Web App.
  *
- * @see https://corefork.telegram.org/bots/api#menubuttonwebapp
+ * @see https://core.telegram.org/bots/api#menubuttonwebapp
  */
 export interface MenuButtonWebApp {
   /**
@@ -7042,7 +7042,7 @@ export interface MenuButtonWebApp {
 /**
  * Describes that no specific value for the menu button was set.
  *
- * @see https://corefork.telegram.org/bots/api#menubuttondefault
+ * @see https://core.telegram.org/bots/api#menubuttondefault
  */
 export interface MenuButtonDefault {
   /**
@@ -7054,7 +7054,7 @@ export interface MenuButtonDefault {
 /**
  * This object describes the source of a chat boost. It can be one of
  *
- * @see https://corefork.telegram.org/bots/api#chatboostsource
+ * @see https://core.telegram.org/bots/api#chatboostsource
  */
 export type ChatBoostSource =
   | ChatBoostSourceGiftCode
@@ -7065,7 +7065,7 @@ export type ChatBoostSource =
  * The boost was obtained by subscribing to Telegram Premium or by gifting a
  * Telegram Premium subscription to another user.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostsourcepremium
+ * @see https://core.telegram.org/bots/api#chatboostsourcepremium
  */
 export interface ChatBoostSourcePremium {
   /**
@@ -7084,7 +7084,7 @@ export interface ChatBoostSourcePremium {
  * boost a chat. Each such code boosts the chat 4 times for the duration of the
  * corresponding Telegram Premium subscription.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostsourcegiftcode
+ * @see https://core.telegram.org/bots/api#chatboostsourcegiftcode
  */
 export interface ChatBoostSourceGiftCode {
   /**
@@ -7104,7 +7104,7 @@ export interface ChatBoostSourceGiftCode {
  * corresponding Telegram Premium subscription for Telegram Premium giveaways
  * and prize_star_count / 500 times for one year for Telegram Star giveaways.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostsourcegiveaway
+ * @see https://core.telegram.org/bots/api#chatboostsourcegiveaway
  */
 export interface ChatBoostSourceGiveaway {
   /**
@@ -7139,7 +7139,7 @@ export interface ChatBoostSourceGiveaway {
 /**
  * This object contains information about a chat boost.
  *
- * @see https://corefork.telegram.org/bots/api#chatboost
+ * @see https://core.telegram.org/bots/api#chatboost
  */
 export interface ChatBoost {
   /**
@@ -7167,7 +7167,7 @@ export interface ChatBoost {
 /**
  * This object represents a boost added to a chat or changed.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostupdated
+ * @see https://core.telegram.org/bots/api#chatboostupdated
  */
 export interface ChatBoostUpdated {
   /**
@@ -7184,7 +7184,7 @@ export interface ChatBoostUpdated {
 /**
  * This object represents a boost removed from a chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatboostremoved
+ * @see https://core.telegram.org/bots/api#chatboostremoved
  */
 export interface ChatBoostRemoved {
   /**
@@ -7211,7 +7211,7 @@ export interface ChatBoostRemoved {
 /**
  * Describes a service message about the chat owner leaving the chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatownerleft
+ * @see https://core.telegram.org/bots/api#chatownerleft
  */
 export interface ChatOwnerLeft {
   /**
@@ -7224,7 +7224,7 @@ export interface ChatOwnerLeft {
 /**
  * Describes a service message about an ownership change in the chat.
  *
- * @see https://corefork.telegram.org/bots/api#chatownerchanged
+ * @see https://core.telegram.org/bots/api#chatownerchanged
  */
 export interface ChatOwnerChanged {
   /**
@@ -7236,7 +7236,7 @@ export interface ChatOwnerChanged {
 /**
  * This object represents a list of boosts added to a chat by a user.
  *
- * @see https://corefork.telegram.org/bots/api#userchatboosts
+ * @see https://core.telegram.org/bots/api#userchatboosts
  */
 export interface UserChatBoosts {
   /**
@@ -7248,7 +7248,7 @@ export interface UserChatBoosts {
 /**
  * Represents the rights of a business bot.
  *
- * @see https://corefork.telegram.org/bots/api#businessbotrights
+ * @see https://core.telegram.org/bots/api#businessbotrights
  */
 export interface BusinessBotRights {
   /**
@@ -7332,7 +7332,7 @@ export interface BusinessBotRights {
 /**
  * Describes the connection of the bot with a business account.
  *
- * @see https://corefork.telegram.org/bots/api#businessconnection
+ * @see https://core.telegram.org/bots/api#businessconnection
  */
 export interface BusinessConnection {
   /**
@@ -7374,7 +7374,7 @@ export interface BusinessConnection {
  * This object is received when messages are deleted from a connected business
  * account.
  *
- * @see https://corefork.telegram.org/bots/api#businessmessagesdeleted
+ * @see https://core.telegram.org/bots/api#businessmessagesdeleted
  */
 export interface BusinessMessagesDeleted {
   /**
@@ -7398,7 +7398,7 @@ export interface BusinessMessagesDeleted {
 /**
  * Describes an inline message sent by a Web App on behalf of a user.
  *
- * @see https://corefork.telegram.org/bots/api#sentwebappmessage
+ * @see https://core.telegram.org/bots/api#sentwebappmessage
  */
 export interface SentWebAppMessage {
   /**
@@ -7411,7 +7411,7 @@ export interface SentWebAppMessage {
 /**
  * Describes an inline message sent by a guest bot.
  *
- * @see https://corefork.telegram.org/bots/api#sentguestmessage
+ * @see https://core.telegram.org/bots/api#sentguestmessage
  */
 export interface SentGuestMessage {
   /**
@@ -7423,7 +7423,7 @@ export interface SentGuestMessage {
 /**
  * Describes an inline message to be sent by a user of a Mini App.
  *
- * @see https://corefork.telegram.org/bots/api#preparedinlinemessage
+ * @see https://core.telegram.org/bots/api#preparedinlinemessage
  */
 export interface PreparedInlineMessage {
   /**
@@ -7441,7 +7441,7 @@ export interface PreparedInlineMessage {
 /**
  * Describes a keyboard button to be used by a user of a Mini App.
  *
- * @see https://corefork.telegram.org/bots/api#preparedkeyboardbutton
+ * @see https://core.telegram.org/bots/api#preparedkeyboardbutton
  */
 export interface PreparedKeyboardButton {
   /**
@@ -7453,7 +7453,7 @@ export interface PreparedKeyboardButton {
 /**
  * Describes why a request was unsuccessful.
  *
- * @see https://corefork.telegram.org/bots/api#responseparameters
+ * @see https://core.telegram.org/bots/api#responseparameters
  */
 export interface ResponseParameters {
   /**
@@ -7476,7 +7476,7 @@ export interface ResponseParameters {
  * This object represents the content of a media message to be sent. It should
  * be one of
  *
- * @see https://corefork.telegram.org/bots/api#inputmedia
+ * @see https://core.telegram.org/bots/api#inputmedia
  */
 export type InputMedia =
   | InputMediaAnimation
@@ -7490,7 +7490,7 @@ export type InputMedia =
  * Represents an animation file (GIF or H.264/MPEG-4 AVC video without sound)
  * to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediaanimation
+ * @see https://core.telegram.org/bots/api#inputmediaanimation
  */
 export interface InputMediaAnimation {
   /**
@@ -7566,7 +7566,7 @@ export interface InputMediaAnimation {
 /**
  * Represents an audio file to be treated as music to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediaaudio
+ * @see https://core.telegram.org/bots/api#inputmediaaudio
  */
 export interface InputMediaAudio {
   /**
@@ -7631,7 +7631,7 @@ export interface InputMediaAudio {
 /**
  * Represents a general file to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediadocument
+ * @see https://core.telegram.org/bots/api#inputmediadocument
  */
 export interface InputMediaDocument {
   /**
@@ -7688,7 +7688,7 @@ export interface InputMediaDocument {
 /**
  * Represents an HTTP link to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmedialink
+ * @see https://core.telegram.org/bots/api#inputmedialink
  */
 export interface InputMediaLink {
   /**
@@ -7705,7 +7705,7 @@ export interface InputMediaLink {
 /**
  * Represents a live photo to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmedialivephoto
+ * @see https://core.telegram.org/bots/api#inputmedialivephoto
  */
 export interface InputMediaLivePhoto {
   /**
@@ -7763,7 +7763,7 @@ export interface InputMediaLivePhoto {
 /**
  * Represents a location to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmedialocation
+ * @see https://core.telegram.org/bots/api#inputmedialocation
  */
 export interface InputMediaLocation {
   /**
@@ -7790,7 +7790,7 @@ export interface InputMediaLocation {
 /**
  * Represents a photo to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediaphoto
+ * @see https://core.telegram.org/bots/api#inputmediaphoto
  */
 export interface InputMediaPhoto {
   /**
@@ -7838,7 +7838,7 @@ export interface InputMediaPhoto {
 /**
  * Represents a sticker file to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediasticker
+ * @see https://core.telegram.org/bots/api#inputmediasticker
  */
 export interface InputMediaSticker {
   /**
@@ -7864,7 +7864,7 @@ export interface InputMediaSticker {
 /**
  * Represents a venue to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediavenue
+ * @see https://core.telegram.org/bots/api#inputmediavenue
  */
 export interface InputMediaVenue {
   /**
@@ -7918,7 +7918,7 @@ export interface InputMediaVenue {
 /**
  * Represents a video to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediavideo
+ * @see https://core.telegram.org/bots/api#inputmediavideo
  */
 export interface InputMediaVideo {
   /**
@@ -8012,7 +8012,7 @@ export interface InputMediaVideo {
 /**
  * Represents a voice message file to be sent.
  *
- * @see https://corefork.telegram.org/bots/api#inputmediavoicenote
+ * @see https://core.telegram.org/bots/api#inputmediavoicenote
  */
 export interface InputMediaVoiceNote {
   /**
@@ -8056,7 +8056,7 @@ export interface InputMediaVoiceNote {
 /**
  * This object describes the paid media to be sent. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#inputpaidmedia
+ * @see https://core.telegram.org/bots/api#inputpaidmedia
  */
 export type InputPaidMedia =
   | InputPaidMediaLivePhoto
@@ -8066,7 +8066,7 @@ export type InputPaidMedia =
 /**
  * The paid media to send is a live photo.
  *
- * @see https://corefork.telegram.org/bots/api#inputpaidmedialivephoto
+ * @see https://core.telegram.org/bots/api#inputpaidmedialivephoto
  */
 export interface InputPaidMediaLivePhoto {
   /**
@@ -8096,7 +8096,7 @@ export interface InputPaidMediaLivePhoto {
 /**
  * The paid media to send is a photo.
  *
- * @see https://corefork.telegram.org/bots/api#inputpaidmediaphoto
+ * @see https://core.telegram.org/bots/api#inputpaidmediaphoto
  */
 export interface InputPaidMediaPhoto {
   /**
@@ -8117,7 +8117,7 @@ export interface InputPaidMediaPhoto {
 /**
  * The paid media to send is a video.
  *
- * @see https://corefork.telegram.org/bots/api#inputpaidmediavideo
+ * @see https://core.telegram.org/bots/api#inputpaidmediavideo
  */
 export interface InputPaidMediaVideo {
   /**
@@ -8184,7 +8184,7 @@ export interface InputPaidMediaVideo {
 /**
  * This object describes a profile photo to set. Currently, it can be one of
  *
- * @see https://corefork.telegram.org/bots/api#inputprofilephoto
+ * @see https://core.telegram.org/bots/api#inputprofilephoto
  */
 export type InputProfilePhoto =
   | InputProfilePhotoAnimated
@@ -8193,7 +8193,7 @@ export type InputProfilePhoto =
 /**
  * A static profile photo in the .JPG format.
  *
- * @see https://corefork.telegram.org/bots/api#inputprofilephotostatic
+ * @see https://core.telegram.org/bots/api#inputprofilephotostatic
  */
 export interface InputProfilePhotoStatic {
   /**
@@ -8213,7 +8213,7 @@ export interface InputProfilePhotoStatic {
 /**
  * An animated profile photo in the MPEG4 format.
  *
- * @see https://corefork.telegram.org/bots/api#inputprofilephotoanimated
+ * @see https://core.telegram.org/bots/api#inputprofilephotoanimated
  */
 export interface InputProfilePhotoAnimated {
   /**
@@ -8240,7 +8240,7 @@ export interface InputProfilePhotoAnimated {
  * This object describes the content of a story to post. Currently, it can be
  * one of
  *
- * @see https://corefork.telegram.org/bots/api#inputstorycontent
+ * @see https://core.telegram.org/bots/api#inputstorycontent
  */
 export type InputStoryContent =
   | InputStoryContentPhoto
@@ -8249,7 +8249,7 @@ export type InputStoryContent =
 /**
  * Describes a photo to post as a story.
  *
- * @see https://corefork.telegram.org/bots/api#inputstorycontentphoto
+ * @see https://core.telegram.org/bots/api#inputstorycontentphoto
  */
 export interface InputStoryContentPhoto {
   /**
@@ -8270,7 +8270,7 @@ export interface InputStoryContentPhoto {
 /**
  * Describes a video to post as a story.
  *
- * @see https://corefork.telegram.org/bots/api#inputstorycontentvideo
+ * @see https://core.telegram.org/bots/api#inputstorycontentvideo
  */
 export interface InputStoryContentVideo {
   /**

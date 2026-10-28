@@ -13,6 +13,7 @@
     "errors": "tsx src/cli.ts errors",
     "emit": "tsx src/cli.ts emit",
     "crosscheck": "tsx src/cli.ts crosscheck",
+    "layers": "tsx src/cli.ts layers",
     "build": "tsc --build",
     "clean": "tsc --build --clean"
   }

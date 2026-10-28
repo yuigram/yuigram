@@ -9,7 +9,7 @@ import type { InlineKeyboardMarkup, ReplyParameters } from '../types/index.js'
 /**
  * Parameters for `sendGame`.
  *
- * @see https://corefork.telegram.org/bots/api#sendgame
+ * @see https://core.telegram.org/bots/api#sendgame
  */
 export interface SendGameParams {
   /**
@@ -77,7 +77,7 @@ export interface SendGameParams {
 /**
  * Parameters for `setGameScore`.
  *
- * @see https://corefork.telegram.org/bots/api#setgamescore
+ * @see https://core.telegram.org/bots/api#setgamescore
  */
 export interface SetGameScoreParams {
   /**
@@ -124,7 +124,7 @@ export interface SetGameScoreParams {
 /**
  * Parameters for `getGameHighScores`.
  *
- * @see https://corefork.telegram.org/bots/api#getgamehighscores
+ * @see https://core.telegram.org/bots/api#getgamehighscores
  */
 export interface GetGameHighScoresParams {
   /**
