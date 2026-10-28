@@ -8,11 +8,14 @@
  * errors       read Telegram's error database, write errors.json
  * emit         IR and errors.json -> generated TypeScript, offline
  * crosscheck   compare the IR against Telegram's own JSON rendering
+ * layers       compare the layer each source states with the pin
  * ```
  *
  * `fetch`, `errors` and `crosscheck` touch the network, and are run by a
- * person. `emit` reads only what is committed, so a build never depends on
- * Telegram being reachable.
+ * person. `layers` touches it too, and is what the scheduled workflow runs, as
+ * `layers --report-dir <dir>`: it reads layer numbers only, and writes nothing
+ * in the repository. `emit` reads only what is committed, so a build never
+ * depends on Telegram being reachable.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -29,6 +32,7 @@ import {
 } from './errors.js'
 import { download, extractLayer, extractSchemaText, SOURCES } from './fetch.js'
 import type { TlSchema } from './ir.js'
+import { assess, describeLayers, layerIssue, readSightings } from './layers.js'
 import { parseSchema } from './parse.js'
 import { serializeSchema } from './serialize.js'
 import {
@@ -280,11 +284,41 @@ the API rendering is layer ${publishedLayer} and this repository is pinned to ${
   if (failed) process.exitCode = 1
 }
 
+/** The value after a flag, if the flag is given. */
+function option(flags: readonly string[], name: string): string | undefined {
+  const at = flags.indexOf(name)
+  if (at === -1) return undefined
+  const value = flags[at + 1]
+  if (value === undefined || value.startsWith('--')) throw new Error(`${name} needs a value`)
+  return value
+}
+
+/**
+ * Compare the layer each source states with the pin.
+ *
+ * With `--report-dir`, writes there `summary.md`, always, and `layer.md`, the
+ * body of the issue that asks for the pin to move, when a source is ahead.
+ */
+async function commandLayers(flags: readonly string[]): Promise<void> {
+  const report = assess(readLayer(), await readSightings())
+  const summary = describeLayers(report)
+  process.stdout.write(summary)
+
+  const reportDir = option(flags, '--report-dir')
+  if (reportDir === undefined) return
+
+  mkdirSync(reportDir, { recursive: true })
+  writeFileSync(join(reportDir, 'summary.md'), summary)
+  const issue = layerIssue(report)
+  if (issue !== undefined) writeFileSync(join(reportDir, 'layer.md'), issue)
+}
+
 const COMMANDS: Record<string, (flags: readonly string[]) => void | Promise<void>> = {
   fetch: async (flags) => await commandFetch(flags.includes('--from-tdlib')),
   errors: commandErrors,
   emit: commandEmit,
   crosscheck: commandCrosscheck,
+  layers: commandLayers,
 }
 
 const name = process.argv[2] ?? ''
@@ -292,7 +326,9 @@ const flags = process.argv.slice(3)
 const command = COMMANDS[name]
 
 if (command === undefined) {
-  process.stderr.write(`usage: cli <${Object.keys(COMMANDS).join('|')}> [--from-tdlib]\n`)
+  process.stderr.write(
+    `usage: cli <${Object.keys(COMMANDS).join('|')}> [--from-tdlib] [--report-dir <dir>]\n`,
+  )
   process.exitCode = 1
 } else {
   await command(flags)

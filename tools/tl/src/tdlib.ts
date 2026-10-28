@@ -203,18 +203,23 @@ export function checkDigest(bytes: string, expected: string, what: string): void
 }
 
 /**
- * The layer `Version.h` states, which must be the one the pin is for.
+ * The layer `Version.h` states, whatever it is.
  *
  * Stated once, as `MTPROTO_LAYER`; anything else is refused rather than
  * guessed at, because the number names the snapshot and is sent on every
  * connection.
  */
-export function layerFromVersionHeader(text: string, expected: number = TDLIB.layer): number {
+export function statedLayer(text: string): number {
   const stated = [...text.matchAll(/^\s*constexpr int32 MTPROTO_LAYER = (\d+);\s*$/gm)]
   if (stated.length !== 1) {
     throw new TlFetchError(`Version.h states MTPROTO_LAYER ${stated.length} times, not once`)
   }
-  const layer = Number.parseInt(stated[0]?.[1] ?? '', 10)
+  return Number.parseInt(stated[0]?.[1] ?? '', 10)
+}
+
+/** The layer `Version.h` states, which must be the one the pin is for. */
+export function layerFromVersionHeader(text: string, expected: number = TDLIB.layer): number {
+  const layer = statedLayer(text)
   if (layer !== expected) {
     throw new TlFetchError(`Version.h states layer ${layer}, and the pin is for layer ${expected}`)
   }
