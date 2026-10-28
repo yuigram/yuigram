@@ -365,7 +365,7 @@ Two consequences only appear once the tables exist, and both are handled rather 
 
 ### 3.3 Layer policy
 
-**Yuigram pins one TL layer per release. The pin is layer 229.**
+**Yuigram pins one TL layer per release. The pin is layer 232.**
 
 #### Where a layer's schema is read from
 
@@ -424,18 +424,27 @@ byte-identical generated code. That copy was removed from the history before pub
 the revisions between the two hold no schema file for layer 229 and do not regenerate their TL
 code on their own.
 
+The pin moved to 232 on 2026-10-28, when the drift job reported TDLib three layers ahead, read
+from TDLib at the revision `tools/tl/src/tdlib.ts` names. What precedes the schema proper had not
+changed, and every new identifier verified by recomputation. The layers between added 63
+constructors and 46 methods — a TON wallet, on-ramp purchases, share themes, tokens that waive
+paid messages — and changed five existing ones incompatibly: two descriptions became formatted
+text, `bots.setCustomVerification` takes one, `payments.getStarGiftWithdrawalUrl` takes a
+temporary password where it took a password proof, and `inputPasskeyCredentialFirebasePNV` is
+gone.
+
 #### What the pin costs while the documentation is behind
 
 The crosscheck in §3.4 compares the parsed IR against Telegram's JSON rendering of the schema.
 That rendering follows the documentation page, so while the pin is ahead it describes a
-different layer: 55 combinators differ, every one of them a thing 229 changed. The command says
-so and does not fail — it is an oracle for the parser, and an oracle describing another layer
+different layer: on 2026-10-28, against the page's layer 225, 295 combinators differ. The
+command says so and does not fail — it is an oracle for the parser, and an oracle describing another layer
 cannot answer that question. It becomes one again when the page catches up. The service schema
 is unversioned and is still compared strictly; it agrees.
 
 What replaces it in the meantime is the check that does not depend on the layer at all: every
 combinator's identifier is recomputed from its own canonical form and compared with the
-identifier the schema declares. 2,459 of 2,471 verify that way, and the twelve that do not are
+identifier the schema declares. 2,567 of 2,579 verify that way, and the twelve that do not are
 the generic methods whose signatures canonicalization does not describe.
 
 **There is no automatic layer upgrade.** The drift job fetches, parses, diffs and opens a pull
@@ -452,7 +461,7 @@ The whole public surface for this is one read-only field:
 
 ```ts
 import { schemaInfo } from 'yuigram'
-schemaInfo.tlLayer   // 229
+schemaInfo.tlLayer   // 232
 ```
 
 #### The update procedure
@@ -472,7 +481,7 @@ schemaInfo.tlLayer   // 229
 #### Compatibility expectations
 
 Telegram continues to serve clients on older layers — that is what the layer number is for. A
-release pinned to 229 keeps working after 230 ships; it simply does not see what 230 introduced.
+release pinned to 232 keeps working after 233 ships; it simply does not see what 233 introduced.
 The failure mode to plan for is the narrow one: a server sending a constructor the pinned table
 does not contain. That is a decode error confined to the message carrying it, not a
 connection-level failure, and the session layer treats it as an unparseable message rather than a
@@ -700,7 +709,7 @@ client in this ecosystem.
 | Artifact | Version relationship |
 |---|---|
 | Bot API schema | Tracks Telegram's version (10.2, 10.3, …) |
-| TL schema | Tracks the pinned layer number — currently 229, see §3.3 |
+| TL schema | Tracks the pinned layer number — currently 232, see §3.3 |
 | `yuigram` | Independent semantic versioning |
 
 Yuigram's version does **not** encode the Bot API version or TL layer. Those are properties of
@@ -709,7 +718,7 @@ the schema the release was built against, exposed at runtime and documented per 
 ```ts
 import { schemaInfo } from 'yuigram'
 schemaInfo.botApi   // '10.3'
-schemaInfo.tlLayer  // 229
+schemaInfo.tlLayer  // 232
 ```
 
 Both are emitted with the surface rather than written beside it: `BOT_API_VERSION` comes out of

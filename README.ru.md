@@ -6,7 +6,7 @@
 
 [Документация](docs/ru/README.md) · [Проектирование API](docs/api-design.md) · [Примеры](examples) · [English](README.md)
 
-Bot API 10.3 · слой TL 229 · Node.js 22+ · без runtime-зависимостей
+Bot API 10.3 · слой TL 232 · Node.js 22+ · без runtime-зависимостей
 
 </div>
 

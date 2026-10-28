@@ -6,7 +6,7 @@
 
 [Documentation](docs/README.md) · [API design](docs/api-design.md) · [Examples](examples) · [Русский](README.ru.md)
 
-Bot API 10.3 · TL layer 229 · Node.js 22+ · no runtime dependencies
+Bot API 10.3 · TL layer 232 · Node.js 22+ · no runtime dependencies
 
 </div>
 
