@@ -312,9 +312,8 @@ regenerating. Without the second, every Telegram release temporarily bricks some
 ## 8. Code generation
 
 ```
-   corefork.telegram.org/bots/api  ──┐
-   core.telegram.org/bots/api      ──┤──> scraper ──> bot-api.schema.json ──> emitters
-   ark0f/tg-bot-api (cross-check)  ──┘                       │
+   core.telegram.org/bots/api      ──> scraper ──> bot-api.schema.json ──> emitters
+   (corefork: compared, never generated)                     │
                                                              ├─> types.d.ts
                                                              ├─> methods.d.ts
                                                              ├─> events.ts
@@ -332,8 +331,10 @@ reproducible without network access, schema changes appear as reviewable diffs i
 requests, and a Telegram documentation restructure breaks a scheduled CI job rather than
 everyone's build.
 
-The scheduled job fetches, regenerates, diffs, and opens a pull request when the surface
-changes. Telegram tracking becomes a review task rather than an engineering task. This is
+The scheduled job fetches, regenerates, diffs, and opens a pull request when the stable Bot API
+documentation changes, and opens an issue when Telegram states a TL layer above the pin
+([codegen.md](codegen.md) §6). Telegram tracking becomes a review task rather than an engineering
+task. This is
 the mechanism that keeps Telegram's release pace from becoming a maintenance burden.
 
 ---

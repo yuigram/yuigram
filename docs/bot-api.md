@@ -52,13 +52,13 @@ scrape ──> normalize ──> bot-api.schema.json ──> emit ──> genera
 
 ### Source
 
-Primary: `corefork.telegram.org/bots/api`, falling back to `core.telegram.org/bots/api`.
-The corefork host publishes ahead of the stable documentation, which buys lead time on
-unreleased features at no cost.
+`core.telegram.org/bots/api`, the stable page, is what the surface is generated from.
+`corefork.telegram.org/bots/api`, Telegram's staging copy, carries changes before they are
+announced, under the version already released; it is compared with the stable page and reported,
+never generated from ([codegen.md](codegen.md) §2.1).
 
-Cross-check: [`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT),
-regenerated nightly. CI diffs Yuigram's parse against theirs; a divergence means either
-Telegram restructured the page or the parser regressed, and both are worth an alert.
+A cross-check against [`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 /
+MIT) is not in place ([codegen.md](codegen.md) §2.1).
 
 Explicitly **not** used: puregram's schema JSON, which is MPL-2.0. See
 [licensing.md](licensing.md) §4.

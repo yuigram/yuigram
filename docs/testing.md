@@ -307,7 +307,7 @@ close it.
 | Test-DC smoke | nightly | no | 10 min |
 | Recorded-session replay | every push | yes | < 3 min |
 | Benchmarks + regression thresholds | every push | yes | < 5 min |
-| Schema drift detection | daily | no (opens a PR) | — |
+| Schema drift detection | every six hours | no (opens a pull request or an issue) | — |
 | Soak test | weekly | no | hours |
 
 The blocking set must stay under about fifteen minutes. A slow required suite gets bypassed,

@@ -58,10 +58,16 @@ Four consequences, all deliberate:
 
 ### 2.1 Source
 
-Primary: `corefork.telegram.org/bots/api`. Fallback: `core.telegram.org/bots/api`.
+The source is `core.telegram.org/bots/api`, the stable page: it describes what the Bot API
+serves, and nothing else is generated from.
 
-The corefork host publishes documentation ahead of the stable page, which gives generated
-clients lead time on unreleased features at no cost.
+`corefork.telegram.org/bots/api` is Telegram's staging copy of the same page. It carries changes
+before they are announced, and not as a new version: on 2026-10-28 it stated Bot API 10.3, with
+the same changelog as the stable page, while defining 51 objects the stable page did not and
+dropping 8 it did. Generating from it would put types for requests the Bot API does not accept
+yet into a release, under a version number that says otherwise. It is read only as a preview:
+the drift job compares it with the stable page and reports a difference in an issue (§6), which
+keeps the lead time without shipping any of it.
 
 A cross-check against an independent parse, such as
 [`ark0f/tg-bot-api`](https://github.com/ark0f/tg-bot-api) (Apache-2.0 / MIT), is not in place for
@@ -261,8 +267,9 @@ parser now reads it differently". Keeping both separates those two questions.
 
 #### How updates are reviewed
 
-The scheduled drift job of §6 opens a pull request and never merges one. The review surface is
-three diffs answering three different questions:
+The scheduled drift job of §6 reports a newer layer in an issue; the pull request that moves
+the pin is made by a person, and nothing merges one on its own. The review surface is three
+diffs answering three different questions:
 
 | Diff | Question it answers |
 |---|---|
@@ -438,8 +445,9 @@ combinator's identifier is recomputed from its own canonical form and compared w
 identifier the schema declares. 2,459 of 2,471 verify that way, and the twelve that do not are
 the generic methods whose signatures canonicalization does not describe.
 
-**There is no automatic layer upgrade.** The drift job fetches, parses, diffs and opens a pull
-request. A person reads it and decides. A framework that followed the newest layer on its own
+**There is no automatic layer upgrade.** The drift job reads the layer each source states and
+reports a newer one; a person moves the pin, and reads the diff it produces before anyone merges
+it. A framework that followed the newest layer on its own
 would change its users' compiled surface without anyone having looked at what changed.
 
 **The layer is not runtime-configurable.** It is sent once per connection, in
@@ -457,8 +465,9 @@ schemaInfo.tlLayer   // 229
 
 #### The update procedure
 
-1. The drift job reports that a source serves a layer above the pin — the documentation page, or
-   TDLib, which moves first.
+1. The drift job reports, in an issue, that a source states a layer above the pin — the
+   documentation page, or TDLib, which moves first. It reads TDLib's `Version.h` at the head of
+   its default branch and names the revision it read.
 2. `fetch` writes the new `.tl` and IR alongside the current ones. Old snapshots stay — they are
    the record of what each release spoke. For TDLib, the pin moves first: the revision, the three
    digests and the layer in `TDLIB`, and `TDLIB_PREFIX` if what precedes the schema proper
@@ -649,31 +658,55 @@ impossible to do accidentally, and impossible to do deliberately without noticin
 
 ## 6. Drift detection and the update workflow
 
-A scheduled job, daily:
+A scheduled job, `.github/workflows/schema-drift.yml`, every six hours. It has two parts.
+
+**Bot API.** `pnpm --filter @yuigram/schema regenerate --report-dir <dir>`:
 
 ```
-fetch source ──> parse ──> new IR
-                             │
-                     diff against committed IR
-                             │
-                 ┌───────────┴───────────┐
-              no change              change detected
-                 │                        │
-                exit          regenerate · run tests · open PR
+stable page ──> parse ──> compare with the newest committed snapshot, by content
+                                   │
+               ┌───────────────────┼─────────────────────────┐
+           unchanged         same version, changed       newer version
+               │                   │                         │
+             exit       regenerate · check · pull request on schema/bot-api-<version>
+
+staging page ──> parse ──> compare with the stable page ──> differs: keep an issue open
+                                                         └─> agrees: close it
 ```
 
-The pull request body is generated from the diff, and states plainly what changed:
+A change is decided by what the page says: the fetch time and the host the links point at are
+left out of the comparison, so a run that finds nothing new changes nothing. A page that changes
+under the version it already stated, which Telegram does, is proposed as a re-read of that
+version rather than mistaken for nothing or for a release.
 
-```
-Bot API 10.2 → 10.3
+The pull request body is generated from the diff, and states plainly what changed and what
+release it calls for (§7):
 
-Methods added:     2   (sendChecklist, editChecklist)
-Methods changed:   1   (sendMessage: +checklist)
-Objects added:     4
-Objects changed:   3
-Fields removed:    0
-Breaking:          none detected
+```text
+Bot API 10.2 -> 10.3
+
+Methods added: 2
+  sendChecklist
+  editChecklist
+Methods changed: 1
+  sendMessage
+Objects added: 4
+  …
+Breaking: none detected
 ```
+
+A pull request opened with the workflow's own token does not start CI, so the job builds and
+tests the regenerated surface itself, records the outcome in the body, and opens the pull request
+as a draft if that check failed.
+
+**TL.** `pnpm --filter @yuigram/tl-codegen layers --report-dir <dir>` reads the layer the
+documentation page states and the layer TDLib's `Version.h` states at the head of its default
+branch, and compares both with the pin. A newer layer keeps an issue open with both numbers and
+the revision read; the issue closes when the pin catches up. Nothing is fetched beyond the layer
+numbers, because moving the pin is the reviewed procedure of §3.3.
+
+Each issue is found again by its exact title and the `schema` label
+(`.github/scripts/drift-issue.sh`), so a standing report is updated rather than repeated.
 
 **A human reviews and merges.** The job never publishes on its own. Automation handles the
 mechanical work; the judgement about whether a change needs design work — a new Bot API feature
@@ -685,7 +718,8 @@ may deserve a first-class abstraction rather than just a type — stays with a p
 |---|---|---|
 | Telegram restructures the HTML | Parser throws, or the diff is implausibly large | Job fails loudly; existing builds unaffected; fix the parser |
 | Parser regression | TL: the JSON crosscheck diverges (§3.4). Bot API: only the generator's tests and the review of the diff | Investigate before merging |
-| New TL layer | Round-trip tests fail on new constructors | Extend the parser; tests are generated, so coverage follows |
+| New TL layer | The drift job's TL issue; after the pin moves, round-trip tests fail on new constructors | Move the pin (§3.3); extend the parser if needed; tests are generated, so coverage follows |
+| The staging page carries unannounced changes | The drift job's Bot API preview issue | Read ahead; nothing is generated until the stable page states them |
 | Silent semantic change | Not detectable by diff alone | Test-DC smoke tests; user reports |
 
 The last row is an acknowledged gap: a field whose *meaning* changes while its type stays the
