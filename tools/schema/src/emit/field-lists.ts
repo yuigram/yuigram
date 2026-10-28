@@ -21,7 +21,7 @@
  */
 
 import type { BotApiSchema, ObjectType } from '../bot-api/ir.js'
-import { collectContextShapes } from './contexts.js'
+import { collectContextShapes, payloadObject } from './contexts.js'
 import { header, renderDoc } from './render.js'
 import type { EmittedFile } from './types.js'
 
@@ -62,17 +62,21 @@ export function optionalFields(object: ObjectType): string[] {
 /** Emit the presence field lists. */
 export function emitFieldLists(schema: BotApiSchema): EmittedFile {
   const objects = new Map(schema.objects.map((object) => [object.name, object]))
-  const shapes = new Map(collectContextShapes(schema).map((shape) => [shape.payload, shape]))
+  // A union payload is listed under its first member, with the fields of the
+  // merged shape its context projects, so the filters match what the context
+  // carries for every member.
+  const shapes = new Map(collectContextShapes(schema).map((shape) => [shape.members[0], shape]))
 
-  const blocks = LISTED.map(({ payload, constant }) => {
-    const object = objects.get(payload)
+  const listed = LISTED.map(({ payload, constant }) => {
+    const shape = shapes.get(payload)
+    const object = shape === undefined ? objects.get(payload) : payloadObject(shape, objects)
     if (object === undefined) {
       throw new Error(`no ${payload} in the schema, so ${constant} cannot be emitted`)
     }
+    return { payload, constant, fields: optionalFields(object), kinds: shape?.kinds ?? [] }
+  })
 
-    const fields = optionalFields(object)
-    const kinds = shapes.get(payload)?.kinds ?? []
-
+  const blocks = listed.map(({ payload, constant, fields, kinds }) => {
     const doc = renderDoc(
       `Optional fields of \`${payload}\`, for the presence filters. ${fields.length} of them, ` +
         `covering ${kinds.length === 0 ? 'no event kinds' : `${kinds.length} event kind${kinds.length === 1 ? '' : 's'}`}.`,
@@ -83,10 +87,7 @@ ${fields.map((field) => `  '${field}',`).join('\n')}
 ] as const`
   })
 
-  const total = LISTED.reduce((sum, { payload }) => {
-    const object = objects.get(payload)
-    return sum + (object === undefined ? 0 : optionalFields(object).length)
-  }, 0)
+  const total = listed.reduce((sum, { fields }) => sum + fields.length, 0)
 
   return {
     path: 'field-lists.ts',

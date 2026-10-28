@@ -19,7 +19,7 @@
  * that convention are listed in `patches.ts` with the reason.
  */
 
-import type { BotApiSchema, ObjectType } from '../bot-api/ir.js'
+import type { BotApiSchema, ObjectType, TypeRef } from '../bot-api/ir.js'
 import {
   EVENT_NAME_OVERRIDES,
   LEGACY_SERVICE_FIELDS,
@@ -69,9 +69,24 @@ export interface UpdateEvent {
   readonly field: string
   /** The Yuigram event kind. */
   readonly kind: string
-  /** The payload type. */
+  /**
+   * The payload type, as a type expression: one object, or a union of several
+   * where Telegram types the field as a choice. `unknown` when it is neither.
+   */
   readonly type: string
+  /** The objects the payload can be; empty when it is not made of objects. */
+  readonly members: readonly string[]
   readonly description: string
+}
+
+/** The objects an `Update` field can carry: one, or each member of a union of them. */
+function payloadMembers(type: TypeRef): string[] {
+  if (type.kind === 'reference') return [type.name]
+  if (type.kind === 'union') {
+    const names = type.of.map((one) => (one.kind === 'reference' ? one.name : undefined))
+    if (names.every((name) => name !== undefined)) return names as string[]
+  }
+  return []
 }
 
 /**
@@ -138,12 +153,16 @@ export function collectUpdateEvents(schema: BotApiSchema): UpdateEvent[] {
 
   return update.fields
     .filter((field) => field.name !== 'update_id')
-    .map((field) => ({
-      field: field.name,
-      kind: UPDATE_NAME_OVERRIDES.get(field.name) ?? field.name,
-      type: field.type.kind === 'reference' ? field.type.name : 'unknown',
-      description: field.description,
-    }))
+    .map((field) => {
+      const members = payloadMembers(field.type)
+      return {
+        field: field.name,
+        kind: UPDATE_NAME_OVERRIDES.get(field.name) ?? field.name,
+        type: members.length === 0 ? 'unknown' : members.join(' | '),
+        members,
+        description: field.description,
+      }
+    })
     .sort((a, b) => a.kind.localeCompare(b.kind))
 }
 
@@ -167,9 +186,7 @@ export function emitEvents(schema: BotApiSchema): EmittedFile {
     .map((event) => `  ${JSON.stringify(event.kind)}: ${event.type}`)
     .join('\n')
 
-  const referenced = [...new Set(updates.map((event) => event.type))]
-    .filter((name) => name !== 'unknown')
-    .sort()
+  const referenced = [...new Set(updates.flatMap((event) => event.members))].sort()
 
   const body = `import type { ${referenced.join(', ')} } from './types/index.js'
 

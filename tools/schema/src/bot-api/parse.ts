@@ -292,10 +292,25 @@ const SCALAR_RETURN_NAMES: ReadonlySet<string> = new Set([
   'Boolean',
 ])
 
+/**
+ * The groups that describe how the API is used rather than what it is.
+ *
+ * Their sections are prose, and a one-word heading among them reads like an
+ * object's name: the staging documentation added `Errors` under `Making
+ * requests`, which became an object with no fields and a type nothing used.
+ * Nothing the API defines has ever been documented under these.
+ */
+const PROSE_GROUPS: ReadonlySet<string> = new Set([
+  'Recent changes',
+  'Authorizing your bot',
+  'Making requests',
+  'Using a Local Bot API Server',
+])
+
 /** Parse the full documentation page. */
 export function parseBotApi(html: string, sourceUrl: string): BotApiSchema {
   const root = parseHtml(html)
-  const sections = collectSections(root)
+  const sections = collectSections(root).filter((section) => !PROSE_GROUPS.has(section.group))
   // Every object the page defines, known before any method is read, so a
   // return that names one is recognised wherever on the page it is declared.
   const objectNames = new Set(

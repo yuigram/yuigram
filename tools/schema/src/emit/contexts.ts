@@ -25,7 +25,7 @@
  * becomes useless.
  */
 
-import type { BotApiSchema, Field, ObjectType } from '../bot-api/ir.js'
+import type { BotApiSchema, Field, ObjectType, TypeRef } from '../bot-api/ir.js'
 import { collectUpdateEvents } from './events.js'
 import { header, pascalCase, renderDoc, renderField, renderType } from './render.js'
 import type { EmittedFile } from './types.js'
@@ -65,8 +65,10 @@ const SENDER_FIELDS = ['from', 'user']
 export interface ContextShape {
   /** Interface name, e.g. `MessageEventFields`. */
   readonly name: string
-  /** The payload type it projects. */
+  /** The payload type it projects, as a type expression: one object or a union of several. */
   readonly payload: string
+  /** The objects the payload can be: one, or each member of the union. */
+  readonly members: readonly string[]
   /** Event kinds that share it. */
   readonly kinds: readonly string[]
   /** The domain alias for the whole payload. */
@@ -92,23 +94,81 @@ function senderField(object: ObjectType): Field | undefined {
  * the message shape works for edits and channel posts without being rewritten.
  */
 export function collectContextShapes(schema: BotApiSchema): ContextShape[] {
-  const byPayload = new Map<string, string[]>()
+  const byPayload = new Map<string, { members: readonly string[]; kinds: string[] }>()
 
   for (const event of collectUpdateEvents(schema)) {
-    if (event.type === 'unknown') continue
-    const kinds = byPayload.get(event.type) ?? []
-    kinds.push(event.kind)
-    byPayload.set(event.type, kinds)
+    if (event.members.length === 0) continue
+    const entry = byPayload.get(event.type) ?? { members: event.members, kinds: [] }
+    entry.kinds.push(event.kind)
+    byPayload.set(event.type, entry)
   }
 
+  // A union is named, and aliased, after its first member: Telegram lists the
+  // object the field carried before it became a choice first, so the names a
+  // handler was written against stay what they were.
   return [...byPayload.entries()]
-    .map(([payload, kinds]) => ({
-      name: `${pascalCase(payload)}EventFields`,
-      payload,
-      kinds: [...kinds].sort(),
-      alias: PAYLOAD_ALIASES.get(payload) ?? 'payload',
-    }))
+    .map(([payload, { members, kinds }]) => {
+      const first = members[0] as string
+      return {
+        name: `${pascalCase(first)}EventFields`,
+        payload,
+        members,
+        kinds: [...kinds].sort(),
+        alias: PAYLOAD_ALIASES.get(first) ?? 'payload',
+      }
+    })
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * The object a context projects.
+ *
+ * The payload itself, or, where Telegram types an update as a choice of
+ * objects, one merged from them: each field once, required only where every
+ * member requires it, typed as the union of what the members type it. A
+ * handler written against the merged shape reads every member, and the fields
+ * that tell the members apart are the optional ones it narrows on.
+ */
+export function payloadObject(
+  shape: ContextShape,
+  objects: ReadonlyMap<string, ObjectType>,
+): ObjectType | undefined {
+  const members: ObjectType[] = []
+  for (const name of shape.members) {
+    const member = objects.get(name)
+    if (member === undefined) return undefined
+    members.push(member)
+  }
+
+  const [first] = members
+  if (first === undefined) return undefined
+  if (members.length === 1) return first
+
+  const byName = new Map<string, Field[]>()
+  for (const member of members) {
+    for (const field of member.fields) {
+      byName.set(field.name, [...(byName.get(field.name) ?? []), field])
+    }
+  }
+
+  const fields = [...byName.values()].map((carried): Field => {
+    const types = new Map<string, TypeRef>()
+    for (const field of carried) {
+      for (const one of field.type.kind === 'union' ? field.type.of : [field.type]) {
+        types.set(renderType(one), one)
+      }
+    }
+    const [head] = carried as [Field, ...Field[]]
+    const [only] = types.values()
+    return {
+      name: head.name,
+      description: head.description,
+      required: carried.length === members.length && carried.every((field) => field.required),
+      type: types.size === 1 && only !== undefined ? only : { kind: 'union', of: [...types.values()] },
+    }
+  })
+
+  return { ...first, name: shape.payload, fields }
 }
 
 /**
@@ -179,13 +239,15 @@ function renderShape(shape: ContextShape, object: ObjectType): string {
 /** Emit the context shapes and the kind-to-shape mapping. */
 export function emitContexts(schema: BotApiSchema): EmittedFile {
   const objects = new Map(schema.objects.map((o) => [o.name, o]))
-  const shapes = collectContextShapes(schema).filter((s) => objects.has(s.payload))
+  const projected = collectContextShapes(schema).flatMap((shape) => {
+    const object = payloadObject(shape, objects)
+    return object === undefined ? [] : [{ shape, object }]
+  })
+  const shapes = projected.map(({ shape }) => shape)
 
   const referenced = new Set<string>(['User'])
-  for (const shape of shapes) {
-    referenced.add(shape.payload)
-    const object = objects.get(shape.payload)
-    if (object === undefined) continue
+  for (const { shape, object } of projected) {
+    for (const member of shape.members) referenced.add(member)
     for (const field of object.fields) {
       for (const name of typeNames(renderType(field.type))) {
         if (objects.has(name)) referenced.add(name)
@@ -198,9 +260,7 @@ export function emitContexts(schema: BotApiSchema): EmittedFile {
     `import type { ${[...referenced].sort().join(', ')} } from './types/index.js'`,
   ].join('\n')
 
-  const bodies = shapes
-    .map((shape) => renderShape(shape, objects.get(shape.payload) as ObjectType))
-    .join('\n\n')
+  const bodies = projected.map(({ shape, object }) => renderShape(shape, object)).join('\n\n')
 
   const mapping = shapes
     .flatMap((shape) => shape.kinds.map((kind) => `  '${kind}': ${shape.name}`))
