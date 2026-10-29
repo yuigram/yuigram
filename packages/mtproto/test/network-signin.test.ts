@@ -14,7 +14,7 @@
  * anything, so each ordering below is a fact rather than a race.
  */
 
-import { SessionError, TelegramError } from '@yuigram/core'
+import { CancelledError, SessionError, TelegramError } from '@yuigram/core'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { validateDhParameters } from '../src/crypto/primes.js'
 import {
@@ -713,5 +713,113 @@ describe('signing in from another device', () => {
     await expect(requestLoginToken({ ...API, reach: dcs.reach, dcId: 2 })).rejects.toThrow(
       /expected a login token/,
     )
+  })
+})
+
+describe('stopping a step', () => {
+  /** A promise this case settles when it chooses, and a way to see it was asked. */
+  function held<T>() {
+    let settle: { resolve: (value: T) => void; reject: (error: unknown) => void } = {
+      resolve: () => {},
+      reject: () => {},
+    }
+    const promise = new Promise<T>((resolve, reject) => {
+      settle = { resolve, reject }
+    })
+    return { promise, ...settle }
+  }
+
+  it('sends nothing when it was stopped before it began', async () => {
+    const dcs = datacenters({ 2: {} })
+    const stop = new AbortController()
+    stop.abort()
+
+    await expect(
+      sendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+70000000000', signal: stop.signal }),
+    ).rejects.toThrow(CancelledError)
+    expect(dcs.asked).toEqual([])
+  })
+
+  it('stops waiting for an answer, and drops the one that comes later', async () => {
+    const answer = held<TlValue>()
+    const dcs = datacenters({ 2: { 'auth.sendCode': () => answer.promise } })
+    const stop = new AbortController()
+
+    const step = sendCode({
+      ...API,
+      reach: dcs.reach,
+      dcId: 2,
+      phone: '+70000000000',
+      signal: stop.signal,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    stop.abort()
+
+    await expect(step).rejects.toThrow(CancelledError)
+    // The request went out and is not withdrawn; its answer, failing or not,
+    // reaches nobody.
+    expect(dcs.trace()).toEqual(['2:auth.sendCode'])
+    answer.reject(refusal('PHONE_NUMBER_INVALID'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+
+  it('does not send the proof when stopped while the challenge was awaited', async () => {
+    const peer = passwordPeer()
+    const challenge = held<TlValue>()
+    const dcs = datacenters({
+      2: {
+        'account.getPassword': () => challenge.promise,
+        'auth.checkPassword': () => AUTHORIZED,
+      },
+    })
+    const stop = new AbortController()
+
+    const step = signInWithPassword({
+      ...API,
+      reach: dcs.reach,
+      dcId: 2,
+      password: PASSWORD,
+      srp: SRP,
+      signal: stop.signal,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    stop.abort()
+    challenge.resolve(peer.describe() as TlValue)
+
+    await expect(step).rejects.toThrow(CancelledError)
+    expect(dcs.trace()).toEqual(['2:account.getPassword'])
+  })
+
+  it('does not follow a redirection once stopped', async () => {
+    const stop = new AbortController()
+    const dcs = datacenters({
+      2: {
+        'auth.sendCode': () => {
+          stop.abort()
+          throw redirect('phone', 4)
+        },
+      },
+      4: { 'auth.sendCode': () => ({ _: 'auth.sentCode', phone_code_hash: 'x', type: {} }) },
+    })
+
+    await expect(
+      sendCode({ ...API, reach: dcs.reach, dcId: 2, phone: '+70000000000', signal: stop.signal }),
+    ).rejects.toThrow(CancelledError)
+    expect(dcs.trace()).toEqual(['2:auth.sendCode'])
+  })
+
+  it('runs as before when given no signal', async () => {
+    const dcs = datacenters({ 2: { 'auth.signIn': () => AUTHORIZED } })
+
+    const state = await signIn({
+      ...API,
+      reach: dcs.reach,
+      dcId: 2,
+      phone: '+70000000000',
+      phoneCodeHash: 'h',
+      code: '1',
+    })
+
+    expect(state.kind).toBe('authorized')
   })
 })
