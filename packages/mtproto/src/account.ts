@@ -2464,9 +2464,13 @@ export class Account<Ext = unknown> {
     readonly phone: string
     readonly phoneCodeHash: string
     readonly reason?: string
+    /** Stop the step; see {@link Account.sendCode}. */
+    readonly signal?: AbortSignal
   }): Promise<SignInState> {
+    const { signal, ...asked } = request
     return await this.#step(
-      async (step, options) => await step.resendCode({ ...options, ...request }),
+      async (step, options) => await step.resendCode({ ...options, ...asked }),
+      signal,
     )
   }
 
@@ -3243,9 +3247,20 @@ export class Account<Ext = unknown> {
    * network that cannot be reached and a number Telegram will not accept are
    * not the same problem, and an account resumed from a session it was already
    * signed in with needs none of this.
+   *
+   * `signal` stops the step, here and in the steps after it: it is checked
+   * before each request and ends the wait for an answer, with a
+   * `CancelledError`. A request already sent is not withdrawn, so Telegram may
+   * still send the code; nobody reads its answer.
    */
-  async sendCode(phone: string): Promise<SignInState> {
-    return await this.#step(async (step, options) => await step.sendCode({ ...options, phone }))
+  async sendCode(
+    phone: string,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<SignInState> {
+    return await this.#step(
+      async (step, base) => await step.sendCode({ ...base, phone }),
+      options.signal,
+    )
   }
 
   /**
@@ -3263,14 +3278,29 @@ export class Account<Ext = unknown> {
     readonly phone: string
     readonly phoneCodeHash: string
     readonly code: string
+    /** Stop the step; see {@link Account.sendCode}. */
+    readonly signal?: AbortSignal
   }): Promise<SignInState> {
-    return await this.#step(async (step, options) => await step.signIn({ ...options, ...request }))
+    const { signal, ...asked } = request
+    return await this.#step(
+      async (step, options) => await step.signIn({ ...options, ...asked }),
+      signal,
+    )
   }
 
-  /** Finish a sign-in that the code alone could not, by proving the password. */
-  async signInWithPassword(password: string | Uint8Array): Promise<SignInState> {
+  /**
+   * Finish a sign-in that the code alone could not, by proving the password.
+   *
+   * `signal` stops the step, as for {@link Account.sendCode}: between fetching
+   * the challenge and sending the proof as well as while either is waited for.
+   */
+  async signInWithPassword(
+    password: string | Uint8Array,
+    options: { readonly signal?: AbortSignal } = {},
+  ): Promise<SignInState> {
     return await this.#step(
-      async (step, options) => await step.signInWithPassword({ ...options, password }),
+      async (step, base) => await step.signInWithPassword({ ...base, password }),
+      options.signal,
     )
   }
 
@@ -3324,11 +3354,22 @@ export class Account<Ext = unknown> {
     phone: () => string | Promise<string>
     code: () => string | Promise<string>
     password?: () => string | Promise<string>
+    /**
+     * Stop signing in: the wait for a prompt as well as each step, which it
+     * stops as {@link Account.sendCode} describes. A prompt still open is not
+     * closed; what it answers is dropped.
+     */
+    signal?: AbortSignal
   }): Promise<void> {
-    if (await this.#alreadySignedIn()) return
+    const { signal } = prompts
+    const { untilStopped } = await import('./network/signin.js')
+    const ask = async (prompt: () => string | Promise<string>): Promise<string> =>
+      await untilStopped(Promise.resolve().then(prompt), signal)
 
-    const phone = await prompts.phone()
-    const sent = await this.sendCode(phone)
+    if (await untilStopped(this.#alreadySignedIn(), signal)) return
+
+    const phone = await ask(prompts.phone)
+    const sent = await this.sendCode(phone, { ...(signal === undefined ? {} : { signal }) })
     if (sent.kind !== 'code-sent') {
       throw new SessionError(`sending a code to ${phone} answered '${sent.kind}'`)
     }
@@ -3336,7 +3377,8 @@ export class Account<Ext = unknown> {
     const state = await this.signInWithCode({
       phone,
       phoneCodeHash: sent.phoneCodeHash,
-      code: await prompts.code(),
+      code: await ask(prompts.code),
+      ...(signal === undefined ? {} : { signal }),
     })
 
     if (state.kind === 'authorized') return
@@ -3351,7 +3393,9 @@ export class Account<Ext = unknown> {
       throw new SessionError('this account is protected by a password, and none was offered')
     }
 
-    await this.signInWithPassword(await prompts.password())
+    await this.signInWithPassword(await ask(prompts.password), {
+      ...(signal === undefined ? {} : { signal }),
+    })
   }
 
   /**
@@ -3511,6 +3555,7 @@ export class Account<Ext = unknown> {
    */
   async #step<T extends { readonly dcId: number }>(
     run: (step: typeof import('./network/signin.js'), options: SignInOptions) => Promise<T>,
+    signal?: AbortSignal,
   ): Promise<T> {
     const network = this.#require()
     const module = await import('./network/signin.js')
@@ -3520,6 +3565,7 @@ export class Account<Ext = unknown> {
       dcId: network.datacenters.directory.thisDc,
       apiId: this.#options.apiId,
       apiHash: this.#options.apiHash,
+      ...(signal === undefined ? {} : { signal }),
     })
 
     await this.#belongTo(state.dcId)

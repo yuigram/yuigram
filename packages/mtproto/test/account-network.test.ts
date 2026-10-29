@@ -26,7 +26,7 @@
  * cases cost seconds rather than milliseconds.
  */
 
-import { App, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
+import { App, CancelledError, createLogger, type LogRecord, TelegramError } from '@yuigram/core'
 import { describe, expect, it, vi } from 'vitest'
 import { thumbnailFile } from '../src/files/media.js'
 import { POOL_LIMITS } from '../src/network/pools.js'
@@ -2883,6 +2883,47 @@ describe('signing in from prompts', () => {
 
     expect(asked).toHaveLength(0)
     expect(reached).toEqual([])
+    await instance.dispose()
+  })
+
+  it('stops while a prompt is open, and sends nothing after it', async () => {
+    const { instance, asked } = driving((query) => {
+      if (query._ === 'updates.getState') throw new TelegramError('AUTH_KEY_UNREGISTERED (401)')
+      if (query._ === 'auth.sendCode') return SENT
+      if (query._ === 'auth.signIn') return AUTHORIZED
+
+      return undefined
+    })
+    await instance.account.connect()
+    const stop = new AbortController()
+
+    const signingIn = instance.account.signIn({
+      phone: () => '+70000000000',
+      // The person closes the dialog instead of typing the code.
+      code: () =>
+        new Promise<string>(() => {
+          stop.abort()
+        }),
+      signal: stop.signal,
+    })
+
+    await expect(signingIn).rejects.toThrow(CancelledError)
+    expect(asked).toEqual(['updates.getState', 'auth.sendCode'])
+    await instance.dispose()
+  })
+
+  it('stops before asking anything when it was stopped already', async () => {
+    const { instance, asked } = driving(() => undefined)
+    await instance.account.connect()
+    const { reached, calls } = prompts()
+    const stop = new AbortController()
+    stop.abort()
+
+    await expect(instance.account.signIn({ ...calls, signal: stop.signal })).rejects.toThrow(
+      CancelledError,
+    )
+    expect(reached).toEqual([])
+    expect(asked).not.toContain('auth.sendCode')
     await instance.dispose()
   })
 })

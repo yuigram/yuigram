@@ -29,7 +29,7 @@
  * that established them, and are neither replaced nor rewritten by any of this.
  */
 
-import { SessionError, TelegramError, ValidationError } from '@yuigram/core'
+import { CancelledError, SessionError, TelegramError, ValidationError } from '@yuigram/core'
 import { answerPasswordChallenge, readPasswordChallenge } from '../auth/password.js'
 import type { SrpOptions } from '../crypto/srp.js'
 import { normalizePhone } from '../phone.js'
@@ -56,6 +56,43 @@ export interface SignInOptions {
   readonly apiId: number
   /** The secret that goes with it. */
   readonly apiHash: string
+  /**
+   * Stop the step. Checked before each request it sends, and it stops the wait
+   * for an answer; a request already sent is not withdrawn, so Telegram may
+   * still act on it — send the code, accept the sign-in — with nobody reading
+   * the answer.
+   */
+  readonly signal?: AbortSignal | undefined
+}
+
+/** Refuse to go on once the step has been stopped. */
+function stopIfStopped(signal: AbortSignal | undefined): void {
+  if (signal?.aborted === true) throw new CancelledError('the sign-in step was stopped')
+}
+
+/**
+ * Wait for a request, or for the step to be stopped, whichever comes first.
+ *
+ * Stopping settles the wait at once; the request runs on, and whatever it
+ * answers is dropped rather than left to reject unhandled.
+ */
+export async function untilStopped<T>(
+  work: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> {
+  if (signal?.aborted === true) {
+    // Stopped while the request was being made: it may already be on its way,
+    // and whatever it answers is dropped here rather than left unhandled.
+    work.catch(() => {})
+    throw new CancelledError('the sign-in step was stopped')
+  }
+  if (signal === undefined) return await work
+
+  return await new Promise<T>((resolve, reject) => {
+    const stop = (): void => reject(new CancelledError('the sign-in step was stopped'))
+    signal.addEventListener('abort', stop, { once: true })
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', stop))
+  })
 }
 
 /**
@@ -114,10 +151,11 @@ async function followingRedirections(
   const seen: number[] = [dcId]
 
   for (let redirection = 0; redirection <= MAX_REDIRECTIONS; redirection += 1) {
+    stopIfStopped(options.signal)
     const here = options.reach(dcId)
 
     try {
-      return { value: await here.invoke(query(dcId)), dcId }
+      return { value: await untilStopped(here.invoke(query(dcId)), options.signal), dcId }
     } catch (error) {
       if (!(error instanceof MigrationError)) throw error
 
@@ -125,11 +163,14 @@ async function followingRedirections(
       // nothing about it. Introducing it there is what makes the call worth
       // repeating; the other two redirections have no account to introduce.
       if (error.kind === 'user') {
-        await transferAuthorization({
-          from: here,
-          to: options.reach(error.dcId),
-          dcId: error.dcId,
-        })
+        await untilStopped(
+          transferAuthorization({
+            from: here,
+            to: options.reach(error.dcId),
+            dcId: error.dcId,
+          }),
+          options.signal,
+        )
       }
 
       dcId = error.dcId
@@ -334,7 +375,9 @@ export async function signInWithPassword(
   },
 ): Promise<SignInState> {
   const here = options.reach(options.dcId)
-  const challenge = readPasswordChallenge(await here.invoke({ _: 'account.getPassword' }))
+  const challenge = readPasswordChallenge(
+    await untilStopped(here.invoke({ _: 'account.getPassword' }), options.signal),
+  )
   const answer = await answerPasswordChallenge(options.password, challenge, options.srp ?? {})
 
   const { value, dcId } = await followingRedirections(options, () => ({
@@ -544,7 +587,10 @@ async function readLoginToken(
       throw new SessionError("'auth.loginTokenMigrateTo.dc_id' must be a datacenter")
     }
 
-    const accepted = await options.reach(target).invoke({ _: 'auth.importLoginToken', token })
+    const accepted = await untilStopped(
+      options.reach(target).invoke({ _: 'auth.importLoginToken', token }),
+      options.signal,
+    )
 
     return readLoginToken(accepted, target, options)
   }
