@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Context method bindings (18 message, 79 chat, 4 source)
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Context method bindings (19 message, 81 chat, 4 source)
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -19,6 +19,7 @@ export const MESSAGE_BOUND = {
   editMessageMedia: ['chat_id', 'message_id', 'business_connection_id'],
   editMessageReplyMarkup: ['chat_id', 'message_id', 'business_connection_id'],
   editMessageText: ['chat_id', 'message_id', 'business_connection_id'],
+  editMessageWidgetData: ['chat_id', 'message_id'],
   getGameHighScores: ['chat_id', 'message_id'],
   pinChatMessage: ['chat_id', 'message_id', 'business_connection_id'],
   readBusinessMessage: ['chat_id', 'message_id', 'business_connection_id'],
@@ -94,11 +95,13 @@ export const CHAT_BOUND = {
   sendPoll: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendRichMessage: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendRichMessageDraft: ['chat_id', 'message_thread_id'],
+  sendSharedWidget: ['chat_id', 'message_thread_id'],
   sendSticker: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVenue: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVideo: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVideoNote: ['chat_id', 'message_thread_id', 'business_connection_id'],
   sendVoice: ['chat_id', 'message_thread_id', 'business_connection_id'],
+  sendWidget: ['chat_id', 'message_thread_id'],
   setChatAdministratorCustomTitle: ['chat_id'],
   setChatDescription: ['chat_id'],
   setChatMemberTag: ['chat_id'],

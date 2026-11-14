@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Rich messages
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -209,6 +209,7 @@ export type RichText =
   | RichTextSubscript
   | RichTextSuperscript
   | RichTextTextMention
+  | RichTextTonAddress
   | RichTextUnderline
   | RichTextUrl
 
@@ -541,6 +542,28 @@ export interface RichTextBankCardNumber {
    * The bank card number
    */
   readonly bank_card_number: string
+}
+
+/**
+ * An address in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#richtexttonaddress
+ */
+export interface RichTextTonAddress {
+  /**
+   * Type of the rich text, always “ton_address”
+   */
+  readonly type: string
+
+  /**
+   * Text of the address
+   */
+  readonly text: RichText
+
+  /**
+   * The address
+   */
+  readonly address: string
 }
 
 /**
