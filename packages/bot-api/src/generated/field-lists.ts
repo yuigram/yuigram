@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
-// Optional field lists (123 fields)
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Optional field lists (126 fields)
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 /**
- * Optional fields of `Message`, for the presence filters. 117 of them,
+ * Optional fields of `Message`, for the presence filters. 120 of them,
  * covering 7 event kinds.
  */
 export const MESSAGE_FIELDS = [
@@ -79,6 +79,7 @@ export const MESSAGE_FIELDS = [
   'new_chat_title',
   'paid_media',
   'paid_message_price_changed',
+  'paid_messages_waived',
   'paid_star_count',
   'passport_data',
   'photo',
@@ -113,6 +114,7 @@ export const MESSAGE_FIELDS = [
   'suggested_post_refunded',
   'supergroup_chat_created',
   'text',
+  'ton_wallet_transfer',
   'unique_gift',
   'users_shared',
   'venue',
@@ -125,6 +127,7 @@ export const MESSAGE_FIELDS = [
   'video_note',
   'voice',
   'web_app_data',
+  'widget',
   'write_access_allowed',
 ] as const
 

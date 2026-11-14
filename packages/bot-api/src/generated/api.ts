@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
 // Bot API callable surface
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallOptions } from '../api-options.js'
-import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, File, ForumTopic, GameHighScore, Gifts, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
+import type { BotAccessSettings, BotCommand, BotDescription, BotName, BotShortDescription, BusinessConnection, ChatAdministratorRights, ChatFullInfo, ChatInviteLink, ChatMember, ChatShareThemeBackdrops, File, ForumTopic, GameHighScore, Gifts, MenuButton, Message, MessageId, OwnedGifts, Poll, PreparedInlineMessage, PreparedKeyboardButton, SentGuestMessage, SentWebAppMessage, StarAmount, StarTransactions, Sticker, StickerSet, Story, UniqueGift, Update, User, UserChatBoosts, UserProfileAudios, UserProfilePhotos, WebhookInfo } from './types/index.js'
 import type {
   AddStickerToSetParams,
   AnswerCallbackQueryParams,
@@ -15,6 +15,7 @@ import type {
   AnswerPreCheckoutQueryParams,
   AnswerShippingQueryParams,
   AnswerWebAppQueryParams,
+  AnswerWidgetQueryParams,
   ApproveChatJoinRequestParams,
   ApproveSuggestedPostParams,
   BanChatMemberParams,
@@ -33,6 +34,7 @@ import type {
   DeclineChatJoinRequestParams,
   DeclineSuggestedPostParams,
   DeleteAllMessageReactionsParams,
+  DeleteBusinessAccountGiftParams,
   DeleteBusinessMessagesParams,
   DeleteChatPhotoParams,
   DeleteChatStickerSetParams,
@@ -60,6 +62,8 @@ import type {
   EditMessageMediaParams,
   EditMessageReplyMarkupParams,
   EditMessageTextParams,
+  EditMessageWidgetDataParams,
+  EditSharedWidgetDataParams,
   EditStoryParams,
   EditUserStarSubscriptionParams,
   ExportChatInviteLinkParams,
@@ -75,6 +79,7 @@ import type {
   GetChatMemberParams,
   GetChatMenuButtonParams,
   GetChatParams,
+  GetChatShareThemeBackdropsParams,
   GetCustomEmojiStickersParams,
   GetFileParams,
   GetForumTopicIconStickersParams,
@@ -90,6 +95,7 @@ import type {
   GetMyStarBalanceParams,
   GetStarTransactionsParams,
   GetStickerSetParams,
+  GetUniqueGiftParams,
   GetUpdatesParams,
   GetUserChatBoostsParams,
   GetUserGiftsParams,
@@ -140,11 +146,13 @@ import type {
   SendPollParams,
   SendRichMessageDraftParams,
   SendRichMessageParams,
+  SendSharedWidgetParams,
   SendStickerParams,
   SendVenueParams,
   SendVideoNoteParams,
   SendVideoParams,
   SendVoiceParams,
+  SendWidgetParams,
   SetBusinessAccountBioParams,
   SetBusinessAccountGiftSettingsParams,
   SetBusinessAccountNameParams,
@@ -302,11 +310,12 @@ export interface ApiMethods {
 
   /**
    * Use this method to copy messages of any kind. Service messages, paid media
-   * messages, giveaway messages, giveaway winners messages, and invoice messages
-   * can't be copied. A quiz poll can be copied only if the value of the field
-   * correct_option_ids is known to the bot. The method is analogous to the
-   * method forwardMessage, but the copied message doesn't have a link to the
-   * original message. Returns the MessageId of the sent message on success.
+   * messages, giveaway messages, giveaway winners messages, invoice messages,
+   * and widget messages can't be copied. A quiz poll can be copied only if the
+   * value of the field correct_option_ids is known to the bot. The method is
+   * analogous to the method forwardMessage, but the copied message doesn't have
+   * a link to the original message. Returns the MessageId of the sent message on
+   * success.
    *
    * @see https://core.telegram.org/bots/api#copymessage
    */
@@ -315,12 +324,13 @@ export interface ApiMethods {
   /**
    * Use this method to copy messages of any kind. If some of the specified
    * messages can't be found or copied, they are skipped. Service messages, paid
-   * media messages, giveaway messages, giveaway winners messages, and invoice
-   * messages can't be copied. A quiz poll can be copied only if the value of the
-   * field correct_option_ids is known to the bot. The method is analogous to the
-   * method forwardMessages, but the copied messages don't have a link to the
-   * original message. Album grouping is kept for copied messages. On success, an
-   * Array of MessageId of the sent messages is returned.
+   * media messages, giveaway messages, giveaway winners messages, invoice
+   * messages, and widget messages can't be copied. A quiz poll can be copied
+   * only if the value of the field correct_option_ids is known to the bot. The
+   * method is analogous to the method forwardMessages, but the copied messages
+   * don't have a link to the original message. Album grouping is kept for copied
+   * messages. On success, an Array of MessageId of the sent messages is
+   * returned.
    *
    * @see https://core.telegram.org/bots/api#copymessages
    */
@@ -400,6 +410,26 @@ export interface ApiMethods {
    * @see https://core.telegram.org/bots/api#sendvideonote
    */
   sendVideoNote(params: SendVideoNoteParams, options?: CallOptions): Promise<Message>
+
+  /**
+   * Use this method to send a message with an HTML widget. Currently, in the
+   * production environment, widgets can be sent only to private chats, and sent
+   * widgets automatically have protected content and therefore can't be
+   * forwarded. On success, the sent Message is returned.
+   *
+   * @see https://core.telegram.org/bots/api#sendwidget
+   */
+  sendWidget(params: SendWidgetParams, options?: CallOptions): Promise<Message>
+
+  /**
+   * Use this method to send again a shared widget created by the bot. Currently,
+   * in the production environment, widgets can be sent only to private chats,
+   * and sent widgets automatically have protected content and therefore can't be
+   * forwarded. On success, the sent Message is returned.
+   *
+   * @see https://core.telegram.org/bots/api#sendsharedwidget
+   */
+  sendSharedWidget(params: SendSharedWidgetParams, options?: CallOptions): Promise<Message>
 
   /**
    * Use this method to send paid media. On success, the sent Message is
@@ -844,6 +874,15 @@ export interface ApiMethods {
   getChatMember(params: GetChatMemberParams, options?: CallOptions): Promise<ChatMember>
 
   /**
+   * Use this method to get the list of backdrops, which can be used as the
+   * background of a theme of the screen for sharing a link to a user or a chat.
+   * Requires no parameters. Returns a ChatShareThemeBackdrops object.
+   *
+   * @see https://core.telegram.org/bots/api#getchatsharethemebackdrops
+   */
+  getChatShareThemeBackdrops(params?: GetChatShareThemeBackdropsParams, options?: CallOptions): Promise<ChatShareThemeBackdrops>
+
+  /**
    * Use this method to get the last messages from the personal chat (i.e., the
    * chat currently added to their profile) of a given user. On success, an Array
    * of Message objects is returned.
@@ -887,8 +926,11 @@ export interface ApiMethods {
    * Use this method to create a topic in a forum supergroup chat or a private
    * chat with a user. In the case of a supergroup chat the bot must be an
    * administrator in the chat for this to work and must have the
-   * can_manage_topics administrator right. Returns information about the created
-   * topic as a ForumTopic object.
+   * can_manage_topics administrator right. In the case of a private chat, a link
+   * to the topic can be created in the format
+   * https://t.me/<bot_username>/<message_thread_id>; the link opens the topic
+   * only for the user. Returns information about the created topic as a
+   * ForumTopic object.
    *
    * @see https://core.telegram.org/bots/api#createforumtopic
    */
@@ -1017,6 +1059,17 @@ export interface ApiMethods {
    * @see https://core.telegram.org/bots/api#answercallbackquery
    */
   answerCallbackQuery(params: AnswerCallbackQueryParams, options?: CallOptions): Promise<true>
+
+  /**
+   * Use this method to send an answer to a query from a widget. The query must
+   * be answered within 15 seconds. The answer is received only by the widget
+   * that sent the query and doesn't change data of the widget; use
+   * editMessageWidgetData or editSharedWidgetData to change it. On success, True
+   * is returned.
+   *
+   * @see https://core.telegram.org/bots/api#answerwidgetquery
+   */
+  answerWidgetQuery(params: AnswerWidgetQueryParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to reply to a received guest message. On success, a
@@ -1362,6 +1415,14 @@ export interface ApiMethods {
   getChatGifts(params: GetChatGiftsParams, options?: CallOptions): Promise<OwnedGifts>
 
   /**
+   * Use this method to get information about a unique gift by its name. Returns
+   * a UniqueGift object on success.
+   *
+   * @see https://core.telegram.org/bots/api#getuniquegift
+   */
+  getUniqueGift(params: GetUniqueGiftParams, options?: CallOptions): Promise<UniqueGift>
+
+  /**
    * Converts a given regular gift to Telegram Stars. Requires the
    * can_convert_gifts_to_stars business bot right. Returns True on success.
    *
@@ -1388,6 +1449,17 @@ export interface ApiMethods {
    * @see https://core.telegram.org/bots/api#transfergift
    */
   transferGift(params: TransferGiftParams, options?: CallOptions): Promise<true>
+
+  /**
+   * Deletes a regular gift owned by a managed business account without receiving
+   * Telegram Stars for it. Requires the can_convert_gifts_to_stars business bot
+   * right. The gift can be deleted only if it isn't limited (the field
+   * total_count of the Gift is omitted) and wasn't refunded. Returns True on
+   * success.
+   *
+   * @see https://core.telegram.org/bots/api#deletebusinessaccountgift
+   */
+  deleteBusinessAccountGift(params: DeleteBusinessAccountGiftParams, options?: CallOptions): Promise<true>
 
   /**
    * Posts a story on behalf of a managed business account. Requires the
@@ -1515,6 +1587,24 @@ export interface ApiMethods {
    * @see https://core.telegram.org/bots/api#editmessagechecklist
    */
   editMessageChecklist(params: EditMessageChecklistParams, options?: CallOptions): Promise<Message>
+
+  /**
+   * Use this method to edit data of a widget in a message sent by the bot or via
+   * the bot (for inline bots). Public data of a shared widget can be changed at
+   * most once per second. On success, True is returned.
+   *
+   * @see https://core.telegram.org/bots/api#editmessagewidgetdata
+   */
+  editMessageWidgetData(params?: EditMessageWidgetDataParams, options?: CallOptions): Promise<true>
+
+  /**
+   * Use this method to edit public data of a shared widget created by the bot. A
+   * shared widget can be edited at most once per second. On success, True is
+   * returned.
+   *
+   * @see https://core.telegram.org/bots/api#editsharedwidgetdata
+   */
+  editSharedWidgetData(params: EditSharedWidgetDataParams, options?: CallOptions): Promise<true>
 
   /**
    * Use this method to edit only the reply markup of messages. On success, if

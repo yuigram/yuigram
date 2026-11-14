@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Stickers
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -21,9 +21,10 @@ export interface SendStickerParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for

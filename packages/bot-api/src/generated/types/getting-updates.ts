@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Getting updates
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer, SharedWidgetQuery, WidgetQuery } from './available-types.js'
 import type { ChosenInlineResult, InlineQuery } from './inline-mode.js'
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './payments.js'
 
@@ -110,6 +110,16 @@ export interface Update {
    * New incoming callback query
    */
   readonly callback_query?: CallbackQuery | undefined
+
+  /**
+   * New incoming query from a widget in a message sent by the bot or via the bot
+   */
+  readonly widget_query?: WidgetQuery | undefined
+
+  /**
+   * New incoming query from a forwarded message with a shared widget
+   */
+  readonly shared_widget_query?: SharedWidgetQuery | undefined
 
   /**
    * New incoming shipping query. Only for invoices with flexible price.

@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
-// Defaultable parameters (7) and method names (185)
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Defaultable parameters (7) and method names (193)
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 /**
- * Every method in the schema, 185 of them.
+ * Every method in the schema, 193 of them.
  */
 export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'addStickerToSet',
@@ -16,6 +16,7 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'answerPreCheckoutQuery',
   'answerShippingQuery',
   'answerWebAppQuery',
+  'answerWidgetQuery',
   'approveChatJoinRequest',
   'approveSuggestedPost',
   'banChatMember',
@@ -34,6 +35,7 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'declineChatJoinRequest',
   'declineSuggestedPost',
   'deleteAllMessageReactions',
+  'deleteBusinessAccountGift',
   'deleteBusinessMessages',
   'deleteChatPhoto',
   'deleteChatStickerSet',
@@ -61,6 +63,8 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'editMessageMedia',
   'editMessageReplyMarkup',
   'editMessageText',
+  'editMessageWidgetData',
+  'editSharedWidgetData',
   'editStory',
   'editUserStarSubscription',
   'exportChatInviteLink',
@@ -76,6 +80,7 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'getChatMember',
   'getChatMemberCount',
   'getChatMenuButton',
+  'getChatShareThemeBackdrops',
   'getCustomEmojiStickers',
   'getFile',
   'getForumTopicIconStickers',
@@ -91,6 +96,7 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'getMyStarBalance',
   'getStarTransactions',
   'getStickerSet',
+  'getUniqueGift',
   'getUpdates',
   'getUserChatBoosts',
   'getUserGifts',
@@ -141,11 +147,13 @@ export const METHOD_NAMES: ReadonlySet<string> = new Set([
   'sendPoll',
   'sendRichMessage',
   'sendRichMessageDraft',
+  'sendSharedWidget',
   'sendSticker',
   'sendVenue',
   'sendVideo',
   'sendVideoNote',
   'sendVoice',
+  'sendWidget',
   'setBusinessAccountBio',
   'setBusinessAccountGiftSettings',
   'setBusinessAccountName',
@@ -216,15 +224,18 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendPhoto',
     'sendPoll',
     'sendRichMessage',
+    'sendSharedWidget',
     'sendSticker',
     'sendVenue',
     'sendVideo',
     'sendVideoNote',
     'sendVoice',
+    'sendWidget',
   ]),
   business_connection_id: new Set([
     'convertGiftToStars',
     'createInvoiceLink',
+    'deleteBusinessAccountGift',
     'deleteBusinessMessages',
     'deleteStory',
     'editMessageCaption',
@@ -297,11 +308,13 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendPhoto',
     'sendPoll',
     'sendRichMessage',
+    'sendSharedWidget',
     'sendSticker',
     'sendVenue',
     'sendVideo',
     'sendVideoNote',
     'sendVoice',
+    'sendWidget',
   ]),
   link_preview_options: new Set([
     'editEphemeralMessageText',
@@ -326,11 +339,13 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendPhoto',
     'sendPoll',
     'sendRichMessage',
+    'sendSharedWidget',
     'sendSticker',
     'sendVenue',
     'sendVideo',
     'sendVideoNote',
     'sendVoice',
+    'sendWidget',
   ]),
   parse_mode: new Set([
     'copyMessage',
@@ -348,8 +363,10 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendMessageDraft',
     'sendPaidMedia',
     'sendPhoto',
+    'sendSharedWidget',
     'sendVideo',
     'sendVoice',
+    'sendWidget',
   ]),
   protect_content: new Set([
     'copyMessage',
@@ -374,10 +391,12 @@ export const DEFAULTABLE: Readonly<Record<string, ReadonlySet<string>>> = {
     'sendPhoto',
     'sendPoll',
     'sendRichMessage',
+    'sendSharedWidget',
     'sendSticker',
     'sendVenue',
     'sendVideo',
     'sendVideoNote',
     'sendVoice',
+    'sendWidget',
   ]),
 }

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Updating messages
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -20,7 +20,7 @@ export interface EditMessageTextParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -87,7 +87,7 @@ export interface EditMessageCaptionParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -147,7 +147,7 @@ export interface EditMessageMediaParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -189,7 +189,7 @@ export interface EditMessageLiveLocationParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -263,7 +263,7 @@ export interface StopMessageLiveLocationParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -321,6 +321,68 @@ export interface EditMessageChecklistParams {
 }
 
 /**
+ * Parameters for `editMessageWidgetData`.
+ *
+ * @see https://core.telegram.org/bots/api#editmessagewidgetdata
+ */
+export interface EditMessageWidgetDataParams {
+  /**
+   * Required if inline_message_id is not specified. Unique identifier for the
+   * target chat or username of the target supergroup in the format @username.
+   */
+  chat_id?: number | string | undefined
+
+  /**
+   * Required if inline_message_id is not specified. Identifier of the message
+   * with the widget.
+   */
+  message_id?: number | undefined
+
+  /**
+   * Required if chat_id and message_id are not specified. Identifier of the
+   * inline message.
+   */
+  inline_message_id?: string | undefined
+
+  /**
+   * New public data of the widget, 0-1024 bytes; pass an empty string to remove
+   * the public data. If omitted, then the public data isn't changed.
+   */
+  public_data?: string | undefined
+
+  /**
+   * New data of the widget, which is specific to the message, 0-1024 bytes; pass
+   * an empty string to remove the data. If omitted, then the data isn't changed.
+   */
+  chat_data?: string | undefined
+}
+
+/**
+ * Parameters for `editSharedWidgetData`.
+ *
+ * @see https://core.telegram.org/bots/api#editsharedwidgetdata
+ */
+export interface EditSharedWidgetDataParams {
+  /**
+   * Unique identifier of the shared widget
+   */
+  widget_id: string
+
+  /**
+   * New public data of the widget, 0-1024 bytes; pass an empty string to remove
+   * the public data
+   */
+  public_data: string
+
+  /**
+   * The maximum amount of time in seconds that the public data of the widget may
+   * be cached client-side; 5-3600. If omitted, then the current value is kept,
+   * which is 30 by default.
+   */
+  cache_time?: number | undefined
+}
+
+/**
  * Parameters for `editMessageReplyMarkup`.
  *
  * @see https://core.telegram.org/bots/api#editmessagereplymarkup
@@ -334,7 +396,7 @@ export interface EditMessageReplyMarkupParams {
 
   /**
    * Required if inline_message_id is not specified. Unique identifier for the
-   * target chat or username of the target bot, supergroup or channel in the
+   * target chat or username of the target bot, supergroup, or channel in the
    * format @username.
    */
   chat_id?: number | string | undefined
@@ -371,7 +433,7 @@ export interface StopPollParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -609,7 +671,7 @@ export interface DeclineSuggestedPostParams {
 export interface DeleteMessageParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -627,7 +689,7 @@ export interface DeleteMessageParams {
 export interface DeleteMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
