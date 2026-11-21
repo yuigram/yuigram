@@ -1,12 +1,12 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Available types
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallbackGame, Game } from './games.js'
 import type { Invoice, RefundedPayment, SuccessfulPayment } from './payments.js'
-import type { RichMessage } from './rich-messages.js'
+import type { RichMessage, RichText } from './rich-messages.js'
 import type { Sticker } from './stickers.js'
 import type { PassportData } from './telegram-passport.js'
 
@@ -473,6 +473,18 @@ export interface ChatFullInfo {
    * The Community to which the chat belongs
    */
   readonly community?: Community | undefined
+
+  /**
+   * For private chats, the TON wallet card of the user, which is shown on their
+   * profile page
+   */
+  readonly ton_wallet_card?: TonWalletCard | undefined
+
+  /**
+   * For private chats, supergroups and channels, the theme of the screen for
+   * sharing a link to the user or the chat; omitted if the default theme is used
+   */
+  readonly share_theme?: ChatShareTheme | undefined
 }
 
 /**
@@ -776,8 +788,13 @@ export interface Message {
   readonly voice?: Voice | undefined
 
   /**
-   * Caption for the animation, audio, document, paid media, photo, video or
-   * voice
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+
+  /**
+   * Caption for the animation, audio, document, live photo, paid media, photo,
+   * video, voice, or widget
    */
   readonly caption?: string | undefined
 
@@ -788,7 +805,7 @@ export interface Message {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * True, if the caption must be shown above the message media
+   * True, if the caption must be shown above the message media or the widget
    */
   readonly show_caption_above_media?: true | undefined
 
@@ -1091,6 +1108,12 @@ export interface Message {
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
 
   /**
+   * Service message: the sender of the message used a link of the other user,
+   * which allows sending messages to the user without paying Telegram Stars
+   */
+  readonly paid_messages_waived?: PaidMessagesWaived | undefined
+
+  /**
    * Service message: answer option was added to a poll
    */
   readonly poll_option_added?: PollOptionAdded | undefined
@@ -1124,6 +1147,11 @@ export interface Message {
    * Service message: payment for a suggested post was refunded
    */
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
+
+  /**
+   * Service message: a transfer with a TON wallet
+   */
+  readonly ton_wallet_transfer?: TonWalletTransfer | undefined
 
   /**
    * Service message: video chat scheduled
@@ -1217,10 +1245,11 @@ export interface MessageEntity {
    * Type of the entity. Currently, can be “mention” (@username), “hashtag”
    * (#hashtag or #hashtag@chatusername), “cashtag” ($USD or $USD@chatusername),
    * “bot_command” (/start@jobs_bot), “url” (https://telegram.org), “email”
-   * (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123), “bold” (bold
-   * text), “italic” (italic text), “underline” (underlined text),
-   * “strikethrough” (strikethrough text), “spoiler” (spoiler message),
-   * “blockquote” (block quotation), “expandable_blockquote”
+   * (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123),
+   * “bank_card_number” (bank card number), “ton_address” (address in the TON
+   * blockchain), “bold” (bold text), “italic” (italic text), “underline”
+   * (underlined text), “strikethrough” (strikethrough text), “spoiler” (spoiler
+   * message), “blockquote” (block quotation), “expandable_blockquote”
    * (collapsed-by-default block quotation), “code” (monowidth string), “pre”
    * (monowidth block), “text_link” (for clickable text URLs), “text_mention”
    * (for users without usernames), “custom_emoji” (for inline custom emoji
@@ -1279,7 +1308,8 @@ export interface MessageEntity {
  */
 export interface TextQuote {
   /**
-   * Text of the quoted part of a message that is replied to by the given message
+   * Text of the quoted part of a message that is replied to by the given
+   * message; may be empty if the quote was chosen from a rich message
    */
   readonly text: string
 
@@ -1291,8 +1321,19 @@ export interface TextQuote {
   readonly entities?: MessageEntity[] | undefined
 
   /**
+   * Rich text of the quote if it was chosen from a rich message. May contain
+   * only plain text, RichTextBold, RichTextItalic, RichTextUnderline,
+   * RichTextStrikethrough, RichTextSpoiler, RichTextSubscript,
+   * RichTextSuperscript, RichTextDateTime, RichTextCustomEmoji,
+   * RichTextMathematicalExpression, and arrays of them.
+   */
+  readonly rich_texts?: RichText[] | undefined
+
+  /**
    * Approximate quote position in the original message in UTF-16 code units as
-   * specified by the sender
+   * specified by the sender. For quotes from rich messages, it is the position
+   * in the text formed by joining plain texts of all quotable texts of the
+   * message, separated by line feeds.
    */
   readonly position: number
 
@@ -1389,6 +1430,11 @@ export interface ExternalReplyInfo {
   readonly voice?: Voice | undefined
 
   /**
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+
+  /**
    * True, if the message media is covered by a spoiler animation
    */
   readonly has_media_spoiler?: true | undefined
@@ -1460,7 +1506,7 @@ export interface ReplyParameters {
 
   /**
    * If the message to be replied to is from a different chat, unique identifier
-   * for the chat or username of the bot, supergroup or channel in the format
+   * for the chat or username of the bot, supergroup, or channel in the format
    * @username. Not supported for messages sent on behalf of a business account,
    * messages from channel direct messages chats and ephemeral messages.
    */
@@ -1504,7 +1550,34 @@ export interface ReplyParameters {
   readonly quote_entities?: MessageEntity[] | undefined
 
   /**
-   * Position of the quote in the original message in UTF-16 code units
+   * A JSON-serialized list of quoted parts of the rich message to be replied to.
+   * Must contain one element for each quoted text of the message in the order of
+   * their appearance. Each of the following is a separate quoted text: the text
+   * of a paragraph, a heading, a preformatted block, a footer, or a mathematical
+   * expression; the text and the credit of a block quotation or a pull
+   * quotation; the summary of a details block; the caption and each cell of a
+   * table; the text and the credit of a caption of a media block, a collage, a
+   * slideshow, or a map. Texts of blocks nested in lists, block quotations,
+   * details, collages, and slideshows are separate quoted texts too. The first
+   * and the last elements can contain only a part of the corresponding text; all
+   * other elements must contain the whole text. Formatting of the quoted parts
+   * must be kept, and rich texts must be nested in the same way as in the
+   * message received from the server. Mathematical expressions must be quoted
+   * entirely. Buttons in RichBlockButtons, anchors and dividers can't be quoted.
+   * Up to 32 quoted texts with total length up to 1024 characters can be
+   * specified. Only plain text, RichTextBold, RichTextItalic, RichTextUnderline,
+   * RichTextStrikethrough, RichTextSpoiler, RichTextSubscript,
+   * RichTextSuperscript, RichTextDateTime, RichTextCustomEmoji,
+   * RichTextMathematicalExpression, and arrays of them are kept in the quote;
+   * other rich text types are replaced with their text. If non-empty, then
+   * quote, quote_parse_mode and quote_entities are ignored.
+   */
+  readonly quote_rich_texts?: RichText[] | undefined
+
+  /**
+   * Position of the quote in the original message in UTF-16 code units. For
+   * quotes from rich messages, it is the position in the text formed by joining
+   * plain texts of all quotable texts of the message, separated by line feeds.
    */
   readonly quote_position?: number | undefined
 
@@ -1524,14 +1597,24 @@ export interface ReplyParameters {
  */
 export interface EphemeralMessageParameters {
   /**
-   * Identifier of the user who will receive the message. It is not guaranteed
-   * that the user will receive the message, especially if they are offline. See
-   * here for more details.
+   * Identifier of the user who will receive the message; required unless the
+   * message is sent as an ephemeral reply to a callback query. If omitted, then
+   * the parameter chat_id of the method is ignored. If specified together with
+   * callback_query_id, then it must be the identifier of the user who pressed
+   * the button. Must be omitted for messages sent in chats where the bot isn't a
+   * member, unless the message is a reply to an ephemeral message. It is not
+   * guaranteed that the user will receive the message, especially if they are
+   * offline. See here for more details.
    */
-  readonly receiver_user_id: number
+  readonly receiver_user_id?: number | undefined
 
   /**
-   * Identifier of the callback query which triggered the message, if any
+   * Identifier of the callback query which triggered the message, if any. If
+   * specified and receiver_user_id is omitted, then the message is sent as an
+   * ephemeral reply to the callback query and will be shown only to the user who
+   * pressed the button. Ephemeral replies can't be sent to callback queries from
+   * messages in channel direct messages chats. The bot must still answer the
+   * callback query using answerCallbackQuery.
    */
   readonly callback_query_id?: string | undefined
 
@@ -2102,6 +2185,47 @@ export interface Voice {
    * float type are safe for storing this value.
    */
   readonly file_size?: number | undefined
+}
+
+/**
+ * This object describes an HTML widget.
+ *
+ * @see https://core.telegram.org/bots/api#widget
+ */
+export interface Widget {
+  /**
+   * Unique identifier of the shared widget, which can be used to send the widget
+   * again using the method sendSharedWidget; omitted if the widget isn't shared
+   */
+  readonly id?: string | undefined
+
+  /**
+   * Width of the widget in logical pixels; omitted if the widget must occupy the
+   * whole width of the message bubble
+   */
+  readonly width?: number | undefined
+
+  /**
+   * Height of the widget in logical pixels; omitted if the height of the widget
+   * isn't fixed
+   */
+  readonly height?: number | undefined
+
+  /**
+   * HTML code of the widget
+   */
+  readonly html: string
+
+  /**
+   * Public data of the widget, which is available wherever the widget is shown.
+   * All messages with a shared widget have the same public data.
+   */
+  readonly public_data?: string | undefined
+
+  /**
+   * Data of the widget, which is specific to the message
+   */
+  readonly chat_data?: string | undefined
 }
 
 /**
@@ -3730,6 +3854,45 @@ export interface SuggestedPostRefunded {
 }
 
 /**
+ * Describes a service message about the sender of the message using a link of
+ * the other user, which allows sending messages to the user without paying
+ * Telegram Stars. Currently holds no information.
+ *
+ * @see https://core.telegram.org/bots/api#paidmessageswaived
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
+export interface PaidMessagesWaived {}
+
+/**
+ * Describes a service message about a transfer with a TON wallet.
+ *
+ * @see https://core.telegram.org/bots/api#tonwallettransfer
+ */
+export interface TonWalletTransfer {
+  /**
+   * Unique identifier of the transaction; may be empty if the transfer hasn't
+   * been sent yet
+   */
+  readonly transaction_id: string
+
+  /**
+   * Address of the transfer peer in the TON blockchain
+   */
+  readonly peer_address: string
+
+  /**
+   * The amount of transferred cryptocurrency, in the smallest units of the
+   * cryptocurrency, as a decimal number; negative for outgoing transfers
+   */
+  readonly amount: string
+
+  /**
+   * Comment added to the transfer; omitted if the comment is encrypted
+   */
+  readonly comment?: string | undefined
+}
+
+/**
  * This object represents a service message about the creation of a scheduled
  * giveaway.
  *
@@ -4394,7 +4557,11 @@ export interface KeyboardButtonRequestManagedBot {
   readonly suggested_name?: string | undefined
 
   /**
-   * Suggested username for the bot
+   * Suggested username for the bot. The username must end with “bot”. If the
+   * user creating the bot has a Telegram Premium subscription, then the username
+   * can also end with “agent”, “ai”, “app”, “game”, or “gay”; in this case, the
+   * username will be assigned to the bot as a secondary username, and a regular
+   * username ending with “bot” will be assigned to the bot automatically.
    */
   readonly suggested_username?: string | undefined
 }
@@ -4510,7 +4677,7 @@ export interface InlineKeyboardButton {
    * button. The Web App will be able to send an arbitrary message on behalf of
    * the user using the method answerWebAppQuery. Available only in private chats
    * between a user and the bot. Not supported for messages sent on behalf of a
-   * business account.
+   * business account and ephemeral messages.
    */
   readonly web_app?: WebAppInfo | undefined
 
@@ -4722,6 +4889,212 @@ export interface CallbackQuery {
    * game
    */
   readonly game_short_name?: string | undefined
+}
+
+/**
+ * This object describes the type of a query from a widget. Currently, it can
+ * be one of
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytype
+ */
+export type WidgetQueryType =
+  | WidgetQueryTypeData
+  | WidgetQueryTypeSentTransaction
+  | WidgetQueryTypeSignData
+
+/**
+ * The query contains data for the bot.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypedata
+ */
+export interface WidgetQueryTypeData {
+  /**
+   * Type of the query, always “data”
+   */
+  readonly type: string
+
+  /**
+   * TON wallet card of the user who sent the query, if it was sent to the bot
+   * along with the query
+   */
+  readonly wallet_card?: TonWalletCard | undefined
+}
+
+/**
+ * The query contains data signed by a TON wallet of the user who sent the
+ * query. The data is signed for the domain bot<bot_id>, where <bot_id> is the
+ * identifier of the bot.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypesigndata
+ */
+export interface WidgetQueryTypeSignData {
+  /**
+   * Type of the query, always “sign_data”
+   */
+  readonly type: string
+
+  /**
+   * The wallet that signed the data
+   */
+  readonly wallet: WidgetQueryWallet
+
+  /**
+   * JSON-serialized signed data
+   */
+  readonly sign_data: string
+}
+
+/**
+ * The query notifies the bot about a transaction sent from a TON wallet of the
+ * user who sent the query.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypesenttransaction
+ */
+export interface WidgetQueryTypeSentTransaction {
+  /**
+   * Type of the query, always “sent_transaction”
+   */
+  readonly type: string
+
+  /**
+   * The wallet from which the transaction was sent
+   */
+  readonly wallet: WidgetQueryWallet
+
+  /**
+   * Value of msg_hash of the transaction
+   */
+  readonly msg_hash: string
+}
+
+/**
+ * This object describes a TON wallet of the user, which is used in a query
+ * from a widget.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerywallet
+ */
+export interface WidgetQueryWallet {
+  /**
+   * Address of the wallet
+   */
+  readonly address: string
+
+  /**
+   * Balance of the wallet, in the smallest units of the cryptocurrency, as a
+   * decimal number
+   */
+  readonly amount: string
+
+  /**
+   * Hex-encoded public key of the wallet; omitted if unknown
+   */
+  readonly public_key?: string | undefined
+
+  /**
+   * Base64-encoded serialized StateInit of the wallet contract; omitted if and
+   * only if public_key is omitted
+   */
+  readonly state_init?: string | undefined
+}
+
+/**
+ * This object represents an incoming query from a widget in a message sent by
+ * the bot or via the bot. Use answerWidgetQuery to answer the query. Each user
+ * can send at most 5 queries per 5 seconds to the bot from all its widgets.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquery
+ */
+export interface WidgetQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
+
+  /**
+   * Chat with the message containing the widget; omitted if the widget is in an
+   * inline message
+   */
+  readonly chat?: Chat | undefined
+
+  /**
+   * Identifier of the message containing the widget; omitted if the widget is in
+   * an inline message
+   */
+  readonly message_id?: number | undefined
+
+  /**
+   * Identifier of the inline message containing the widget
+   */
+  readonly inline_message_id?: string | undefined
+
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the widget was sent
+   */
+  readonly chat_instance: string
+
+  /**
+   * For widgets in inline messages, type of the chat to which the message was
+   * sent. Can be either “sender” for a private chat with the inline query
+   * sender, “private”, “group”, “supergroup”, or “channel”.
+   */
+  readonly chat_type?: string | undefined
+
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+
+  /**
+   * Unique identifier of the shared widget, which sent the query; omitted if the
+   * widget isn't shared
+   */
+  readonly widget_id?: string | undefined
+}
+
+/**
+ * This object represents an incoming query from a forwarded message with a
+ * shared widget created by the bot. Use answerWidgetQuery to answer the query.
+ * Each user can send at most 5 queries per 5 seconds to the bot from all its
+ * widgets.
+ *
+ * @see https://core.telegram.org/bots/api#sharedwidgetquery
+ */
+export interface SharedWidgetQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
+
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+
+  /**
+   * Unique identifier of the shared widget, which sent the query
+   */
+  readonly widget_id: string
 }
 
 /**
@@ -5310,8 +5683,8 @@ export interface ChatMemberRestricted {
   readonly can_send_polls: boolean
 
   /**
-   * True, if the user is allowed to send animations, games, stickers and use
-   * inline bots
+   * True, if the user is allowed to send animations, games, stickers, widgets
+   * and use inline bots
    */
   readonly can_send_other_messages: boolean
 
@@ -5499,8 +5872,8 @@ export interface ChatPermissions {
   readonly can_send_polls?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send animations, games, stickers and use
-   * inline bots
+   * True, if the user is allowed to send animations, games, stickers, widgets
+   * and use inline bots
    */
   readonly can_send_other_messages?: boolean | undefined
 
@@ -5675,28 +6048,33 @@ export interface UserRating {
 }
 
 /**
- * Describes the position of a clickable area within a story.
+ * Describes the position of a rectangle area on a story media or a TON wallet
+ * card.
  *
- * @see https://core.telegram.org/bots/api#storyareaposition
+ * @see https://core.telegram.org/bots/api#areaposition
  */
-export interface StoryAreaPosition {
+export interface AreaPosition {
   /**
-   * The abscissa of the area's center, as a percentage of the media width
+   * The abscissa of the area's center, as a percentage of the media or the card
+   * width
    */
   readonly x_percentage: number
 
   /**
-   * The ordinate of the area's center, as a percentage of the media height
+   * The ordinate of the area's center, as a percentage of the media or the card
+   * height
    */
   readonly y_percentage: number
 
   /**
-   * The width of the area's rectangle, as a percentage of the media width
+   * The width of the area's rectangle, as a percentage of the media or the card
+   * width
    */
   readonly width_percentage: number
 
   /**
-   * The height of the area's rectangle, as a percentage of the media height
+   * The height of the area's rectangle, as a percentage of the media or the card
+   * height
    */
   readonly height_percentage: number
 
@@ -5706,10 +6084,247 @@ export interface StoryAreaPosition {
   readonly rotation_angle: number
 
   /**
-   * The radius of the rectangle corner rounding, as a percentage of the media
-   * width
+   * The radius of the rectangle corner rounding, as a percentage of the media or
+   * the card width
    */
   readonly corner_radius_percentage: number
+}
+
+/**
+ * This object represents an NFT in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#tonnft
+ */
+export interface TonNft {
+  /**
+   * Address of the NFT
+   */
+  readonly address: string
+
+  /**
+   * Address of the collection to which the NFT belongs; omitted if unknown
+   */
+  readonly collection_address?: string | undefined
+
+  /**
+   * Index of the NFT among all NFTs from the collection as a decimal number
+   */
+  readonly index: string
+
+  /**
+   * Name of the NFT
+   */
+  readonly name: string
+
+  /**
+   * Description of the NFT
+   */
+  readonly description: string
+
+  /**
+   * Attributes of the NFT
+   */
+  readonly attributes?: TonNftAttribute[] | undefined
+
+  /**
+   * The unique gift corresponding to the NFT
+   */
+  readonly gift?: UniqueGift | undefined
+}
+
+/**
+ * This object represents an attribute of an NFT in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#tonnftattribute
+ */
+export interface TonNftAttribute {
+  /**
+   * Trait type of the attribute
+   */
+  readonly trait_type: string
+
+  /**
+   * Value of the attribute
+   */
+  readonly value: string
+}
+
+/**
+ * This object describes a sticker on a TON wallet card.
+ *
+ * @see https://core.telegram.org/bots/api#tonwalletcardsticker
+ */
+export interface TonWalletCardSticker {
+  /**
+   * Position of the sticker on the card
+   */
+  readonly position: AreaPosition
+
+  /**
+   * The NFT shown as the sticker
+   */
+  readonly nft: TonNft
+}
+
+/**
+ * This object describes a TON wallet card, which is shown on the profile page
+ * of a user to everyone.
+ *
+ * @see https://core.telegram.org/bots/api#tonwalletcard
+ */
+export interface TonWalletCard {
+  /**
+   * Address of the wallet
+   */
+  readonly address: string
+
+  /**
+   * Balance of the wallet, in the smallest units of the cryptocurrency, as a
+   * decimal number
+   */
+  readonly amount: string
+
+  /**
+   * Stickers placed on the card
+   */
+  readonly stickers: TonWalletCardSticker[]
+
+  /**
+   * Address of the NFT of one of the stickers, whose colors must be used for the
+   * card background; omitted if the default background must be used
+   */
+  readonly background_nft_address?: string | undefined
+}
+
+/**
+ * This object describes an emoji. Currently, it can be one of
+ *
+ * @see https://core.telegram.org/bots/api#emojitype
+ */
+export type EmojiType =
+  | EmojiTypeCustomEmoji
+  | EmojiTypeEmoji
+
+/**
+ * A regular emoji.
+ *
+ * @see https://core.telegram.org/bots/api#emojitypeemoji
+ */
+export interface EmojiTypeEmoji {
+  /**
+   * Type of the emoji, always “emoji”
+   */
+  readonly type: string
+
+  /**
+   * The emoji
+   */
+  readonly emoji: string
+}
+
+/**
+ * A custom emoji.
+ *
+ * @see https://core.telegram.org/bots/api#emojitypecustomemoji
+ */
+export interface EmojiTypeCustomEmoji {
+  /**
+   * Type of the emoji, always “custom_emoji”
+   */
+  readonly type: string
+
+  /**
+   * Identifier of the custom emoji. Use getCustomEmojiStickers to get full
+   * information about the sticker.
+   */
+  readonly custom_emoji_id: string
+}
+
+/**
+ * This object describes the theme of the screen for sharing a link to a user
+ * or a chat. Currently, it can be one of
+ *
+ * @see https://core.telegram.org/bots/api#chatsharetheme
+ */
+export type ChatShareTheme =
+  | ChatShareThemeEmoji
+  | ChatShareThemeUniqueGift
+
+/**
+ * The theme with emoji placed on a background.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemeemoji
+ */
+export interface ChatShareThemeEmoji {
+  /**
+   * Type of the theme, always “emoji”
+   */
+  readonly type: string
+
+  /**
+   * The emoji; 0-6 regular or custom emoji
+   */
+  readonly emojis: EmojiType[]
+
+  /**
+   * Identifier of the backdrop used as the background; omitted if the default
+   * background is used. Use getChatShareThemeBackdrops to get details about the
+   * backdrop.
+   */
+  readonly background_backdrop_id?: number | undefined
+}
+
+/**
+ * The theme based on a unique gift owned by the user or the chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemeuniquegift
+ */
+export interface ChatShareThemeUniqueGift {
+  /**
+   * Type of the theme, always “unique_gift”
+   */
+  readonly type: string
+
+  /**
+   * The gift
+   */
+  readonly gift: UniqueGift
+}
+
+/**
+ * This object contains a list of backdrops, which can be used as the
+ * background of a theme of the screen for sharing a link to a user or a chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemebackdrops
+ */
+export interface ChatShareThemeBackdrops {
+  /**
+   * The list of backdrops
+   */
+  readonly backdrops: ChatShareThemeBackdrop[]
+}
+
+/**
+ * This object describes a backdrop, which can be used as the background of a
+ * theme of the screen for sharing a link to a user or a chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemebackdrop
+ */
+export interface ChatShareThemeBackdrop {
+  /**
+   * Unique identifier of the backdrop
+   */
+  readonly id: number
+
+  /**
+   * Name of the backdrop
+   */
+  readonly name: string
+
+  /**
+   * Colors of the backdrop
+   */
+  readonly colors: UniqueGiftBackdropColors
 }
 
 /**
@@ -5882,7 +6497,7 @@ export interface StoryArea {
   /**
    * Position of the area
    */
-  readonly position: StoryAreaPosition
+  readonly position: AreaPosition
 
   /**
    * Type of the area

@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Formatted-text slots (119 across 39 methods)
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Formatted-text slots (129 across 43 methods)
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -28,6 +28,7 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'caption', entities: 'caption_entities' },
   ],
   answerInlineQuery: [
     { path: ['results', '*'], text: 'caption', entities: 'caption_entities' },
@@ -39,6 +40,7 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['results', '*', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['results', '*', 'input_message_content'], text: 'caption', entities: 'caption_entities' },
   ],
   answerWebAppQuery: [
     { path: ['result'], text: 'caption', entities: 'caption_entities' },
@@ -50,6 +52,7 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'caption', entities: 'caption_entities' },
   ],
   copyMessage: [
     { path: [], text: 'caption', entities: 'caption_entities' },
@@ -110,6 +113,7 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'video'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['result', 'input_message_content', 'rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
+    { path: ['result', 'input_message_content'], text: 'caption', entities: 'caption_entities' },
   ],
   sendAnimation: [
     { path: [], text: 'caption', entities: 'caption_entities' },
@@ -198,6 +202,10 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
     { path: ['rich_message', 'blocks', '*', 'voice_note'], text: 'caption', entities: 'caption_entities' },
     { path: ['rich_message', 'media', '*', 'media'], text: 'caption', entities: 'caption_entities' },
   ],
+  sendSharedWidget: [
+    { path: [], text: 'caption', entities: 'caption_entities' },
+    { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+  ],
   sendSticker: [
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
   ],
@@ -214,5 +222,15 @@ export const FORMATTABLE: Readonly<Record<string, readonly FormattableSlot[]>> =
   sendVoice: [
     { path: [], text: 'caption', entities: 'caption_entities' },
     { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+  ],
+  sendWidget: [
+    { path: [], text: 'caption', entities: 'caption_entities' },
+    { path: ['reply_parameters'], text: 'quote', entities: 'quote_entities' },
+  ],
+  verifyChat: [
+    { path: [], text: 'custom_description', entities: 'custom_description_entities' },
+  ],
+  verifyUser: [
+    { path: [], text: 'custom_description', entities: 'custom_description_entities' },
   ],
 }

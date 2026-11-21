@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
 // Per-event context field shapes
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { UpdateEventKind } from './events.js'
-import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
+import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PaidMessagesWaived, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, SharedWidgetQuery, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, TonWalletTransfer, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, Widget, WidgetQuery, WidgetQueryType, WriteAccessAllowed } from './types/index.js'
 
 /**
  * Fields carried by `BotSubscriptionUpdated`, projected onto the context for
@@ -602,8 +602,12 @@ export interface MessageEventFields {
    */
   readonly voice?: Voice | undefined
   /**
-   * Caption for the animation, audio, document, paid media, photo, video or
-   * voice
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+  /**
+   * Caption for the animation, audio, document, live photo, paid media, photo,
+   * video, voice, or widget
    */
   readonly caption?: string | undefined
   /**
@@ -612,7 +616,7 @@ export interface MessageEventFields {
    */
   readonly caption_entities?: MessageEntity[] | undefined
   /**
-   * True, if the caption must be shown above the message media
+   * True, if the caption must be shown above the message media or the widget
    */
   readonly show_caption_above_media?: true | undefined
   /**
@@ -860,6 +864,11 @@ export interface MessageEventFields {
    */
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
   /**
+   * Service message: the sender of the message used a link of the other user,
+   * which allows sending messages to the user without paying Telegram Stars
+   */
+  readonly paid_messages_waived?: PaidMessagesWaived | undefined
+  /**
    * Service message: answer option was added to a poll
    */
   readonly poll_option_added?: PollOptionAdded | undefined
@@ -887,6 +896,10 @@ export interface MessageEventFields {
    * Service message: payment for a suggested post was refunded
    */
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
+  /**
+   * Service message: a transfer with a TON wallet
+   */
+  readonly ton_wallet_transfer?: TonWalletTransfer | undefined
   /**
    * Service message: video chat scheduled
    */
@@ -1194,6 +1207,35 @@ export interface PreCheckoutQueryEventFields {
 }
 
 /**
+ * Fields carried by `SharedWidgetQuery`, projected onto the context for the
+ * `shared_widget_query` event: `shared_widget_query`.
+ */
+export interface SharedWidgetQueryEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: SharedWidgetQuery
+
+  /** Who caused this. Telegram spells it `from` on this payload. */
+  readonly sender: User
+
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+  /**
+   * Unique identifier of the shared widget, which sent the query
+   */
+  readonly widget_id: string
+}
+
+/**
  * Fields carried by `ShippingQuery`, projected onto the context for the
  * `shipping_query` event: `shipping_query`.
  */
@@ -1216,6 +1258,61 @@ export interface ShippingQueryEventFields {
    * User specified shipping address
    */
   readonly shipping_address: ShippingAddress
+}
+
+/**
+ * Fields carried by `WidgetQuery`, projected onto the context for the
+ * `widget_query` event: `widget_query`.
+ */
+export interface WidgetQueryEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: WidgetQuery
+
+  /** Who caused this. Telegram spells it `from` on this payload. */
+  readonly sender: User
+
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+  /**
+   * Chat with the message containing the widget; omitted if the widget is in an
+   * inline message
+   */
+  readonly chat?: Chat | undefined
+  /**
+   * Identifier of the message containing the widget; omitted if the widget is in
+   * an inline message
+   */
+  readonly message_id?: number | undefined
+  /**
+   * Identifier of the inline message containing the widget
+   */
+  readonly inline_message_id?: string | undefined
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the widget was sent
+   */
+  readonly chat_instance: string
+  /**
+   * For widgets in inline messages, type of the chat to which the message was
+   * sent. Can be either “sender” for a private chat with the inline query
+   * sender, “private”, “group”, “supergroup”, or “channel”.
+   */
+  readonly chat_type?: string | undefined
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+  /**
+   * Unique identifier of the shared widget, which sent the query; omitted if the
+   * widget isn't shared
+   */
+  readonly widget_id?: string | undefined
 }
 
 /**
@@ -1247,9 +1344,11 @@ export interface EventFieldsByKind {
   'poll_answer': PollAnswerEventFields
   'pre_checkout_query': PreCheckoutQueryEventFields
   'purchased_paid_media': PaidMediaPurchasedEventFields
+  'shared_widget_query': SharedWidgetQueryEventFields
   'shipping_query': ShippingQueryEventFields
   'stopped_message_generation': MessageGenerationStoppedEventFields
   'subscription': BotSubscriptionUpdatedEventFields
+  'widget_query': WidgetQueryEventFields
 }
 
 /**
@@ -1281,7 +1380,9 @@ export const PAYLOAD_ALIASES = {
   'poll_answer': 'answer',
   'pre_checkout_query': 'preCheckoutQuery',
   'purchased_paid_media': 'purchase',
+  'shared_widget_query': 'payload',
   'shipping_query': 'shippingQuery',
   'stopped_message_generation': 'payload',
   'subscription': 'subscription',
+  'widget_query': 'payload',
 } as const satisfies Readonly<Record<UpdateEventKind, string>>
