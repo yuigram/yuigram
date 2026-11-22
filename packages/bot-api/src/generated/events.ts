@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API event taxonomy
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.4, schemas/bot-api/10.4.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, ShippingQuery } from './types/index.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ChosenInlineResult, InlineQuery, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, PaidMediaPurchased, Poll, PollAnswer, PreCheckoutQuery, SharedWidgetQuery, ShippingQuery, WidgetQuery } from './types/index.js'
 
 /**
  * Event kinds produced by a top-level `Update` field.
@@ -34,9 +34,11 @@ export type UpdateEventKind =
   | 'poll_answer'
   | 'pre_checkout_query'
   | 'purchased_paid_media'
+  | 'shared_widget_query'
   | 'shipping_query'
   | 'stopped_message_generation'
   | 'subscription'
+  | 'widget_query'
 
 /**
  * Event kinds promoted from a service message. The Bot API delivers each of
@@ -80,6 +82,7 @@ export type ServiceEventKind =
   | 'managed_bot_created'
   | 'message_pinned'
   | 'paid_message_price_changed'
+  | 'paid_messages_waived'
   | 'passport_data'
   | 'payment_successful'
   | 'poll_option_added'
@@ -92,6 +95,7 @@ export type ServiceEventKind =
   | 'suggested_post_paid'
   | 'suggested_post_refunded'
   | 'supergroup_created'
+  | 'ton_wallet_transfer'
   | 'unique_gift'
   | 'users_shared'
   | 'video_chat_ended'
@@ -132,9 +136,11 @@ export const UPDATE_EVENTS = {
   "poll_answer": 'poll_answer',
   "pre_checkout_query": 'pre_checkout_query',
   "purchased_paid_media": 'purchased_paid_media',
+  "shared_widget_query": 'shared_widget_query',
   "shipping_query": 'shipping_query',
   "stopped_message_generation": 'stopped_message_generation',
   "subscription": 'subscription',
+  "widget_query": 'widget_query',
 } as const satisfies Record<string, UpdateEventKind>
 
 /**
@@ -178,6 +184,7 @@ export const SERVICE_EVENTS = {
   "managed_bot_created": 'managed_bot_created',
   "pinned_message": 'message_pinned',
   "paid_message_price_changed": 'paid_message_price_changed',
+  "paid_messages_waived": 'paid_messages_waived',
   "passport_data": 'passport_data',
   "successful_payment": 'payment_successful',
   "poll_option_added": 'poll_option_added',
@@ -190,6 +197,7 @@ export const SERVICE_EVENTS = {
   "suggested_post_paid": 'suggested_post_paid',
   "suggested_post_refunded": 'suggested_post_refunded',
   "supergroup_chat_created": 'supergroup_created',
+  "ton_wallet_transfer": 'ton_wallet_transfer',
   "unique_gift": 'unique_gift',
   "users_shared": 'users_shared',
   "video_chat_ended": 'video_chat_ended',
@@ -228,9 +236,11 @@ export interface UpdatePayloads {
   "poll_answer": PollAnswer
   "pre_checkout_query": PreCheckoutQuery
   "purchased_paid_media": PaidMediaPurchased
+  "shared_widget_query": SharedWidgetQuery
   "shipping_query": ShippingQuery
   "stopped_message_generation": MessageGenerationStopped
   "subscription": BotSubscriptionUpdated
+  "widget_query": WidgetQuery
 }
 
 /**
@@ -324,6 +334,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'message_reaction_count': ['message_reaction_count'],
   'my_chat_member': ['my_chat_member'],
   'paid_message_price_changed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'paid_messages_waived': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'passport_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'payment_successful': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'poll': ['poll'],
@@ -334,6 +345,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'proximity_alert': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'purchased_paid_media': ['purchased_paid_media'],
   'refunded_payment': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'shared_widget_query': ['shared_widget_query'],
   'shipping_query': ['shipping_query'],
   'stopped_message_generation': ['stopped_message_generation'],
   'subscription': ['subscription'],
@@ -343,6 +355,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'suggested_post_paid': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'suggested_post_refunded': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'supergroup_created': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'ton_wallet_transfer': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'unique_gift': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'users_shared': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'video_chat_ended': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
@@ -350,6 +363,7 @@ export const KIND_SUBSCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   'video_chat_scheduled': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'video_chat_started': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
   'web_app_data': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
+  'widget_query': ['widget_query'],
   'write_access_allowed': ['business_message', 'channel_post', 'edited_business_message', 'edited_channel_post', 'edited_message', 'guest_message', 'message'],
 }
 
@@ -384,7 +398,9 @@ export const ALL_UPDATE_TYPES: readonly string[] = [
   'poll_answer',
   'pre_checkout_query',
   'purchased_paid_media',
+  'shared_widget_query',
   'shipping_query',
   'stopped_message_generation',
   'subscription',
+  'widget_query',
 ]
