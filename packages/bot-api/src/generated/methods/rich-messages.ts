@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Rich messages
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -14,16 +14,17 @@ import type { EphemeralMessageParameters, ForceReply, InlineKeyboardMarkup, Inpu
 export interface SendRichMessageParams {
   /**
    * Unique identifier of the business connection on behalf of which the message
-   * will be sent. Bot can send rich messages on behalf of a business account
+   * will be sent. The bot can send rich messages on behalf of a business account
    * only if the corresponding user can send rich messages.
    */
   business_connection_id?: string | undefined
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -117,7 +118,7 @@ export interface SendRichMessageDraftParams {
 
   /**
    * The partial message to be streamed. Direct upload of new files and explicit
-   * upload of files by a URL isn't supported.
+   * upload of files by a URL aren't supported.
    */
   rich_message: InputRichMessage
 

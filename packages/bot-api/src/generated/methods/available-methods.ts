@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Available methods
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -45,9 +45,10 @@ export interface SendMessageParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -141,7 +142,7 @@ export interface SendMessageParams {
 export interface ForwardMessageParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -160,7 +161,7 @@ export interface ForwardMessageParams {
 
   /**
    * Unique identifier for the chat where the original message was sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup, or channel in the format @username)
    */
   from_chat_id: number | string
 
@@ -205,7 +206,7 @@ export interface ForwardMessageParams {
 export interface ForwardMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -224,7 +225,7 @@ export interface ForwardMessagesParams {
 
   /**
    * Unique identifier for the chat where the original messages were sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup, or channel in the format @username)
    */
   from_chat_id: number | string
 
@@ -255,7 +256,7 @@ export interface ForwardMessagesParams {
 export interface CopyMessageParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -274,7 +275,7 @@ export interface CopyMessageParams {
 
   /**
    * Unique identifier for the chat where the original message was sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup, or channel in the format @username)
    */
   from_chat_id: number | string
 
@@ -363,7 +364,7 @@ export interface CopyMessageParams {
 export interface CopyMessagesParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -382,7 +383,7 @@ export interface CopyMessagesParams {
 
   /**
    * Unique identifier for the chat where the original messages were sent (or
-   * username of the target bot, supergroup or channel in the format @username)
+   * username of the target bot, supergroup, or channel in the format @username)
    */
   from_chat_id: number | string
 
@@ -424,9 +425,10 @@ export interface SendPhotoParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -541,10 +543,11 @@ export interface SendLivePhotoParams {
   business_connection_id?: string | undefined
 
   /**
-   * Unique identifier for the target chat or username of the target channel (in
-   * the format @channelusername)
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -576,21 +579,21 @@ export interface SendLivePhotoParams {
 
   /**
    * The static photo to send. Pass a file_id as String to send a photo that
-   * exists on the Telegram servers (recommended) or upload a new video using
+   * exists on the Telegram servers (recommended) or upload a new photo using
    * multipart/form-data. More information on Sending Files ». Sending live
    * photos by a URL is currently unsupported.
    */
   photo: InputFile | string
 
   /**
-   * Video caption (may also be used when resending videos by file_id), 0-1024
-   * characters after entities parsing
+   * Live photo caption (may also be used when resending live photos by file_id),
+   * 0-1024 characters after entities parsing
    */
   caption?: string | undefined
 
   /**
-   * Mode for parsing entities in the video caption. See formatting options for
-   * more details.
+   * Mode for parsing entities in the live photo caption. See formatting options
+   * for more details.
    */
   parse_mode?: string | undefined
 
@@ -606,7 +609,7 @@ export interface SendLivePhotoParams {
   show_caption_above_media?: boolean | undefined
 
   /**
-   * Pass True if the video needs to be covered with a spoiler animation
+   * Pass True if the live photo needs to be covered with a spoiler animation
    */
   has_spoiler?: boolean | undefined
 
@@ -667,9 +670,10 @@ export interface SendAudioParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -735,7 +739,7 @@ export interface SendAudioParams {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -799,9 +803,10 @@ export interface SendDocumentParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -835,7 +840,7 @@ export interface SendDocumentParams {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -923,9 +928,10 @@ export interface SendVideoParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -974,7 +980,7 @@ export interface SendVideoParams {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -1085,9 +1091,10 @@ export interface SendAnimationParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1136,7 +1143,7 @@ export interface SendAnimationParams {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -1144,7 +1151,7 @@ export interface SendAnimationParams {
   thumbnail?: InputFile | string | undefined
 
   /**
-   * Animation caption (may also be used when resending animation by file_id),
+   * Animation caption (may also be used when resending animations by file_id),
    * 0-1024 characters after entities parsing
    */
   caption?: string | undefined
@@ -1228,9 +1235,10 @@ export interface SendVoiceParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1338,9 +1346,10 @@ export interface SendVideoNoteParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1384,7 +1393,7 @@ export interface SendVideoNoteParams {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -1435,6 +1444,212 @@ export interface SendVideoNoteParams {
 }
 
 /**
+ * Parameters for `sendWidget`.
+ *
+ * @see https://core.telegram.org/bots/api#sendwidget
+ */
+export interface SendWidgetParams {
+  /**
+   * Unique identifier for the target chat or username of the target supergroup
+   * in the format @username
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * HTML code of the widget, 1-32768 bytes. The code must not exceed 4096 bytes
+   * when compressed by zlib with the maximum compression level.
+   */
+  html: string
+
+  /**
+   * Width of the widget in logical pixels; omit if the widget must occupy the
+   * whole width of the message bubble. The width is clamped by the app to the
+   * range from 200 to the maximum width of the message bubble.
+   */
+  width?: number | undefined
+
+  /**
+   * Height of the widget in logical pixels; omit if the height of the widget
+   * isn't fixed. The height is clamped by the app to the range 50-600.
+   */
+  height?: number | undefined
+
+  /**
+   * Public data of the widget, 0-1024 bytes, which will be available wherever
+   * the widget is shown. If the widget is shared, then all messages with it will
+   * have the same public data.
+   */
+  public_data?: string | undefined
+
+  /**
+   * Data of the widget, which is specific to the message, 0-1024 bytes
+   */
+  chat_data?: string | undefined
+
+  /**
+   * Widget caption, 0-1024 characters after entities parsing
+   */
+  caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the widget caption. See formatting options for
+   * more details.
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the caption, which
+   * can be specified instead of parse_mode
+   */
+  caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the widget
+   */
+  show_caption_above_media?: boolean | undefined
+
+  /**
+   * Pass True to allow the widget to send queries to the bot
+   */
+  allow_queries?: boolean | undefined
+
+  /**
+   * Pass True to create a shared widget, which can be sent again using the
+   * method sendSharedWidget
+   */
+  is_shared?: boolean | undefined
+
+  /**
+   * Sends the message silently. Users will receive a notification with no sound.
+   */
+  disable_notification?: boolean | undefined
+
+  /**
+   * Protects the contents of the sent message from forwarding and saving
+   */
+  protect_content?: boolean | undefined
+
+  /**
+   * Pass True to allow up to 1000 messages per second, ignoring broadcasting
+   * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
+   * be withdrawn from the bot's balance.
+   */
+  allow_paid_broadcast?: boolean | undefined
+
+  /**
+   * Unique identifier of the message effect to be added to the message; for
+   * private chats only
+   */
+  message_effect_id?: string | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * Additional interface options. A JSON-serialized object for an inline
+   * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
+   * to force a reply from the user.
+   */
+  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+}
+
+/**
+ * Parameters for `sendSharedWidget`.
+ *
+ * @see https://core.telegram.org/bots/api#sendsharedwidget
+ */
+export interface SendSharedWidgetParams {
+  /**
+   * Unique identifier for the target chat or username of the target supergroup
+   * in the format @username
+   */
+  chat_id: number | string
+
+  /**
+   * Unique identifier for the target message thread (topic) of a forum; for
+   * forum supergroups and private chats of bots with forum topic mode enabled
+   * only
+   */
+  message_thread_id?: number | undefined
+
+  /**
+   * Unique identifier of the shared widget
+   */
+  widget_id: string
+
+  /**
+   * Data of the widget, which is specific to the message, 0-1024 bytes
+   */
+  chat_data?: string | undefined
+
+  /**
+   * Widget caption, 0-1024 characters after entities parsing
+   */
+  caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the widget caption. See formatting options for
+   * more details.
+   */
+  parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the caption, which
+   * can be specified instead of parse_mode
+   */
+  caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the widget
+   */
+  show_caption_above_media?: boolean | undefined
+
+  /**
+   * Sends the message silently. Users will receive a notification with no sound.
+   */
+  disable_notification?: boolean | undefined
+
+  /**
+   * Protects the contents of the sent message from forwarding and saving
+   */
+  protect_content?: boolean | undefined
+
+  /**
+   * Pass True to allow up to 1000 messages per second, ignoring broadcasting
+   * limits for a fee of 0.1 Telegram Stars per message. The relevant Stars will
+   * be withdrawn from the bot's balance.
+   */
+  allow_paid_broadcast?: boolean | undefined
+
+  /**
+   * Unique identifier of the message effect to be added to the message; for
+   * private chats only
+   */
+  message_effect_id?: string | undefined
+
+  /**
+   * Description of the message to reply to
+   */
+  reply_parameters?: ReplyParameters | undefined
+
+  /**
+   * Additional interface options. A JSON-serialized object for an inline
+   * keyboard, custom reply keyboard, instructions to remove a reply keyboard or
+   * to force a reply from the user.
+   */
+  reply_markup?: InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply | undefined
+}
+
+/**
  * Parameters for `sendPaidMedia`.
  *
  * @see https://core.telegram.org/bots/api#sendpaidmedia
@@ -1448,8 +1663,8 @@ export interface SendPaidMediaParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username. If the chat is a channel, all
-   * Telegram Star proceeds from this media will be credited to the chat's
+   * supergroup, or channel in the format @username. If the chat is a channel,
+   * all Telegram Star proceeds from this media will be credited to the chat's
    * balance. Otherwise, they will be credited to the bot's balance.
    */
   chat_id: number | string
@@ -1480,7 +1695,7 @@ export interface SendPaidMediaParams {
 
   /**
    * Bot-defined paid media payload, 0-128 bytes. This will not be displayed to
-   * the user, use it for your internal processes.
+   * the user; use it for your internal processes.
    */
   payload?: string | undefined
 
@@ -1557,7 +1772,7 @@ export interface SendMediaGroupParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -1623,9 +1838,10 @@ export interface SendLocationParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1738,9 +1954,10 @@ export interface SendVenueParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1860,9 +2077,10 @@ export interface SendContactParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username; required unless the message
+   * is sent as an ephemeral reply to a callback query
    */
-  chat_id: number | string
+  chat_id?: number | string | undefined
 
   /**
    * Unique identifier for the target message thread (topic) of a forum; for
@@ -1960,7 +2178,7 @@ export interface SendPollParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username. Polls can't be sent to
+   * supergroup, or channel in the format @username. Polls can't be sent to
    * channel direct messages chats.
    */
   chat_id: number | string
@@ -2010,7 +2228,7 @@ export interface SendPollParams {
   allows_multiple_answers?: boolean | undefined
 
   /**
-   * Pass True if the poll allows to change chosen answer options, defaults to
+   * Pass True if the poll allows changing the chosen answer options, defaults to
    * False for quizzes and to True for regular polls
    */
   allows_revoting?: boolean | undefined
@@ -2216,7 +2434,7 @@ export interface SendDiceParams {
 
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -2384,7 +2602,7 @@ export interface SendChatActionParams {
 export interface SetMessageReactionParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -2510,8 +2728,8 @@ export interface BanChatMemberParams {
   user_id: number
 
   /**
-   * Date when the user will be unbanned; Unix time. If user is banned for more
-   * than 366 days or less than 30 seconds from the current time they are
+   * Date when the user will be unbanned; Unix time. If the user is banned for
+   * more than 366 days or less than 30 seconds from the current time, they are
    * considered to be banned forever. Applied for supergroups and channels only.
    */
   until_date?: number | undefined
@@ -2580,9 +2798,9 @@ export interface RestrictChatMemberParams {
   use_independent_chat_permissions?: boolean | undefined
 
   /**
-   * Date when restrictions will be lifted for the user; Unix time. If user is
-   * restricted for more than 366 days or less than 30 seconds from the current
-   * time, they are considered to be restricted forever.
+   * Date when restrictions will be lifted for the user; Unix time. If the user
+   * is restricted for more than 366 days or less than 30 seconds from the
+   * current time, they are considered to be restricted forever.
    */
   until_date?: number | undefined
 }
@@ -2643,7 +2861,7 @@ export interface PromoteChatMemberParams {
   can_promote_members?: boolean | undefined
 
   /**
-   * Pass True if the administrator can change chat title, photo and other
+   * Pass True if the administrator can change the chat title, photo and other
    * settings
    */
   can_change_info?: boolean | undefined
@@ -3269,6 +3487,14 @@ export interface GetChatMemberParams {
 }
 
 /**
+ * Parameters for `getChatShareThemeBackdrops`.
+ *
+ * @see https://core.telegram.org/bots/api#getchatsharethemebackdrops
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: this method takes no parameters
+export interface GetChatShareThemeBackdropsParams {}
+
+/**
  * Parameters for `getUserPersonalChatMessages`.
  *
  * @see https://core.telegram.org/bots/api#getuserpersonalchatmessages
@@ -3582,6 +3808,23 @@ export interface AnswerCallbackQueryParams {
 }
 
 /**
+ * Parameters for `answerWidgetQuery`.
+ *
+ * @see https://core.telegram.org/bots/api#answerwidgetquery
+ */
+export interface AnswerWidgetQueryParams {
+  /**
+   * Unique identifier for the query to be answered
+   */
+  widget_query_id: string
+
+  /**
+   * Data to be returned to the widget, 0-1024 bytes
+   */
+  data?: string | undefined
+}
+
+/**
  * Parameters for `answerGuestQuery`.
  *
  * @see https://core.telegram.org/bots/api#answerguestquery
@@ -3687,6 +3930,108 @@ export interface SetManagedBotAccessSettingsParams {
    * False.
    */
   added_user_ids?: number[] | undefined
+}
+
+/**
+ * Parameters for `setMySettings`.
+ *
+ * @see https://core.telegram.org/bots/api#setmysettings
+ */
+export interface SetMySettingsParams {
+  /**
+   * Pass True to enable inline mode for the bot or False to disable it
+   */
+  supports_inline_queries?: boolean | undefined
+
+  /**
+   * New placeholder for inline queries, which is shown in the input field after
+   * the bot's username. Pass an empty string to use the default placeholder.
+   */
+  inline_query_placeholder?: string | undefined
+
+  /**
+   * Pass True to request the location of the user with every inline query to the
+   * bot or False to stop requesting it
+   */
+  needs_inline_query_location?: boolean | undefined
+
+  /**
+   * Denominator of the share of chosen inline results received by the bot; the
+   * bot receives 1 out of inline_feedback_share_denominator chosen results. Must
+   * be one of 1, 10, 100, or 1000. Pass 0 to stop receiving chosen inline
+   * results.
+   */
+  inline_feedback_share_denominator?: number | undefined
+
+  /**
+   * Pass True to allow adding the bot to groups or False to disallow it
+   */
+  can_join_groups?: boolean | undefined
+
+  /**
+   * Pass True to disable privacy mode for the bot or False to enable it
+   */
+  can_read_all_group_messages?: boolean | undefined
+
+  /**
+   * Pass True to allow connecting the bot to user accounts to manage them or
+   * False to disallow it
+   */
+  can_connect_to_business?: boolean | undefined
+
+  /**
+   * Pass True to allow creating other bots that will be controlled by the bot or
+   * False to disallow it
+   */
+  can_manage_bots?: boolean | undefined
+
+  /**
+   * Pass True to allow guest queries to the bot from chats it isn't a member of
+   * or False to disallow them
+   */
+  supports_guest_queries?: boolean | undefined
+
+  /**
+   * Pass True to allow assigning the bot to process join request queries or
+   * False to disallow it
+   */
+  supports_join_request_queries?: boolean | undefined
+
+  /**
+   * Pass True to enable forum topic mode in private chats with the bot or False
+   * to disable it
+   */
+  has_topics_enabled?: boolean | undefined
+
+  /**
+   * Pass True to allow users to create and delete topics in private chats with
+   * the bot or False to disallow it
+   */
+  allows_users_to_create_topics?: boolean | undefined
+
+  /**
+   * Pass True to show topics in private chats with the bot in a sidebar or False
+   * to stop showing them in a sidebar
+   */
+  has_topic_sidebar?: boolean | undefined
+
+  /**
+   * Pass True to allow the bot to communicate with other bots in groups, private
+   * chats, and through business accounts or False to disallow it
+   */
+  can_communicate_with_bots?: boolean | undefined
+
+  /**
+   * Mode in which the bot receives callback queries from buttons in messages
+   * sent by the bot. Must be one of “default” (the field message is always used
+   * and contains an InaccessibleMessage if the message is inaccessible to the
+   * bot), “auto” (the field inline_message_id is used instead of the field
+   * message if the message is inaccessible to the bot; the field message can
+   * still contain an inaccessible message if the message has just been deleted),
+   * or “inline” (the field inline_message_id is always used instead of the field
+   * message).
+   */
+  callback_query_mode?: string | undefined
 }
 
 /**
@@ -3926,8 +4271,8 @@ export interface SetMyDefaultAdministratorRightsParams {
  */
 export interface GetMyDefaultAdministratorRightsParams {
   /**
-   * Pass True to get default administrator rights of the bot in channels.
-   * Otherwise, default administrator rights of the bot for groups and
+   * Pass True to get the default administrator rights of the bot in channels.
+   * Otherwise, the default administrator rights of the bot for groups and
    * supergroups will be returned.
    */
   for_channels?: boolean | undefined
@@ -3954,9 +4299,8 @@ export interface SendGiftParams {
   user_id?: number | undefined
 
   /**
-   * Required if user_id is not specified. Unique identifier for the chat or
-   * username of the channel (in the format @username) that will receive the
-   * gift.
+   * Required if user_id is not specified. Unique identifier for the chat that
+   * will receive the gift or username of the channel in the format @username.
    */
   chat_id?: number | string | undefined
 
@@ -4054,6 +4398,19 @@ export interface VerifyUserParams {
    * the organization isn't allowed to provide a custom verification description.
    */
   custom_description?: string | undefined
+
+  /**
+   * Mode for parsing entities in the custom description. See formatting options
+   * for more details. Only “text_link” entities are supported.
+   */
+  custom_description_parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the custom
+   * description, which can be specified instead of
+   * custom_description_parse_mode. Only “text_link” entities are supported.
+   */
+  custom_description_entities?: MessageEntity[] | undefined
 }
 
 /**
@@ -4064,8 +4421,8 @@ export interface VerifyUserParams {
 export interface VerifyChatParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username. Channel direct messages chats
-   * can't be verified.
+   * supergroup, or channel in the format @username. Channel direct messages
+   * chats can't be verified.
    */
   chat_id: number | string
 
@@ -4074,6 +4431,19 @@ export interface VerifyChatParams {
    * the organization isn't allowed to provide a custom verification description.
    */
   custom_description?: string | undefined
+
+  /**
+   * Mode for parsing entities in the custom description. See formatting options
+   * for more details. Only “text_link” entities are supported.
+   */
+  custom_description_parse_mode?: string | undefined
+
+  /**
+   * A JSON-serialized list of special entities that appear in the custom
+   * description, which can be specified instead of
+   * custom_description_parse_mode. Only “text_link” entities are supported.
+   */
+  custom_description_entities?: MessageEntity[] | undefined
 }
 
 /**
@@ -4095,8 +4465,8 @@ export interface RemoveUserVerificationParams {
  */
 export interface RemoveChatVerificationParams {
   /**
-   * Unique identifier for the target chat or username of the target bot or
-   * channel in the format @username
+   * Unique identifier for the target chat or username of the target bot,
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 }
@@ -4355,7 +4725,7 @@ export interface GetBusinessAccountGiftsParams {
 
   /**
    * Offset of the first entry to return as received from the previous request;
-   * use empty string to get the first chunk of results
+   * use an empty string to get the first chunk of results
    */
   offset?: string | undefined
 
@@ -4497,6 +4867,18 @@ export interface GetChatGiftsParams {
 }
 
 /**
+ * Parameters for `getUniqueGift`.
+ *
+ * @see https://core.telegram.org/bots/api#getuniquegift
+ */
+export interface GetUniqueGiftParams {
+  /**
+   * Unique name of the gift
+   */
+  name: string
+}
+
+/**
  * Parameters for `convertGiftToStars`.
  *
  * @see https://core.telegram.org/bots/api#convertgifttostars
@@ -4540,7 +4922,7 @@ export interface UpgradeGiftParams {
   /**
    * The amount of Telegram Stars that will be paid for the upgrade from the
    * business account balance. If gift.prepaid_upgrade_star_count > 0, then pass
-   * 0, otherwise, the can_transfer_stars business bot right is required and
+   * 0; otherwise, the can_transfer_stars business bot right is required and
    * gift.upgrade_star_count must be passed.
    */
   star_count?: number | undefined
@@ -4558,13 +4940,13 @@ export interface TransferGiftParams {
   business_connection_id: string
 
   /**
-   * Unique identifier of the regular gift that should be transferred
+   * Unique identifier of the unique gift that should be transferred
    */
   owned_gift_id: string
 
   /**
-   * Unique identifier of the chat which will own the gift. The chat must be
-   * active in the last 24 hours.
+   * Unique identifier of the chat which will own the gift. The chat must have
+   * been active in the last 24 hours.
    */
   new_owner_chat_id: number
 
@@ -4574,6 +4956,23 @@ export interface TransferGiftParams {
    * bot right is required.
    */
   star_count?: number | undefined
+}
+
+/**
+ * Parameters for `deleteBusinessAccountGift`.
+ *
+ * @see https://core.telegram.org/bots/api#deletebusinessaccountgift
+ */
+export interface DeleteBusinessAccountGiftParams {
+  /**
+   * Unique identifier of the business connection
+   */
+  business_connection_id: string
+
+  /**
+   * Unique identifier of the regular gift that should be deleted
+   */
+  owned_gift_id: string
 }
 
 /**

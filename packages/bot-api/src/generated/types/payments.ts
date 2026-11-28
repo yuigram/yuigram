@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Payments
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -20,7 +20,7 @@ export interface LabeledPrice {
   /**
    * Price of the product in the smallest units of the currency (integer, not
    * float/double). For example, for a price of US$ 1.45 pass amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly amount: number
@@ -54,8 +54,8 @@ export interface Invoice {
 
   /**
    * Total price in the smallest units of the currency (integer, not
-   * float/double). For example, for a price of US$ 1.45 pass amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * float/double). For example, for a price of US$ 1.45, total_amount = 145. See
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly total_amount: number
@@ -163,8 +163,8 @@ export interface SuccessfulPayment {
 
   /**
    * Total price in the smallest units of the currency (integer, not
-   * float/double). For example, for a price of US$ 1.45 pass amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * float/double). For example, for a price of US$ 1.45, total_amount = 145. See
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly total_amount: number
@@ -226,7 +226,7 @@ export interface RefundedPayment {
   /**
    * Total refunded price in the smallest units of the currency (integer, not
    * float/double). For example, for a price of US$ 1.45, total_amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly total_amount: number
@@ -269,7 +269,7 @@ export interface ShippingQuery {
   readonly invoice_payload: string
 
   /**
-   * User specified shipping address
+   * User-specified shipping address
    */
   readonly shipping_address: ShippingAddress
 }
@@ -297,8 +297,8 @@ export interface PreCheckoutQuery {
 
   /**
    * Total price in the smallest units of the currency (integer, not
-   * float/double). For example, for a price of US$ 1.45 pass amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * float/double). For example, for a price of US$ 1.45, total_amount = 145. See
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly total_amount: number

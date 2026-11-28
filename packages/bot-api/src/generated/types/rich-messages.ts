@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Rich messages
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -37,15 +37,15 @@ export interface InputRichMessage {
 
   /**
    * Content of the rich message to send described using HTML formatting. See
-   * rich message formatting options for more details. Use media field to specify
-   * the media used in the message.
+   * rich message formatting options for more details. Use the media field to
+   * specify the media used in the message.
    */
   readonly html?: string | undefined
 
   /**
    * Content of the rich message to send described using Markdown formatting. See
-   * rich message formatting options for more details. Use media field to specify
-   * the media used in the message.
+   * rich message formatting options for more details. Use the media field to
+   * specify the media used in the message.
    */
   readonly markdown?: string | undefined
 
@@ -209,6 +209,7 @@ export type RichText =
   | RichTextSubscript
   | RichTextSuperscript
   | RichTextTextMention
+  | RichTextTonAddress
   | RichTextUnderline
   | RichTextUrl
 
@@ -544,6 +545,28 @@ export interface RichTextBankCardNumber {
 }
 
 /**
+ * An address in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#richtexttonaddress
+ */
+export interface RichTextTonAddress {
+  /**
+   * Type of the rich text, always “ton_address”
+   */
+  readonly type: string
+
+  /**
+   * Text of the address
+   */
+  readonly text: RichText
+
+  /**
+   * The address
+   */
+  readonly address: string
+}
+
+/**
  * A mention by a username.
  *
  * @see https://core.telegram.org/bots/api#richtextmention
@@ -682,8 +705,8 @@ export interface RichTextAnchorLink {
   readonly text: RichText
 
   /**
-   * The name of the anchor. If the name is empty, then the link brings back to
-   * the top of the message.
+   * The name of the anchor. If the name is empty, then the link brings the user
+   * back to the top of the message.
    */
   readonly anchor_name: string
 }
@@ -1028,8 +1051,8 @@ export interface RichBlockBlockQuotation {
 }
 
 /**
- * A block quotation, corresponding to the HTML tag <blockquote> with custom
- * attribute "expandable".
+ * A block quotation, corresponding to the HTML tag <blockquote> with the
+ * custom attribute "expandable".
  *
  * @see https://core.telegram.org/bots/api#richblockexpandableblockquotation
  */
@@ -1042,7 +1065,7 @@ export interface RichBlockExpandableBlockQuotation {
   /**
    * Content of the block
    */
-  readonly text: RichText
+  readonly blocks: RichBlock[]
 
   /**
    * Credit of the block
@@ -1393,9 +1416,10 @@ export interface RichBlockVoiceNote {
 
 /**
  * A block with a “Thinking…” placeholder, corresponding to the custom HTML tag
- * <tg-thinking>. The block may be used only in sendRichMessageDraft, therefore
- * it can't be received in messages. See https://t.me/addemoji/AIActions for
- * examples of custom emoji that are recommended for usage in the block.
+ * <tg-thinking>. The block may be used only in sendRichMessageDraft;
+ * therefore, it can't be received in messages. See
+ * https://t.me/addemoji/AIActions for examples of custom emoji that are
+ * recommended for usage in the block.
  *
  * @see https://core.telegram.org/bots/api#richblockthinking
  */
@@ -1647,8 +1671,8 @@ export interface InputRichBlockBlockQuotation {
 }
 
 /**
- * A block quotation, corresponding to the HTML tag <blockquote> with custom
- * attribute "expandable".
+ * A block quotation, corresponding to the HTML tag <blockquote> with the
+ * custom attribute "expandable".
  *
  * @see https://core.telegram.org/bots/api#inputrichblockexpandableblockquotation
  */
@@ -1661,7 +1685,7 @@ export interface InputRichBlockExpandableBlockQuotation {
   /**
    * Content of the block
    */
-  readonly text: RichText
+  readonly blocks: InputRichBlock[]
 
   /**
    * Credit of the block
@@ -1999,9 +2023,10 @@ export interface InputRichBlockVoiceNote {
 
 /**
  * A block with a “Thinking…” placeholder, corresponding to the custom HTML tag
- * <tg-thinking>. The block may be used only in sendRichMessageDraft, therefore
- * it can't be received in messages. See https://t.me/addemoji/AIActions for
- * examples of custom emoji that are recommended for usage in the block.
+ * <tg-thinking>. The block may be used only in sendRichMessageDraft;
+ * therefore, it can't be received in messages. See
+ * https://t.me/addemoji/AIActions for examples of custom emoji that are
+ * recommended for usage in the block.
  *
  * @see https://core.telegram.org/bots/api#inputrichblockthinking
  */

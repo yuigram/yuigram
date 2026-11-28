@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Payments
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -14,7 +14,7 @@ import type { InlineKeyboardMarkup, LabeledPrice, ReplyParameters, ShippingOptio
 export interface SendInvoiceParams {
   /**
    * Unique identifier for the target chat or username of the target bot,
-   * supergroup or channel in the format @username
+   * supergroup, or channel in the format @username
    */
   chat_id: number | string
 
@@ -43,7 +43,7 @@ export interface SendInvoiceParams {
 
   /**
    * Bot-defined invoice payload, 1-128 bytes. This will not be displayed to the
-   * user, use it for your internal processes.
+   * user; use it for your internal processes.
    */
   payload: string
 
@@ -69,7 +69,7 @@ export interface SendInvoiceParams {
   /**
    * The maximum accepted amount for tips in the smallest units of the currency
    * (integer, not float/double). For example, for a maximum tip of US$ 1.45 pass
-   * max_tip_amount = 145. See the exp parameter in currencies.json, it shows the
+   * max_tip_amount = 145. See the exp parameter in currencies.json; it shows the
    * number of digits past the decimal point for each currency (2 for the
    * majority of currencies). Defaults to 0. Not supported for payments in
    * Telegram Stars.
@@ -80,7 +80,7 @@ export interface SendInvoiceParams {
    * A JSON-serialized Array of suggested amounts of tips in the smallest units
    * of the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * strictly increasing order and must not exceed max_tip_amount.
    */
   suggested_tip_amounts?: number[] | undefined
 
@@ -95,7 +95,7 @@ export interface SendInvoiceParams {
 
   /**
    * JSON-serialized data about the invoice, which will be shared with the
-   * payment provider. A detailed description of required fields should be
+   * payment provider. A detailed description of the required fields should be
    * provided by the payment provider.
    */
   provider_data?: string | undefined
@@ -231,7 +231,7 @@ export interface CreateInvoiceLinkParams {
 
   /**
    * Bot-defined invoice payload, 1-128 bytes. This will not be displayed to the
-   * user, use it for your internal processes.
+   * user; use it for your internal processes.
    */
   payload: string
 
@@ -260,14 +260,14 @@ export interface CreateInvoiceLinkParams {
    * is used. Currently, it must always be 2592000 (30 days) if specified. Any
    * number of subscriptions can be active for a given bot at the same time,
    * including multiple concurrent subscriptions from the same user. Subscription
-   * price must no exceed 10000 Telegram Stars.
+   * price must not exceed 10000 Telegram Stars.
    */
   subscription_period?: number | undefined
 
   /**
    * The maximum accepted amount for tips in the smallest units of the currency
    * (integer, not float/double). For example, for a maximum tip of US$ 1.45 pass
-   * max_tip_amount = 145. See the exp parameter in currencies.json, it shows the
+   * max_tip_amount = 145. See the exp parameter in currencies.json; it shows the
    * number of digits past the decimal point for each currency (2 for the
    * majority of currencies). Defaults to 0. Not supported for payments in
    * Telegram Stars.
@@ -278,13 +278,13 @@ export interface CreateInvoiceLinkParams {
    * A JSON-serialized Array of suggested amounts of tips in the smallest units
    * of the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * strictly increasing order and must not exceed max_tip_amount.
    */
   suggested_tip_amounts?: number[] | undefined
 
   /**
    * JSON-serialized data about the invoice, which will be shared with the
-   * payment provider. A detailed description of required fields should be
+   * payment provider. A detailed description of the required fields should be
    * provided by the payment provider.
    */
   provider_data?: string | undefined
@@ -378,7 +378,7 @@ export interface AnswerShippingQueryParams {
   shipping_options?: ShippingOption[] | undefined
 
   /**
-   * Required if ok is False. Error message in human readable form that explains
+   * Required if ok is False. Error message in human-readable form that explains
    * why it is impossible to complete the order (e.g. “Sorry, delivery to your
    * desired address is unavailable”). Telegram will display this message to the
    * user.
@@ -404,7 +404,7 @@ export interface AnswerPreCheckoutQueryParams {
   ok: boolean
 
   /**
-   * Required if ok is False. Error message in human readable form that explains
+   * Required if ok is False. Error message in human-readable form that explains
    * the reason for failure to proceed with the checkout (e.g. "Sorry, somebody
    * just bought the last of our amazing black T-shirts while you were busy
    * filling out your payment details. Please choose a different color or

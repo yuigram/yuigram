@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
-// Named event registrations (81)
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Named event registrations (85)
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -142,7 +142,7 @@ export interface GeneratedRegistrations<Ext> {
   onChatOwnerLeft(handler: EventHandler<ContextFor<'chat_owner_left'> & Ext>): this
 
   /**
-   * A chat photo was change to this value. Equivalent to
+   * A chat photo was changed to this value. Equivalent to
    * `on('chat_photo_changed', handler)`.
    */
   onChatPhotoChanged(handler: EventHandler<ContextFor<'chat_photo_changed'> & Ext>): this
@@ -285,7 +285,7 @@ export interface GeneratedRegistrations<Ext> {
   onInlineResultChosen(handler: EventHandler<ContextFor<'inline_result_chosen'> & Ext>): this
 
   /**
-   * A new bot was created to be managed by the bot, or token or owner of a
+   * A new bot was created to be managed by the bot, or the token or owner of a
    * managed bot was changed. Equivalent to `on('managed_bot', handler)`.
    */
   onManagedBot(handler: EventHandler<ContextFor<'managed_bot'> & Ext>): this
@@ -336,6 +336,13 @@ export interface GeneratedRegistrations<Ext> {
    * Equivalent to `on('paid_message_price_changed', handler)`.
    */
   onPaidMessagePriceChanged(handler: EventHandler<ContextFor<'paid_message_price_changed'> & Ext>): this
+
+  /**
+   * Service message: the sender of the message used a link of the other user,
+   * which allows sending messages to the user without paying Telegram Stars.
+   * Equivalent to `on('paid_messages_waived', handler)`.
+   */
+  onPaidMessagesWaived(handler: EventHandler<ContextFor<'paid_messages_waived'> & Ext>): this
 
   /**
    * Telegram Passport data. Equivalent to `on('passport_data', handler)`.
@@ -396,6 +403,12 @@ export interface GeneratedRegistrations<Ext> {
   onRefundedPayment(handler: EventHandler<ContextFor<'refunded_payment'> & Ext>): this
 
   /**
+   * New incoming query from a forwarded message with a shared widget. Equivalent
+   * to `on('shared_widget_query', handler)`.
+   */
+  onSharedWidgetQuery(handler: EventHandler<ContextFor<'shared_widget_query'> & Ext>): this
+
+  /**
    * New incoming shipping query. Equivalent to `on('shipping_query', handler)`.
    */
   onShippingQuery(handler: EventHandler<ContextFor<'shipping_query'> & Ext>): this
@@ -449,6 +462,12 @@ export interface GeneratedRegistrations<Ext> {
   onSupergroupCreated(handler: EventHandler<ContextFor<'supergroup_created'> & Ext>): this
 
   /**
+   * Service message: a transfer with a TON wallet. Equivalent to
+   * `on('ton_wallet_transfer', handler)`.
+   */
+  onTonWalletTransfer(handler: EventHandler<ContextFor<'ton_wallet_transfer'> & Ext>): this
+
+  /**
    * Service message: a unique gift was sent or received. Equivalent to
    * `on('unique_gift', handler)`.
    */
@@ -491,10 +510,18 @@ export interface GeneratedRegistrations<Ext> {
   onWebAppData(handler: EventHandler<ContextFor<'web_app_data'> & Ext>): this
 
   /**
+   * New incoming query from a widget in a message sent by the bot or via the
+   * bot. Equivalent to `on('widget_query', handler)`.
+   */
+  onWidgetQuery(handler: EventHandler<ContextFor<'widget_query'> & Ext>): this
+
+  /**
    * Service message: the user allowed the bot to write messages after adding it
    * to the attachment or side menu, launching a Web App from a link, or
    * accepting an explicit request from a Web App sent by the method
-   * requestWriteAccess. Equivalent to `on('write_access_allowed', handler)`.
+   * requestWriteAccess, or the user was invited to the private chat with the bot
+   * by the owner of the bot. Equivalent to `on('write_access_allowed',
+   * handler)`.
    */
   onWriteAccessAllowed(handler: EventHandler<ContextFor<'write_access_allowed'> & Ext>): this
 }
@@ -558,6 +585,7 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onMessageReactionCount', 'message_reaction_count'],
   ['onMyChatMember', 'my_chat_member'],
   ['onPaidMessagePriceChanged', 'paid_message_price_changed'],
+  ['onPaidMessagesWaived', 'paid_messages_waived'],
   ['onPassportData', 'passport_data'],
   ['onPaymentSuccessful', 'payment_successful'],
   ['onPoll', 'poll'],
@@ -568,6 +596,7 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onProximityAlert', 'proximity_alert'],
   ['onPurchasedPaidMedia', 'purchased_paid_media'],
   ['onRefundedPayment', 'refunded_payment'],
+  ['onSharedWidgetQuery', 'shared_widget_query'],
   ['onShippingQuery', 'shipping_query'],
   ['onStoppedMessageGeneration', 'stopped_message_generation'],
   ['onSubscription', 'subscription'],
@@ -577,6 +606,7 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onSuggestedPostPaid', 'suggested_post_paid'],
   ['onSuggestedPostRefunded', 'suggested_post_refunded'],
   ['onSupergroupCreated', 'supergroup_created'],
+  ['onTonWalletTransfer', 'ton_wallet_transfer'],
   ['onUniqueGift', 'unique_gift'],
   ['onUsersShared', 'users_shared'],
   ['onVideoChatEnded', 'video_chat_ended'],
@@ -584,5 +614,6 @@ export const REGISTRATIONS: ReadonlyArray<readonly [method: string, kind: string
   ['onVideoChatScheduled', 'video_chat_scheduled'],
   ['onVideoChatStarted', 'video_chat_started'],
   ['onWebAppData', 'web_app_data'],
+  ['onWidgetQuery', 'widget_query'],
   ['onWriteAccessAllowed', 'write_access_allowed'],
 ]

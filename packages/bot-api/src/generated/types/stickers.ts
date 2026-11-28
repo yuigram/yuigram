@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Stickers
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -141,8 +141,8 @@ export interface MaskPosition {
 
   /**
    * Shift by X-axis measured in widths of the mask scaled to the face size, from
-   * left to right. For example, choosing -1.0 will place mask just to the left
-   * of the default mask position.
+   * left to right. For example, choosing -1.0 will place the mask just to the
+   * left of the default mask position.
    */
   readonly x_shift: number
 
@@ -192,7 +192,7 @@ export interface InputSticker {
   readonly mask_position?: MaskPosition | undefined
 
   /**
-   * List of 0-20 search keywords for the sticker with total length of up to 64
+   * List of 0-20 search keywords for the sticker with a total length of up to 64
    * characters. For “regular” and “custom_emoji” stickers only.
    */
   readonly keywords?: string[] | undefined

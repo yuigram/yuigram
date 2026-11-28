@@ -1,11 +1,11 @@
 // GENERATED FILE — do not edit.
 // Per-event context field shapes
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { UpdateEventKind } from './events.js'
-import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, WriteAccessAllowed } from './types/index.js'
+import type { Animation, Audio, BotSubscriptionUpdated, BusinessBotRights, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, Chat, ChatBackground, ChatBoost, ChatBoostAdded, ChatBoostRemoved, ChatBoostSource, ChatBoostUpdated, ChatInviteLink, ChatJoinRequest, ChatMember, ChatMemberUpdated, ChatOwnerChanged, ChatOwnerLeft, ChatShared, Checklist, ChecklistTasksAdded, ChecklistTasksDone, ChosenInlineResult, CommunityChatAdded, CommunityChatJoined, CommunityChatRemoved, Contact, Dice, DirectMessagePriceChanged, DirectMessagesTopic, Document, ExternalReplyInfo, ForumTopicClosed, ForumTopicCreated, ForumTopicEdited, ForumTopicReopened, Game, GeneralForumTopicHidden, GeneralForumTopicUnhidden, GiftInfo, Giveaway, GiveawayCompleted, GiveawayCreated, GiveawayWinners, InlineKeyboardMarkup, InlineQuery, Invoice, LinkPreviewOptions, LivePhoto, Location, ManagedBotCreated, ManagedBotUpdated, MaybeInaccessibleMessage, Message, MessageAutoDeleteTimerChanged, MessageEntity, MessageGenerationStopped, MessageOrigin, MessageReactionCountUpdated, MessageReactionUpdated, OrderInfo, PaidMediaInfo, PaidMediaPurchased, PaidMessagePriceChanged, PaidMessagesWaived, PassportData, PhotoSize, Poll, PollAnswer, PollMedia, PollOption, PollOptionAdded, PollOptionDeleted, PreCheckoutQuery, ProximityAlertTriggered, ReactionCount, ReactionType, RefundedPayment, RichMessage, SharedWidgetQuery, ShippingAddress, ShippingQuery, Sticker, Story, SuccessfulPayment, SuggestedPostApprovalFailed, SuggestedPostApproved, SuggestedPostDeclined, SuggestedPostInfo, SuggestedPostPaid, SuggestedPostRefunded, TextQuote, TonWalletTransfer, UniqueGiftInfo, User, UsersShared, Venue, Video, VideoChatEnded, VideoChatParticipantsInvited, VideoChatScheduled, VideoChatStarted, VideoNote, Voice, WebAppData, Widget, WidgetQuery, WidgetQueryType, WriteAccessAllowed } from './types/index.js'
 
 /**
  * Fields carried by `BotSubscriptionUpdated`, projected onto the context for
@@ -51,7 +51,7 @@ export interface BusinessConnectionEventFields {
    * connection. This number may have more than 32 significant bits and some
    * programming languages may have difficulty/silent defects in interpreting it.
    * But it has at most 52 significant bits, so a 64-bit integer or
-   * double-precision float type are safe for storing this identifier.
+   * double-precision float type is safe for storing this identifier.
    */
   readonly user_chat_id: number
   /**
@@ -113,7 +113,8 @@ export interface CallbackQueryEventFields {
   readonly message?: MaybeInaccessibleMessage | undefined
   /**
    * Identifier of the message sent via the bot in inline mode, that originated
-   * the query
+   * the query. Can also be present for messages sent by the bot, depending on
+   * the parameter callback_query_mode of the method setMySettings.
    */
   readonly inline_message_id?: string | undefined
   /**
@@ -122,7 +123,7 @@ export interface CallbackQueryEventFields {
    */
   readonly chat_instance: string
   /**
-   * Data associated with the callback button. Be aware that the message
+   * Data associated with the callback button. Be aware that the message that
    * originated the query can contain no callback buttons with this data.
    */
   readonly data?: string | undefined
@@ -196,10 +197,10 @@ export interface ChatJoinRequestEventFields {
    * Identifier of a private chat with the user who sent the join request. This
    * number may have more than 32 significant bits and some programming languages
    * may have difficulty/silent defects in interpreting it. But it has at most 52
-   * significant bits, so a 64-bit integer or double-precision float type are
-   * safe for storing this identifier. The bot can use this identifier for 5
-   * minutes to send messages until the join request is processed, assuming no
-   * other administrator contacted the user.
+   * significant bits, so a 64-bit integer or double-precision float type is safe
+   * for storing this identifier. The bot can use this identifier for 5 minutes
+   * to send messages until the join request is processed, assuming no other
+   * administrator contacted the user.
    */
   readonly user_chat_id: number
   /**
@@ -281,12 +282,14 @@ export interface ChosenInlineResultEventFields {
    */
   readonly result_id: string
   /**
-   * Sender location, only for bots that require user location
+   * Sender location, only for bots that enabled user location requests via
+   * @BotFather or using the parameter needs_inline_query_location of the method
+   * setMySettings
    */
   readonly location?: Location | undefined
   /**
    * Identifier of the sent inline message. Available only if there is an inline
-   * keyboard attached to the message. Will be also received in callback queries
+   * keyboard attached to the message. Will also be received in callback queries
    * and can be used to edit the message.
    */
   readonly inline_message_id?: string | undefined
@@ -322,13 +325,15 @@ export interface InlineQueryEventFields {
   /**
    * Type of the chat from which the inline query was sent. Can be either
    * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
+   * “group”, “supergroup”, or “channel”. The chat type should always be known
    * for requests sent from official clients and most third-party clients, unless
    * the request was sent from a secret chat.
    */
   readonly chat_type?: string | undefined
   /**
-   * Sender location, only for bots that request user location
+   * Sender location, only for bots that enabled user location requests via
+   * @BotFather or using the parameter needs_inline_query_location of the method
+   * setMySettings
    */
   readonly location?: Location | undefined
 }
@@ -345,8 +350,8 @@ export interface ManagedBotUpdatedEventFields {
   readonly sender: User
 
   /**
-   * Information about the bot. Token of the bot can be fetched using the method
-   * getManagedBotToken.
+   * Information about the bot. The token of the bot can be fetched using the
+   * method getManagedBotToken.
    */
   readonly bot: User
 }
@@ -602,8 +607,12 @@ export interface MessageEventFields {
    */
   readonly voice?: Voice | undefined
   /**
-   * Caption for the animation, audio, document, paid media, photo, video or
-   * voice
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+  /**
+   * Caption for the animation, audio, document, live photo, paid media, photo,
+   * video, voice, or widget
    */
   readonly caption?: string | undefined
   /**
@@ -612,7 +621,7 @@ export interface MessageEventFields {
    */
   readonly caption_entities?: MessageEntity[] | undefined
   /**
-   * True, if the caption must be shown above the message media
+   * True, if the caption must be shown above the message media or the widget
    */
   readonly show_caption_above_media?: true | undefined
   /**
@@ -671,7 +680,7 @@ export interface MessageEventFields {
    */
   readonly new_chat_title?: string | undefined
   /**
-   * A chat photo was change to this value
+   * A chat photo was changed to this value
    */
   readonly new_chat_photo?: PhotoSize[] | undefined
   /**
@@ -684,16 +693,17 @@ export interface MessageEventFields {
   readonly group_chat_created?: true | undefined
   /**
    * Service message: the supergroup has been created. This field can't be
-   * received in a message coming through updates, because bot can't be a member
-   * of a supergroup when it is created. It can only be found in reply_to_message
-   * if someone replies to a very first message in a directly created supergroup.
+   * received in a message coming through updates, because a bot can't be a
+   * member of a supergroup when it is created. It can only be found in
+   * reply_to_message if someone replies to the very first message in a directly
+   * created supergroup.
    */
   readonly supergroup_chat_created?: true | undefined
   /**
    * Service message: the channel has been created. This field can't be received
-   * in a message coming through updates, because bot can't be a member of a
+   * in a message coming through updates, because a bot can't be a member of a
    * channel when it is created. It can only be found in reply_to_message if
-   * someone replies to a very first message in a channel.
+   * someone replies to the very first message in a channel.
    */
   readonly channel_chat_created?: true | undefined
   /**
@@ -705,7 +715,7 @@ export interface MessageEventFields {
    * This number may have more than 32 significant bits and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this identifier.
+   * float type is safe for storing this identifier.
    */
   readonly migrate_to_chat_id?: number | undefined
   /**
@@ -713,7 +723,7 @@ export interface MessageEventFields {
    * This number may have more than 32 significant bits and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this identifier.
+   * float type is safe for storing this identifier.
    */
   readonly migrate_from_chat_id?: number | undefined
   /**
@@ -766,7 +776,8 @@ export interface MessageEventFields {
    * Service message: the user allowed the bot to write messages after adding it
    * to the attachment or side menu, launching a Web App from a link, or
    * accepting an explicit request from a Web App sent by the method
-   * requestWriteAccess
+   * requestWriteAccess, or the user was invited to the private chat with the bot
+   * by the owner of the bot
    */
   readonly write_access_allowed?: WriteAccessAllowed | undefined
   /**
@@ -860,6 +871,11 @@ export interface MessageEventFields {
    */
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
   /**
+   * Service message: the sender of the message used a link of the other user,
+   * which allows sending messages to the user without paying Telegram Stars
+   */
+  readonly paid_messages_waived?: PaidMessagesWaived | undefined
+  /**
    * Service message: answer option was added to a poll
    */
   readonly poll_option_added?: PollOptionAdded | undefined
@@ -887,6 +903,10 @@ export interface MessageEventFields {
    * Service message: payment for a suggested post was refunded
    */
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
+  /**
+   * Service message: a transfer with a TON wallet
+   */
+  readonly ton_wallet_transfer?: TonWalletTransfer | undefined
   /**
    * Service message: video chat scheduled
    */
@@ -1094,11 +1114,11 @@ export interface PollEventFields {
    */
   readonly allows_multiple_answers: boolean
   /**
-   * True, if the poll allows to change the chosen answer options
+   * True, if the poll allows changing the chosen answer options
    */
   readonly allows_revoting: boolean
   /**
-   * True if voting is limited to users who have been members of the chat where
+   * True, if voting is limited to users who have been members of the chat where
    * the poll was originally sent for more than 24 hours
    */
   readonly members_only: boolean
@@ -1174,8 +1194,8 @@ export interface PreCheckoutQueryEventFields {
   readonly currency: string
   /**
    * Total price in the smallest units of the currency (integer, not
-   * float/double). For example, for a price of US$ 1.45 pass amount = 145. See
-   * the exp parameter in currencies.json, it shows the number of digits past the
+   * float/double). For example, for a price of US$ 1.45, total_amount = 145. See
+   * the exp parameter in currencies.json; it shows the number of digits past the
    * decimal point for each currency (2 for the majority of currencies).
    */
   readonly total_amount: number
@@ -1191,6 +1211,35 @@ export interface PreCheckoutQueryEventFields {
    * Order information provided by the user
    */
   readonly order_info?: OrderInfo | undefined
+}
+
+/**
+ * Fields carried by `SharedWidgetQuery`, projected onto the context for the
+ * `shared_widget_query` event: `shared_widget_query`.
+ */
+export interface SharedWidgetQueryEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: SharedWidgetQuery
+
+  /** Who caused this. Telegram spells it `from` on this payload. */
+  readonly sender: User
+
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+  /**
+   * Unique identifier of the shared widget, which sent the query
+   */
+  readonly widget_id: string
 }
 
 /**
@@ -1213,9 +1262,64 @@ export interface ShippingQueryEventFields {
    */
   readonly invoice_payload: string
   /**
-   * User specified shipping address
+   * User-specified shipping address
    */
   readonly shipping_address: ShippingAddress
+}
+
+/**
+ * Fields carried by `WidgetQuery`, projected onto the context for the
+ * `widget_query` event: `widget_query`.
+ */
+export interface WidgetQueryEventFields {
+  /** The whole payload, under a domain name. */
+  readonly payload: WidgetQuery
+
+  /** Who caused this. Telegram spells it `from` on this payload. */
+  readonly sender: User
+
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+  /**
+   * Chat with the message containing the widget; omitted if the widget is in an
+   * inline message
+   */
+  readonly chat?: Chat | undefined
+  /**
+   * Identifier of the message containing the widget; omitted if the widget is in
+   * an inline message
+   */
+  readonly message_id?: number | undefined
+  /**
+   * Identifier of the inline message containing the widget
+   */
+  readonly inline_message_id?: string | undefined
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the widget was sent
+   */
+  readonly chat_instance: string
+  /**
+   * For widgets in inline messages, type of the chat to which the message was
+   * sent. Can be either “sender” for a private chat with the inline query
+   * sender, “private”, “group”, “supergroup”, or “channel”.
+   */
+  readonly chat_type?: string | undefined
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+  /**
+   * Unique identifier of the shared widget, which sent the query; omitted if the
+   * widget isn't shared
+   */
+  readonly widget_id?: string | undefined
 }
 
 /**
@@ -1247,9 +1351,11 @@ export interface EventFieldsByKind {
   'poll_answer': PollAnswerEventFields
   'pre_checkout_query': PreCheckoutQueryEventFields
   'purchased_paid_media': PaidMediaPurchasedEventFields
+  'shared_widget_query': SharedWidgetQueryEventFields
   'shipping_query': ShippingQueryEventFields
   'stopped_message_generation': MessageGenerationStoppedEventFields
   'subscription': BotSubscriptionUpdatedEventFields
+  'widget_query': WidgetQueryEventFields
 }
 
 /**
@@ -1281,7 +1387,9 @@ export const PAYLOAD_ALIASES = {
   'poll_answer': 'answer',
   'pre_checkout_query': 'preCheckoutQuery',
   'purchased_paid_media': 'purchase',
+  'shared_widget_query': 'payload',
   'shipping_query': 'shippingQuery',
   'stopped_message_generation': 'payload',
   'subscription': 'subscription',
+  'widget_query': 'payload',
 } as const satisfies Readonly<Record<UpdateEventKind, string>>
