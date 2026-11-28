@@ -1,14 +1,117 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Available types
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { CallbackGame, Game } from './games.js'
 import type { Invoice, RefundedPayment, SuccessfulPayment } from './payments.js'
-import type { RichMessage } from './rich-messages.js'
+import type { RichMessage, RichText } from './rich-messages.js'
 import type { Sticker } from './stickers.js'
 import type { PassportData } from './telegram-passport.js'
+
+/**
+ * This object contains full information about the bot itself.
+ *
+ * @see https://core.telegram.org/bots/api#botfullinfo
+ */
+export interface BotFullInfo {
+  /**
+   * Unique identifier for this bot. This number may have more than 32
+   * significant bits and some programming languages may have difficulty/silent
+   * defects in interpreting it. But it has at most 52 significant bits, so a
+   * 64-bit integer or double-precision float type is safe for storing this
+   * identifier.
+   */
+  readonly id: number
+
+  /**
+   * Always True
+   */
+  readonly is_bot: true
+
+  /**
+   * Bot's first name
+   */
+  readonly first_name: string
+
+  /**
+   * Bot's username
+   */
+  readonly username?: string | undefined
+
+  /**
+   * If non-empty, the list of all active usernames of the bot
+   */
+  readonly active_usernames?: string[] | undefined
+
+  /**
+   * True, if the bot can be added to groups
+   */
+  readonly can_join_groups: boolean
+
+  /**
+   * True, if privacy mode is disabled for the bot
+   */
+  readonly can_read_all_group_messages: boolean
+
+  /**
+   * True, if the bot supports guest queries from chats it is not a member of
+   */
+  readonly supports_guest_queries: boolean
+
+  /**
+   * True, if the bot supports inline queries
+   */
+  readonly supports_inline_queries: boolean
+
+  /**
+   * Placeholder for inline queries, which is shown in the input field after the
+   * bot's username; omitted if the default placeholder is used
+   */
+  readonly inline_query_placeholder?: string | undefined
+
+  /**
+   * True, if the bot requests the location of the user with every inline query
+   */
+  readonly needs_inline_query_location: boolean
+
+  /**
+   * True, if the bot can be connected to a user account to manage it
+   */
+  readonly can_connect_to_business: boolean
+
+  /**
+   * True, if the bot has a main Web App
+   */
+  readonly has_main_web_app: boolean
+
+  /**
+   * True, if the bot has forum topic mode enabled in private chats
+   */
+  readonly has_topics_enabled: boolean
+
+  /**
+   * True, if the bot allows users to create and delete topics in private chats
+   */
+  readonly allows_users_to_create_topics: boolean
+
+  /**
+   * True, if topics in private chats with the bot are shown in a sidebar
+   */
+  readonly has_topic_sidebar: boolean
+
+  /**
+   * True, if other bots can be created to be controlled by the bot
+   */
+  readonly can_manage_bots: boolean
+
+  /**
+   * True, if the bot supports join request queries and can be assigned to
+   * process them
+   */
+  readonly supports_join_request_queries: boolean
+}
 
 /**
  * This object represents a Telegram user or bot.
@@ -20,7 +123,7 @@ export interface User {
    * Unique identifier for this user or bot. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * 64-bit integer or double-precision float type are safe for storing this
+   * 64-bit integer or double-precision float type is safe for storing this
    * identifier.
    */
   readonly id: number
@@ -59,62 +162,6 @@ export interface User {
    * True, if this user added the bot to the attachment menu
    */
   readonly added_to_attachment_menu?: true | undefined
-
-  /**
-   * True, if the bot can be invited to groups. Returned only in getMe.
-   */
-  readonly can_join_groups?: boolean | undefined
-
-  /**
-   * True, if privacy mode is disabled for the bot. Returned only in getMe.
-   */
-  readonly can_read_all_group_messages?: boolean | undefined
-
-  /**
-   * True, if the bot supports guest queries from chats it is not a member of.
-   * Returned only in getMe.
-   */
-  readonly supports_guest_queries?: boolean | undefined
-
-  /**
-   * True, if the bot supports inline queries. Returned only in getMe.
-   */
-  readonly supports_inline_queries?: boolean | undefined
-
-  /**
-   * True, if the bot can be connected to a user account to manage it. Returned
-   * only in getMe.
-   */
-  readonly can_connect_to_business?: boolean | undefined
-
-  /**
-   * True, if the bot has a main Web App. Returned only in getMe.
-   */
-  readonly has_main_web_app?: boolean | undefined
-
-  /**
-   * True, if the bot has forum topic mode enabled in private chats. Returned
-   * only in getMe.
-   */
-  readonly has_topics_enabled?: boolean | undefined
-
-  /**
-   * True, if the bot allows users to create and delete topics in private chats.
-   * Returned only in getMe.
-   */
-  readonly allows_users_to_create_topics?: boolean | undefined
-
-  /**
-   * True, if other bots can be created to be controlled by the bot. Returned
-   * only in getMe.
-   */
-  readonly can_manage_bots?: boolean | undefined
-
-  /**
-   * True, if the bot supports join request queries and can be assigned to
-   * process them. Returned only in getMe.
-   */
-  readonly supports_join_request_queries?: boolean | undefined
 }
 
 /**
@@ -127,7 +174,7 @@ export interface Chat {
    * Unique identifier for this chat. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * signed 64-bit integer or double-precision float type are safe for storing
+   * signed 64-bit integer or double-precision float type is safe for storing
    * this identifier.
    */
   readonly id: number
@@ -179,7 +226,7 @@ export interface ChatFullInfo {
    * Unique identifier for this chat. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * signed 64-bit integer or double-precision float type are safe for storing
+   * signed 64-bit integer or double-precision float type is safe for storing
    * this identifier.
    */
   readonly id: number
@@ -315,8 +362,8 @@ export interface ChatFullInfo {
   readonly bio?: string | undefined
 
   /**
-   * True, if privacy settings of the other party in the private chat allows to
-   * use tg://user?id=<user_id> links only in chats with the user
+   * True, if the privacy settings of the other party in the private chat allow
+   * using tg://user?id=<user_id> links only in chats with the user
    */
   readonly has_private_forwards?: true | undefined
 
@@ -431,7 +478,7 @@ export interface ChatFullInfo {
    * for a channel and vice versa; for supergroups and channel chats. This
    * identifier may be greater than 32 bits and some programming languages may
    * have difficulty/silent defects in interpreting it. But it is smaller than 52
-   * bits, so a signed 64 bit integer or double-precision float type are safe for
+   * bits, so a signed 64-bit integer or double-precision float type is safe for
    * storing this identifier.
    */
   readonly linked_chat_id?: number | undefined
@@ -473,6 +520,18 @@ export interface ChatFullInfo {
    * The Community to which the chat belongs
    */
   readonly community?: Community | undefined
+
+  /**
+   * For private chats, the TON wallet card of the user, which is shown on their
+   * profile page
+   */
+  readonly ton_wallet_card?: TonWalletCard | undefined
+
+  /**
+   * For private chats, supergroups and channels, the theme of the screen for
+   * sharing a link to the user or the chat; omitted if the default theme is used
+   */
+  readonly share_theme?: ChatShareTheme | undefined
 }
 
 /**
@@ -776,8 +835,13 @@ export interface Message {
   readonly voice?: Voice | undefined
 
   /**
-   * Caption for the animation, audio, document, paid media, photo, video or
-   * voice
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+
+  /**
+   * Caption for the animation, audio, document, live photo, paid media, photo,
+   * video, voice, or widget
    */
   readonly caption?: string | undefined
 
@@ -788,7 +852,7 @@ export interface Message {
   readonly caption_entities?: MessageEntity[] | undefined
 
   /**
-   * True, if the caption must be shown above the message media
+   * True, if the caption must be shown above the message media or the widget
    */
   readonly show_caption_above_media?: true | undefined
 
@@ -861,7 +925,7 @@ export interface Message {
   readonly new_chat_title?: string | undefined
 
   /**
-   * A chat photo was change to this value
+   * A chat photo was changed to this value
    */
   readonly new_chat_photo?: PhotoSize[] | undefined
 
@@ -877,17 +941,18 @@ export interface Message {
 
   /**
    * Service message: the supergroup has been created. This field can't be
-   * received in a message coming through updates, because bot can't be a member
-   * of a supergroup when it is created. It can only be found in reply_to_message
-   * if someone replies to a very first message in a directly created supergroup.
+   * received in a message coming through updates, because a bot can't be a
+   * member of a supergroup when it is created. It can only be found in
+   * reply_to_message if someone replies to the very first message in a directly
+   * created supergroup.
    */
   readonly supergroup_chat_created?: true | undefined
 
   /**
    * Service message: the channel has been created. This field can't be received
-   * in a message coming through updates, because bot can't be a member of a
+   * in a message coming through updates, because a bot can't be a member of a
    * channel when it is created. It can only be found in reply_to_message if
-   * someone replies to a very first message in a channel.
+   * someone replies to the very first message in a channel.
    */
   readonly channel_chat_created?: true | undefined
 
@@ -901,7 +966,7 @@ export interface Message {
    * This number may have more than 32 significant bits and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this identifier.
+   * float type is safe for storing this identifier.
    */
   readonly migrate_to_chat_id?: number | undefined
 
@@ -910,7 +975,7 @@ export interface Message {
    * This number may have more than 32 significant bits and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this identifier.
+   * float type is safe for storing this identifier.
    */
   readonly migrate_from_chat_id?: number | undefined
 
@@ -974,7 +1039,8 @@ export interface Message {
    * Service message: the user allowed the bot to write messages after adding it
    * to the attachment or side menu, launching a Web App from a link, or
    * accepting an explicit request from a Web App sent by the method
-   * requestWriteAccess
+   * requestWriteAccess, or the user was invited to the private chat with the bot
+   * by the owner of the bot
    */
   readonly write_access_allowed?: WriteAccessAllowed | undefined
 
@@ -1091,6 +1157,12 @@ export interface Message {
   readonly paid_message_price_changed?: PaidMessagePriceChanged | undefined
 
   /**
+   * Service message: the sender of the message used a link of the other user,
+   * which allows sending messages to the user without paying Telegram Stars
+   */
+  readonly paid_messages_waived?: PaidMessagesWaived | undefined
+
+  /**
    * Service message: answer option was added to a poll
    */
   readonly poll_option_added?: PollOptionAdded | undefined
@@ -1124,6 +1196,11 @@ export interface Message {
    * Service message: payment for a suggested post was refunded
    */
   readonly suggested_post_refunded?: SuggestedPostRefunded | undefined
+
+  /**
+   * Service message: a transfer with a TON wallet
+   */
+  readonly ton_wallet_transfer?: TonWalletTransfer | undefined
 
   /**
    * Service message: video chat scheduled
@@ -1164,10 +1241,10 @@ export interface Message {
  */
 export interface MessageId {
   /**
-   * Unique message identifier. In specific instances (e.g., message containing a
-   * video sent to a big chat), the server might automatically schedule a message
-   * instead of sending it immediately. In such cases, this field will be 0 and
-   * the relevant message will be unusable until it is actually sent.
+   * Unique message identifier. In specific instances (e.g., a message containing
+   * a video sent to a big chat), the server might automatically schedule a
+   * message instead of sending it immediately. In such cases, this field will be
+   * 0 and the relevant message will be unusable until it is actually sent.
    */
   readonly message_id: number
 }
@@ -1217,10 +1294,11 @@ export interface MessageEntity {
    * Type of the entity. Currently, can be “mention” (@username), “hashtag”
    * (#hashtag or #hashtag@chatusername), “cashtag” ($USD or $USD@chatusername),
    * “bot_command” (/start@jobs_bot), “url” (https://telegram.org), “email”
-   * (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123), “bold” (bold
-   * text), “italic” (italic text), “underline” (underlined text),
-   * “strikethrough” (strikethrough text), “spoiler” (spoiler message),
-   * “blockquote” (block quotation), “expandable_blockquote”
+   * (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123),
+   * “bank_card_number” (bank card number), “ton_address” (address in the TON
+   * blockchain), “bold” (bold text), “italic” (italic text), “underline”
+   * (underlined text), “strikethrough” (strikethrough text), “spoiler” (spoiler
+   * message), “blockquote” (block quotation), “expandable_blockquote”
    * (collapsed-by-default block quotation), “code” (monowidth string), “pre”
    * (monowidth block), “text_link” (for clickable text URLs), “text_mention”
    * (for users without usernames), “custom_emoji” (for inline custom emoji
@@ -1239,7 +1317,8 @@ export interface MessageEntity {
   readonly length: number
 
   /**
-   * For “text_link” only, URL that will be opened after user taps on the text
+   * For “text_link” only, URL that will be opened after the user taps on the
+   * text
    */
   readonly url?: string | undefined
 
@@ -1279,7 +1358,8 @@ export interface MessageEntity {
  */
 export interface TextQuote {
   /**
-   * Text of the quoted part of a message that is replied to by the given message
+   * Text of the quoted part of a message that is replied to by the given
+   * message; may be empty if the quote was chosen from a rich message
    */
   readonly text: string
 
@@ -1291,8 +1371,19 @@ export interface TextQuote {
   readonly entities?: MessageEntity[] | undefined
 
   /**
+   * Rich text of the quote if it was chosen from a rich message. May contain
+   * only plain text, RichTextBold, RichTextItalic, RichTextUnderline,
+   * RichTextStrikethrough, RichTextSpoiler, RichTextSubscript,
+   * RichTextSuperscript, RichTextDateTime, RichTextCustomEmoji,
+   * RichTextMathematicalExpression, and arrays of them.
+   */
+  readonly rich_texts?: RichText[] | undefined
+
+  /**
    * Approximate quote position in the original message in UTF-16 code units as
-   * specified by the sender
+   * specified by the sender. For quotes from rich messages, it is the position
+   * in the text formed by joining plain texts of all quotable texts of the
+   * message, separated by line feeds.
    */
   readonly position: number
 
@@ -1389,6 +1480,11 @@ export interface ExternalReplyInfo {
   readonly voice?: Voice | undefined
 
   /**
+   * Message is an HTML widget, information about the widget
+   */
+  readonly widget?: Widget | undefined
+
+  /**
    * True, if the message media is covered by a spoiler animation
    */
   readonly has_media_spoiler?: true | undefined
@@ -1460,7 +1556,7 @@ export interface ReplyParameters {
 
   /**
    * If the message to be replied to is from a different chat, unique identifier
-   * for the chat or username of the bot, supergroup or channel in the format
+   * for the chat or username of the bot, supergroup, or channel in the format
    * @username. Not supported for messages sent on behalf of a business account,
    * messages from channel direct messages chats and ephemeral messages.
    */
@@ -1504,7 +1600,34 @@ export interface ReplyParameters {
   readonly quote_entities?: MessageEntity[] | undefined
 
   /**
-   * Position of the quote in the original message in UTF-16 code units
+   * A JSON-serialized list of quoted parts of the rich message to be replied to.
+   * Must contain one element for each quoted text of the message in the order of
+   * their appearance. Each of the following is a separate quoted text: the text
+   * of a paragraph, a heading, a preformatted block, a footer, or a mathematical
+   * expression; the text and the credit of a block quotation or a pull
+   * quotation; the summary of a details block; the caption and each cell of a
+   * table; the text and the credit of a caption of a media block, a collage, a
+   * slideshow, or a map. Texts of blocks nested in lists, block quotations,
+   * details, collages, and slideshows are separate quoted texts too. The first
+   * and the last elements can contain only a part of the corresponding text; all
+   * other elements must contain the whole text. Formatting of the quoted parts
+   * must be kept, and rich texts must be nested in the same way as in the
+   * message received from the server. Mathematical expressions must be quoted
+   * entirely. Buttons in RichBlockButtons, anchors and dividers can't be quoted.
+   * Up to 32 quoted texts with a total length of up to 1024 characters can be
+   * specified. Only plain text, RichTextBold, RichTextItalic, RichTextUnderline,
+   * RichTextStrikethrough, RichTextSpoiler, RichTextSubscript,
+   * RichTextSuperscript, RichTextDateTime, RichTextCustomEmoji,
+   * RichTextMathematicalExpression, and arrays of them are kept in the quote;
+   * other rich text types are replaced with their text. If non-empty, then
+   * quote, quote_parse_mode and quote_entities are ignored.
+   */
+  readonly quote_rich_texts?: RichText[] | undefined
+
+  /**
+   * Position of the quote in the original message in UTF-16 code units. For
+   * quotes from rich messages, it is the position in the text formed by joining
+   * plain texts of all quotable texts of the message, separated by line feeds.
    */
   readonly quote_position?: number | undefined
 
@@ -1520,18 +1643,30 @@ export interface ReplyParameters {
 }
 
 /**
+ * Describes the parameters of an ephemeral message to be sent.
+ *
  * @see https://core.telegram.org/bots/api#ephemeralmessageparameters
  */
 export interface EphemeralMessageParameters {
   /**
-   * Identifier of the user who will receive the message. It is not guaranteed
-   * that the user will receive the message, especially if they are offline. See
-   * here for more details.
+   * Identifier of the user who will receive the message; required unless the
+   * message is sent as an ephemeral reply to a callback query. If omitted, then
+   * the parameter chat_id of the method is ignored. If specified together with
+   * callback_query_id, then it must be the identifier of the user who pressed
+   * the button. Must be omitted for messages sent in chats where the bot isn't a
+   * member, unless the message is a reply to an ephemeral message. It is not
+   * guaranteed that the user will receive the message, especially if they are
+   * offline. See here for more details.
    */
-  readonly receiver_user_id: number
+  readonly receiver_user_id?: number | undefined
 
   /**
-   * Identifier of the callback query which triggered the message, if any
+   * Identifier of the callback query which triggered the message, if any. If
+   * specified and receiver_user_id is omitted, then the message is sent as an
+   * ephemeral reply to the callback query and will be shown only to the user who
+   * pressed the button. Ephemeral replies can't be sent to callback queries from
+   * messages in channel direct messages chats. The bot must still answer the
+   * callback query using answerCallbackQuery.
    */
   readonly callback_query_id?: string | undefined
 
@@ -1743,7 +1878,7 @@ export interface Animation {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -1795,7 +1930,7 @@ export interface Audio {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 
@@ -1842,7 +1977,7 @@ export interface Document {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -1859,13 +1994,13 @@ export interface LivePhoto {
   readonly photo?: PhotoSize[] | undefined
 
   /**
-   * Identifier for the video file which can be used to download or reuse the
+   * Identifier for the video file, which can be used to download or reuse the
    * file
    */
   readonly file_id: string
 
   /**
-   * Unique identifier for the video file which is supposed to be the same over
+   * Unique identifier for the video file, which is supposed to be the same over
    * time and for different bots. Can't be used to download or reuse the file.
    */
   readonly file_unique_id: string
@@ -1894,7 +2029,7 @@ export interface LivePhoto {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -1953,7 +2088,7 @@ export interface VideoQuality {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -2024,7 +2159,7 @@ export interface Video {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 }
@@ -2099,9 +2234,50 @@ export interface Voice {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
+}
+
+/**
+ * This object describes an HTML widget.
+ *
+ * @see https://core.telegram.org/bots/api#widget
+ */
+export interface Widget {
+  /**
+   * Unique identifier of the shared widget, which can be used to send the widget
+   * again using the method sendSharedWidget; omitted if the widget isn't shared
+   */
+  readonly id?: string | undefined
+
+  /**
+   * Width of the widget in logical pixels; omitted if the widget must occupy the
+   * whole width of the message bubble
+   */
+  readonly width?: number | undefined
+
+  /**
+   * Height of the widget in logical pixels; omitted if the height of the widget
+   * isn't fixed
+   */
+  readonly height?: number | undefined
+
+  /**
+   * HTML code of the widget
+   */
+  readonly html: string
+
+  /**
+   * Public data of the widget, which is available wherever the widget is shown.
+   * All messages with a shared widget have the same public data.
+   */
+  readonly public_data?: string | undefined
+
+  /**
+   * Data of the widget, which is specific to the message
+   */
+  readonly chat_data?: string | undefined
 }
 
 /**
@@ -2235,7 +2411,7 @@ export interface Contact {
    * Contact's user identifier in Telegram. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * 64-bit integer or double-precision float type are safe for storing this
+   * 64-bit integer or double-precision float type is safe for storing this
    * identifier.
    */
   readonly user_id?: number | undefined
@@ -2536,12 +2712,12 @@ export interface Poll {
   readonly allows_multiple_answers: boolean
 
   /**
-   * True, if the poll allows to change the chosen answer options
+   * True, if the poll allows changing the chosen answer options
    */
   readonly allows_revoting: boolean
 
   /**
-   * True if voting is limited to users who have been members of the chat where
+   * True, if voting is limited to users who have been members of the chat where
    * the poll was originally sent for more than 24 hours
    */
   readonly members_only: boolean
@@ -2776,8 +2952,8 @@ export interface Location {
   readonly live_period?: number | undefined
 
   /**
-   * The direction in which user is moving, in degrees; 1-360. For active live
-   * locations only.
+   * The direction in which the user is moving, in degrees; 1-360. For active
+   * live locations only.
    */
   readonly heading?: number | undefined
 
@@ -2912,8 +3088,8 @@ export interface ManagedBotUpdated {
   readonly user: User
 
   /**
-   * Information about the bot. Token of the bot can be fetched using the method
-   * getManagedBotToken.
+   * Information about the bot. The token of the bot can be fetched using the
+   * method getManagedBotToken.
    */
   readonly bot: User
 }
@@ -3390,8 +3566,8 @@ export interface ForumTopicEdited {
 export interface ForumTopicReopened {}
 
 /**
- * This object represents a service message about General forum topic hidden in
- * the chat. Currently holds no information.
+ * This object represents a service message about the General forum topic
+ * hidden in the chat. Currently holds no information.
  *
  * @see https://core.telegram.org/bots/api#generalforumtopichidden
  */
@@ -3399,8 +3575,8 @@ export interface ForumTopicReopened {}
 export interface GeneralForumTopicHidden {}
 
 /**
- * This object represents a service message about General forum topic unhidden
- * in the chat. Currently holds no information.
+ * This object represents a service message about the General forum topic
+ * unhidden in the chat. Currently holds no information.
  *
  * @see https://core.telegram.org/bots/api#generalforumtopicunhidden
  */
@@ -3479,7 +3655,7 @@ export interface ChatShared {
    * Identifier of the shared chat. This number may have more than 32 significant
    * bits and some programming languages may have difficulty/silent defects in
    * interpreting it. But it has at most 52 significant bits, so a 64-bit integer
-   * or double-precision float type are safe for storing this identifier. The bot
+   * or double-precision float type is safe for storing this identifier. The bot
    * may not have access to the chat and could be unable to use this identifier,
    * unless the chat is already known to the bot by some other means.
    */
@@ -3505,7 +3681,8 @@ export interface ChatShared {
  * This object represents a service message about a user allowing a bot to
  * write messages after adding it to the attachment menu, launching a Web App
  * from a link, or accepting an explicit request from a Web App sent by the
- * method requestWriteAccess.
+ * method requestWriteAccess, or about a user being invited to the private chat
+ * with the bot by the owner of the bot.
  *
  * @see https://core.telegram.org/bots/api#writeaccessallowed
  */
@@ -3527,6 +3704,13 @@ export interface WriteAccessAllowed {
    * side menu
    */
   readonly from_attachment_menu?: boolean | undefined
+
+  /**
+   * The owner of the bot, if the access was granted when the owner invited the
+   * user to the private chat with the bot. Bot owners can invite up to 10 users
+   * at once by pressing the link https://t.me/botinvite/<bot_username>.
+   */
+  readonly inviter?: User | undefined
 }
 
 /**
@@ -3730,6 +3914,45 @@ export interface SuggestedPostRefunded {
 }
 
 /**
+ * Describes a service message about the sender of the message using a link of
+ * the other user, which allows sending messages to the user without paying
+ * Telegram Stars. Currently holds no information.
+ *
+ * @see https://core.telegram.org/bots/api#paidmessageswaived
+ */
+// biome-ignore lint/suspicious/noEmptyInterface: Telegram documents this type as carrying no fields
+export interface PaidMessagesWaived {}
+
+/**
+ * Describes a service message about a transfer with a TON wallet.
+ *
+ * @see https://core.telegram.org/bots/api#tonwallettransfer
+ */
+export interface TonWalletTransfer {
+  /**
+   * Unique identifier of the transaction; may be empty if the transfer hasn't
+   * been sent yet
+   */
+  readonly transaction_id: string
+
+  /**
+   * Address of the transfer peer in the TON blockchain
+   */
+  readonly peer_address: string
+
+  /**
+   * The amount of transferred cryptocurrency, in the smallest units of the
+   * cryptocurrency, as a decimal number; negative for outgoing transfers
+   */
+  readonly amount: string
+
+  /**
+   * Comment added to the transfer; omitted if the comment is encrypted
+   */
+  readonly comment?: string | undefined
+}
+
+/**
  * This object represents a service message about the creation of a scheduled
  * giveaway.
  *
@@ -3760,7 +3983,7 @@ export interface Giveaway {
   readonly winners_selection_date: number
 
   /**
-   * The number of users which are supposed to be selected as winners of the
+   * The number of users who are supposed to be selected as winners of the
    * giveaway
    */
   readonly winner_count: number
@@ -3777,7 +4000,7 @@ export interface Giveaway {
   readonly has_public_winners?: true | undefined
 
   /**
-   * Description of additional giveaway prize
+   * Description of an additional giveaway prize
    */
   readonly prize_description?: string | undefined
 
@@ -3869,7 +4092,7 @@ export interface GiveawayWinners {
   readonly was_refunded?: true | undefined
 
   /**
-   * Description of additional giveaway prize
+   * Description of an additional giveaway prize
    */
   readonly prize_description?: string | undefined
 }
@@ -4002,7 +4225,7 @@ export interface SuggestedPostParameters {
 
   /**
    * Proposed send date of the post. If specified, then the date must be between
-   * 300 second and 2678400 seconds (30 days) in the future. If the field is
+   * 300 seconds and 2678400 seconds (30 days) in the future. If the field is
    * omitted, then the post can be published at any time within 30 days at the
    * sole discretion of the user who approves it.
    */
@@ -4019,7 +4242,7 @@ export interface DirectMessagesTopic {
    * Unique identifier of the topic. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * 64-bit integer or double-precision float type are safe for storing this
+   * 64-bit integer or double-precision float type is safe for storing this
    * identifier.
    */
   readonly topic_id: number
@@ -4032,7 +4255,7 @@ export interface DirectMessagesTopic {
 }
 
 /**
- * This object represent a user's profile pictures.
+ * This object represents a user's profile pictures.
  *
  * @see https://core.telegram.org/bots/api#userprofilephotos
  */
@@ -4091,7 +4314,7 @@ export interface File {
    * File size in bytes. It can be bigger than 2^31 and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this value.
+   * float type is safe for storing this value.
    */
   readonly file_size?: number | undefined
 
@@ -4162,8 +4385,8 @@ export interface ReplyKeyboardMarkup {
    * Targets: 1) users that are @mentioned in the text of the Message object; 2)
    * if the bot's message is a reply to a message in the same chat and forum
    * topic, sender of the original message. Example: A user requests to change
-   * the bot's language, bot replies to the request with a keyboard to select the
-   * new language. Other users in the group don't see the keyboard.
+   * the bot's language, and the bot replies to the request with a keyboard to
+   * select the new language. Other users in the group don't see the keyboard.
    */
   readonly selective?: boolean | undefined
 
@@ -4221,8 +4444,9 @@ export interface KeyboardButton {
   /**
    * If specified, pressing the button will ask the user to create and share a
    * bot that will be managed by the current bot. Available for bots that enabled
-   * management of other bots in the @BotFather Mini App. Available in private
-   * chats only.
+   * management of other bots in the @BotFather Mini App or using the parameter
+   * can_manage_bots of the method setMySettings. Available in private chats
+   * only.
    */
   readonly request_managed_bot?: KeyboardButtonRequestManagedBot | undefined
 
@@ -4302,8 +4526,8 @@ export interface KeyboardButtonRequestUsers {
 /**
  * This object defines the criteria used to request a suitable chat.
  * Information about the selected chat will be shared with the bot when the
- * corresponding button is pressed. The bot will be granted requested rights in
- * the chat if appropriate. More about requesting chats ».
+ * corresponding button is pressed. The bot will be granted the requested
+ * rights in the chat if appropriate. More about requesting chats ».
  *
  * @see https://core.telegram.org/bots/api#keyboardbuttonrequestchat
  */
@@ -4394,14 +4618,18 @@ export interface KeyboardButtonRequestManagedBot {
   readonly suggested_name?: string | undefined
 
   /**
-   * Suggested username for the bot
+   * Suggested username for the bot. The username must end with “bot”. If the
+   * user creating the bot has a Telegram Premium subscription, then the username
+   * can also end with “agent”, “ai”, “app”, “game”, or “gay”; in this case, the
+   * username will be assigned to the bot as a secondary username, and a regular
+   * username ending with “bot” will be assigned to the bot automatically.
    */
   readonly suggested_username?: string | undefined
 }
 
 /**
- * This object represents type of a poll, which is allowed to be created and
- * sent when the corresponding button is pressed.
+ * This object represents the type of a poll, which is allowed to be created
+ * and sent when the corresponding button is pressed.
  *
  * @see https://core.telegram.org/bots/api#keyboardbuttonpolltype
  */
@@ -4426,7 +4654,7 @@ export interface KeyboardButtonPollType {
  */
 export interface ReplyKeyboardRemove {
   /**
-   * Requests clients to remove the custom keyboard (user will not be able to
+   * Requests clients to remove the custom keyboard (the user will not be able to
    * summon this keyboard; if you want to hide the keyboard from sight but keep
    * it accessible, use one_time_keyboard in ReplyKeyboardMarkup)
    */
@@ -4437,9 +4665,9 @@ export interface ReplyKeyboardRemove {
    * only. Targets: 1) users that are @mentioned in the text of the Message
    * object; 2) if the bot's message is a reply to a message in the same chat and
    * forum topic, sender of the original message. Example: A user votes in a
-   * poll, bot returns confirmation message in reply to the vote and removes the
-   * keyboard for that user, while still showing the keyboard with poll options
-   * to users who haven't voted yet.
+   * poll, and the bot returns a confirmation message in reply to the vote and
+   * removes the keyboard for that user, while still showing the keyboard with
+   * poll options to users who haven't voted yet.
    */
   readonly selective?: boolean | undefined
 }
@@ -4510,7 +4738,7 @@ export interface InlineKeyboardButton {
    * button. The Web App will be able to send an arbitrary message on behalf of
    * the user using the method answerWebAppQuery. Available only in private chats
    * between a user and the bot. Not supported for messages sent on behalf of a
-   * business account.
+   * business account and ephemeral messages.
    */
   readonly web_app?: WebAppInfo | undefined
 
@@ -4562,7 +4790,7 @@ export interface InlineKeyboardButton {
   readonly callback_game?: CallbackGame | undefined
 
   /**
-   * Specify True, to send a Pay button. Substrings “” and “XTR” in the buttons's
+   * Specify True to send a Pay button. Substrings “” and “XTR” in the button's
    * text will be replaced with a Telegram Star icon. NOTE: This type of button
    * must always be the first button in the first row and can only be used in
    * invoice messages.
@@ -4675,9 +4903,11 @@ export interface DisabledButton {}
 
 /**
  * This object represents an incoming callback query from a callback button in
- * an inline keyboard. If the button that originated the query was attached to
- * a message sent by the bot, the field message will be present. If the button
- * was attached to a message sent via the bot (in inline mode), the field
+ * an inline keyboard or in a rich message. If the button that originated the
+ * query belongs to a message sent by the bot, the field message will be
+ * present, unless the field inline_message_id is used instead as specified by
+ * the parameter callback_query_mode of the method setMySettings. If the button
+ * belongs to a message sent via the bot (in inline mode), the field
  * inline_message_id will be present. Exactly one of the fields data or
  * game_short_name will be present.
  *
@@ -4701,7 +4931,8 @@ export interface CallbackQuery {
 
   /**
    * Identifier of the message sent via the bot in inline mode, that originated
-   * the query
+   * the query. Can also be present for messages sent by the bot, depending on
+   * the parameter callback_query_mode of the method setMySettings.
    */
   readonly inline_message_id?: string | undefined
 
@@ -4712,7 +4943,7 @@ export interface CallbackQuery {
   readonly chat_instance: string
 
   /**
-   * Data associated with the callback button. Be aware that the message
+   * Data associated with the callback button. Be aware that the message that
    * originated the query can contain no callback buttons with this data.
    */
   readonly data?: string | undefined
@@ -4725,12 +4956,218 @@ export interface CallbackQuery {
 }
 
 /**
+ * This object describes the type of a query from a widget. Currently, it can
+ * be one of
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytype
+ */
+export type WidgetQueryType =
+  | WidgetQueryTypeData
+  | WidgetQueryTypeSentTransaction
+  | WidgetQueryTypeSignData
+
+/**
+ * The query contains data for the bot.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypedata
+ */
+export interface WidgetQueryTypeData {
+  /**
+   * Type of the query, always “data”
+   */
+  readonly type: string
+
+  /**
+   * TON wallet card of the user who sent the query, if it was sent to the bot
+   * along with the query
+   */
+  readonly wallet_card?: TonWalletCard | undefined
+}
+
+/**
+ * The query contains data signed by a TON wallet of the user who sent the
+ * query. The data is signed for the domain bot<bot_id>, where <bot_id> is the
+ * identifier of the bot.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypesigndata
+ */
+export interface WidgetQueryTypeSignData {
+  /**
+   * Type of the query, always “sign_data”
+   */
+  readonly type: string
+
+  /**
+   * The wallet that signed the data
+   */
+  readonly wallet: WidgetQueryWallet
+
+  /**
+   * JSON-serialized signed data
+   */
+  readonly sign_data: string
+}
+
+/**
+ * The query notifies the bot about a transaction sent from a TON wallet of the
+ * user who sent the query.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerytypesenttransaction
+ */
+export interface WidgetQueryTypeSentTransaction {
+  /**
+   * Type of the query, always “sent_transaction”
+   */
+  readonly type: string
+
+  /**
+   * The wallet from which the transaction was sent
+   */
+  readonly wallet: WidgetQueryWallet
+
+  /**
+   * Value of msg_hash of the transaction
+   */
+  readonly msg_hash: string
+}
+
+/**
+ * This object describes a TON wallet of the user, which is used in a query
+ * from a widget.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquerywallet
+ */
+export interface WidgetQueryWallet {
+  /**
+   * Address of the wallet
+   */
+  readonly address: string
+
+  /**
+   * Balance of the wallet, in the smallest units of the cryptocurrency, as a
+   * decimal number
+   */
+  readonly amount: string
+
+  /**
+   * Hex-encoded public key of the wallet; omitted if unknown
+   */
+  readonly public_key?: string | undefined
+
+  /**
+   * Base64-encoded serialized StateInit of the wallet contract; omitted if and
+   * only if public_key is omitted
+   */
+  readonly state_init?: string | undefined
+}
+
+/**
+ * This object represents an incoming query from a widget in a message sent by
+ * the bot or via the bot. Use answerWidgetQuery to answer the query. Each user
+ * can send at most 5 queries per 5 seconds to the bot from all its widgets.
+ *
+ * @see https://core.telegram.org/bots/api#widgetquery
+ */
+export interface WidgetQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
+
+  /**
+   * Chat with the message containing the widget; omitted if the widget is in an
+   * inline message
+   */
+  readonly chat?: Chat | undefined
+
+  /**
+   * Identifier of the message containing the widget; omitted if the widget is in
+   * an inline message
+   */
+  readonly message_id?: number | undefined
+
+  /**
+   * Identifier of the inline message containing the widget
+   */
+  readonly inline_message_id?: string | undefined
+
+  /**
+   * Global identifier, uniquely corresponding to the chat to which the message
+   * with the widget was sent
+   */
+  readonly chat_instance: string
+
+  /**
+   * For widgets in inline messages, type of the chat to which the message was
+   * sent. Can be either “sender” for a private chat with the inline query
+   * sender, “private”, “group”, “supergroup”, or “channel”.
+   */
+  readonly chat_type?: string | undefined
+
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+
+  /**
+   * Unique identifier of the shared widget, which sent the query; omitted if the
+   * widget isn't shared
+   */
+  readonly widget_id?: string | undefined
+}
+
+/**
+ * This object represents an incoming query from a forwarded message with a
+ * shared widget created by the bot. Use answerWidgetQuery to answer the query.
+ * Each user can send at most 5 queries per 5 seconds to the bot from all its
+ * widgets.
+ *
+ * @see https://core.telegram.org/bots/api#sharedwidgetquery
+ */
+export interface SharedWidgetQuery {
+  /**
+   * Unique identifier for this query
+   */
+  readonly id: string
+
+  /**
+   * Sender
+   */
+  readonly from: User
+
+  /**
+   * Type of the query
+   */
+  readonly type: WidgetQueryType
+
+  /**
+   * Data of the query, 1-64 bytes
+   */
+  readonly data: string
+
+  /**
+   * Unique identifier of the shared widget, which sent the query
+   */
+  readonly widget_id: string
+}
+
+/**
  * Upon receiving a message with this object, Telegram clients will display a
  * reply interface to the user (act as if the user has selected the bot's
  * message and tapped 'Reply'). This can be extremely useful if you want to
  * create user-friendly step-by-step interfaces without having to sacrifice
  * privacy mode. Not supported in channels and for messages sent on behalf of a
- * user account.
+ * business account.
  *
  * @see https://core.telegram.org/bots/api#forcereply
  */
@@ -4766,7 +5203,7 @@ export interface Community {
    * Unique identifier for this community. This number may have more than 32
    * significant bits and some programming languages may have difficulty/silent
    * defects in interpreting it. But it has at most 52 significant bits, so a
-   * signed 64-bit integer or double-precision float type are safe for storing
+   * signed 64-bit integer or double-precision float type is safe for storing
    * this identifier.
    */
   readonly id: number
@@ -4849,7 +5286,7 @@ export interface ChatInviteLink {
   readonly name?: string | undefined
 
   /**
-   * Point in time (Unix timestamp) when the link will expire or has been expired
+   * Point in time (Unix timestamp) when the link will expire or has expired
    */
   readonly expire_date?: number | undefined
 
@@ -5310,8 +5747,8 @@ export interface ChatMemberRestricted {
   readonly can_send_polls: boolean
 
   /**
-   * True, if the user is allowed to send animations, games, stickers and use
-   * inline bots
+   * True, if the user is allowed to send animations, games, stickers, widgets
+   * and use inline bots
    */
   readonly can_send_other_messages: boolean
 
@@ -5420,10 +5857,10 @@ export interface ChatJoinRequest {
    * Identifier of a private chat with the user who sent the join request. This
    * number may have more than 32 significant bits and some programming languages
    * may have difficulty/silent defects in interpreting it. But it has at most 52
-   * significant bits, so a 64-bit integer or double-precision float type are
-   * safe for storing this identifier. The bot can use this identifier for 5
-   * minutes to send messages until the join request is processed, assuming no
-   * other administrator contacted the user.
+   * significant bits, so a 64-bit integer or double-precision float type is safe
+   * for storing this identifier. The bot can use this identifier for 5 minutes
+   * to send messages until the join request is processed, assuming no other
+   * administrator contacted the user.
    */
   readonly user_chat_id: number
 
@@ -5499,8 +5936,8 @@ export interface ChatPermissions {
   readonly can_send_polls?: boolean | undefined
 
   /**
-   * True, if the user is allowed to send animations, games, stickers and use
-   * inline bots
+   * True, if the user is allowed to send animations, games, stickers, widgets
+   * and use inline bots
    */
   readonly can_send_other_messages?: boolean | undefined
 
@@ -5645,7 +6082,7 @@ export interface BusinessOpeningHours {
 
 /**
  * This object describes the rating of a user based on their Telegram Star
- * spendings.
+ * spending.
  *
  * @see https://core.telegram.org/bots/api#userrating
  */
@@ -5653,7 +6090,7 @@ export interface UserRating {
   /**
    * Current level of the user, indicating their reliability when purchasing
    * digital goods and services. A higher level suggests a more trustworthy
-   * customer; a negative level is likely reason for concern.
+   * customer; a negative level is likely a reason for concern.
    */
   readonly level: number
 
@@ -5675,28 +6112,33 @@ export interface UserRating {
 }
 
 /**
- * Describes the position of a clickable area within a story.
+ * Describes the position of a rectangle area on a story media or a TON wallet
+ * card.
  *
- * @see https://core.telegram.org/bots/api#storyareaposition
+ * @see https://core.telegram.org/bots/api#areaposition
  */
-export interface StoryAreaPosition {
+export interface AreaPosition {
   /**
-   * The abscissa of the area's center, as a percentage of the media width
+   * The abscissa of the area's center, as a percentage of the media or the card
+   * width
    */
   readonly x_percentage: number
 
   /**
-   * The ordinate of the area's center, as a percentage of the media height
+   * The ordinate of the area's center, as a percentage of the media or the card
+   * height
    */
   readonly y_percentage: number
 
   /**
-   * The width of the area's rectangle, as a percentage of the media width
+   * The width of the area's rectangle, as a percentage of the media or the card
+   * width
    */
   readonly width_percentage: number
 
   /**
-   * The height of the area's rectangle, as a percentage of the media height
+   * The height of the area's rectangle, as a percentage of the media or the card
+   * height
    */
   readonly height_percentage: number
 
@@ -5706,10 +6148,247 @@ export interface StoryAreaPosition {
   readonly rotation_angle: number
 
   /**
-   * The radius of the rectangle corner rounding, as a percentage of the media
-   * width
+   * The radius of the rectangle corner rounding, as a percentage of the media or
+   * the card width
    */
   readonly corner_radius_percentage: number
+}
+
+/**
+ * This object represents an NFT in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#tonnft
+ */
+export interface TonNft {
+  /**
+   * Address of the NFT
+   */
+  readonly address: string
+
+  /**
+   * Address of the collection to which the NFT belongs; omitted if unknown
+   */
+  readonly collection_address?: string | undefined
+
+  /**
+   * Index of the NFT among all NFTs from the collection as a decimal number
+   */
+  readonly index: string
+
+  /**
+   * Name of the NFT
+   */
+  readonly name: string
+
+  /**
+   * Description of the NFT
+   */
+  readonly description: string
+
+  /**
+   * Attributes of the NFT
+   */
+  readonly attributes?: TonNftAttribute[] | undefined
+
+  /**
+   * The unique gift corresponding to the NFT
+   */
+  readonly gift?: UniqueGift | undefined
+}
+
+/**
+ * This object represents an attribute of an NFT in the TON blockchain.
+ *
+ * @see https://core.telegram.org/bots/api#tonnftattribute
+ */
+export interface TonNftAttribute {
+  /**
+   * Trait type of the attribute
+   */
+  readonly trait_type: string
+
+  /**
+   * Value of the attribute
+   */
+  readonly value: string
+}
+
+/**
+ * This object describes a sticker on a TON wallet card.
+ *
+ * @see https://core.telegram.org/bots/api#tonwalletcardsticker
+ */
+export interface TonWalletCardSticker {
+  /**
+   * Position of the sticker on the card
+   */
+  readonly position: AreaPosition
+
+  /**
+   * The NFT shown as the sticker
+   */
+  readonly nft: TonNft
+}
+
+/**
+ * This object describes a TON wallet card, which is shown on the profile page
+ * of a user to everyone.
+ *
+ * @see https://core.telegram.org/bots/api#tonwalletcard
+ */
+export interface TonWalletCard {
+  /**
+   * Address of the wallet
+   */
+  readonly address: string
+
+  /**
+   * Balance of the wallet, in the smallest units of the cryptocurrency, as a
+   * decimal number
+   */
+  readonly amount: string
+
+  /**
+   * Stickers placed on the card
+   */
+  readonly stickers: TonWalletCardSticker[]
+
+  /**
+   * Address of the NFT of one of the stickers, whose colors must be used for the
+   * card background; omitted if the default background must be used
+   */
+  readonly background_nft_address?: string | undefined
+}
+
+/**
+ * This object describes an emoji. Currently, it can be one of
+ *
+ * @see https://core.telegram.org/bots/api#emojitype
+ */
+export type EmojiType =
+  | EmojiTypeCustomEmoji
+  | EmojiTypeEmoji
+
+/**
+ * A regular emoji.
+ *
+ * @see https://core.telegram.org/bots/api#emojitypeemoji
+ */
+export interface EmojiTypeEmoji {
+  /**
+   * Type of the emoji, always “emoji”
+   */
+  readonly type: string
+
+  /**
+   * The emoji
+   */
+  readonly emoji: string
+}
+
+/**
+ * A custom emoji.
+ *
+ * @see https://core.telegram.org/bots/api#emojitypecustomemoji
+ */
+export interface EmojiTypeCustomEmoji {
+  /**
+   * Type of the emoji, always “custom_emoji”
+   */
+  readonly type: string
+
+  /**
+   * Identifier of the custom emoji. Use getCustomEmojiStickers to get full
+   * information about the sticker.
+   */
+  readonly custom_emoji_id: string
+}
+
+/**
+ * This object describes the theme of the screen for sharing a link to a user
+ * or a chat. Currently, it can be one of
+ *
+ * @see https://core.telegram.org/bots/api#chatsharetheme
+ */
+export type ChatShareTheme =
+  | ChatShareThemeEmoji
+  | ChatShareThemeUniqueGift
+
+/**
+ * The theme with emoji placed on a background.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemeemoji
+ */
+export interface ChatShareThemeEmoji {
+  /**
+   * Type of the theme, always “emoji”
+   */
+  readonly type: string
+
+  /**
+   * The emoji; 0-6 regular or custom emoji
+   */
+  readonly emojis: EmojiType[]
+
+  /**
+   * Identifier of the backdrop used as the background; omitted if the default
+   * background is used. Use getChatShareThemeBackdrops to get details about the
+   * backdrop.
+   */
+  readonly background_backdrop_id?: number | undefined
+}
+
+/**
+ * The theme based on a unique gift owned by the user or the chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemeuniquegift
+ */
+export interface ChatShareThemeUniqueGift {
+  /**
+   * Type of the theme, always “unique_gift”
+   */
+  readonly type: string
+
+  /**
+   * The gift
+   */
+  readonly gift: UniqueGift
+}
+
+/**
+ * This object contains a list of backdrops, which can be used as the
+ * background of a theme of the screen for sharing a link to a user or a chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemebackdrops
+ */
+export interface ChatShareThemeBackdrops {
+  /**
+   * The list of backdrops
+   */
+  readonly backdrops: ChatShareThemeBackdrop[]
+}
+
+/**
+ * This object describes a backdrop, which can be used as the background of a
+ * theme of the screen for sharing a link to a user or a chat.
+ *
+ * @see https://core.telegram.org/bots/api#chatsharethemebackdrop
+ */
+export interface ChatShareThemeBackdrop {
+  /**
+   * Unique identifier of the backdrop
+   */
+  readonly id: number
+
+  /**
+   * Name of the backdrop
+   */
+  readonly name: string
+
+  /**
+   * Colors of the backdrop
+   */
+  readonly colors: UniqueGiftBackdropColors
 }
 
 /**
@@ -5804,7 +6483,7 @@ export interface StoryAreaTypeSuggestedReaction {
   readonly is_dark?: boolean | undefined
 
   /**
-   * Pass True if reaction area corner is flipped
+   * Pass True if the reaction area corner is flipped
    */
   readonly is_flipped?: boolean | undefined
 }
@@ -5840,7 +6519,7 @@ export interface StoryAreaTypeWeather {
   readonly type: string
 
   /**
-   * Temperature, in degree Celsius
+   * Temperature, in degrees Celsius
    */
   readonly temperature: number
 
@@ -5882,7 +6561,7 @@ export interface StoryArea {
   /**
    * Position of the area
    */
-  readonly position: StoryAreaPosition
+  readonly position: AreaPosition
 
   /**
    * Type of the area
@@ -6192,7 +6871,7 @@ export interface Gift {
 }
 
 /**
- * This object represent a list of gifts.
+ * This object represents a list of gifts.
  *
  * @see https://core.telegram.org/bots/api#gifts
  */
@@ -6249,7 +6928,7 @@ export interface UniqueGiftSymbol {
   readonly sticker: Sticker
 
   /**
-   * The number of unique gifts that receive this model for every 1000 gifts
+   * The number of unique gifts that receive this symbol for every 1000 gifts
    * upgraded
    */
   readonly rarity_per_mille: number
@@ -6388,7 +7067,7 @@ export interface UniqueGift {
   readonly backdrop: UniqueGiftBackdrop
 
   /**
-   * True, if the original regular gift was exclusively purchaseable by Telegram
+   * True, if the original regular gift was exclusively purchasable by Telegram
    * Premium subscribers
    */
   readonly is_premium?: true | undefined
@@ -7093,7 +7772,7 @@ export interface ChatBoostSourceGiftCode {
   readonly source: string
 
   /**
-   * User for which the gift code was created
+   * User for whom the gift code was created
    */
   readonly user: User
 }
@@ -7350,7 +8029,7 @@ export interface BusinessConnection {
    * connection. This number may have more than 32 significant bits and some
    * programming languages may have difficulty/silent defects in interpreting it.
    * But it has at most 52 significant bits, so a 64-bit integer or
-   * double-precision float type are safe for storing this identifier.
+   * double-precision float type is safe for storing this identifier.
    */
   readonly user_chat_id: number
 
@@ -7461,7 +8140,7 @@ export interface ResponseParameters {
    * This number may have more than 32 significant bits and some programming
    * languages may have difficulty/silent defects in interpreting it. But it has
    * at most 52 significant bits, so a signed 64-bit integer or double-precision
-   * float type are safe for storing this identifier.
+   * float type is safe for storing this identifier.
    */
   readonly migrate_to_chat_id?: number | undefined
 
@@ -7512,7 +8191,7 @@ export interface InputMediaAnimation {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -7588,7 +8267,7 @@ export interface InputMediaAudio {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -7653,7 +8332,7 @@ export interface InputMediaDocument {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -7940,7 +8619,7 @@ export interface InputMediaVideo {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »
@@ -8023,7 +8702,7 @@ export interface InputMediaVoiceNote {
   /**
    * File to send. Pass a file_id to send a file that exists on the Telegram
    * servers (recommended), pass an HTTP URL for Telegram to get a file from the
-   * Internet, or pass "attach://<file_attach_name>" to upload a new one using
+   * Internet, or pass “attach://<file_attach_name>” to upload a new one using
    * multipart/form-data under <file_attach_name> name. More information on
    * Sending Files »
    */
@@ -8139,7 +8818,7 @@ export interface InputPaidMediaVideo {
    * file is supported server-side. The thumbnail should be in JPEG format and
    * less than 200 kB in size. A thumbnail's width and height should not exceed
    * 320. Ignored if the file is not uploaded using multipart/form-data.
-   * Thumbnails can't be reused and can be only uploaded as a new file, so you
+   * Thumbnails can't be reused and can only be uploaded as a new file, so you
    * can pass “attach://<file_attach_name>” if the thumbnail was uploaded using
    * multipart/form-data under <file_attach_name>. More information on Sending
    * Files »

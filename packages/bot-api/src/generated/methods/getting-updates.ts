@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API method parameters: Getting updates
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -31,7 +31,7 @@ export interface GetUpdatesParams {
 
   /**
    * Timeout in seconds for long polling. Defaults to 0, i.e. usual short
-   * polling. Should be positive, short polling should be used for testing
+   * polling. Should be positive; short polling should be used for testing
    * purposes only.
    */
   timeout?: number | undefined
@@ -88,8 +88,8 @@ export interface SetWebhookParams {
    * available update types. Specify an empty list to receive all update types
    * except chat_member, message_reaction, and message_reaction_count (default).
    * If not specified, the previous setting will be used. Please note that this
-   * parameter doesn't affect updates created before the call to the setWebhook,
-   * so unwanted updates may be received for a short period of time.
+   * parameter doesn't affect updates created before the call to setWebhook, so
+   * unwanted updates may be received for a short period of time.
    */
   allowed_updates?: string[] | undefined
 

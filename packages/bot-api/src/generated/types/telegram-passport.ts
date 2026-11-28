@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Telegram Passport
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -11,8 +11,8 @@
  */
 export interface PassportData {
   /**
-   * Array with information about documents and other Telegram Passport elements
-   * that was shared with the bot
+   * Array with information shared with the bot about documents and other
+   * Telegram Passport elements
    */
   readonly data: EncryptedPassportElement[]
 
@@ -243,7 +243,8 @@ export interface PassportElementErrorFrontSide {
 
 /**
  * Represents an issue with the reverse side of a document. The error is
- * considered resolved when the file with reverse side of the document changes.
+ * considered resolved when the file with the reverse side of the document
+ * changes.
  *
  * @see https://core.telegram.org/bots/api#passportelementerrorreverseside
  */
@@ -392,7 +393,7 @@ export interface PassportElementErrorTranslationFile {
 
 /**
  * Represents an issue with the translated version of a document. The error is
- * considered resolved when a file with the document translation change.
+ * considered resolved when a file with the document translation changes.
  *
  * @see https://core.telegram.org/bots/api#passportelementerrortranslationfiles
  */

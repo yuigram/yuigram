@@ -1,10 +1,10 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Getting updates
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
-import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer } from './available-types.js'
+import type { BotSubscriptionUpdated, BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChatBoostRemoved, ChatBoostUpdated, ChatJoinRequest, ChatMemberUpdated, ManagedBotUpdated, Message, MessageGenerationStopped, MessageReactionCountUpdated, MessageReactionUpdated, Poll, PollAnswer, SharedWidgetQuery, WidgetQuery } from './available-types.js'
 import type { ChosenInlineResult, InlineQuery } from './inline-mode.js'
 import type { PaidMediaPurchased, PreCheckoutQuery, ShippingQuery } from './payments.js'
 
@@ -20,7 +20,7 @@ export interface Update {
    * positive number and increase sequentially. This identifier becomes
    * especially handy if you're using webhooks, since it allows you to ignore
    * repeated updates or to restore the correct update sequence, should they get
-   * out of order. If there are no new updates for at least a week, then
+   * out of order. If there are no new updates for at least a week, then the
    * identifier of the next update will be chosen randomly instead of
    * sequentially.
    */
@@ -89,7 +89,7 @@ export interface Update {
    * Reactions to a message with anonymous reactions were changed. The bot must
    * be an administrator in the chat and must explicitly specify
    * "message_reaction_count" in the list of allowed_updates to receive these
-   * updates. The updates are grouped and can be sent with delay up to a few
+   * updates. The updates are grouped and can be sent with a delay of up to a few
    * minutes.
    */
   readonly message_reaction_count?: MessageReactionCountUpdated | undefined
@@ -102,7 +102,9 @@ export interface Update {
   /**
    * The result of an inline query that was chosen by a user and sent to their
    * chat partner. Please see our documentation on the feedback collecting for
-   * details on how to enable these updates for your bot.
+   * details on how to enable these updates for your bot. The updates can also be
+   * enabled using the parameter inline_feedback_share_denominator of the method
+   * setMySettings.
    */
   readonly chosen_inline_result?: ChosenInlineResult | undefined
 
@@ -110,6 +112,16 @@ export interface Update {
    * New incoming callback query
    */
   readonly callback_query?: CallbackQuery | undefined
+
+  /**
+   * New incoming query from a widget in a message sent by the bot or via the bot
+   */
+  readonly widget_query?: WidgetQuery | undefined
+
+  /**
+   * New incoming query from a forwarded message with a shared widget
+   */
+  readonly shared_widget_query?: SharedWidgetQuery | undefined
 
   /**
    * New incoming shipping query. Only for invoices with flexible price.
@@ -129,7 +141,7 @@ export interface Update {
 
   /**
    * New poll state. Bots receive only updates about manually stopped polls and
-   * polls, which are sent by the bot.
+   * polls which are sent by the bot.
    */
   readonly poll?: Poll | undefined
 
@@ -171,7 +183,7 @@ export interface Update {
   readonly removed_chat_boost?: ChatBoostRemoved | undefined
 
   /**
-   * A new bot was created to be managed by the bot, or token or owner of a
+   * A new bot was created to be managed by the bot, or the token or owner of a
    * managed bot was changed
    */
   readonly managed_bot?: ManagedBotUpdated | undefined

@@ -1,13 +1,13 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Games
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
 import type { Animation, MessageEntity, PhotoSize, User } from './available-types.js'
 
 /**
- * This object represents a game. Use BotFather to create and edit games, their
+ * This object represents a game. Use BotFather to create and edit games; their
  * short names will act as unique identifiers.
  *
  * @see https://core.telegram.org/bots/api#game

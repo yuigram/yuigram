@@ -1,6 +1,6 @@
 // GENERATED FILE — do not edit.
 // Bot API types: Inline mode
-// Source: Telegram Bot API 10.3, schemas/bot-api/10.3.json
+// Source: Telegram Bot API 10.5, schemas/bot-api/10.5.json
 // The code is licensed under MIT (see LICENSE). Descriptions are quoted from
 // Telegram's Bot API documentation, which that licence does not cover.
 
@@ -38,14 +38,16 @@ export interface InlineQuery {
   /**
    * Type of the chat from which the inline query was sent. Can be either
    * “sender” for a private chat with the inline query sender, “private”,
-   * “group”, “supergroup”, or “channel”. The chat type should be always known
+   * “group”, “supergroup”, or “channel”. The chat type should always be known
    * for requests sent from official clients and most third-party clients, unless
    * the request was sent from a secret chat.
    */
   readonly chat_type?: string | undefined
 
   /**
-   * Sender location, only for bots that request user location
+   * Sender location, only for bots that enabled user location requests via
+   * @BotFather or using the parameter needs_inline_query_location of the method
+   * setMySettings
    */
   readonly location?: Location | undefined
 }
@@ -173,8 +175,9 @@ export interface InlineQueryResultArticle {
 
 /**
  * Represents a link to a photo. By default, this photo will be sent by the
- * user with optional caption. Alternatively, you can use input_message_content
- * to send a message with the specified content instead of the photo.
+ * user with an optional caption. Alternatively, you can use
+ * input_message_content to send a message with the specified content instead
+ * of the photo.
  *
  * @see https://core.telegram.org/bots/api#inlinequeryresultphoto
  */
@@ -255,8 +258,8 @@ export interface InlineQueryResultPhoto {
 
 /**
  * Represents a link to an animated GIF file. By default, this animated GIF
- * file will be sent by the user with optional caption. Alternatively, you can
- * use input_message_content to send a message with the specified content
+ * file will be sent by the user with an optional caption. Alternatively, you
+ * can use input_message_content to send a message with the specified content
  * instead of the animation.
  *
  * @see https://core.telegram.org/bots/api#inlinequeryresultgif
@@ -344,8 +347,8 @@ export interface InlineQueryResultGif {
 /**
  * Represents a link to a video animation (H.264/MPEG-4 AVC video without
  * sound). By default, this animated MPEG-4 file will be sent by the user with
- * optional caption. Alternatively, you can use input_message_content to send a
- * message with the specified content instead of the animation.
+ * an optional caption. Alternatively, you can use input_message_content to
+ * send a message with the specified content instead of the animation.
  *
  * @see https://core.telegram.org/bots/api#inlinequeryresultmpeg4gif
  */
@@ -520,7 +523,7 @@ export interface InlineQueryResultVideo {
 
   /**
    * Content of the message to be sent instead of the video. This field is
-   * required if InlineQueryResultVideo is used to send an HTML-page as a result
+   * required if InlineQueryResultVideo is used to send an HTML page as a result
    * (e.g., a YouTube video).
    */
   readonly input_message_content?: InputMessageContent | undefined
@@ -596,7 +599,7 @@ export interface InlineQueryResultAudio {
  * Represents a link to a voice recording in an .OGG container encoded with
  * OPUS. By default, this voice recording will be sent by the user.
  * Alternatively, you can use input_message_content to send a message with the
- * specified content instead of the the voice message.
+ * specified content instead of the voice message.
  *
  * @see https://core.telegram.org/bots/api#inlinequeryresultvoice
  */
@@ -1069,7 +1072,7 @@ export interface InlineQueryResultCachedPhoto {
  * Represents a link to an animated GIF file stored on the Telegram servers. By
  * default, this animated GIF file will be sent by the user with an optional
  * caption. Alternatively, you can use input_message_content to send a message
- * with specified content instead of the animation.
+ * with the specified content instead of the animation.
  *
  * @see https://core.telegram.org/bots/api#inlinequeryresultcachedgif
  */
@@ -1475,8 +1478,10 @@ export type InputMessageContent =
   | InputInvoiceMessageContent
   | InputLocationMessageContent
   | InputRichMessageContent
+  | InputSharedWidgetMessageContent
   | InputTextMessageContent
   | InputVenueMessageContent
+  | InputWidgetMessageContent
 
 /**
  * Represents the content of a text message to be sent as the result of an
@@ -1662,7 +1667,7 @@ export interface InputInvoiceMessageContent {
 
   /**
    * Bot-defined invoice payload, 1-128 bytes. This will not be displayed to the
-   * user, use it for your internal processes.
+   * user; use it for your internal processes.
    */
   readonly payload: string
 
@@ -1688,7 +1693,7 @@ export interface InputInvoiceMessageContent {
   /**
    * The maximum accepted amount for tips in the smallest units of the currency
    * (integer, not float/double). For example, for a maximum tip of US$ 1.45 pass
-   * max_tip_amount = 145. See the exp parameter in currencies.json, it shows the
+   * max_tip_amount = 145. See the exp parameter in currencies.json; it shows the
    * number of digits past the decimal point for each currency (2 for the
    * majority of currencies). Defaults to 0. Not supported for payments in
    * Telegram Stars.
@@ -1696,10 +1701,10 @@ export interface InputInvoiceMessageContent {
   readonly max_tip_amount?: number | undefined
 
   /**
-   * A JSON-serialized Array of suggested amounts of tip in the smallest units of
-   * the currency (integer, not float/double). At most 4 suggested tip amounts
+   * A JSON-serialized Array of suggested amounts of tips in the smallest units
+   * of the currency (integer, not float/double). At most 4 suggested tip amounts
    * can be specified. The suggested tip amounts must be positive, passed in a
-   * strictly increased order and must not exceed max_tip_amount.
+   * strictly increasing order and must not exceed max_tip_amount.
    */
   readonly suggested_tip_amounts?: number[] | undefined
 
@@ -1775,6 +1780,123 @@ export interface InputInvoiceMessageContent {
 }
 
 /**
+ * Represents the content of a message with an HTML widget to be sent as the
+ * result of an inline query. Currently, widgets can't be sent in response to
+ * inline queries in the production environment.
+ *
+ * @see https://core.telegram.org/bots/api#inputwidgetmessagecontent
+ */
+export interface InputWidgetMessageContent {
+  /**
+   * HTML code of the widget, 1-32768 bytes. The code must not exceed 4096 bytes
+   * when compressed by zlib with the maximum compression level.
+   */
+  readonly html: string
+
+  /**
+   * Width of the widget in logical pixels; omit if the widget must occupy the
+   * whole width of the message bubble. The width is clamped by the app to the
+   * range from 200 to the maximum width of the message bubble.
+   */
+  readonly width?: number | undefined
+
+  /**
+   * Height of the widget in logical pixels; omit if the height of the widget
+   * isn't fixed. The height is clamped by the app to the range 50-600.
+   */
+  readonly height?: number | undefined
+
+  /**
+   * Public data of the widget, 0-1024 bytes, which will be available wherever
+   * the widget is shown. If the widget is shared, then all messages with it will
+   * have the same public data.
+   */
+  readonly public_data?: string | undefined
+
+  /**
+   * Data of the widget, which is specific to the message, 0-1024 bytes
+   */
+  readonly chat_data?: string | undefined
+
+  /**
+   * Widget caption, 0-1024 characters after entities parsing
+   */
+  readonly caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the widget caption. See formatting options for
+   * more details.
+   */
+  readonly parse_mode?: string | undefined
+
+  /**
+   * List of special entities that appear in the caption, which can be specified
+   * instead of parse_mode
+   */
+  readonly caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the widget
+   */
+  readonly show_caption_above_media?: boolean | undefined
+
+  /**
+   * Pass True to allow the widget to send queries to the bot
+   */
+  readonly allow_queries?: boolean | undefined
+
+  /**
+   * Pass True to create a shared widget. Each message sent from the result
+   * creates a separate shared widget, whose identifier is received by the bot
+   * only in the field widget_id of queries from the widget. To send an existing
+   * shared widget in response to an inline query, use
+   * InputSharedWidgetMessageContent instead.
+   */
+  readonly is_shared?: boolean | undefined
+}
+
+/**
+ * Represents the content of a message with a shared widget to be sent as the
+ * result of an inline query. Currently, widgets can't be sent in response to
+ * inline queries in the production environment.
+ *
+ * @see https://core.telegram.org/bots/api#inputsharedwidgetmessagecontent
+ */
+export interface InputSharedWidgetMessageContent {
+  /**
+   * Unique identifier of the shared widget created by the bot
+   */
+  readonly widget_id: string
+
+  /**
+   * Data of the widget, which is specific to the message, 0-1024 bytes
+   */
+  readonly chat_data?: string | undefined
+
+  /**
+   * Widget caption, 0-1024 characters after entities parsing
+   */
+  readonly caption?: string | undefined
+
+  /**
+   * Mode for parsing entities in the widget caption. See formatting options for
+   * more details.
+   */
+  readonly parse_mode?: string | undefined
+
+  /**
+   * List of special entities that appear in the caption, which can be specified
+   * instead of parse_mode
+   */
+  readonly caption_entities?: MessageEntity[] | undefined
+
+  /**
+   * Pass True if the caption must be shown above the widget
+   */
+  readonly show_caption_above_media?: boolean | undefined
+}
+
+/**
  * Represents a result of an inline query that was chosen by the user and sent
  * to their chat partner.
  *
@@ -1792,13 +1914,15 @@ export interface ChosenInlineResult {
   readonly from: User
 
   /**
-   * Sender location, only for bots that require user location
+   * Sender location, only for bots that enabled user location requests via
+   * @BotFather or using the parameter needs_inline_query_location of the method
+   * setMySettings
    */
   readonly location?: Location | undefined
 
   /**
    * Identifier of the sent inline message. Available only if there is an inline
-   * keyboard attached to the message. Will be also received in callback queries
+   * keyboard attached to the message. Will also be received in callback queries
    * and can be used to edit the message.
    */
   readonly inline_message_id?: string | undefined
